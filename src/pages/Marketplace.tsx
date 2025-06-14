@@ -1,10 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, Users, Check } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const marketplaceAgents = [
   {
@@ -33,9 +36,89 @@ const marketplaceAgents = [
 
 const Marketplace = () => {
   const [hiredAgents, setHiredAgents] = useState<string[]>([]);
+  const [loading, setLoading] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const handleHireAgent = (agentId: string) => {
-    setHiredAgents(prev => [...prev, agentId]);
+  useEffect(() => {
+    if (user) {
+      fetchHiredAgents();
+    }
+  }, [user]);
+
+  const fetchHiredAgents = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('hired_agents')
+        .select('agent_id')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching hired agents:', error);
+        return;
+      }
+
+      setHiredAgents(data?.map(item => item.agent_id) || []);
+    } catch (error) {
+      console.error('Error fetching hired agents:', error);
+    }
+  };
+
+  const handleHireAgent = async (agentId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to hire agents.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(agentId);
+
+    try {
+      const { error } = await supabase
+        .from('hired_agents')
+        .insert([
+          {
+            user_id: user.id,
+            agent_id: agentId
+          }
+        ]);
+
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Agent already hired",
+            description: "You have already hired this agent.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error hiring agent",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        setHiredAgents(prev => [...prev, agentId]);
+        toast({
+          title: "Agent hired successfully!",
+          description: "You can now configure this agent in the Agents page.",
+        });
+      }
+    } catch (error) {
+      console.error('Error hiring agent:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
   };
 
   const isAgentHired = (agentId: string) => {
@@ -107,9 +190,10 @@ const Marketplace = () => {
               ) : (
                 <Button 
                   onClick={() => handleHireAgent(agent.id)}
+                  disabled={loading === agent.id || !user}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3"
                 >
-                  Hire Agent
+                  {loading === agent.id ? 'Hiring Agent...' : 'Hire Agent'}
                 </Button>
               )}
             </Card>
