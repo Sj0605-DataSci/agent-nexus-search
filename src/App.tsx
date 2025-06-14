@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import SearchEngine from "./pages/SearchEngine";
 import Marketplace from "./pages/Marketplace";
+import Agents from "./pages/Agents";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/search" element={<SearchEngine />} />
           <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="*" element={<NotFound />} />

@@ -4,15 +4,16 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Send, Menu } from "lucide-react";
+import { Search, Send, ChevronDown } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import ChatDrawer from "@/components/ChatDrawer";
 
 const agents = [
+  { id: "general", name: "General AI", avatar: "🤖" },
   { id: "research", name: "Research Assistant", avatar: "🔬" },
   { id: "creative", name: "Creative Writer", avatar: "✍️" },
   { id: "code", name: "Code Expert", avatar: "💻" },
-  { id: "general", name: "General AI", avatar: "🤖" }
+  { id: "hr", name: "HR Agent", avatar: "👥" },
+  { id: "sales", name: "Sales Agent", avatar: "💼" }
 ];
 
 const SearchEngine = () => {
@@ -20,8 +21,8 @@ const SearchEngine = () => {
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [selectedAgent, setSelectedAgent] = useState("general");
   const [messages, setMessages] = useState<Array<{id: string, type: 'user' | 'agent', content: string, timestamp: Date}>>([]);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAgentDropdown, setShowAgentDropdown] = useState(false);
 
   useEffect(() => {
     const initialQuery = searchParams.get('q');
@@ -68,107 +69,122 @@ const SearchEngine = () => {
     }
   };
 
+  const selectedAgentData = agents.find(a => a.id === selectedAgent);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-white">
       <Navigation />
       
-      <div className="flex pt-20">
-        <ChatDrawer isOpen={isDrawerOpen} onToggle={() => setIsDrawerOpen(!isDrawerOpen)} />
-        
-        <div className={`flex-1 transition-all duration-300 ${isDrawerOpen ? 'ml-80' : 'ml-0'}`}>
-          <div className="container mx-auto px-4 py-8">
-            {/* Header with drawer toggle */}
-            <div className="flex items-center mb-8">
-              <Button
-                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/10 mr-4"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <h1 className="text-2xl font-bold text-white">AI Search</h1>
-            </div>
+      <div className="container mx-auto px-4 pt-32">
+        {/* Logo/Title - only show when no messages */}
+        {messages.length === 0 && (
+          <div className="text-center mb-16">
+            <h1 className="text-6xl font-normal text-gray-900 mb-8">AgentSearch</h1>
+          </div>
+        )}
 
-            {/* Search Input */}
-            <div className="max-w-4xl mx-auto mb-8">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-4">
-                <div className="flex items-center space-x-4 mb-4">
-                  <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                    <SelectTrigger className="w-48 bg-white/10 border-white/20 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
-                      {agents.map(agent => (
-                        <SelectItem key={agent.id} value={agent.id} className="text-white focus:bg-slate-700">
-                          <span className="flex items-center space-x-2">
-                            <span>{agent.avatar}</span>
-                            <span>{agent.name}</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <div className="flex-1 relative">
-                    <Input
-                      type="text"
-                      placeholder="Ask your AI agent anything..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      className="bg-transparent border-none text-white placeholder-slate-400 text-lg focus:ring-0 focus:outline-none"
-                    />
-                  </div>
-                  <Button 
-                    onClick={() => handleSearch()}
-                    disabled={!query.trim() || isLoading}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg px-6"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Chat Messages */}
-            <div className="max-w-4xl mx-auto space-y-6">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-2xl rounded-2xl p-6 ${
-                      message.type === 'user'
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white ml-12'
-                        : 'bg-white/10 backdrop-blur-md border border-white/20 text-white mr-12'
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-                    <div className="text-xs opacity-70 mt-2">
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Search Box */}
+        <div className={`max-w-2xl mx-auto ${messages.length > 0 ? 'mb-8' : 'mb-8'}`}>
+          <div className="relative">
+            <div className="flex items-center border border-gray-300 rounded-full px-4 py-3 hover:shadow-lg transition-shadow duration-200 focus-within:shadow-lg">
+              <Search className="h-5 w-5 text-gray-400 mr-3" />
               
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="max-w-2xl rounded-2xl p-6 bg-white/10 backdrop-blur-md border border-white/20 text-white mr-12">
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>AI is thinking...</span>
-                    </div>
+              <Input
+                type="text"
+                placeholder="Ask anything..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1 border-none outline-none focus:ring-0 text-gray-900 placeholder-gray-500 bg-transparent"
+              />
+              
+              {/* Agent Selector */}
+              <div className="relative">
+                <Button
+                  onClick={() => setShowAgentDropdown(!showAgentDropdown)}
+                  variant="ghost"
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full px-3 py-1"
+                >
+                  <span className="text-lg">{selectedAgentData?.avatar}</span>
+                  <span className="text-sm">{selectedAgentData?.name}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                
+                {showAgentDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    {agents.map(agent => (
+                      <button
+                        key={agent.id}
+                        onClick={() => {
+                          setSelectedAgent(agent.id);
+                          setShowAgentDropdown(false);
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="text-lg">{agent.avatar}</span>
+                        <span className="text-sm text-gray-900">{agent.name}</span>
+                      </button>
+                    ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+              
+              <Button 
+                onClick={() => handleSearch()}
+                disabled={!query.trim() || isLoading}
+                variant="ghost"
+                className="ml-2 hover:bg-gray-50 rounded-full p-2"
+              >
+                <Send className="h-4 w-4 text-gray-600" />
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* Chat Messages */}
+        {messages.length > 0 && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-2xl rounded-2xl p-6 ${
+                    message.type === 'user'
+                      ? 'bg-blue-600 text-white ml-12'
+                      : 'bg-gray-50 text-gray-900 mr-12 border border-gray-200'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className={`text-xs mt-2 ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {message.timestamp.toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="max-w-2xl rounded-2xl p-6 bg-gray-50 text-gray-900 mr-12 border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    <span>AI is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      
+      {/* Click outside to close dropdown */}
+      {showAgentDropdown && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowAgentDropdown(false)}
+        />
+      )}
     </div>
   );
 };

@@ -1,213 +1,134 @@
 
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Star, Users } from "lucide-react";
+import { Star, Users, Check } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import AgentCard from "@/components/AgentCard";
 
-const allAgents = [
+const marketplaceAgents = [
   {
-    id: "1",
-    name: "Research Assistant",
-    description: "Expert in academic research, data analysis, and scientific literature review",
-    category: "Research",
-    rating: 4.8,
-    users: 12500,
-    avatar: "🔬"
-  },
-  {
-    id: "2",
-    name: "Creative Writer",
-    description: "Specialized in creative writing, storytelling, and content creation",
-    category: "Writing",
+    id: "hr",
+    name: "HR Agent",
+    description: "Specialized in human resources, recruitment, employee management, and HR policies",
+    category: "Human Resources",
     rating: 4.9,
-    users: 8300,
-    avatar: "✍️"
+    users: 8500,
+    avatar: "👥",
+    price: "$29/month",
+    features: ["Resume Screening", "Interview Scheduling", "Policy Questions", "Employee Onboarding"]
   },
   {
-    id: "3",
-    name: "Code Expert",
-    description: "Programming assistance, code reviews, and debugging support",
-    category: "Development",
-    rating: 4.7,
-    users: 15600,
-    avatar: "💻"
-  },
-  {
-    id: "4",
-    name: "Marketing Guru",
-    description: "Digital marketing strategies, content planning, and brand development",
-    category: "Marketing",
-    rating: 4.6,
-    users: 9200,
-    avatar: "📈"
-  },
-  {
-    id: "5",
-    name: "Language Tutor",
-    description: "Language learning support, grammar correction, and conversation practice",
-    category: "Education",
+    id: "sales",
+    name: "Sales Agent",
+    description: "Expert in sales strategies, lead generation, customer relationships, and deal closing",
+    category: "Sales & Marketing",
     rating: 4.8,
-    users: 11400,
-    avatar: "🌍"
-  },
-  {
-    id: "6",
-    name: "Financial Advisor",
-    description: "Personal finance guidance, investment strategies, and budgeting help",
-    category: "Finance",
-    rating: 4.5,
-    users: 7800,
-    avatar: "💰"
-  },
-  {
-    id: "7",
-    name: "Health Coach",
-    description: "Wellness guidance, fitness planning, and healthy lifestyle tips",
-    category: "Health",
-    rating: 4.7,
-    users: 10200,
-    avatar: "🏃‍♂️"
-  },
-  {
-    id: "8",
-    name: "Travel Planner",
-    description: "Trip planning, destination recommendations, and travel logistics",
-    category: "Travel",
-    rating: 4.9,
-    users: 6500,
-    avatar: "🗺️"
-  },
+    users: 12300,
+    avatar: "💼",
+    price: "$39/month",
+    features: ["Lead Qualification", "Sales Scripts", "CRM Management", "Deal Analysis"]
+  }
 ];
 
-const categories = ["All", "Research", "Writing", "Development", "Marketing", "Education", "Finance", "Health", "Travel"];
-
 const Marketplace = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("popular");
+  const [hiredAgents, setHiredAgents] = useState<string[]>([]);
 
-  const filteredAgents = allAgents
-    .filter(agent => {
-      const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           agent.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === "All" || agent.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "rating":
-          return b.rating - a.rating;
-        case "users":
-          return b.users - a.users;
-        case "name":
-          return a.name.localeCompare(b.name);
-        default:
-          return b.users - a.users; // popular
-      }
-    });
+  const handleHireAgent = (agentId: string) => {
+    setHiredAgents(prev => [...prev, agentId]);
+  };
+
+  const isAgentHired = (agentId: string) => {
+    return hiredAgents.includes(agentId);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gray-50">
       <Navigation />
       
       <div className="container mx-auto px-4 pt-24 pb-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">AI Agent Marketplace</h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Discover and connect with specialized AI agents for every need
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">AI Agent Marketplace</h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Hire specialized AI agents to help with your business needs
           </p>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
-              <Input
-                type="text"
-                placeholder="Search agents..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white/10 border-white/20 text-white placeholder-slate-400"
-              />
-            </div>
-            
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full lg:w-48 bg-white/10 border-white/20 text-white">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                {categories.map(category => (
-                  <SelectItem key={category} value={category} className="text-white focus:bg-slate-700">
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full lg:w-48 bg-white/10 border-white/20 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="popular" className="text-white focus:bg-slate-700">Most Popular</SelectItem>
-                <SelectItem value="rating" className="text-white focus:bg-slate-700">Highest Rated</SelectItem>
-                <SelectItem value="users" className="text-white focus:bg-slate-700">Most Users</SelectItem>
-                <SelectItem value="name" className="text-white focus:bg-slate-700">Name A-Z</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Results Summary */}
-        <div className="flex items-center justify-between mb-8">
-          <p className="text-slate-300">
-            Showing {filteredAgents.length} of {allAgents.length} agents
-            {selectedCategory !== "All" && ` in ${selectedCategory}`}
-          </p>
-          
-          <div className="flex flex-wrap gap-2">
-            {categories.slice(1).map(category => (
-              <Badge
-                key={category}
-                variant={selectedCategory === category ? "default" : "secondary"}
-                className={`cursor-pointer transition-colors ${
-                  selectedCategory === category
-                    ? "bg-blue-600 text-white"
-                    : "bg-white/10 text-slate-300 hover:bg-white/20"
-                }`}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </Badge>
-            ))}
-          </div>
         </div>
 
         {/* Agent Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredAgents.map((agent) => (
-            <AgentCard 
-              key={agent.id} 
-              agent={agent}
-              onSelect={(agent) => {
-                console.log('Selected agent:', agent);
-                // Here you would typically navigate to search with selected agent
-              }}
-            />
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+          {marketplaceAgents.map((agent) => (
+            <Card key={agent.id} className="bg-white border border-gray-200 p-6 hover:shadow-lg transition-shadow duration-200">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="text-4xl">{agent.avatar}</div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">{agent.name}</h3>
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+                    {agent.category}
+                  </Badge>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-900">{agent.price}</div>
+                  <div className="text-sm text-gray-500">per month</div>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 mb-4">{agent.description}</p>
+              
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Key Features:</h4>
+                <ul className="space-y-1">
+                  {agent.features.map((feature, index) => (
+                    <li key={index} className="text-sm text-gray-600 flex items-center">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></div>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-1">
+                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                    <span className="text-gray-900 font-medium">{agent.rating}</span>
+                  </div>
+                  <div className="flex items-center space-x-1 text-gray-500 text-sm">
+                    <Users className="h-4 w-4" />
+                    <span>{agent.users.toLocaleString()} users</span>
+                  </div>
+                </div>
+              </div>
+              
+              {isAgentHired(agent.id) ? (
+                <div className="flex items-center justify-center space-x-2 py-3 bg-green-50 text-green-700 rounded-lg border border-green-200">
+                  <Check className="h-5 w-5" />
+                  <span className="font-medium">Agent Hired</span>
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => handleHireAgent(agent.id)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3"
+                >
+                  Hire Agent
+                </Button>
+              )}
+            </Card>
           ))}
         </div>
 
-        {filteredAgents.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🤖</div>
-            <h3 className="text-xl font-semibold text-white mb-2">No agents found</h3>
-            <p className="text-slate-400">Try adjusting your search or filters</p>
+        {hiredAgents.length > 0 && (
+          <div className="max-w-4xl mx-auto mt-12 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Hired Agents</h3>
+            <p className="text-blue-700 mb-4">
+              You have hired {hiredAgents.length} agent{hiredAgents.length > 1 ? 's' : ''}. 
+              Configure them in the Agents page to customize their personality and settings.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/agents'}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Configure Agents
+            </Button>
           </div>
         )}
       </div>
