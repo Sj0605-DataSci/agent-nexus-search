@@ -9,20 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Settings, Save, User } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/integrations/fastapi/client";
 import { useToast } from "@/hooks/use-toast";
 
 const agentTemplates = {
-  hr: {
-    id: "hr",
+  "69ce1f3a-7bcf-4c4e-a65d-4a127ea51641": {
+    id: "69ce1f3a-7bcf-4c4e-a65d-4a127ea51641",
     name: "HR Agent",
     avatar: "👥",
     defaultPersonality: "Professional, empathetic, and knowledgeable about HR best practices. I help with recruitment, employee relations, and policy guidance.",
     defaultTone: "professional",
     skills: ["Resume Screening", "Interview Scheduling", "Policy Questions", "Employee Onboarding"]
   },
-  sales: {
-    id: "sales", 
+  "a308a21c-981b-48d9-a26a-685371527c30": {
+    id: "a308a21c-981b-48d9-a26a-685371527c30", 
     name: "Sales Agent",
     avatar: "💼",
     defaultPersonality: "Persuasive, relationship-focused, and results-driven. I excel at qualifying leads, building rapport, and closing deals.",
@@ -32,7 +32,7 @@ const agentTemplates = {
 };
 
 const Agents = () => {
-  const [selectedAgent, setSelectedAgent] = useState<string>("hr");
+  const [selectedAgent, setSelectedAgent] = useState<string>("69ce1f3a-7bcf-4c4e-a65d-4a127ea51641");
   const [agentConfigs, setAgentConfigs] = useState<Record<string, any>>({});
   const [hiredAgents, setHiredAgents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,50 +50,31 @@ const Agents = () => {
     if (!user) return;
 
     try {
-      // Fetch hired agents
-      const { data: hiredData, error: hiredError } = await supabase
-        .from('hired_agents')
-        .select('agent_id')
-        .eq('user_id', user.id);
-
-      if (hiredError) {
-        console.error('Error fetching hired agents:', hiredError);
-        return;
-      }
-
-      const hired = hiredData?.map(item => item.agent_id) || [];
+      // Fetch hired agents with their configurations
+      const hiredAgents = await apiClient.getHiredAgents();
+      
+      // Extract template_ids (equivalent to agent_id in the frontend)
+      const hired = hiredAgents?.map(agent => agent.template_id) || [];
       setHiredAgents(hired);
-
-      // Fetch agent configurations
-      const { data: configData, error: configError } = await supabase
-        .from('agent_configurations')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (configError) {
-        console.error('Error fetching agent configs:', configError);
-        return;
-      }
-
-      // Transform configs into the expected format
+      
+      // Transform hired agents data into the expected format for configurations
       const configs: Record<string, any> = {};
-      configData?.forEach(config => {
-        configs[config.agent_id] = {
-          name: config.name,
-          personality: config.personality,
-          tone: config.tone,
-          responseLength: config.response_length,
-          expertise: config.expertise
+      hiredAgents?.forEach(agent => {
+        configs[agent.template_id] = {
+          name: agent.name || '',
+          personality: agent.personality || 'helpful',
+          tone: agent.tone || 'professional',
+          response_length: agent.response_length || 'medium',
+          expertise: agent.expertise || 'general'
         };
       });
-
+      
       setAgentConfigs(configs);
-
+      
       // Set first hired agent as selected if available
       if (hired.length > 0) {
         setSelectedAgent(hired[0]);
       }
-
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -115,41 +96,42 @@ const Agents = () => {
   };
 
   const saveConfiguration = async () => {
-    if (!user || !currentConfig) return;
+    if (!user || !currentConfig || !selectedAgent) return;
 
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('agent_configurations')
-        .update({
-          name: currentConfig.name,
-          personality: currentConfig.personality,
-          tone: currentConfig.tone,
-          response_length: currentConfig.responseLength,
-          expertise: currentConfig.expertise,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .eq('agent_id', selectedAgent);
-
-      if (error) {
-        toast({
-          title: "Error saving configuration",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Configuration saved!",
-          description: "Your agent configuration has been updated successfully.",
-        });
+      // Find the hired agent ID for the selected template/agent
+      const hiredAgents = await apiClient.getHiredAgents();
+      const hiredAgent = hiredAgents.find(agent => agent.template_id === selectedAgent);
+      
+      if (!hiredAgent) {
+        throw new Error("Could not find the hired agent to update");
       }
-    } catch (error) {
-      console.error('Error saving configuration:', error);
+      
+      // Update the hired agent with the new configuration
+      await apiClient.updateHiredAgent(hiredAgent.id, {
+        name: currentConfig.name,
+        personality: currentConfig.personality,
+        tone: currentConfig.tone,
+        response_length: currentConfig.response_length,
+        expertise: currentConfig.expertise
+      });
+      
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Configuration saved",
+        description: "Your agent configuration has been updated.",
+      });
+      
+      // Update local state
+      setAgentConfigs(prev => ({
+        ...prev,
+        [selectedAgent]: { ...currentConfig }
+      }));
+    } catch (error: any) {
+      toast({
+        title: "Error saving configuration",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -277,8 +259,8 @@ const Agents = () => {
 
                 {/* Response Length */}
                 <div>
-                  <Label htmlFor="responseLength" className="text-sm font-medium text-gray-700">Response Length</Label>
-                  <Select value={currentConfig.responseLength || 'medium'} onValueChange={(value) => updateAgentConfig('responseLength', value)}>
+                  <Label htmlFor="response_length" className="text-sm font-medium text-gray-700">Response Length</Label>
+                  <Select value={currentConfig.response_length || 'medium'} onValueChange={(value) => updateAgentConfig('response_length', value)}>
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>

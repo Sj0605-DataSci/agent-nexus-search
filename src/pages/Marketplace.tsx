@@ -1,17 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, Users, Check } from "lucide-react";
+import { Star, Users, Check, CheckCircle, Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/integrations/fastapi/client";
 import { useToast } from "@/hooks/use-toast";
 
 const marketplaceAgents = [
   {
-    id: "hr",
+    id: "69ce1f3a-7bcf-4c4e-a65d-4a127ea51641", // UUID for HR agent
     name: "HR Agent",
     description: "Specialized in human resources, recruitment, employee management, and HR policies",
     category: "Human Resources",
@@ -22,7 +21,7 @@ const marketplaceAgents = [
     features: ["Resume Screening", "Interview Scheduling", "Policy Questions", "Employee Onboarding"]
   },
   {
-    id: "sales",
+    id: "a308a21c-981b-48d9-a26a-685371527c30", // UUID for Sales agent
     name: "Sales Agent",
     description: "Expert in sales strategies, lead generation, customer relationships, and deal closing",
     category: "Sales & Marketing",
@@ -50,17 +49,9 @@ const Marketplace = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('hired_agents')
-        .select('agent_id')
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error fetching hired agents:', error);
-        return;
-      }
-
-      setHiredAgents(data?.map(item => item.agent_id) || []);
+      const data = await apiClient.getHiredAgents();
+      // Note: Our backend returns template_id instead of agent_id
+      setHiredAgents(data?.map(item => item.template_id) || []);
     } catch (error) {
       console.error('Error fetching hired agents:', error);
     }
@@ -79,41 +70,59 @@ const Marketplace = () => {
     setLoading(agentId);
 
     try {
-      const { error } = await supabase
-        .from('hired_agents')
-        .insert([
-          {
-            user_id: user.id,
-            agent_id: agentId
-          }
-        ]);
-
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          toast({
-            title: "Agent already hired",
-            description: "You have already hired this agent.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Error hiring agent",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-      } else {
-        setHiredAgents(prev => [...prev, agentId]);
+      await apiClient.hireAgent({
+        template_id: agentId // Note: backend expects template_id instead of agent_id
+      });
+      
+      toast({
+        title: "Agent hired successfully",
+        description: "The agent has been added to your team.",
+      });
+      fetchHiredAgents();
+    } catch (error: any) {
+      // Check if it's a duplicate error (unique constraint violation)
+      if (error.message.includes('already hired') || error.message.includes('unique constraint')) {
         toast({
-          title: "Agent hired successfully!",
-          description: "You can now configure this agent in the Agents page.",
+          title: "Agent already hired",
+          description: "You have already hired this agent.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error hiring agent",
+          description: error.message,
+          variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error('Error hiring agent:', error);
+    } finally {
+      setLoading(null);
+    }
+  };
+  
+  const handleUnhireAgent = async (agentId: string) => {
+    if (!user) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Authentication required",
+        description: "Please sign in to manage agents.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(`unhire-${agentId}`);
+
+    try {
+      await apiClient.unhireAgentByTemplateId(agentId);
+      
+      toast({
+        title: "Agent unhired",
+        description: "The agent has been removed from your team.",
+      });
+      fetchHiredAgents();
+    } catch (error: any) {
+      toast({
+        title: "Error unhiring agent",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -183,17 +192,42 @@ const Marketplace = () => {
               </div>
               
               {isAgentHired(agent.id) ? (
-                <div className="flex items-center justify-center space-x-2 py-3 bg-green-50 text-green-700 rounded-lg border border-green-200">
-                  <Check className="h-5 w-5" />
-                  <span className="font-medium">Agent Hired</span>
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1" 
+                    variant="outline"
+                    disabled={true}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Hired
+                  </Button>
+                  <Button 
+                    className="" 
+                    variant="destructive"
+                    onClick={() => handleUnhireAgent(agent.id)}
+                    disabled={loading === `unhire-${agent.id}`}
+                  >
+                    {loading === `unhire-${agent.id}` ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Unhire"
+                    )}
+                  </Button>
                 </div>
               ) : (
                 <Button 
+                  className="w-full" 
                   onClick={() => handleHireAgent(agent.id)}
-                  disabled={loading === agent.id || !user}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3"
+                  disabled={loading === agent.id}
                 >
-                  {loading === agent.id ? 'Hiring Agent...' : 'Hire Agent'}
+                  {loading === agent.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Hiring...
+                    </>
+                  ) : (
+                    "Hire Agent"
+                  )}
                 </Button>
               )}
             </Card>

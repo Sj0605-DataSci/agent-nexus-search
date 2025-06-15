@@ -9,63 +9,69 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      agent_configurations: {
+      agent_templates: {
         Row: {
-          agent_id: string
-          created_at: string | null
-          expertise: string
           id: string
           name: string
-          personality: string
-          response_length: string
-          tone: string
+          category: string
+          description: string | null
+          created_at: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
-          agent_id: string
-          created_at?: string | null
-          expertise?: string
           id?: string
           name: string
-          personality: string
-          response_length?: string
-          tone?: string
+          category: string
+          description?: string | null
+          created_at?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
-          agent_id?: string
-          created_at?: string | null
-          expertise?: string
           id?: string
           name?: string
-          personality?: string
-          response_length?: string
-          tone?: string
+          category?: string
+          description?: string | null
+          created_at?: string | null
           updated_at?: string | null
-          user_id?: string
         }
         Relationships: []
       }
       hired_agents: {
         Row: {
-          agent_id: string
-          hired_at: string | null
           id: string
           user_id: string
+          hired_at: string | null
+          template_id: string | null
+          name: string | null
+          personality: string | null
+          tone: string | null
+          response_length: string | null
+          expertise: string | null
+          updated_at: string | null
         }
         Insert: {
-          agent_id: string
-          hired_at?: string | null
           id?: string
           user_id: string
+          hired_at?: string | null
+          template_id?: string | null
+          name?: string | null
+          personality?: string | null
+          tone?: string | null
+          response_length?: string | null
+          expertise?: string | null
+          updated_at?: string | null
         }
         Update: {
-          agent_id?: string
-          hired_at?: string | null
           id?: string
           user_id?: string
+          hired_at?: string | null
+          template_id?: string | null
+          name?: string | null
+          personality?: string | null
+          tone?: string | null
+          response_length?: string | null
+          expertise?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
