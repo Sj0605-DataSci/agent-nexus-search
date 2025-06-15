@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
@@ -22,3 +23,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# API keys and sensitive information
+src/integrations/supabase/keys.ts
+src/integrations/*/config.ts
+src/integrations/*/secrets.ts
+src/integrations/*/*.key
+src/integrations/*/*.pem
+
+# Build files
+build/
+.cache/
+coverage/
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
