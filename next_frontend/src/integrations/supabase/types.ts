@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      invitees: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          phone_number: string
+          created_at: string | null
+          beta_tester: boolean | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          phone_number: string
+          created_at?: string | null
+          beta_tester?: boolean | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          phone_number?: string
+          created_at?: string | null
+          beta_tester?: boolean | null
+        }
+        Relationships: []
+      }
       agent_templates: {
         Row: {
           id: string
