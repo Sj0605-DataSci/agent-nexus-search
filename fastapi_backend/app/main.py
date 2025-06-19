@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat
 from app.core.config import settings
 from app.core.exceptions import validation_exception_handler, sqlalchemy_exception_handler, general_exception_handler
 
@@ -39,6 +39,7 @@ app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(agent_templates.router, prefix="/api", tags=["agent_templates"])
 app.include_router(hired_agents.router, prefix="/api", tags=["hired_agents"])
 app.include_router(profiles.router, prefix="/api", tags=["profiles"])
+app.include_router(chat.router, prefix="/api", tags=["chat"])
 
 @app.get("/")
 async def root():
