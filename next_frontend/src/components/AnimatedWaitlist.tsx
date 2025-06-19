@@ -12,8 +12,15 @@ import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 
 const schema = yup.object().shape({
-  name: yup.string().required("Name is required").min(2).max(50),
-  email: yup.string().required("Email is required").email(),
+  name: yup
+    .string()
+    .required("Name is required")
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must not exceed 50 characters"),
+  email: yup
+    .string()
+    .required("Email is required")
+    .email("Please enter a valid email address"),
   phone: yup
     .string()
     .required("Phone number is required")

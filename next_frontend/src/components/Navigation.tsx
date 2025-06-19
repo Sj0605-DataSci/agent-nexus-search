@@ -3,10 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Search, User, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // ✅ Next.js
+import { useRouter } from "next/navigation"; 
 
 const Navigation = () => {
-  // const navigate = useNavigate();
   const router = useRouter();
 
   const { user, signOut } = useAuth();
