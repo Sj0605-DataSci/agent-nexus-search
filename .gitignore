@@ -41,6 +41,7 @@ src/integrations/*/*.pem
 # Build files
 build/
 .cache/
+.next/
 coverage/
 
 # Misc
