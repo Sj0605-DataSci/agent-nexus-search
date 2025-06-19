@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { motion, AnimatePresence } from "framer-motion";
 import Confetti from "react-confetti";
-import { FaUser, FaEnvelope, FaPhoneAlt, FaInfoCircle } from "react-icons/fa";
+import { AnimatePresence } from "framer-motion";
+import { FaUser, FaEnvelope, FaPhoneAlt } from "react-icons/fa";
 import { supabase } from "@/integrations/supabase/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import { useWindowSize } from "@/constant/styles/useWindowSize";
 
 const schema = yup.object().shape({
-  name: yup
-    .string()
-    .required("Name is required")
-    .min(2, "Name must be at least 2 characters")
-    .max(50, "Name must not exceed 50 characters"),
-  email: yup
-    .string()
-    .required("Email is required")
-    .email("Please enter a valid email address"),
+  name: yup.string().required("Name is required").min(2).max(50),
+  email: yup.string().required("Email is required").email(),
   phone: yup
     .string()
     .required("Phone number is required")
@@ -26,8 +22,9 @@ const schema = yup.object().shape({
 
 export default function AnimatedWaitlist() {
   const [isSuccess, setIsSuccess] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [submitError, setSubmitError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { width, height } = useWindowSize();
 
   const {
     register,
@@ -37,31 +34,19 @@ export default function AnimatedWaitlist() {
   } = useForm({
     mode: "onChange",
     resolver: yupResolver(schema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-    },
+    defaultValues: { name: "", email: "", phone: "" },
   });
 
-  const [windowSize, setWindowSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-  useEffect(() => {
-    function handleResize() {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const onSubmit = async (formData) => {
-    setSubmitError(null);
+  const onSubmit = async (formData: {
+    name: string;
+    email: string;
+    phone: string;
+  }) => {
+    setSubmitError("");
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("invitees")
         .insert([
           {
@@ -73,22 +58,23 @@ export default function AnimatedWaitlist() {
         .select();
 
       if (error) {
-        // Handle duplicate email or phone number errors
         if (error.code === "23505") {
           if (error.message.includes("email")) {
             showErrorToast("This email is already registered");
           } else if (error.message.includes("phone_number")) {
             showErrorToast("This phone number is already registered");
           }
+        } else {
+          setSubmitError("Oops! Something went wrong.");
         }
         return;
-      } else {
-        showSuccessToast("Successfully joined the waitlist!");
-        setIsSuccess(true);
       }
+
+      showSuccessToast("Successfully joined the waitlist!");
+      setIsSuccess(true);
       reset();
-    } catch (error) {
-      setSubmitError("Oops! Something went wrong. Please try again.");
+    } catch (e) {
+      setSubmitError("Oops! Something went wrong.");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,8 +85,8 @@ export default function AnimatedWaitlist() {
       <AnimatePresence>
         {isSuccess && (
           <Confetti
-            width={windowSize.width}
-            height={windowSize.height}
+            width={width}
+            height={height}
             numberOfPieces={200}
             recycle={false}
             gravity={0.2}
@@ -116,6 +102,7 @@ export default function AnimatedWaitlist() {
           Reimagine how you find the perfect hire or your perfect lead smarter,
           faster, more personal.
         </p>
+
         {isSuccess ? (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
@@ -124,7 +111,6 @@ export default function AnimatedWaitlist() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
               >
                 <path
                   strokeLinecap="round"
@@ -144,11 +130,8 @@ export default function AnimatedWaitlist() {
         ) : (
           <form
             onSubmit={handleSubmit(onSubmit)}
-            animate="visible"
-            key={submitError ? "shake" : "form"}
-            {...(submitError ? { animate: "shake" } : {})}
-            className="space-y-6"
             noValidate
+            className="space-y-6"
           >
             <div>
               <label
@@ -166,11 +149,9 @@ export default function AnimatedWaitlist() {
                 className={`w-full px-4 py-3 rounded-lg border text-gray-900 placeholder-gray-400 transition-colors outline-none ${
                   errors.name ? "border-red-500" : "border-gray-300"
                 }`}
-                aria-invalid={errors.name ? "true" : "false"}
-                aria-describedby="name-error"
               />
               {errors.name && (
-                <p id="name-error" className="mt-1 text-sm text-red-600">
+                <p className="text-sm text-red-600 mt-1">
                   {errors.name.message}
                 </p>
               )}
@@ -192,11 +173,9 @@ export default function AnimatedWaitlist() {
                 className={`w-full px-4 py-3 rounded-lg border text-gray-900 placeholder-gray-400 transition-colors outline-none ${
                   errors.email ? "border-red-500" : "border-gray-300"
                 }`}
-                aria-invalid={errors.email ? "true" : "false"}
-                aria-describedby="email-error"
               />
               {errors.email && (
-                <p id="email-error" className="mt-1 text-sm text-red-600">
+                <p className="text-sm text-red-600 mt-1">
                   {errors.email.message}
                 </p>
               )}
@@ -218,11 +197,9 @@ export default function AnimatedWaitlist() {
                 className={`w-full px-4 py-3 rounded-lg border text-gray-900 placeholder-gray-400 transition-colors outline-none ${
                   errors.phone ? "border-red-500" : "border-gray-300"
                 }`}
-                aria-invalid={errors.phone ? "true" : "false"}
-                aria-describedby="phone-error"
               />
               {errors.phone && (
-                <p id="phone-error" className="mt-1 text-sm text-red-600">
+                <p className="text-sm text-red-600 mt-1">
                   {errors.phone.message}
                 </p>
               )}
@@ -239,6 +216,12 @@ export default function AnimatedWaitlist() {
             >
               {isSubmitting ? "Submitting..." : "Join Waitlist"}
             </button>
+
+            {submitError && (
+              <p className="text-sm text-red-600 text-center mt-2">
+                {submitError}
+              </p>
+            )}
 
             <p className="text-xs text-gray-500 text-center mt-2 select-none">
               We respect your privacy. No spam, ever.

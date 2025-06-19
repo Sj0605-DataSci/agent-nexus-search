@@ -1,15 +1,18 @@
-import { useLocation, Link } from "react-router-dom";
-import { useEffect } from "react";
+"use client";
 
-const NotFound = () => {
-  const location = useLocation();
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+
+export default function NotFound() {
+  const pathname = usePathname();
 
   useEffect(() => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
-      location.pathname
+      pathname
     );
-  }, [location.pathname]);
+  }, [pathname]);
 
   return (
     <main
@@ -29,7 +32,7 @@ const NotFound = () => {
 
       <div>
         <Link
-          to="/"
+          href="/"
           className="inline-block bg-blue-600/50 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition"
         >
           Return to Home
@@ -37,6 +40,4 @@ const NotFound = () => {
       </div>
     </main>
   );
-};
-
-export default NotFound;
+}

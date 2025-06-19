@@ -1,22 +1,23 @@
+"use client";
 
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
 const AuthGuard = ({ children }: AuthGuardProps) => {
+  const router = useRouter();
+  const pathname = usePathname();
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    if (!loading && !user && location.pathname !== '/login' && location.pathname !== '/signup') {
-      navigate('/login');
+    if (!loading && !user && pathname !== "/login" && pathname !== "/signup") {
+      router.push("/login");
     }
-  }, [user, loading, navigate, location.pathname]);
+  }, [user, loading, pathname, router]);
 
   if (loading) {
     return (
@@ -29,7 +30,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
-  if (!user && location.pathname !== '/login' && location.pathname !== '/signup') {
+  if (!user && pathname !== "/login" && pathname !== "/signup") {
     return null;
   }
 

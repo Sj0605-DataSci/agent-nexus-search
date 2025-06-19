@@ -1,26 +1,28 @@
+"use client";
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { Search, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { Search, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn, user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   // Redirect if already logged in
   if (user) {
-    navigate('/');
+    router.push("/");
     return null;
   }
 
@@ -30,7 +32,7 @@ const Login = () => {
 
     try {
       const { error } = await signIn(email, password);
-      
+
       if (error) {
         toast({
           title: "Error signing in",
@@ -42,7 +44,7 @@ const Login = () => {
           title: "Welcome back!",
           description: "You have successfully signed in.",
         });
-        navigate('/');
+        router.push("/");
       }
     } catch (error) {
       toast({
@@ -50,6 +52,7 @@ const Login = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+      console.log("error", error);
     } finally {
       setLoading(false);
     }
@@ -60,11 +63,13 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center space-x-2">
+          <Link href="/" className="inline-flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
               <Search className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">AgentSearch</span>
+            <span className="text-2xl font-bold text-gray-900">
+              AgentSearch
+            </span>
           </Link>
           <p className="text-gray-600 mt-2">Sign in to your account</p>
         </div>
@@ -114,13 +119,16 @@ const Login = () => {
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
 
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                Don't have an account?{" "}
+                <Link
+                  href="/signup"
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
                   Sign up
                 </Link>
               </p>
