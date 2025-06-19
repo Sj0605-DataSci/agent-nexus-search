@@ -1,8 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
 
 @layer base {
   :root {
@@ -92,12 +94,53 @@
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
 
-  body {
-    @apply bg-background text-foreground;
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
   }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.form-label {
+  @apply block text-sm font-semibold text-gray-700 mb-1;
+}
+
+.form-input {
+  @apply w-full px-4 py-3 rounded-lg border text-gray-900 placeholder-gray-400 transition-colors outline-none border-gray-300;
+}
+
+.form-error {
+  @apply mt-1 text-sm text-red-600;
+}
+
+.btn-primary {
+  @apply w-full py-3 rounded-md font-semibold text-white transition bg-blue-600 hover:bg-blue-700;
 }

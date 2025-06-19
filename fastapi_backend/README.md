@@ -7,17 +7,20 @@ This FastAPI backend provides API endpoints for the Agent Search application, in
 ### 1. Environment Setup
 
 1. Create a virtual environment:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 2. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. Create a `.env` file based on `.env.example`:
+
    ```bash
    cp .env.example .env
    ```
@@ -35,6 +38,7 @@ The FastAPI backend is designed to connect to the same Supabase database that yo
 ### 3. Running the Server
 
 Start the FastAPI server:
+
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -44,6 +48,7 @@ The API will be available at `http://localhost:8000`.
 ## API Documentation
 
 Once the server is running, you can access the auto-generated API documentation:
+
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
@@ -151,6 +156,7 @@ export const apiClient = {
 Replace direct Supabase calls with calls to your new API client. For example:
 
 #### Before (using Supabase directly):
+
 ```typescript
 // In Marketplace.tsx
 const fetchHiredAgents = async () => {
@@ -158,17 +164,18 @@ const fetchHiredAgents = async () => {
     .from("hired_agents")
     .select("*")
     .eq("user_id", user?.id);
-  
+
   if (error) {
     console.error("Error fetching hired agents:", error);
     return;
   }
-  
+
   setHiredAgents(data || []);
 };
 ```
 
 #### After (using FastAPI backend):
+
 ```typescript
 // In Marketplace.tsx
 import { apiClient } from "@/integrations/fastapi/client";
@@ -201,3 +208,9 @@ Note that there might be some schema differences between your frontend Supabase 
 1. The FastAPI backend expects the Supabase JWT token in the Authorization header for authenticated endpoints.
 2. Make sure your CORS settings in the FastAPI backend allow requests from your frontend origin.
 3. The backend models are based on the schema in `app/supabase/migrations.sql`.
+
+### Run commands
+
+1. source myenv/bin/activate
+2. uv pip install -r requirements.txt
+3. uvicorn app.main:app => starts BE
