@@ -10,17 +10,17 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
     
     # Database settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/agent_search")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
     # Supabase settings
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://wznveojncixcptajnjom.supabase.co")
-    SUPABASE_PROJECT_ID: str = os.getenv("SUPABASE_PROJECT_ID", "wznveojncixcptajnjom")
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_PROJECT_ID: str = os.getenv("SUPABASE_PROJECT_ID", "")
     SUPABASE_JWT_SECRET: str = os.getenv(
         "SUPABASE_JWT_SECRET", 
-        # This is a placeholder - you should set the actual JWT secret in .env file
-        "your-supabase-jwt-secret"
+        ""
     )
-    
+    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
+
     # JWT settings
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
