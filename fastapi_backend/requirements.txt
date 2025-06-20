@@ -34,3 +34,5 @@ bs4
 
 # Streaming support
 sse-starlette
+
+email-validator
