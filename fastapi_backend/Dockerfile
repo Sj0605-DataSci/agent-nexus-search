@@ -12,6 +12,10 @@ RUN pip install --no-cache-dir uv && \
     uv pip install --system --no-cache -r requirements.txt && \
     rm -rf /root/.cache
 
+# Final stage
+FROM python:3.11-slim
+WORKDIR /app
+
 # Copy installed dependencies
 COPY --from=builder /usr/local /usr/local
 
