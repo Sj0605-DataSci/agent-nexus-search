@@ -1,5 +1,5 @@
 # Use Python 3.11 as the base image
-FROM python:3.11-slim
+FROM python:3.11-slim as builder
 
 # Set working directory
 WORKDIR /app
@@ -7,30 +7,32 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install uv
-RUN pip install uv
+# Install uv and dependencies
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system --no-cache -r requirements.txt && \
+    rm -rf /root/.cache
 
-# Install dependencies using uv with system flag
-RUN uv pip install --system --no-cache -r requirements.txt
+# Final stage
+FROM python:3.11-slim
+WORKDIR /app
 
-# Copy the rest of the application
-COPY . .
+# Copy installed dependencies
+COPY --from=builder /usr/local /usr/local
 
-# Set environment variables
+# Create non-root user
+RUN useradd -m myuser && \
+    chown myuser /app
+USER myuser
+
+# Copy application
+COPY --chown=myuser . .
+
+# Environment variables
 ENV PORT=8000
 ENV HOST=0.0.0.0
 
-# Note: No sensitive credentials are stored in the Dockerfile
-# Environment variables will be passed at runtime using --env-file
-# For Railway deployment, set these in the Railway dashboard
-
-# All API keys should be passed at runtime
-# Do not hardcode sensitive information in the Dockerfile
-
-
-# Expose the port the app runs on
+# Expose port
 EXPOSE 8000
 
-# Command to run the application
-# Use shell form to allow environment variable substitution
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Run application
+CMD uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000}
