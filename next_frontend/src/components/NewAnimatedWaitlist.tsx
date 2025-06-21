@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { FaSun, FaMoon, FaUser, FaEnvelope, FaPhoneAlt } from "react-icons/fa";
 import Confetti from "react-confetti";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
@@ -21,11 +21,16 @@ const schema = yup.object().shape({
 
 type FormData = yup.InferType<typeof schema>;
 
-const backdropVariants = {
+const backdropVariants: Variants = {
   animate: {
-    rotate: [0, 15, -10, 0],
-    scale: [1, 1.05, 0.98, 1],
-    transition: { duration: 10, repeat: Infinity, ease: "easeInOut" },
+    rotate: [0, 15, -10, 0] as unknown as number, // Fix for readonly array issue
+    scale: [1, 1.05, 0.98, 1] as unknown as number, // Fix for readonly array issue
+    transition: {
+      duration: 10,
+      repeat: Infinity,
+      ease: "easeInOut",
+      repeatType: "loop" as const,
+    },
   },
 };
 
@@ -154,7 +159,11 @@ const NewAnimatedWaitlist: React.FC = () => {
             fill={darkMode ? "url(#darkGradient)" : "url(#lightGradient)"}
             initial={{ filter: "blur(24px)", opacity: 0.7 }}
             animate={{ filter: "blur(36px)", opacity: 0.85 }}
-            transition={{ duration: 2, yoyo: Infinity }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              repeatType: "reverse",
+            }}
           />
           <defs>
             <radialGradient id="darkGradient" cx="0.5" cy="0.5" r="0.7">
