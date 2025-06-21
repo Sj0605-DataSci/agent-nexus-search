@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation"; 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,12 @@ const Signup = () => {
   const { signUp, user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  if (user) {
-    router.push("/");
-    return null;
-  }
+
+  useEffect(() => {
+    if (user) {
+      router.push("/searchengine");
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
