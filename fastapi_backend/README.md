@@ -210,7 +210,7 @@ Note that there might be some schema differences between your frontend Supabase 
 3. The backend models are based on the schema in `app/supabase/migrations.sql`.
 
 ### Run commands
-
-1. source myenv/bin/activate
-2. uv pip install -r requirements.txt
-3. uvicorn app.main:app => starts BE
+1. python3 -m venv myenv
+2. source myenv/bin/activate
+3. uv pip install -r requirements.txt
+4. uvicorn app.main:app => starts BE

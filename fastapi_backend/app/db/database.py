@@ -4,21 +4,12 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 from app.core.config import settings
 from urllib.parse import quote_plus
-import os
 
 # Determine database URL - prioritize individual parameters over DATABASE_URL
-if settings.USER and settings.PASSWORD and settings.HOST and settings.PORT and settings.DBNAME:
+if settings.SUPABASE_USER and settings.SUPABASE_PASSWORD and settings.SUPABASE_HOST and settings.SUPABASE_PORT and settings.SUPABASE_DBNAME:
     # If all individual connection parameters are available, use them
-    DATABASE_URL = f"postgresql+psycopg2://{settings.USER}:{quote_plus(settings.PASSWORD)}@{settings.HOST}:{settings.PORT}/{settings.DBNAME}?sslmode=require"
+    DATABASE_URL = f"postgresql+psycopg2://{settings.SUPABASE_USER}:{quote_plus(settings.SUPABASE_PASSWORD)}@{settings.SUPABASE_HOST}:{settings.SUPABASE_PORT}/{settings.SUPABASE_DBNAME}?sslmode=require"
     print(f"Using database URL constructed from individual parameters: {DATABASE_URL}")
-else:
-    # Fall back to DATABASE_URL if individual parameters are not available
-    DATABASE_URL = settings.DATABASE_URL
-    print(f"Using database URL from environment: {DATABASE_URL}")
-    
-    # Ensure it uses the right driver
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 
 # Create the SQLAlchemy engine
 engine = create_engine(DATABASE_URL, poolclass=NullPool)

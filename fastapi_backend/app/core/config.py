@@ -24,11 +24,12 @@ class Settings(BaseSettings):
     # OpenRouter settings
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
 
-    USER: str = os.getenv("user", "")
-    PASSWORD: str = os.getenv("password", "")
-    HOST: str = os.getenv("host", "")
-    PORT: str = os.getenv("port", "")
-    DBNAME: str = os.getenv("dbname", "")
+    # Supabase settings
+    SUPABASE_USER: str = os.getenv("SUPABASE_USER", "")
+    SUPABASE_PASSWORD: str = os.getenv("SUPABASE_PASSWORD", "")
+    SUPABASE_HOST: str = os.getenv("SUPABASE_HOST", "")
+    SUPABASE_PORT: str = os.getenv("SUPABASE_PORT", "")
+    SUPABASE_DBNAME: str = os.getenv("SUPABASE_DBNAME", "")
 
     # JWT settings
     ALGORITHM: str = "HS256"
