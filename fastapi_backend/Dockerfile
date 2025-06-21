@@ -27,12 +27,6 @@ USER myuser
 # Copy application
 COPY --chown=myuser . .
 
-# Environment variables
-ENV PORT=8000
-ENV HOST=0.0.0.0
-
-# Expose port
-EXPOSE 8000
 
 # Run application
 CMD uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000}

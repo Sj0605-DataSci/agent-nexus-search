@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     )
     SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
 
+    # OpenRouter settings
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+
+    USER: str = os.getenv("user", "")
+    PASSWORD: str = os.getenv("password", "")
+    HOST: str = os.getenv("host", "")
+    PORT: str = os.getenv("port", "")
+    DBNAME: str = os.getenv("dbname", "")
+
     # JWT settings
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
