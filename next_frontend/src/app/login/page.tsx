@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -40,6 +41,7 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
+        posthog.identify();
         toast({
           title: "Welcome back!",
           description: "You have successfully signed in.",
