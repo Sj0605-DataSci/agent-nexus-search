@@ -52,6 +52,8 @@
     "motion": "^12.18.1",
     "next": "15.3.4",
     "next-themes": "^0.3.0",
+    "posthog-js": "^1.255.1",
+    "posthog-node": "^5.1.1",
     "react": "^18.2.0",
     "react-confetti": "^6.4.0",
     "react-day-picker": "^8.10.1",
