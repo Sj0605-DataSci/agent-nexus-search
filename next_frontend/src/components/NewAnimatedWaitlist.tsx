@@ -244,7 +244,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                   darkMode ? "text-gray-400" : "text-gray-500"
                 }`}
               >
-                DiscoverMinds.ai
+                SpendWize.ai
               </p>
               <h1
                 className={`text-2xl sm:text-3xl font-extrabold mb-3 leading-tight ${
