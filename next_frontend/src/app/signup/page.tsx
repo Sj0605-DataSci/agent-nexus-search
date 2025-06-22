@@ -1,155 +1,332 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
-import { Search, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import Confetti from "react-confetti";
+import { motion, AnimatePresence, Variants } from "framer-motion";
+import { FaSun, FaMoon } from "react-icons/fa";
+import { useWindowSize } from "@/constant/styles/useWindowSize";
+import { supabase } from "@/integrations/supabase/client";
+import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import { generateToken } from "@/utils/globalconstant";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+
+const schema = yup.object().shape({
+  name: yup.string().required("Name is required").min(2),
+  email: yup.string().required("Email is required").email("Invalid email"),
+  password: yup.string().required("Password is required").min(6),
+});
+
+type FormData = yup.InferType<typeof schema>;
+
+const backdropVariants: Variants = {
+  animate: {
+    rotate: [0, 15, -10, 0],
+    scale: [1, 1.08, 0.95, 1],
+    transition: { duration: 12, repeat: Infinity, ease: "easeInOut" },
+  },
+};
 
 const Signup = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { signUp, user } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter();
+  const [darkMode, setDarkMode] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const { width, height } = useWindowSize();
+  const { signUp } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      router.push("/searchengine");
-    }
-  }, [user, router]);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty, isValid },
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    mode: "onChange",
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const onSubmit: SubmitHandler<FormData> = useCallback(
+    async (data) => {
+      setIsSubmitting(true);
+      try {
+        const { error, emailExists, weakPassword, invalidEmail, serverError } =
+          await signUp(data.email, data.password, data.name);
 
-    try {
-      const { error } = await signUp(email, password, fullName);
+        if (error) {
+          if (emailExists) {
+            showErrorToast(
+              "This email is already registered. Please log in instead."
+            );
+          } else if (weakPassword) {
+            showErrorToast(
+              "Your password is too weak. Use at least 6 characters."
+            );
+          } else if (invalidEmail) {
+            showErrorToast("Please enter a valid email address.");
+          } else if (serverError) {
+            showErrorToast("Server error. Please try again later.");
+          } else {
+            showErrorToast(error.message); // fallback
+          }
+          return;
+        }
 
-      if (error) {
-        toast({
-          title: "Error creating account",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Account created successfully!",
-          description: "Please check your email to verify your account.",
-        });
-        router.push("/login");
+        showSuccessToast("Signup success! Check your email.");
+        setIsSuccess(true);
+        reset();
+      } catch (err) {
+        console.log("Signup exception", err);
+        showErrorToast("Something went wrong. Please try again.");
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [reset, signUp]
+  );
+
+  const isDisabled = isSubmitting || !isDirty || !isValid;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <Search className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">
-              AgentSearch
-            </span>
-          </Link>
-          <p className="text-gray-600 mt-2">Create your account</p>
-        </div>
+    <div
+      className={`min-h-screen flex items-center justify-center ${
+        darkMode
+          ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
+          : "bg-gray-100"
+      }`}
+    >
+      <AnimatePresence>
+        {isSuccess && (
+          <Confetti
+            width={width}
+            height={height}
+            numberOfPieces={250}
+            recycle={false}
+            gravity={0.2}
+          />
+        )}
+      </AnimatePresence>
 
-        <Card className="p-6 bg-white/80 backdrop-blur-md border border-white/20 shadow-xl">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter your full name"
-                required
-                className="mt-1"
-              />
-            </div>
+      <motion.div
+        className="absolute z-0 hidden md:block"
+        style={{
+          width: 450,
+          height: 550,
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          pointerEvents: "none",
+        }}
+        variants={backdropVariants}
+        animate="animate"
+      >
+        <svg width="100%" height="100%" viewBox="0 0 420 520" fill="none">
+          <motion.ellipse
+            cx="210"
+            cy="260"
+            rx="180"
+            ry="240"
+            fill={darkMode ? "url(#darkGradient)" : "url(#lightGradient)"}
+            initial={{ filter: "blur(20px)", opacity: 0.7 }}
+            animate={{ filter: "blur(35px)", opacity: 0.85 }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              repeatType: "reverse",
+            }}
+          />
+          <defs>
+            <radialGradient id="darkGradient" cx="0.5" cy="0.5" r="0.7">
+              <stop offset="0%" stopColor="#2563eb" />
+              <stop offset="70%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#111827" />
+            </radialGradient>
+            <radialGradient id="lightGradient" cx="0.5" cy="0.5" r="0.7">
+              <stop offset="0%" stopColor="#93c5fd" />
+              <stop offset="70%" stopColor="#a5b4fc" />
+              <stop offset="100%" stopColor="#f3f4f6" />
+            </radialGradient>
+          </defs>
+        </svg>
+      </motion.div>
 
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-                className="mt-1"
-              />
-            </div>
+      <motion.main
+        className={`relative mx-2 md:mx-0 z-10 w-full max-w-md  p-4 md:p-8 rounded-3xl shadow-2xl border transition-colors duration-500 ${
+          darkMode
+            ? "bg-black/80 border-gray-800 text-white"
+            : "bg-white border-gray-200 text-gray-900"
+        }`}
+        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      >
+        <button
+          aria-label="Toggle dark mode"
+          onClick={() => setDarkMode((dm) => !dm)}
+          className={`absolute top-4 right-4 p-2 rounded-full transition ${
+            darkMode
+              ? "bg-gray-700 text-yellow-300"
+              : "bg-gray-200 text-blue-600"
+          }`}
+        >
+          {darkMode ? <FaSun size={18} /> : <FaMoon size={18} />}
+        </button>
 
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <div className="relative mt-1">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+        {isSuccess ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="text-center flex flex-col items-center gap-4 mt-4"
+          >
+            {/* ✅ Checkmark Icon with Sparkle */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
+              // transition={{ type: "spring", stiffness: 200, damping: 12 }}
+              transition={{
+                duration: 0.6,
+                ease: "easeInOut", // ✅ Supports multi-keyframe
+              }}
+              className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shadow-lg"
             >
-              {loading ? "Creating account..." : "Sign Up"}
-            </Button>
+              <svg
+                className="w-6 h-6 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </motion.div>
 
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <Link
-                  href="/login"
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Sign in
-                </Link>
+            {/* ✅ Textual Confirmation */}
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl font-bold"
+            >
+              You're all set!
+            </motion.h2>
+
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-gray-500 text-sm"
+            >
+              Check your email to complete your signup journey.
+            </motion.p>
+          </motion.div>
+        ) : (
+          <>
+            <div>
+              <h1
+                className={`text-2xl sm:text-3xl font-extrabold mb-3 ${
+                  darkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                Create Your Account
+              </h1>
+              <p
+                className={`text-sm mb-4 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Get started with SpendWize.ai. <br />
+                It only takes a minute.
               </p>
             </div>
-          </form>
-        </Card>
-      </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {["name", "email", "password"].map((field, idx) => (
+                <motion.div
+                  key={field}
+                  initial={{ x: -30, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 + idx * 0.1 }}
+                >
+                  <input
+                    type={field === "password" ? "password" : "text"}
+                    placeholder={
+                      field === "name"
+                        ? "Full Name"
+                        : field === "email"
+                        ? "you@example.com"
+                        : "Password"
+                    }
+                    {...register(field as keyof FormData)}
+                    className={`w-full px-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
+                      darkMode
+                        ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
+                        : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
+                    }`}
+                  />
+                  {errors[field as keyof FormData] && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors[field as keyof FormData]?.message}
+                    </p>
+                  )}
+                </motion.div>
+              ))}
+
+              <motion.button
+                type="submit"
+                disabled={isDisabled}
+                whileHover={!isDisabled ? { scale: 1.03 } : {}}
+                whileTap={!isDisabled ? { scale: 0.97 } : {}}
+                className={`w-full py-3 rounded-lg font-semibold text-lg relative transition-all duration-300 flex items-center justify-center ${
+                  isDisabled
+                    ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                }`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <motion.span
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: isSubmitting ? 1 : 0 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                >
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                </motion.span>
+
+                {isSuccess
+                  ? "Success!"
+                  : isSubmitting
+                  ? "Signing Up..."
+                  : "Sign Up"}
+              </motion.button>
+            </form>
+          </>
+        )}
+      </motion.main>
     </div>
   );
 };

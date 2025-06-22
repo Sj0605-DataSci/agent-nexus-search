@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -8,6 +8,7 @@ import Confetti from "react-confetti";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { supabase } from "@/integrations/supabase/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import { generateToken } from "@/utils/globalconstant";
 
 const schema = yup.object().shape({
   name: yup.string().required("Full name is required").min(2),
@@ -34,12 +35,6 @@ const backdropVariants: Variants = {
   },
 };
 
-const generateToken = () => {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
-};
 const NewAnimatedWaitlist: React.FC = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -47,13 +42,13 @@ const NewAnimatedWaitlist: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { width, height } = useWindowSize();
 
-  // Check for existing token on component mount
   useEffect(() => {
     const token = localStorage.getItem("waitlistToken");
-    if (token) {
+    if (token && !isSuccess) {
       setIsSuccess(true);
     }
   }, []);
+
   const {
     register,
     handleSubmit,
@@ -70,51 +65,57 @@ const NewAnimatedWaitlist: React.FC = () => {
     },
   });
 
-  const onSubmit = async (formData: {
-    name: string;
-    email: string;
-    phone: string;
-  }) => {
-    setSubmitError("");
-    setIsSubmitting(true);
+  const onSubmit = useCallback<SubmitHandler<FormData>>(
+    async (formData) => {
+      setSubmitError("");
+      setIsSubmitting(true);
 
-    try {
-      const { error } = await supabase
-        .from("invitees")
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            phone_number: formData.phone,
-          },
-        ])
-        .select();
+      try {
+        const { error } = await supabase
+          .from("invitees")
+          .insert([
+            {
+              name: formData.name,
+              email: formData.email,
+              phone_number: formData.phone,
+            },
+          ])
+          .select();
 
-      if (error) {
-        if (error.code === "23505") {
-          if (error.message.includes("email")) {
-            showErrorToast("This email is already registered");
-          } else if (error.message.includes("phone_number")) {
-            showErrorToast("This phone number is already registered");
+        if (error) {
+          if (error.code === "23505") {
+            if (error.message.includes("email")) {
+              showErrorToast("This email is already registered");
+            } else if (error.message.includes("phone_number")) {
+              showErrorToast("This phone number is already registered");
+            }
+          } else {
+            setSubmitError("Oops! Something went wrong.");
+            console.error("Submission error:", error.message);
           }
-        } else {
-          setSubmitError("Oops! Something went wrong.");
+          return;
         }
-        return;
+
+        try {
+          const token = generateToken();
+          localStorage.setItem("waitlistToken", token);
+        } catch (err) {
+          console.warn("Unable to persist token in localStorage:", err);
+        }
+
+        showSuccessToast("Successfully joined the waitlist!");
+        setIsSuccess(true);
+        reset(); // Optional: reset to default values
+      } catch (e) {
+        console.error("Unexpected error during submission:", e);
+        setSubmitError("Oops! Something went wrong.");
+      } finally {
+        setIsSubmitting(false);
       }
-
-      const token = generateToken();
-      localStorage.setItem("waitlistToken", token);
-
-      showSuccessToast("Successfully joined the waitlist!");
-      setIsSuccess(true);
-      reset();
-    } catch (e) {
-      setSubmitError("Oops! Something went wrong.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [reset]
+  );
+  const isButtonDisabled = isSubmitting || !isDirty || !isValid;
 
   return (
     <div
@@ -334,25 +335,21 @@ const NewAnimatedWaitlist: React.FC = () => {
 
               <motion.button
                 type="submit"
-                disabled={isSubmitting || !isDirty || !isValid}
+                disabled={isButtonDisabled}
                 whileHover={{
-                  scale: isSubmitting || !isDirty || !isValid ? 1 : 1.03,
-                  boxShadow:
-                    isSubmitting || !isDirty || !isValid
-                      ? "none"
-                      : "0 0 24px #3b82f6",
-                  background:
-                    isSubmitting || !isDirty || !isValid
-                      ? undefined
-                      : darkMode
-                      ? "linear-gradient(90deg, #2563eb 0%, #6366f1 100%)"
-                      : "linear-gradient(90deg, #3b82f6 0%, #a5b4fc 100%)",
+                  scale: isButtonDisabled ? 1 : 1.03,
+                  boxShadow: isButtonDisabled ? "none" : "0 0 24px #3b82f6",
+                  background: isButtonDisabled
+                    ? undefined
+                    : darkMode
+                    ? "linear-gradient(90deg, #2563eb 0%, #6366f1 100%)"
+                    : "linear-gradient(90deg, #3b82f6 0%, #a5b4fc 100%)",
                 }}
                 whileTap={{
-                  scale: isSubmitting || !isDirty || !isValid ? 1 : 0.97,
+                  scale: isButtonDisabled ? 1 : 0.97,
                 }}
                 className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
-                  isSubmitting || !isDirty || !isValid
+                  isButtonDisabled
                     ? darkMode
                       ? "bg-gray-800 text-gray-500 cursor-not-allowed"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"

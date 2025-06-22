@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Search, User, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 
 const Navigation = () => {
   const router = useRouter();
@@ -28,7 +28,7 @@ const Navigation = () => {
 
           <div className="hidden md:flex items-center space-x-8">
             <Link
-              href="/search"
+              href="/searchengine"
               className="text-gray-600 hover:text-gray-900 transition-colors"
             >
               Search
