@@ -1,5 +1,5 @@
 """
-Search API integrations for Agent Nexus Search
+Search API integrations for Discover new Minds
 """
 import os
 import asyncio

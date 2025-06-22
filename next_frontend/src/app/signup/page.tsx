@@ -239,7 +239,7 @@ const Signup = () => {
                   darkMode ? "text-gray-300" : "text-gray-700"
                 }`}
               >
-                Get started with DiscoverMinds.ai. <br />
+                Get started with DiscoverMinds.ai <br />
                 It only takes a minute.
               </p>
             </div>
