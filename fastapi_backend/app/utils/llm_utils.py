@@ -12,11 +12,11 @@ class OpenRouterChatModel(BaseChatModel):
     client: Any = None  # OpenAI client
     model: str = "anthropic/claude-3-opus:beta"
     site_url: str = "https://agent-nexus-search.com"
-    site_name: str = "Agent Nexus Search"
+    site_name: str = "Discover new Minds"
     
     def __init__(self, api_key: str = None, model: str = "anthropic/claude-3-opus:beta", 
                  site_url: str = "https://agent-nexus-search.com", 
-                 site_name: str = "Agent Nexus Search", **kwargs):
+                 site_name: str = "Discover new Minds", **kwargs):
         """Initialize with OpenRouter API key"""
         super().__init__(**kwargs)
         
@@ -87,5 +87,5 @@ def get_openrouter_llm(model: str = "moonshotai/kimi-dev-72b:free") -> OpenRoute
     return OpenRouterChatModel(
         model=model,
         site_url="https://agent-nexus-search.com",
-        site_name="Agent Nexus Search"
+        site_name="Discover new Minds"
     )

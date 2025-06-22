@@ -16,19 +16,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent nexus search",
-  description: "Hiring got smarter",
-  authors: [{ name: "Nexus" }],
+  title: "Discover new Minds",
+  description: "Its time to Discover new Minds",
+  authors: [{ name: "Team DiscoverMinds.ai" }],
+  icons: {
+    icon: "https://www.discovermind.com/_site/images/logo-dark.png",
+  },
   openGraph: {
-    title: "Agent nexus search",
-    description: "Hiring got smarter",
+    title: "Discover new Minds",
+    description: "Its time to Discover new Minds",
     type: "website",
     images: [
       {
-        url: "https://lovable.dev/opengraph-image-p98pqg.png",
+        url: "https://www.discovermind.com/_site/images/logo-dark.png",
         width: 1200,
         height: 630,
-        alt: "Hiring got smarter OG image",
+        alt: "Its time to Discover new Minds",
       },
     ],
   },
@@ -37,7 +40,7 @@ export const metadata: Metadata = {
   //   site: "@lovable_dev",
   //   images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
   // },
-  metadataBase: new URL("https://spendwise.ai"), // optional for relative URLs
+  metadataBase: new URL("https://discoverminds.ai"), // optional for relative URLs
 };
 export default function RootLayout({
   children,

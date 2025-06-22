@@ -28,7 +28,7 @@ class ChatService:
             model="google/gemini-2.0-flash-exp:free",
             headers={
                 "HTTP-Referer": "https://agent-nexus-search.com",  # Replace with your site URL
-                "X-Title": "Agent Nexus Search"  # Replace with your site name
+                "X-Title": "Discover new Minds"  # Replace with your site name
             }
         )
     
