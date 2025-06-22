@@ -35,13 +35,6 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     SUPABASE_JWT_EXPIRY: int = int(os.getenv("SUPABASE_JWT_EXPIRY", "3600"))
-    
-    # CORS settings
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",  # Next.js frontend
-        "http://localhost:5173",  # Vite frontend (default port)
-        "http://localhost:8000",  # FastAPI backend (for development)
-    ]
 
     class Config:
         case_sensitive = True
