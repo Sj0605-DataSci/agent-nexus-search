@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Confetti from "react-confetti";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { FaSun, FaMoon } from "react-icons/fa";
+import { FiLock, FiUser, FiMail } from "react-icons/fi";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
-import { supabase } from "@/integrations/supabase/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
-import { generateToken } from "@/utils/globalconstant";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSelector } from "@/store";
+import ToggleSystemTheme from "@/components/ToggleSystemTheme";
+import Link from "next/link";
 
 const schema = yup.object().shape({
   name: yup.string().required("Name is required").min(2),
@@ -30,7 +31,8 @@ const backdropVariants: Variants = {
 };
 
 const Signup = () => {
-  const [darkMode, setDarkMode] = useState(true);
+  const darkMode = useAppSelector((s) => s.theme.dark);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const { width, height } = useWindowSize();
@@ -160,17 +162,7 @@ const Signup = () => {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
-        <button
-          aria-label="Toggle dark mode"
-          onClick={() => setDarkMode((dm) => !dm)}
-          className={`absolute top-4 right-4 p-2 rounded-full transition ${
-            darkMode
-              ? "bg-gray-700 text-yellow-300"
-              : "bg-gray-200 text-blue-600"
-          }`}
-        >
-          {darkMode ? <FaSun size={18} /> : <FaMoon size={18} />}
-        </button>
+        <ToggleSystemTheme className="absolute top-4 right-4 " />
 
         {isSuccess ? (
           <motion.div
@@ -252,22 +244,34 @@ const Signup = () => {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.2 + idx * 0.1 }}
                 >
-                  <input
-                    type={field === "password" ? "password" : "text"}
-                    placeholder={
-                      field === "name"
-                        ? "Full Name"
-                        : field === "email"
-                        ? "you@example.com"
-                        : "Password"
-                    }
-                    {...register(field as keyof FormData)}
-                    className={`w-full px-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
-                      darkMode
-                        ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
-                        : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type={field === "password" ? "password" : "text"}
+                      placeholder={
+                        field === "name"
+                          ? "Full Name"
+                          : field === "email"
+                          ? "you@example.com"
+                          : "Password"
+                      }
+                      {...register(field as keyof FormData)}
+                      className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
+                        darkMode
+                          ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
+                          : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
+                      }`}
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      {field === "name" ? (
+                        <FiUser size={18} />
+                      ) : field === "email" ? (
+                        <FiMail size={18} />
+                      ) : (
+                        <FiLock size={18} />
+                      )}
+                    </span>
+                  </div>
+
                   {errors[field as keyof FormData] && (
                     <p className="text-sm text-red-500 mt-1">
                       {errors[field as keyof FormData]?.message}
@@ -323,6 +327,17 @@ const Signup = () => {
                   ? "Signing Up..."
                   : "Sign Up"}
               </motion.button>
+              <div className="mt-4 text-center text-sm">
+                <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  Already have an account?
+                </span>{" "}
+                <Link
+                  href="/login"
+                  className="font-medium text-indigo-500 hover:underline"
+                >
+                  Log in
+                </Link>
+              </div>
             </form>
           </>
         )}

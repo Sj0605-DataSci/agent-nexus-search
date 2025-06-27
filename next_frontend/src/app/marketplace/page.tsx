@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, Users, Check, CheckCircle, Loader2 } from "lucide-react";
+import { Star, Users, CheckCircle, Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
@@ -14,6 +14,7 @@ import {
   showInfoToast,
   showSuccessToast,
 } from "@/utils/toastManager";
+import { useRouter } from "next/navigation";
 
 const marketplaceAgents = [
   {
@@ -57,10 +58,13 @@ const Marketplace = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     if (user) {
       fetchHiredAgents();
+    } else {
+      router.push("/login");
     }
   }, [user]);
 

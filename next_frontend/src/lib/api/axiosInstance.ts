@@ -1,15 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-// import axiosRetry from "axios-retry";
 import { supabase } from "@/integrations/supabase/client";
 
 // Create Axios instance
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL: process.env.NEXT_PUBLIC_BASE_URL || "/api",
   timeout: 10000,
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
 // Prevent multiple simultaneous refresh attempts

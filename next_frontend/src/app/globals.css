@@ -7,6 +7,14 @@ body {
 }
 
 @layer base {
+  :is(input, textarea, select, button):focus-visible {
+    outline: none !important; /* kills the browser outline        */
+    box-shadow: none !important; /* kills Tailwind “ring” box-shadow */
+    border-color: transparent; /* if a border was highlighted      */
+  } 
+}
+
+@layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
