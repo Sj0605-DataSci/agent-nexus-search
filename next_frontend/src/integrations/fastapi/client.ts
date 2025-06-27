@@ -40,10 +40,7 @@ export const apiClient = {
     }
   },
 
-  async updateAgentTemplate(
-    id: string,
-    data: AgentTemplateUpdate
-  ): Promise<AgentTemplate> {
+  async updateAgentTemplate(id: string, data: AgentTemplateUpdate): Promise<AgentTemplate> {
     try {
       const res = await axiosInstance.put(`/agent_templates/${id}`, data);
       return res.data;
@@ -89,10 +86,7 @@ export const apiClient = {
     }
   },
 
-  async updateHiredAgent(
-    id: string,
-    data: HiredAgentUpdate
-  ): Promise<HiredAgent> {
+  async updateHiredAgent(id: string, data: HiredAgentUpdate): Promise<HiredAgent> {
     try {
       const res = await axiosInstance.put(`/hired_agents/${id}`, data);
       return res.data;
@@ -112,9 +106,7 @@ export const apiClient = {
   async unhireAgentByTemplateId(templateId: string) {
     try {
       const hiredAgents = await this.getHiredAgents();
-      const agentToUnhire = hiredAgents.find(
-        (agent) => agent.template_id === templateId
-      );
+      const agentToUnhire = hiredAgents.find(agent => agent.template_id === templateId);
       if (!agentToUnhire) {
         throw new Error(`No hired agent found with template ID: ${templateId}`);
       }

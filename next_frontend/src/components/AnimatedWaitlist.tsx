@@ -17,10 +17,7 @@ const schema = yup.object().shape({
     .required("Name is required")
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must not exceed 50 characters"),
-  email: yup
-    .string()
-    .required("Email is required")
-    .email("Please enter a valid email address"),
+  email: yup.string().required("Email is required").email("Please enter a valid email address"),
   phone: yup
     .string()
     .required("Phone number is required")
@@ -44,11 +41,7 @@ export default function AnimatedWaitlist() {
     defaultValues: { name: "", email: "", phone: "" },
   });
 
-  const onSubmit = async (formData: {
-    name: string;
-    email: string;
-    phone: string;
-  }) => {
+  const onSubmit = async (formData: { name: string; email: string; phone: string }) => {
     setSubmitError("");
     setIsSubmitting(true);
 
@@ -106,8 +99,8 @@ export default function AnimatedWaitlist() {
           Join the Waitlist
         </h1>
         <p className="text-center text-gray-600 mb-8">
-          Reimagine how you find the perfect hire or your perfect lead smarter,
-          faster, more personal.
+          Reimagine how you find the perfect hire or your perfect lead smarter, faster, more
+          personal.
         </p>
 
         {isSuccess ? (
@@ -127,19 +120,13 @@ export default function AnimatedWaitlist() {
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              You're on the list!
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">You're on the list!</h2>
             <p className="text-gray-600">
               Thank you for joining our waitlist. We'll be in touch soon!
             </p>
           </div>
         ) : (
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            noValidate
-            className="space-y-6"
-          >
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
             <div>
               <label
                 htmlFor="name"
@@ -157,11 +144,7 @@ export default function AnimatedWaitlist() {
                   errors.name ? "border-red-500" : "border-gray-300"
                 }`}
               />
-              {errors.name && (
-                <p className="text-sm text-red-600 mt-1">
-                  {errors.name.message}
-                </p>
-              )}
+              {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>}
             </div>
 
             <div>
@@ -181,11 +164,7 @@ export default function AnimatedWaitlist() {
                   errors.email ? "border-red-500" : "border-gray-300"
                 }`}
               />
-              {errors.email && (
-                <p className="text-sm text-red-600 mt-1">
-                  {errors.email.message}
-                </p>
-              )}
+              {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>}
             </div>
 
             <div>
@@ -205,11 +184,7 @@ export default function AnimatedWaitlist() {
                   errors.phone ? "border-red-500" : "border-gray-300"
                 }`}
               />
-              {errors.phone && (
-                <p className="text-sm text-red-600 mt-1">
-                  {errors.phone.message}
-                </p>
-              )}
+              {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone.message}</p>}
             </div>
 
             <button
@@ -224,11 +199,7 @@ export default function AnimatedWaitlist() {
               {isSubmitting ? "Submitting..." : "Join Waitlist"}
             </button>
 
-            {submitError && (
-              <p className="text-sm text-red-600 text-center mt-2">
-                {submitError}
-              </p>
-            )}
+            {submitError && <p className="text-sm text-red-600 text-center mt-2">{submitError}</p>}
 
             <p className="text-xs text-gray-500 text-center mt-2 select-none">
               We respect your privacy. No spam, ever.

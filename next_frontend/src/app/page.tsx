@@ -7,11 +7,11 @@ import { useAppSelector } from "@/store";
 
 const RedirectSplash = () => {
   const router = useRouter();
-  const dark = useAppSelector((s) => s.theme.dark);
-  const timerId = useRef<NodeJS.Timeout>();
-  const ctrls = useAnimation(); 
+  const dark = useAppSelector(s => s.theme.dark);
+  const timerId = useRef<NodeJS.Timeout | undefined>(undefined);
+  const ctrls = useAnimation();
 
-  const DELAY = 1000; 
+  const DELAY = 1000;
 
   useEffect(() => {
     ctrls.start({
@@ -72,10 +72,7 @@ const RedirectSplash = () => {
           />
         </svg>
 
-        <p
-          aria-live="polite"
-          className="text-lg sm:text-xl font-medium text-center leading-snug"
-        >
+        <p aria-live="polite" className="text-lg sm:text-xl font-medium text-center leading-snug">
           Prepping something magical with&nbsp;
           <span className="font-semibold">DiscoverMinds.AI</span>…<br />
           almost there — we’ll take you to the waitlist in a blink 🚀

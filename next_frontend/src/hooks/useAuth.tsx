@@ -17,10 +17,7 @@ interface AuthContextType {
     invalidEmail?: boolean;
     serverError?: boolean;
   }>;
-  signIn: (
-    email: string,
-    password: string
-  ) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -107,10 +104,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         // Catch more general server-side or unknown issues
-        if (
-          (error.status && error.status >= 500) ||
-          msg.includes("unexpected")
-        ) {
+        if ((error.status && error.status >= 500) || msg.includes("unexpected")) {
           serverError = true;
         }
 
@@ -133,10 +127,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signIn = async (
-    email: string,
-    password: string
-  ): Promise<{ error: AuthError | null }> => {
+  const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,

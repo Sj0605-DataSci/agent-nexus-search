@@ -19,10 +19,7 @@ const themeSlice = createSlice({
     toggleTheme(state) {
       state.dark = !state.dark;
       if (typeof window !== "undefined") {
-        localStorage.setItem(
-          "discover_minds_theme",
-          state.dark ? "dark" : "light"
-        );
+        localStorage.setItem("discover_minds_theme", state.dark ? "dark" : "light");
         // put the class on <html> so Tailwind “dark:” utilities work
         document.documentElement.classList.toggle("dark", state.dark);
       }

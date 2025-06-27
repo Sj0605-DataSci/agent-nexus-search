@@ -168,17 +168,15 @@ export default function Aurora(props: AuroraProps) {
       delete geometry.attributes.uv;
     }
 
-    const colorStopsArray: [number, number, number, number][] = colorStops.map(
-      (hex) => {
-        const c = new Color(hex);
-        let alpha = 0.1;
-        if (hex.length === 9 || hex.length === 7) {
-          const aHex = hex.slice(-2);
-          alpha = parseInt(aHex, 16) / 255;
-        }
-        return [c.r, c.g, c.b, alpha];
+    const colorStopsArray: [number, number, number, number][] = colorStops.map(hex => {
+      const c = new Color(hex);
+      let alpha = 0.1;
+      if (hex.length === 9 || hex.length === 7) {
+        const aHex = hex.slice(-2);
+        alpha = parseInt(aHex, 16) / 255;
       }
-    );
+      return [c.r, c.g, c.b, alpha];
+    });
 
     program = new Program(gl, {
       vertex: VERT,
@@ -204,7 +202,7 @@ export default function Aurora(props: AuroraProps) {
       program.uniforms.uAmplitude.value = propsRef.current.amplitude ?? 1.0;
       program.uniforms.uBlend.value = propsRef.current.blend ?? blend;
       const stops = propsRef.current.colorStops ?? colorStops;
-      program.uniforms.uColorStops.value = stops.map((hex) => {
+      program.uniforms.uColorStops.value = stops.map(hex => {
         const c = new Color(hex);
         return [c.r, c.g, c.b];
       });

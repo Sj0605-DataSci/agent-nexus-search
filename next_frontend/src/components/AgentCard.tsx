@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,9 +30,9 @@ const AgentCard = ({ agent, onSelect }: AgentCardProps) => {
           </Badge>
         </div>
       </div>
-      
+
       <p className="text-slate-300 mb-4 text-sm">{agent.description}</p>
-      
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-1">
           <Star className="h-4 w-4 text-yellow-400 fill-current" />
@@ -44,8 +43,8 @@ const AgentCard = ({ agent, onSelect }: AgentCardProps) => {
           <span>{agent.users.toLocaleString()}</span>
         </div>
       </div>
-      
-      <Button 
+
+      <Button
         onClick={() => onSelect?.(agent)}
         className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg"
       >

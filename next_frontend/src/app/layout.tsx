@@ -41,16 +41,10 @@ export const metadata: Metadata = {
   // },
   metadataBase: new URL("https://discoverminds.ai"), // optional for relative URLs
 };
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>{children}</Providers>
         <Analytics />
       </body>

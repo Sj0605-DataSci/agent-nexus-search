@@ -34,9 +34,7 @@ const SearchParamRoot = () => {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [selectedAgent, setSelectedAgent] = useState(
-    searchParams.get("agent") || "general"
-  );
+  const [selectedAgent, setSelectedAgent] = useState(searchParams.get("agent") || "general");
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
@@ -50,7 +48,7 @@ const SearchParamRoot = () => {
   >([defaultAgent]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
 
-  const darkMode = useAppSelector((s) => s.theme.dark);
+  const darkMode = useAppSelector(s => s.theme.dark);
 
   useEffect(() => {
     const initialQ = searchParams.get("q");
@@ -76,13 +74,13 @@ const SearchParamRoot = () => {
 
         const mapped = [defaultAgent];
         for (const ha of hired) {
-          const tpl = templates.find((t) => t.id === ha.template_id);
+          const tpl = templates.find(t => t.id === ha.template_id);
           if (tpl) {
             const avatar = tpl.category.toLowerCase().includes("sales")
               ? "💼"
               : tpl.category.toLowerCase().includes("hr")
-              ? "👥"
-              : "🤖";
+                ? "👥"
+                : "🤖";
             mapped.push({
               id: ha.id,
               name: ha.name || tpl.name,
@@ -102,7 +100,7 @@ const SearchParamRoot = () => {
   }, []);
 
   const handleAgentSelect = (agentId: string) => {
-    const agent = userAgents.find((a) => a.id === agentId);
+    const agent = userAgents.find(a => a.id === agentId);
     if (agent && !agent.hired) router.push(`/marketplace?agent=${agentId}`);
     else {
       setSelectedAgent(agentId);
@@ -114,7 +112,7 @@ const SearchParamRoot = () => {
     const q = incoming ?? query;
     if (!q.trim()) return;
 
-    setMessages((m) => [
+    setMessages(m => [
       ...m,
       {
         id: Date.now().toString(),
@@ -126,9 +124,8 @@ const SearchParamRoot = () => {
     setIsLoading(true);
 
     setTimeout(() => {
-      const agentData =
-        userAgents.find((a) => a.id === selectedAgent) || defaultAgent;
-      setMessages((m) => [
+      const agentData = userAgents.find(a => a.id === selectedAgent) || defaultAgent;
+      setMessages(m => [
         ...m,
         {
           id: (Date.now() + 1).toString(),
@@ -150,8 +147,7 @@ const SearchParamRoot = () => {
     }
   };
 
-  const agentData =
-    userAgents.find((a) => a.id === selectedAgent) || defaultAgent;
+  const agentData = userAgents.find(a => a.id === selectedAgent) || defaultAgent;
   return (
     <div
       className={`min-h-screen transition-colors duration-500 relative ${
@@ -166,31 +162,22 @@ const SearchParamRoot = () => {
       <div className="container mx-auto px-4 pt-32 pb-20 relative z-10">
         {/* Hero header */}
         {/* Who you want to search? ------- */}
-{/* Engineers, Leads, People */}
+        {/* Engineers, Leads, People */}
         {messages.length === 0 && (
           <div className="text-center mb-12">
-            <h1
-              className={`text-4xl font-bold mb-4 ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <h1 className={`text-4xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
               Who can I help you find?
             </h1>
             <p
-              className={`max-w-xl mx-auto text-lg ${
-                darkMode ? "text-gray-300" : "text-gray-600"
-              }`}
+              className={`max-w-xl mx-auto text-lg ${darkMode ? "text-gray-300" : "text-gray-600"}`}
             >
-              Our AI filters through millions of profiles to surface genuinely
-              relevant people.
+              Our AI filters through millions of profiles to surface genuinely relevant people.
             </p>
           </div>
         )}
 
         {/* Search bar */}
-        <div
-          className={`max-w-2xl mx-auto ${messages.length ? "mb-8" : "mb-16"}`}
-        >
+        <div className={`max-w-2xl mx-auto ${messages.length ? "mb-8" : "mb-16"}`}>
           <div className="relative">
             <div
               className={`flex items-center rounded-full px-5 py-4 shadow-sm transition-shadow duration-200 focus-within:shadow-md ${
@@ -199,27 +186,19 @@ const SearchParamRoot = () => {
                   : "border-2 border-gray-200 bg-white hover:shadow-md"
               }`}
             >
-              <Search
-                className={`h-5 w-5 mr-3 ${
-                  darkMode ? "text-gray-400" : "text-gray-500"
-                }`}
-              />
+              <Search className={`h-5 w-5 mr-3 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
               <Input
                 type="text"
                 placeholder="Search for people by skills, experience, or interests…"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={e => setQuery(e.target.value)}
                 onKeyPress={onKey}
                 className={`
     flex-1 bg-transparent text-base
     border-0 focus:border-0
     outline-none focus:outline-none
     ring-0 focus:ring-0
-    ${
-      darkMode
-        ? "text-white placeholder-gray-500"
-        : "text-gray-900 placeholder-gray-500"
-    }
+    ${darkMode ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-500"}
   `}
               />
 
@@ -227,7 +206,7 @@ const SearchParamRoot = () => {
               <div className="relative">
                 <Button
                   variant="ghost"
-                  onClick={() => setShowAgentDropdown((s) => !s)}
+                  onClick={() => setShowAgentDropdown(s => !s)}
                   className={`flex items-center space-x-2 rounded-full px-3 py-2 border ${
                     darkMode
                       ? "border-gray-700 text-gray-300 hover:bg-gray-800"
@@ -247,11 +226,9 @@ const SearchParamRoot = () => {
                     }`}
                   >
                     {isLoadingAgents ? (
-                      <div className="p-4 text-center text-gray-500">
-                        Loading your agents…
-                      </div>
+                      <div className="p-4 text-center text-gray-500">Loading your agents…</div>
                     ) : (
-                      userAgents.map((agent) => (
+                      userAgents.map(agent => (
                         <button
                           key={agent.id}
                           onClick={() => handleAgentSelect(agent.id)}
@@ -268,9 +245,7 @@ const SearchParamRoot = () => {
                           {!agent.hired && agent.id !== "general" && (
                             <span
                               className={`text-xs px-2 py-1 rounded-full ${
-                                darkMode
-                                  ? "bg-blue-900 text-blue-300"
-                                  : "bg-blue-100 text-blue-700"
+                                darkMode ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-700"
                               }`}
                             >
                               Hire
@@ -293,8 +268,8 @@ const SearchParamRoot = () => {
                       ? "bg-gray-800 cursor-not-allowed"
                       : "bg-gray-300 cursor-not-allowed"
                     : darkMode
-                    ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
-                    : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
+                      ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
+                      : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
                 }`}
               >
                 Search
@@ -307,16 +282,14 @@ const SearchParamRoot = () => {
         {messages.length > 0 && (
           <div className="max-w-4xl mx-auto">
             <h2
-              className={`text-2xl font-semibold mb-6 ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}
+              className={`text-2xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-900"}`}
             >
               Results
             </h2>
 
             <div className="space-y-6">
               {messages.map(
-                (m) =>
+                m =>
                   m.type === "agent" && (
                     <div
                       key={m.id}
@@ -333,9 +306,7 @@ const SearchParamRoot = () => {
                           }`}
                         >
                           <UserIcon
-                            className={`h-6 w-6 ${
-                              darkMode ? "text-blue-400" : "text-blue-600"
-                            }`}
+                            className={`h-6 w-6 ${darkMode ? "text-blue-400" : "text-blue-600"}`}
                           />
                         </div>
                         <div className="flex-1">
@@ -346,11 +317,7 @@ const SearchParamRoot = () => {
                           >
                             John Doe
                           </h3>
-                          <p
-                            className={`mb-3 ${
-                              darkMode ? "text-gray-400" : "text-gray-600"
-                            }`}
-                          >
+                          <p className={`mb-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                             Senior Software Engineer at Tech Company
                           </p>
                           <div
@@ -362,7 +329,7 @@ const SearchParamRoot = () => {
                           </div>
 
                           <div className="mt-4 flex flex-wrap gap-2">
-                            {["React", "TypeScript", "Node.js"].map((tag) => (
+                            {["React", "TypeScript", "Node.js"].map(tag => (
                               <span
                                 key={tag}
                                 className={`px-3 py-1 rounded-full text-sm ${
@@ -378,9 +345,7 @@ const SearchParamRoot = () => {
 
                           <div className="mt-4 flex justify-between items-center">
                             <span
-                              className={`text-sm ${
-                                darkMode ? "text-gray-500" : "text-gray-500"
-                              }`}
+                              className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}
                             >
                               {m.timestamp.toLocaleString()}
                             </span>
@@ -424,11 +389,7 @@ const SearchParamRoot = () => {
                   }`}
                 >
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                  <span
-                    className={`font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
+                  <span className={`font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                     Searching for the perfect match…
                   </span>
                 </div>
@@ -440,10 +401,7 @@ const SearchParamRoot = () => {
 
       {/* Click-away catcher for dropdown */}
       {showAgentDropdown && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowAgentDropdown(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setShowAgentDropdown(false)} />
       )}
     </div>
   );
