@@ -31,7 +31,7 @@ const backdropVariants: Variants = {
 };
 
 const Signup = () => {
-  const darkMode = useAppSelector((s) => s.theme.dark);
+  const darkMode = useAppSelector(s => s.theme.dark);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -49,21 +49,20 @@ const Signup = () => {
   });
 
   const onSubmit: SubmitHandler<FormData> = useCallback(
-    async (data) => {
+    async data => {
       setIsSubmitting(true);
       try {
-        const { error, emailExists, weakPassword, invalidEmail, serverError } =
-          await signUp(data.email, data.password, data.name);
+        const { error, emailExists, weakPassword, invalidEmail, serverError } = await signUp(
+          data.email,
+          data.password,
+          data.name
+        );
 
         if (error) {
           if (emailExists) {
-            showErrorToast(
-              "This email is already registered. Please log in instead."
-            );
+            showErrorToast("This email is already registered. Please log in instead.");
           } else if (weakPassword) {
-            showErrorToast(
-              "Your password is too weak. Use at least 6 characters."
-            );
+            showErrorToast("Your password is too weak. Use at least 6 characters.");
           } else if (invalidEmail) {
             showErrorToast("Please enter a valid email address.");
           } else if (serverError) {
@@ -92,9 +91,7 @@ const Signup = () => {
   return (
     <div
       className={`min-h-screen flex items-center justify-center ${
-        darkMode
-          ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
-          : "bg-gray-100"
+        darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gray-100"
       }`}
     >
       <AnimatePresence>
@@ -189,11 +186,7 @@ const Signup = () => {
                 strokeWidth="2"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </motion.div>
 
@@ -226,11 +219,7 @@ const Signup = () => {
               >
                 Create Your Account
               </h1>
-              <p
-                className={`text-sm mb-4 ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
+              <p className={`text-sm mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                 Get started with DiscoverMinds.ai <br />
                 It only takes a minute.
               </p>
@@ -251,8 +240,8 @@ const Signup = () => {
                         field === "name"
                           ? "Full Name"
                           : field === "email"
-                          ? "you@example.com"
-                          : "Password"
+                            ? "you@example.com"
+                            : "Password"
                       }
                       {...register(field as keyof FormData)}
                       className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
@@ -321,20 +310,13 @@ const Signup = () => {
                   </svg>
                 </motion.span>
 
-                {isSuccess
-                  ? "Success!"
-                  : isSubmitting
-                  ? "Signing Up..."
-                  : "Sign Up"}
+                {isSuccess ? "Success!" : isSubmitting ? "Signing Up..." : "Sign Up"}
               </motion.button>
               <div className="mt-4 text-center text-sm">
                 <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
                   Already have an account?
                 </span>{" "}
-                <Link
-                  href="/login"
-                  className="font-medium text-indigo-500 hover:underline"
-                >
+                <Link href="/login" className="font-medium text-indigo-500 hover:underline">
                   Log in
                 </Link>
               </div>

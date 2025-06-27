@@ -8,10 +8,7 @@ export default function NotFound() {
   const pathname = usePathname();
 
   useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      pathname
-    );
+    console.error("404 Error: User attempted to access non-existent route:", pathname);
   }, [pathname]);
 
   return (
@@ -20,10 +17,7 @@ export default function NotFound() {
       role="main"
       aria-labelledby="notfound-title"
     >
-      <h1
-        id="notfound-title"
-        className="text-6xl font-extrabold text-gray-900 mb-4"
-      >
+      <h1 id="notfound-title" className="text-6xl font-extrabold text-gray-900 mb-4">
         404
       </h1>
       <p className="text-xl text-gray-600 mb-6 max-w-md text-center">

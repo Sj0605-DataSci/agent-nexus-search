@@ -27,12 +27,7 @@ const agentTemplates = {
     defaultPersonality:
       "Professional, empathetic, and knowledgeable about HR best practices. I help with recruitment, employee relations, and policy guidance.",
     defaultTone: "professional",
-    skills: [
-      "Resume Screening",
-      "Interview Scheduling",
-      "Policy Questions",
-      "Employee Onboarding",
-    ],
+    skills: ["Resume Screening", "Interview Scheduling", "Policy Questions", "Employee Onboarding"],
   },
   "a308a21c-981b-48d9-a26a-685371527c30": {
     id: "a308a21c-981b-48d9-a26a-685371527c30",
@@ -41,12 +36,7 @@ const agentTemplates = {
     defaultPersonality:
       "Persuasive, relationship-focused, and results-driven. I excel at qualifying leads, building rapport, and closing deals.",
     defaultTone: "enthusiastic",
-    skills: [
-      "Lead Qualification",
-      "Sales Scripts",
-      "CRM Management",
-      "Deal Analysis",
-    ],
+    skills: ["Lead Qualification", "Sales Scripts", "CRM Management", "Deal Analysis"],
   },
 };
 
@@ -78,12 +68,12 @@ const Agents = () => {
       const hiredAgents = await apiClient.getHiredAgents();
 
       // Extract template_ids (equivalent to agent_id in the frontend)
-      const hired = hiredAgents?.map((agent) => agent.template_id) || [];
+      const hired = hiredAgents?.map(agent => agent.template_id) || [];
       setHiredAgents(hired);
 
       // Transform hired agents data into the expected format for configurations
       const configs: Record<string, any> = {};
-      hiredAgents?.forEach((agent) => {
+      hiredAgents?.forEach(agent => {
         configs[agent.template_id] = {
           name: agent.name || "",
           personality: agent.personality || "helpful",
@@ -106,12 +96,11 @@ const Agents = () => {
     }
   };
 
-  const currentAgent =
-    agentTemplates[selectedAgent as keyof typeof agentTemplates];
+  const currentAgent = agentTemplates[selectedAgent as keyof typeof agentTemplates];
   const currentConfig = agentConfigs[selectedAgent];
 
   const updateAgentConfig = (field: string, value: string) => {
-    setAgentConfigs((prev) => ({
+    setAgentConfigs(prev => ({
       ...prev,
       [selectedAgent]: {
         ...prev[selectedAgent],
@@ -128,9 +117,7 @@ const Agents = () => {
     try {
       // Find the hired agent ID for the selected template/agent
       const hiredAgents = await apiClient.getHiredAgents();
-      const hiredAgent = hiredAgents.find(
-        (agent) => agent.template_id === selectedAgent
-      );
+      const hiredAgent = hiredAgents.find(agent => agent.template_id === selectedAgent);
 
       if (!hiredAgent) {
         throw new Error("Could not find the hired agent to update");
@@ -151,7 +138,7 @@ const Agents = () => {
       });
 
       // Update local state
-      setAgentConfigs((prev) => ({
+      setAgentConfigs(prev => ({
         ...prev,
         [selectedAgent]: { ...currentConfig },
       }));
@@ -183,12 +170,8 @@ const Agents = () => {
       <div className="min-h-screen bg-gray-50">
         <Navigation />
         <div className="container mx-auto px-4 pt-24 pb-16 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Configure Your Agents
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            You haven't hired any agents yet.
-          </p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Configure Your Agents</h1>
+          <p className="text-xl text-gray-600 mb-8">You haven't hired any agents yet.</p>
           <Button
             onClick={() => (window.location.href = "/marketplace")}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -206,9 +189,7 @@ const Agents = () => {
 
       <div className="container mx-auto px-4 pt-24 pb-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Configure Your Agents
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Configure Your Agents</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Customize your hired agents' personality, tone, and behavior
           </p>
@@ -218,9 +199,8 @@ const Agents = () => {
           {/* Agent Selector */}
           <div className="mb-8">
             <div className="flex flex-wrap gap-4">
-              {hiredAgents.map((agentId) => {
-                const agent =
-                  agentTemplates[agentId as keyof typeof agentTemplates];
+              {hiredAgents.map(agentId => {
+                const agent = agentTemplates[agentId as keyof typeof agentTemplates];
                 if (!agent) return null;
 
                 return (
@@ -244,46 +224,34 @@ const Agents = () => {
               <div className="flex items-center space-x-3 mb-6">
                 <div className="text-3xl">{currentAgent.avatar}</div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {currentAgent.name}
-                  </h2>
-                  <p className="text-gray-600">
-                    Configure agent settings and personality
-                  </p>
+                  <h2 className="text-2xl font-bold text-gray-900">{currentAgent.name}</h2>
+                  <p className="text-gray-600">Configure agent settings and personality</p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 {/* Agent Name */}
                 <div>
-                  <Label
-                    htmlFor="name"
-                    className="text-sm font-medium text-gray-700"
-                  >
+                  <Label htmlFor="name" className="text-sm font-medium text-gray-700">
                     Agent Name
                   </Label>
                   <Input
                     id="name"
                     value={currentConfig.name || ""}
-                    onChange={(e) => updateAgentConfig("name", e.target.value)}
+                    onChange={e => updateAgentConfig("name", e.target.value)}
                     className="mt-1"
                   />
                 </div>
 
                 {/* Personality */}
                 <div>
-                  <Label
-                    htmlFor="personality"
-                    className="text-sm font-medium text-gray-700"
-                  >
+                  <Label htmlFor="personality" className="text-sm font-medium text-gray-700">
                     Personality & Behavior
                   </Label>
                   <Textarea
                     id="personality"
                     value={currentConfig.personality || ""}
-                    onChange={(e) =>
-                      updateAgentConfig("personality", e.target.value)
-                    }
+                    onChange={e => updateAgentConfig("personality", e.target.value)}
                     rows={4}
                     className="mt-1"
                     placeholder="Describe how your agent should behave and interact..."
@@ -292,15 +260,12 @@ const Agents = () => {
 
                 {/* Tone */}
                 <div>
-                  <Label
-                    htmlFor="tone"
-                    className="text-sm font-medium text-gray-700"
-                  >
+                  <Label htmlFor="tone" className="text-sm font-medium text-gray-700">
                     Communication Tone
                   </Label>
                   <Select
                     value={currentConfig.tone || "professional"}
-                    onValueChange={(value) => updateAgentConfig("tone", value)}
+                    onValueChange={value => updateAgentConfig("tone", value)}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
@@ -317,17 +282,12 @@ const Agents = () => {
 
                 {/* Response Length */}
                 <div>
-                  <Label
-                    htmlFor="response_length"
-                    className="text-sm font-medium text-gray-700"
-                  >
+                  <Label htmlFor="response_length" className="text-sm font-medium text-gray-700">
                     Response Length
                   </Label>
                   <Select
                     value={currentConfig.response_length || "medium"}
-                    onValueChange={(value) =>
-                      updateAgentConfig("response_length", value)
-                    }
+                    onValueChange={value => updateAgentConfig("response_length", value)}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
@@ -335,34 +295,25 @@ const Agents = () => {
                     <SelectContent>
                       <SelectItem value="short">Short & Concise</SelectItem>
                       <SelectItem value="medium">Medium Detail</SelectItem>
-                      <SelectItem value="long">
-                        Detailed & Comprehensive
-                      </SelectItem>
+                      <SelectItem value="long">Detailed & Comprehensive</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Expertise Level */}
                 <div>
-                  <Label
-                    htmlFor="expertise"
-                    className="text-sm font-medium text-gray-700"
-                  >
+                  <Label htmlFor="expertise" className="text-sm font-medium text-gray-700">
                     Expertise Level
                   </Label>
                   <Select
                     value={currentConfig.expertise || "general"}
-                    onValueChange={(value) =>
-                      updateAgentConfig("expertise", value)
-                    }
+                    onValueChange={value => updateAgentConfig("expertise", value)}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="beginner">
-                        Beginner-friendly
-                      </SelectItem>
+                      <SelectItem value="beginner">Beginner-friendly</SelectItem>
                       <SelectItem value="general">General Knowledge</SelectItem>
                       <SelectItem value="expert">Expert Level</SelectItem>
                     </SelectContent>
@@ -371,9 +322,7 @@ const Agents = () => {
 
                 {/* Skills */}
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">
-                    Core Skills
-                  </Label>
+                  <Label className="text-sm font-medium text-gray-700">Core Skills</Label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {currentAgent.skills.map((skill, index) => (
                       <span

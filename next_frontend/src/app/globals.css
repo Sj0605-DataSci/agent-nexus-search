@@ -11,7 +11,7 @@ body {
     outline: none !important; /* kills the browser outline        */
     box-shadow: none !important; /* kills Tailwind “ring” box-shadow */
     border-color: transparent; /* if a border was highlighted      */
-  } 
+  }
 }
 
 @layer base {

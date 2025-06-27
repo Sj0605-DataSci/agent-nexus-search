@@ -3,13 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  Search,
-  LogIn,
-  LogOut,
-  Menu as MenuIcon,
-  X as CloseIcon,
-} from "lucide-react";
+import { Search, LogIn, LogOut, Menu as MenuIcon, X as CloseIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +11,7 @@ import { useAppSelector } from "@/store";
 import ThemeToggle from "./ToggleSystemTheme";
 
 const Navigation = () => {
-  const darkMode = useAppSelector((s) => s.theme.dark);
+  const darkMode = useAppSelector(s => s.theme.dark);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, signOut } = useAuth();
@@ -29,9 +23,7 @@ const Navigation = () => {
       href={href}
       onClick={() => setMobileOpen(false)}
       className={`relative px-2 py-1 transition-colors ${
-        darkMode
-          ? "text-gray-300 hover:text-white"
-          : "text-gray-600 hover:text-gray-900"
+        darkMode ? "text-gray-300 hover:text-white" : "text-gray-600 hover:text-gray-900"
       } ${pathname.startsWith(href) ? "font-semibold" : ""}`}
     >
       {label}
@@ -53,11 +45,7 @@ const Navigation = () => {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 backdrop-blur-md border-b
-        ${
-          darkMode
-            ? "bg-gray-900/60 border-gray-700"
-            : "bg-white/80 border-gray-200"
-        }`}
+        ${darkMode ? "bg-gray-900/60 border-gray-700" : "bg-white/80 border-gray-200"}`}
     >
       <nav className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
@@ -132,14 +120,10 @@ const Navigation = () => {
 
           <button
             aria-label="Menu"
-            onClick={() => setMobileOpen((o) => !o)}
+            onClick={() => setMobileOpen(o => !o)}
             className={`md:hidden ml-1 p-2 rounded-lg
               transition-colors focus:outline-none
-              ${
-                darkMode
-                  ? "text-gray-300 hover:bg-gray-800"
-                  : "text-gray-600 hover:bg-gray-200"
-              }`}
+              ${darkMode ? "text-gray-300 hover:bg-gray-800" : "text-gray-600 hover:bg-gray-200"}`}
           >
             {mobileOpen ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
           </button>
@@ -149,11 +133,7 @@ const Navigation = () => {
       {mobileOpen && (
         <div
           className={`md:hidden border-t
-            ${
-              darkMode
-                ? "border-gray-700 bg-gray-900/70"
-                : "border-gray-200 bg-white/95"
-            }`}
+            ${darkMode ? "border-gray-700 bg-gray-900/70" : "border-gray-200 bg-white/95"}`}
         >
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
             {navLink("/searchengine", "Search")}

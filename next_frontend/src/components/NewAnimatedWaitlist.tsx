@@ -39,7 +39,7 @@ const backdropVariants: Variants = {
 };
 
 const NewAnimatedWaitlist: React.FC = () => {
-  const darkMode = useAppSelector((s) => s.theme.dark);
+  const darkMode = useAppSelector(s => s.theme.dark);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,7 +69,7 @@ const NewAnimatedWaitlist: React.FC = () => {
   });
 
   const onSubmit = useCallback<SubmitHandler<FormData>>(
-    async (formData) => {
+    async formData => {
       setSubmitError("");
       setIsSubmitting(true);
 
@@ -150,9 +150,7 @@ const NewAnimatedWaitlist: React.FC = () => {
       >
         <Aurora
           colorStops={
-            darkMode
-              ? ["#5227ff", "#7cff67", "#5227ff"]
-              : ["#caf0f8", "#d9ed92", "#caf0f8"]
+            darkMode ? ["#5227ff", "#7cff67", "#5227ff"] : ["#caf0f8", "#d9ed92", "#caf0f8"]
           }
           dark={darkMode}
           blend={0.5}
@@ -206,9 +204,7 @@ const NewAnimatedWaitlist: React.FC = () => {
 
       <motion.main
         className={`relative mx-2 z-10 w-full max-w-md rounded-3xl shadow-2xl border transition-colors duration-500 ${
-          darkMode
-            ? "bg-black/80 border-gray-800"
-            : "bg-white/90 border-gray-200"
+          darkMode ? "bg-black/80 border-gray-800" : "bg-white/90 border-gray-200"
         } p-8 sm:p-10 flex flex-col gap-6`}
         initial={{ opacity: 0, y: 40, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -238,9 +234,7 @@ const NewAnimatedWaitlist: React.FC = () => {
               </svg>
             </div>
             <h2
-              className={`text-xl font-semibold mb-2 ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}
+              className={`text-xl font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}
             >
               You're on the list!
             </h2>
@@ -252,9 +246,7 @@ const NewAnimatedWaitlist: React.FC = () => {
           <>
             <div>
               <p
-                className={`text-xs font-semibold ${
-                  darkMode ? "text-gray-400" : "text-gray-500"
-                }`}
+                className={`text-xs font-semibold ${darkMode ? "text-gray-400" : "text-gray-500"}`}
               >
                 DiscoverMinds.ai
               </p>
@@ -265,19 +257,12 @@ const NewAnimatedWaitlist: React.FC = () => {
               >
                 Join the Waitlist
               </h1>
-              <p
-                className={` text-sm ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
-                Reimagine how you find the perfect hire or your perfect lead
-                smarter, faster, more personal.
+              <p className={` text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                Reimagine how you find the perfect hire or your perfect lead smarter, faster, more
+                personal.
               </p>
             </div>
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <div>
                 <input
                   id="name"
@@ -290,11 +275,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                       : "bg-white text-gray-900 border-gray-400 placeholder-gray-400"
                   } focus:ring-2 focus:ring-blue-500 focus:border-blue-400`}
                 />
-                {errors.name && (
-                  <span className="text-xs text-red-400">
-                    {errors.name.message}
-                  </span>
-                )}
+                {errors.name && <span className="text-xs text-red-400">{errors.name.message}</span>}
               </div>
 
               <div>
@@ -310,9 +291,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                   } focus:ring-2 focus:ring-blue-500 focus:border-blue-400`}
                 />
                 {errors.email && (
-                  <span className="text-xs text-red-400">
-                    {errors.email.message}
-                  </span>
+                  <span className="text-xs text-red-400">{errors.email.message}</span>
                 )}
               </div>
 
@@ -329,9 +308,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                   } focus:ring-2 focus:ring-blue-500 focus:border-blue-400`}
                 />
                 {errors.phone && (
-                  <span className="text-xs text-red-400">
-                    {errors.phone.message}
-                  </span>
+                  <span className="text-xs text-red-400">{errors.phone.message}</span>
                 )}
               </div>
 
@@ -344,8 +321,8 @@ const NewAnimatedWaitlist: React.FC = () => {
                   background: isButtonDisabled
                     ? undefined
                     : darkMode
-                    ? "linear-gradient(90deg, #2563eb 0%, #6366f1 100%)"
-                    : "linear-gradient(90deg, #3b82f6 0%, #a5b4fc 100%)",
+                      ? "linear-gradient(90deg, #2563eb 0%, #6366f1 100%)"
+                      : "linear-gradient(90deg, #3b82f6 0%, #a5b4fc 100%)",
                 }}
                 whileTap={{
                   scale: isButtonDisabled ? 1 : 0.97,
@@ -356,28 +333,20 @@ const NewAnimatedWaitlist: React.FC = () => {
                       ? "bg-gray-800 text-gray-500 cursor-not-allowed"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : darkMode
-                    ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-lg"
-                    : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
+                      ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-lg"
+                      : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
                 }`}
               >
                 {isSubmitting ? "Submitting..." : "Join waitlist"}
               </motion.button>
 
               {submitError && (
-                <p
-                  className={`text-sm text-center ${
-                    darkMode ? "text-red-400" : "text-red-600"
-                  }`}
-                >
+                <p className={`text-sm text-center ${darkMode ? "text-red-400" : "text-red-600"}`}>
                   {submitError}
                 </p>
               )}
 
-              <p
-                className={`text-xs text-center ${
-                  darkMode ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
+              <p className={`text-xs text-center ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
                 We respect your privacy. No spam, ever.
               </p>
             </form>
@@ -400,9 +369,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                 className="w-6 h-6 rounded-full border-2 border-white -ml-4"
               />
               <span
-                className={`text-xs font-medium ${
-                  darkMode ? "text-blue-200" : "text-blue-700"
-                }`}
+                className={`text-xs font-medium ${darkMode ? "text-blue-200" : "text-blue-700"}`}
               >
                 55+ Users already joined
               </span>

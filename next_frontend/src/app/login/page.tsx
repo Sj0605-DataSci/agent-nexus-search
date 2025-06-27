@@ -35,7 +35,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const darkMode = useAppSelector((s) => s.theme.dark);
+  const darkMode = useAppSelector(s => s.theme.dark);
 
   const { signIn, user } = useAuth();
   const { toast } = useToast();
@@ -89,9 +89,7 @@ const Login = () => {
       }`}
     >
       <div
-        className={`absolute top-0 left-0 z-0 w-full ${
-          darkMode ? "flex" : "hidden"
-        }`}
+        className={`absolute top-0 left-0 z-0 w-full ${darkMode ? "flex" : "hidden"}`}
         style={{
           width: "100vw - 20px",
           height: "320px", // or any custom height you prefer
@@ -151,9 +149,7 @@ const Login = () => {
 
       <Card
         className={`relative w-full max-w-md mx-2 p-8 sm:p-10 rounded-3xl shadow-2xl border transition-colors duration-500 ${
-          darkMode
-            ? "bg-black/80 border-gray-800"
-            : "bg-white/90 border-white/20 backdrop-blur-md"
+          darkMode ? "bg-black/80 border-gray-800" : "bg-white/90 border-white/20 backdrop-blur-md"
         }`}
       >
         <ToggleSystemTheme className={`absolute top-5 right-5  `} />
@@ -169,17 +165,11 @@ const Login = () => {
             >
               <Search className="h-6 w-6 text-white" />
             </div>
-            <span
-              className={`text-2xl font-bold ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <span className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
               DiscoverMinds.ai
             </span>
           </Link>
-          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
-            Sign in to your account
-          </p>
+          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -192,7 +182,7 @@ const Login = () => {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="you@email.com"
                 required
                 autoComplete="email"
@@ -215,7 +205,7 @@ const Login = () => {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
@@ -229,7 +219,7 @@ const Login = () => {
               <button
                 type="button"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((v) => !v)}
+                onClick={() => setShowPassword(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -251,8 +241,8 @@ const Login = () => {
                   ? "bg-gray-800 text-gray-500 cursor-not-allowed"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 : darkMode
-                ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-lg"
-                : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
+                  ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-lg"
+                  : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
             }`}
           >
             {loading ? "Signing in..." : "Sign In"}

@@ -1,0 +1,12 @@
+/public
+/tests
+
+/public/sw.js.map
+/test-results/
+
+node_modules
+.next
+out
+dist
+coverage
+public

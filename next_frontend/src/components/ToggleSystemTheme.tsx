@@ -27,16 +27,14 @@ const ToggleSystemTheme = ({
   rounded = true,
 }: ToggleSystemThemeProps) => {
   const dispatch = useAppDispatch();
-  const darkMode = useAppSelector((s) => s.theme.dark);
+  const darkMode = useAppSelector(s => s.theme.dark);
 
   return (
     <button
       aria-label="Toggle dark / light theme"
       onClick={() => dispatch(toggleTheme())}
       className={`inline-flex items-center justify-center p-2 rounded-full bg-opacity-20 backdrop-blur-md transition-colors duration-300
-        ${
-          darkMode ? "bg-gray-800 text-yellow-300" : "bg-gray-200 text-blue-600"
-        }
+        ${darkMode ? "bg-gray-800 text-yellow-300" : "bg-gray-200 text-blue-600"}
         ${className}`}
     >
       {darkMode ? <FaSun size={size} /> : <FaMoon size={size} />}

@@ -12,13 +12,7 @@ const defaultOptions: ToastOptions = {
 };
 
 // Helper function to render title and message
-const ToastWithTitle = ({
-  title,
-  message,
-}: {
-  title: string;
-  message?: string;
-}) => {
+const ToastWithTitle = ({ title, message }: { title: string; message?: string }) => {
   if (!message) {
     return React.createElement(
       "div",
@@ -29,12 +23,8 @@ const ToastWithTitle = ({
     return React.createElement(
       "div",
       null,
-      React.createElement(
-        "div",
-        { style: { fontWeight: "bold", fontSize: "1.1em" } },
-        title
-      ),
-      React.createElement("div", { style: { marginTop: "4px" } }, message),
+      React.createElement("div", { style: { fontWeight: "bold", fontSize: "1.1em" } }, title),
+      React.createElement("div", { style: { marginTop: "4px" } }, message)
     );
   }
 };

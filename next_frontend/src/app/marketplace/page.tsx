@@ -9,11 +9,7 @@ import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  showErrorToast,
-  showInfoToast,
-  showSuccessToast,
-} from "@/utils/toastManager";
+import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 import { useRouter } from "next/navigation";
 
 const marketplaceAgents = [
@@ -44,12 +40,7 @@ const marketplaceAgents = [
     users: 12300,
     avatar: "💼",
     price: "$39/month",
-    features: [
-      "Lead Qualification",
-      "Sales Scripts",
-      "CRM Management",
-      "Deal Analysis",
-    ],
+    features: ["Lead Qualification", "Sales Scripts", "CRM Management", "Deal Analysis"],
   },
 ];
 
@@ -74,7 +65,7 @@ const Marketplace = () => {
     try {
       const data = await apiClient.getHiredAgents();
       // Note: Our backend returns template_id instead of agent_id
-      setHiredAgents(data?.map((item) => item.template_id) || []);
+      setHiredAgents(data?.map(item => item.template_id) || []);
     } catch (error) {
       console.error("Error fetching hired agents:", error);
     }
@@ -88,7 +79,7 @@ const Marketplace = () => {
 
     setLoading(agentId);
 
-    const agentToHire = marketplaceAgents.find((agent) => agent.id === agentId);
+    const agentToHire = marketplaceAgents.find(agent => agent.id === agentId);
 
     if (!agentToHire) {
       showErrorToast("Could not find the selected agent.");
@@ -114,10 +105,7 @@ const Marketplace = () => {
       fetchHiredAgents();
     } catch (error: any) {
       // Check if it's a duplicate error (unique constraint violation)
-      if (
-        error.message.includes("already hired") ||
-        error.message.includes("unique constraint")
-      ) {
+      if (error.message.includes("already hired") || error.message.includes("unique constraint")) {
         toast({
           title: "Agent already hired",
           description: "You have already hired this agent.",
@@ -176,16 +164,14 @@ const Marketplace = () => {
 
       <div className="container mx-auto px-4 pt-24 pb-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            AI Agent Marketplace
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">AI Agent Marketplace</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Hire specialized AI agents to help with your business needs
           </p>
         </div>
         {/* Agent Grid */}
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-          {marketplaceAgents.map((agent) => (
+          {marketplaceAgents.map(agent => (
             <Card
               key={agent.id}
               className="bg-white border border-gray-200 p-6 hover:shadow-lg transition-shadow duration-200"
@@ -193,20 +179,13 @@ const Marketplace = () => {
               <div className="flex items-center space-x-4 mb-4">
                 <div className="text-4xl">{agent.avatar}</div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    {agent.name}
-                  </h3>
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-800 border-blue-200"
-                  >
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">{agent.name}</h3>
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
                     {agent.category}
                   </Badge>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {agent.price}
-                  </div>
+                  <div className="text-2xl font-bold text-gray-900">{agent.price}</div>
                   <div className="text-sm text-gray-500">per month</div>
                 </div>
               </div>
@@ -214,15 +193,10 @@ const Marketplace = () => {
               <p className="text-gray-600 mb-4">{agent.description}</p>
 
               <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">
-                  Key Features:
-                </h4>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Key Features:</h4>
                 <ul className="space-y-1">
                   {agent.features.map((feature, index) => (
-                    <li
-                      key={index}
-                      className="text-sm text-gray-600 flex items-center"
-                    >
+                    <li key={index} className="text-sm text-gray-600 flex items-center">
                       <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></div>
                       {feature}
                     </li>
@@ -234,9 +208,7 @@ const Marketplace = () => {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="text-gray-900 font-medium">
-                      {agent.rating}
-                    </span>
+                    <span className="text-gray-900 font-medium">{agent.rating}</span>
                   </div>
                   <div className="flex items-center space-x-1 text-gray-500 text-sm">
                     <Users className="h-4 w-4" />
@@ -286,13 +258,11 @@ const Marketplace = () => {
 
         {hiredAgents.length > 0 && (
           <div className="max-w-4xl mx-auto mt-12 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">
-              Hired Agents
-            </h3>
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Hired Agents</h3>
             <p className="text-blue-700 mb-4">
               You have hired {hiredAgents.length} agent
-              {hiredAgents.length > 1 ? "s" : ""}. Configure them in the Agents
-              page to customize their personality and settings.
+              {hiredAgents.length > 1 ? "s" : ""}. Configure them in the Agents page to customize
+              their personality and settings.
             </p>
             <Button
               onClick={() => (window.location.href = "/agents")}
