@@ -2,7 +2,6 @@
 Search API integrations for Discover new Minds
 """
 import os
-import asyncio
 from typing import List, Dict, Any
 import logging
 import httpx

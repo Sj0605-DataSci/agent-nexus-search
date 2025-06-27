@@ -1,5 +1,5 @@
 import os
-from typing import Any, List, Dict
+from typing import Any, List
 from openai import OpenAI
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.outputs import ChatGeneration, ChatResult

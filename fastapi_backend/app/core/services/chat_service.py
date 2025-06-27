@@ -2,10 +2,8 @@ import os
 from typing import Dict, Any, List, Union
 import logging
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph
-from app.core.agent.graph import graph
-from app.models.chat import OverallState
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from app.core.services.agent.graph import graph
+from langchain_core.messages import HumanMessage, AIMessage
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -85,7 +83,7 @@ class ChatService:
             raise
 
 
-    async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]]) -> OverallState:
+    async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]]) -> 'ChatResponse':
         """
         Chat with the research agent
         
@@ -95,7 +93,7 @@ class ChatService:
             messages: List of messages in the conversation
             
         Returns:
-            Final state of the research agent graph
+            Formatted ChatResponse object
         """
         try:
             # Fetch agent configuration
@@ -133,10 +131,52 @@ class ChatService:
             # Execute the graph
             result = await graph.ainvoke(initial_state)
             
-            # Return the final state
-            return result
+            # Format and return the response
+            return self._format_chat_response(result)
         except Exception as e:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
+    
+    def _format_chat_response(self, result: Dict[str, Any]) -> 'ChatResponse':
+        """
+        Format raw chat result into a proper ChatResponse object
+        
+        Args:
+            result: Raw result from the research agent graph
+            
+        Returns:
+            Formatted ChatResponse object
+        """
+        from app.models.chat import ChatResponse
+        
+        # Convert LangChain message objects to dictionaries
+        messages = []
+        for msg in result.get("messages", []):
+            if hasattr(msg, "content") and hasattr(msg, "type"):
+                # It's a LangChain message object
+                msg_dict = {
+                    "content": msg.content,
+                    "type": msg.type,
+                }
+                messages.append(msg_dict)
+            else:
+                # It's already a dictionary
+                messages.append(msg)
+        
+        # Ensure sources have the required score field
+        sources = []
+        for source in result.get("sources_gathered", []):
+            if isinstance(source, dict):
+                if "score" not in source:
+                    source["score"] = 1.0  # Default score
+                sources.append(source)
+        
+        return ChatResponse(
+            messages=messages,
+            sources_gathered=sources,
+            search_query=[q["query"] if isinstance(q, dict) and "query" in q else q 
+                         for q in result.get("search_query", []) if q],
+            web_research_result=result.get("web_research_result", [])
+        )
     
     

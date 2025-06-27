@@ -1,13 +1,9 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import TypedDict, List, Dict, Any, Union
 from pydantic import BaseModel, Field
-
 from langgraph.graph import add_messages
 from typing_extensions import Annotated
-
-
 import operator
 
 
@@ -86,9 +82,20 @@ class ChatRequest(BaseModel):
     messages: Union[str, List[Dict[str, Any]]] = Field(description="Message content or list of messages in the conversation")
 
 
+class StreamingChatRequest(ChatRequest):
+    """Model for streaming chat request from client"""
+    stream: bool = Field(description="Whether to stream the response", default=True)
+
+
 class ChatResponse(BaseModel):
     """Model for chat response to client"""
     messages: List[Dict[str, Any]] = Field(description="List of messages including the new response")
     sources_gathered: List[Source] = Field(description="Sources used in the research", default_factory=list)
     search_query: List[str] = Field(description="Search queries used", default_factory=list)
     web_research_result: List[str] = Field(description="Research results", default_factory=list)
+
+
+class StreamingChatUpdate(BaseModel):
+    """Model for streaming chat updates"""
+    type: str = Field(description="Type of update: 'thinking', 'message', 'source', 'done'")
+    content: Dict[str, Any] = Field(description="Content of the update")

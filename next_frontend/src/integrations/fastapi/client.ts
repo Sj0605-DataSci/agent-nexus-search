@@ -9,6 +9,10 @@ import {
   HiredAgentUpdate,
   Profile,
   ProfileUpdate,
+  ChatRequest,
+  ChatResponse,
+  StreamingChatRequest,
+  StreamingChatUpdate,
 } from "./types";
 
 export const apiClient = {
@@ -144,6 +148,82 @@ export const apiClient = {
       return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  // Chat
+  async sendChatRequest(userId: string, agentId: string, message: string): Promise<ChatResponse> {
+    try {
+      const chatRequest: ChatRequest = {
+        user_id: userId,
+        agent_id: agentId,
+        messages: message
+      };
+      
+      const res = await axiosInstance.post("/chat", chatRequest);
+      return res.data.data; // Return the data field from StandardResponse
+    } catch (error) {
+      console.error("Error in sendChatRequest:", error);
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async sendStreamingChatRequest(
+    userId: string,
+    agentId: string,
+    message: string,
+    onUpdate: (update: StreamingChatUpdate) => void
+  ): Promise<void> {
+    const payload: StreamingChatRequest = {
+      user_id: userId,
+      agent_id: agentId,
+      messages: message,
+      stream: true,
+    };
+
+    // Use fetch directly for SSE support
+    const response = await fetch(`${axiosInstance.defaults.baseURL}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status} ${response.statusText}`);
+    }
+
+    // Handle the SSE stream
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error('No reader available');
+    }
+
+    // Process the stream
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+      
+      const text = decoder.decode(value);
+      const lines = text.split('\n\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const jsonStr = line.slice(6); // Remove 'data: ' prefix
+            const update = JSON.parse(jsonStr) as StreamingChatUpdate;
+            onUpdate(update);
+          } catch (e) {
+            console.error('Error parsing SSE message:', e);
+          }
+        }
+      }
     }
   },
 };

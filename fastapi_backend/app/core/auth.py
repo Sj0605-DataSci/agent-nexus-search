@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from uuid import UUID
-
+import logging
+import jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from uuid import UUID
+from jose import JWTError
 
 from app.core.config import settings
 from app.db.database import get_db
 from app.models.models import Profile
-from app.models.schemas import TokenData
+from app.models.schemas import TokenData, StandardResponse, StandardJSONResponse
 
 # Use HTTPBearer instead of OAuth2PasswordBearer since we're validating Supabase JWTs
 # and not generating tokens ourselves
@@ -30,28 +31,52 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def verify_supabase_token(token: str, credentials_exception):
     try:
+        # First, check if the token is empty or malformed
+        if not token or len(token) < 10:  # Basic sanity check
+            logging.error("Token is empty or too short")
+            return StandardJSONResponse(credentials_exception)
+            
         # Decode the Supabase JWT using the project's JWT secret
+        # Make sure we're using proper verification
         payload = jwt.decode(
             token, 
             settings.SUPABASE_JWT_SECRET, 
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False}  # Supabase JWTs use 'aud' claim which might not match our API
+            options={
+                "verify_signature": True,  # Explicitly verify signature
+                "verify_exp": True,       # Verify expiration
+                "verify_aud": False       # Supabase JWTs use 'aud' claim which might not match our API
+            }
         )
         
         # Extract user ID from the 'sub' claim in the Supabase JWT
         user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
             
         # Ensure the token is for the correct Supabase project
-        if payload.get("iss") != f"https://{settings.SUPABASE_PROJECT_ID}.supabase.co/auth/v1":
-            raise credentials_exception
+        expected_issuer = f"https://{settings.SUPABASE_PROJECT_ID}.supabase.co/auth/v1"
+        if payload.get("iss") != expected_issuer:
+            logging.error(f"Invalid issuer: {payload.get('iss')} != {expected_issuer}")
+            return StandardJSONResponse(credentials_exception)
             
         token_data = TokenData(user_id=UUID(user_id))
         return token_data
+    except jwt.exceptions.ExpiredSignatureError as e:
+        logging.error(f"JWT Error: Token expired - {str(e)}")
+        return StandardJSONResponse(credentials_exception)
+    except jwt.exceptions.InvalidSignatureError as e:
+        logging.error(f"JWT Error: Invalid signature - {str(e)}")
+        return StandardJSONResponse(credentials_exception)
+    except jwt.exceptions.DecodeError as e:
+        logging.error(f"JWT Error: Could not decode token - {str(e)}")
+        return StandardJSONResponse(credentials_exception)
     except JWTError as e:
-        print(f"JWT Error: {e}")
-        raise credentials_exception
+        logging.error(f"JWT Error: Generic JWT error - {str(e)}")
+        return StandardJSONResponse(credentials_exception)
+    except Exception as e:
+        # Log the error for debugging
+        logging.error(f"Unexpected error in token verification: {str(e)}")
+        # Return our standardized response
+        return StandardJSONResponse(credentials_exception)
 
 class OptionalAuthDependency:
     """Custom dependency that makes authentication optional for OPTIONS requests"""
@@ -68,25 +93,34 @@ class OptionalAuthDependency:
             
         # For all other requests, require authentication
         if not credentials:
+            # Raise HTTPException instead of returning StandardJSONResponse
+            # This will be caught by our global exception handler
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
+                detail="Not authenticated"
             )
             
-        credentials_exception = HTTPException(
+        credentials_exception = StandardResponse(
+            success=False,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+            message="Could not validate credentials",
+            data=None
         )
         
         token_data = verify_supabase_token(credentials.credentials, credentials_exception)
+        
+        # If verify_supabase_token returned a StandardJSONResponse, raise an HTTPException
+        if isinstance(token_data, StandardJSONResponse):
+            # This will cause FastAPI to use this response directly
+            # Instead of continuing with the dependency chain
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+            
         user = db.query(Profile).filter(Profile.id == token_data.user_id).first()
         
         # If user doesn't exist in profiles table but JWT is valid,
         # we could optionally create the profile here
         if user is None:
-            raise credentials_exception
+            raise HTTPException(status_code=401, detail="User not found")
             
         return user
 
@@ -99,9 +133,10 @@ async def get_current_user(
 ):
     # This will be None for OPTIONS requests
     if user is None and request.method != "OPTIONS":
+        # Raise HTTPException to stop the request chain
+        # Our global exception handler will convert this to StandardJSONResponse
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Authentication required"
         )
     return user

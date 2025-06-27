@@ -71,3 +71,34 @@ export interface ProfileUpdate {
   email?: string;
   full_name?: string;
 }
+
+// Chat types
+export interface Source {
+	title: string;
+	value: string;
+	short_url: string;
+	score: number;
+	summary?: string;
+}
+
+export interface ChatRequest {
+	user_id: string;
+	agent_id: string;
+	messages: string | Array<{content: string; type: string}>;
+}
+
+export interface StreamingChatRequest extends ChatRequest {
+	stream: boolean;
+}
+
+export interface ChatResponse {
+	messages: Array<{content: string; type: string}>;
+	sources_gathered?: Source[];
+	search_query?: string[];
+	web_research_result?: string[];
+}
+
+export interface StreamingChatUpdate {
+	type: 'thinking' | 'search_query' | 'source' | 'message' | 'done' | 'error';
+	content: any;
+}
