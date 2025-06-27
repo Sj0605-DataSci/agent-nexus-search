@@ -5,9 +5,11 @@ export interface ThemeState {
 }
 
 const getInitial = (): boolean => {
-  if (typeof window === "undefined") return true; // during SSR
+  if (typeof window === "undefined") return true; // SSR default
   const stored = localStorage.getItem("discover_minds_theme");
-  return stored ? stored === "dark" : true; // default dark
+  const isDark = stored ? stored === "dark" : true;
+  document.documentElement.classList.toggle("dark", isDark);
+  return isDark;
 };
 
 const initialState: ThemeState = { dark: getInitial() };
@@ -19,13 +21,18 @@ const themeSlice = createSlice({
     toggleTheme(state) {
       state.dark = !state.dark;
       if (typeof window !== "undefined") {
-        localStorage.setItem("discover_minds_theme", state.dark ? "dark" : "light");
-        // put the class on <html> so Tailwind “dark:” utilities work
+        const mode = state.dark ? "dark" : "light";
+        localStorage.setItem("discover_minds_theme", mode);
         document.documentElement.classList.toggle("dark", state.dark);
       }
     },
     setTheme(state, action: PayloadAction<"dark" | "light">) {
-      state.dark = action.payload === "dark";
+      const dark = action.payload === "dark";
+      state.dark = dark;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("discover_minds_theme", action.payload);
+        document.documentElement.classList.toggle("dark", dark);
+      }
     },
   },
 });

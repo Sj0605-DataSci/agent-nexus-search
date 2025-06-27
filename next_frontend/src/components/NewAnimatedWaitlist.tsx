@@ -149,9 +149,7 @@ const NewAnimatedWaitlist: React.FC = () => {
         }}
       >
         <Aurora
-          colorStops={
-            darkMode ? ["#5227ff", "#7cff67", "#5227ff"] : ["#caf0f8", "#d9ed92", "#caf0f8"]
-          }
+          colorStops={["#5227ff", "#7cff67", "#5227ff"]}
           dark={darkMode}
           blend={0.5}
           amplitude={1.0}

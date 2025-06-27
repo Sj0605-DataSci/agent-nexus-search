@@ -26,7 +26,7 @@ const RedirectSplash = () => {
         transition: { duration: 0.35 },
       });
       router.replace("/join-waitlist");
-    }, DELAY);
+    }, DELAY - 10);
 
     return () => clearTimeout(timerId.current);
   }, [router, ctrls]);
