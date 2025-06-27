@@ -9,7 +9,7 @@ from app.models.schemas import ProfileCreate, ProfileResponse, ProfileUpdate
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
-@router.post("/", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
 def create_profile(
     profile: ProfileCreate,
     db: Session = Depends(get_db)
@@ -33,7 +33,7 @@ def create_profile(
     db.refresh(db_profile)
     return db_profile
 
-@router.get("/me", response_model=ProfileResponse)
+@router.get("", response_model=ProfileResponse)
 def get_my_profile(
     current_user: Profile = Depends(get_current_user)
 ):

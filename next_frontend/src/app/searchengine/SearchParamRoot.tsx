@@ -13,6 +13,7 @@ import { apiClient } from "@/integrations/fastapi/client";
 import { HiredAgent, AgentTemplate } from "@/integrations/fastapi/types";
 import { useAppSelector } from "@/store";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
+import { supabase } from "@/integrations/supabase/client";
 
 const backdropVariants: Variants = {
   animate: {
@@ -22,8 +23,9 @@ const backdropVariants: Variants = {
   },
 };
 
+// Using a valid UUID format for the default agent
 const defaultAgent = {
-  id: "general",
+  id: "00000000-0000-4000-a000-000000000000", // Valid UUID format
   name: "General Agent",
   avatar: "🤖",
   hired: true,
@@ -34,7 +36,9 @@ const SearchParamRoot = () => {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [selectedAgent, setSelectedAgent] = useState(searchParams.get("agent") || "general");
+  const [selectedAgent, setSelectedAgent] = useState(
+    searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
+  );
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
@@ -112,7 +116,8 @@ const SearchParamRoot = () => {
     const q = incoming ?? query;
     if (!q.trim()) return;
 
-    setMessages(m => [
+    // Add user message to chat
+    setMessages((m) => [
       ...m,
       {
         id: Date.now().toString(),
@@ -121,23 +126,141 @@ const SearchParamRoot = () => {
         timestamp: new Date(),
       },
     ]);
+    
+    // Show loading indicator
     setIsLoading(true);
+    
+    // Add a temporary loading message from the agent
+    const loadingMessageId = (Date.now() + 1).toString();
+    setMessages((m) => [
+      ...m,
+      {
+        id: loadingMessageId,
+        type: "agent",
+        content: "⏳ Searching for information...",
+        timestamp: new Date(),
+      },
+    ]);
 
-    setTimeout(() => {
-      const agentData = userAgents.find(a => a.id === selectedAgent) || defaultAgent;
-      setMessages(m => [
-        ...m,
-        {
-          id: (Date.now() + 1).toString(),
-          type: "agent",
-          content: `${agentData.avatar} **${agentData.name}** here! I understand you're asking about "${q}".\n\n• Insight 1 …\n• Insight 2 …\n• Insight 3 …`,
-          timestamp: new Date(),
-        },
-      ]);
+    try {
+      // Get the current user ID from Supabase auth
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        console.error("No user ID found. User might not be authenticated.");
+        // Replace the loading message with an error
+        setMessages((m) => m.map(msg => 
+          msg.id === loadingMessageId 
+            ? {
+                ...msg,
+                content: "Error: You need to be logged in to use this feature.",
+              }
+            : msg
+        ));
+        return;
+      }
+
+      // Log userAgents and selectedAgent for debugging
+      console.log('Available userAgents:', userAgents);
+      console.log('Selected agent ID:', selectedAgent);
+
+      const agentData = userAgents.find((a) => a.id === selectedAgent) || defaultAgent;
+      console.log('Agent data being used:', agentData);
+
+      // Use streaming API instead of regular chat request
+      let currentContent = "⏳ Searching for information...";
+      let sources: any[] = [];
+      let searchQueries: string[] = [];
+
+      await apiClient.sendStreamingChatRequest(
+        userId, 
+        agentData.id, 
+        q,
+        (update) => {
+          console.log('Streaming update:', update);
+
+          switch (update.type) {
+            case 'thinking':
+              // Update the loading message with thinking indicator
+              currentContent = "🧠 Thinking...";
+              setMessages((m) => m.map(msg => 
+                msg.id === loadingMessageId 
+                  ? { ...msg, content: currentContent }
+                  : msg
+              ));
+              break;
+
+            case 'search_query':
+              // Show search queries being used
+              searchQueries.push(update.content.query);
+              currentContent = `🔍 Searching: ${searchQueries.join(', ')}...`;
+              setMessages((m) => m.map(msg => 
+                msg.id === loadingMessageId 
+                  ? { ...msg, content: currentContent }
+                  : msg
+              ));
+              break;
+
+            case 'source':
+              // Collect sources
+              sources.push(update.content);
+              currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? 's' : ''}...`;
+              setMessages((m) => m.map(msg => 
+                msg.id === loadingMessageId 
+                  ? { ...msg, content: currentContent }
+                  : msg
+              ));
+              break;
+
+            case 'message':
+              // Final message
+              if (update.content && update.content.content) {
+                currentContent = update.content.content;
+                setMessages((m) => m.map(msg => 
+                  msg.id === loadingMessageId 
+                    ? { ...msg, content: currentContent }
+                    : msg
+                ));
+              }
+              break;
+
+            case 'error':
+              // Handle error
+              currentContent = `Error: ${update.content.message || 'Something went wrong'}`;
+              setMessages((m) => m.map(msg => 
+                msg.id === loadingMessageId
+                  ? { ...msg, content: currentContent }
+                  : msg
+              ));
+              break;
+
+          case "done":
+            // All done
+            if (sources.length > 0) {
+              console.log("Sources gathered:", sources);
+              // You could display sources in the UI here
+            }
+            break;
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error sending chat request:", error);
+    // Replace the loading message with an error
+    setMessages((m) =>
+      m.map((msg) =>
+        msg.id === loadingMessageId
+          ? {
+              ...msg,
+              content: "Sorry, there was an error processing your request. Please try again later.",
+            }
+          : msg
+      ));
+    } finally {
       setIsLoading(false);
-    }, 1500);
-
-    setQuery("");
+      setQuery("");
+    }
   };
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -310,16 +433,6 @@ const SearchParamRoot = () => {
                           />
                         </div>
                         <div className="flex-1">
-                          <h3
-                            className={`text-xl font-medium mb-2 ${
-                              darkMode ? "text-white" : "text-gray-900"
-                            }`}
-                          >
-                            John Doe
-                          </h3>
-                          <p className={`mb-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            Senior Software Engineer at Tech Company
-                          </p>
                           <div
                             className={`whitespace-pre-wrap ${
                               darkMode ? "text-gray-300" : "text-gray-700"
@@ -328,50 +441,12 @@ const SearchParamRoot = () => {
                             {m.content}
                           </div>
 
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {["React", "TypeScript", "Node.js"].map(tag => (
-                              <span
-                                key={tag}
-                                className={`px-3 py-1 rounded-full text-sm ${
-                                  darkMode
-                                    ? "bg-gray-800 text-gray-300"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-
                           <div className="mt-4 flex justify-between items-center">
                             <span
                               className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}
                             >
                               {m.timestamp.toLocaleString()}
                             </span>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className={`rounded-full ${
-                                  darkMode
-                                    ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-                                    : "border-gray-200"
-                                }`}
-                              >
-                                View Profile
-                              </Button>
-                              <Button
-                                size="sm"
-                                className={`rounded-full text-white ${
-                                  darkMode
-                                    ? "bg-blue-700 hover:bg-blue-600"
-                                    : "bg-blue-600 hover:bg-blue-700"
-                                }`}
-                              >
-                                Contact
-                              </Button>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -379,21 +454,7 @@ const SearchParamRoot = () => {
                   )
               )}
 
-              {/* Loader */}
-              {isLoading && (
-                <div
-                  className={`rounded-xl p-6 flex items-center justify-center ${
-                    darkMode
-                      ? "bg-gray-900/70 border border-gray-700"
-                      : "bg-white border border-gray-200"
-                  }`}
-                >
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                  <span className={`font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    Searching for the perfect match…
-                  </span>
-                </div>
-              )}
+              {/* We don't need a separate loader since we have the loading state in the chat messages */}
             </div>
           </div>
         )}

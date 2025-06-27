@@ -1,50 +1,140 @@
 from typing import List
 from uuid import UUID
+import logging
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_db
-from app.models.models import AgentTemplate, Profile
+from app.models.models import Profile
 from app.models.schemas import AgentTemplateCreate, AgentTemplateResponse, AgentTemplateUpdate
+from app.models.schemas import StandardResponse, StandardJSONResponse
+from app.core.services.agent_template_service import AgentTemplateService
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agent_templates", tags=["agent_templates"])
 
-@router.post("/", response_model=AgentTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=StandardResponse[AgentTemplateResponse], status_code=status.HTTP_201_CREATED, response_class=StandardJSONResponse)
 def create_agent_template(
     template: AgentTemplateCreate,
     db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Create a new agent template"""
-    db_template = AgentTemplate(**template.model_dump())
-    db.add(db_template)
-    db.commit()
-    db.refresh(db_template)
-    return db_template
+    try:
+        # Initialize the service
+        service = AgentTemplateService(db)
+        
+        # Use the service to create the template
+        template_response = service.create_template(template)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_201_CREATED,
+            message="Agent template created successfully",
+            data=template_response
+        ))
+    except HTTPException as e:
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Error in create_agent_template: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.get("/", response_model=List[AgentTemplateResponse])
+@router.get("", response_model=StandardResponse[List[AgentTemplateResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def get_agent_templates(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
     """Get all agent templates"""
-    templates = db.query(AgentTemplate).offset(skip).limit(limit).all()
-    return templates
+    try:
+        # Initialize the service
+        service = AgentTemplateService(db)
+        
+        # Use the service to get templates
+        template_responses = service.get_templates(skip, limit)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Agent templates retrieved successfully",
+            data=template_responses
+        ))
+    except HTTPException as e:
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Error in get_agent_templates: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.get("/{template_id}", response_model=AgentTemplateResponse)
+@router.get("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def get_agent_template(
     template_id: UUID,
     db: Session = Depends(get_db)
 ):
     """Get a specific agent template by ID"""
-    template = db.query(AgentTemplate).filter(AgentTemplate.id == template_id).first()
-    if template is None:
-        raise HTTPException(status_code=404, detail="Agent template not found")
-    return template
+    try:
+        # Initialize the service
+        service = AgentTemplateService(db)
+        
+        # Use the service to get the template
+        template_response = service.get_template_by_id(template_id)
+        if template_response is None:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Agent template not found",
+                data=None
+            ))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Agent template retrieved successfully",
+            data=template_response
+        ))
+    except HTTPException as e:
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Error in get_agent_template: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.put("/{template_id}", response_model=AgentTemplateResponse)
+@router.put("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def update_agent_template(
     template_id: UUID,
     template_update: AgentTemplateUpdate,
@@ -52,29 +142,83 @@ def update_agent_template(
     current_user: Profile = Depends(get_current_user)
 ):
     """Update an agent template"""
-    db_template = db.query(AgentTemplate).filter(AgentTemplate.id == template_id).first()
-    if db_template is None:
-        raise HTTPException(status_code=404, detail="Agent template not found")
-    
-    update_data = template_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_template, key, value)
-    
-    db.commit()
-    db.refresh(db_template)
-    return db_template
+    try:
+        # Initialize the service
+        service = AgentTemplateService(db)
+        
+        # Use the service to update the template
+        template_response = service.update_template(template_id, template_update)
+        if template_response is None:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Agent template not found",
+                data=None
+            ))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Agent template updated successfully",
+            data=template_response
+        ))
+    except HTTPException as e:
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Error in update_agent_template: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{template_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def delete_agent_template(
     template_id: UUID,
     db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Delete an agent template"""
-    db_template = db.query(AgentTemplate).filter(AgentTemplate.id == template_id).first()
-    if db_template is None:
-        raise HTTPException(status_code=404, detail="Agent template not found")
-    
-    db.delete(db_template)
-    db.commit()
-    return None
+    try:
+        # Initialize the service
+        service = AgentTemplateService(db)
+        
+        # Use the service to delete the template
+        success = service.delete_template(template_id)
+        if not success:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Agent template not found",
+                data=None
+            ))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Agent template deleted successfully",
+            data=None
+        ))
+    except HTTPException as e:
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Error in delete_agent_template: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))

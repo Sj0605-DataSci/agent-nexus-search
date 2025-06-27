@@ -1,7 +1,56 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Generic, TypeVar, Optional, List, Dict, Any, Union
+from pydantic import BaseModel, Field, EmailStr
+from fastapi.responses import JSONResponse
 from uuid import UUID
-from pydantic import BaseModel, EmailStr
+import logging
+import json
+
+logger = logging.getLogger(__name__)
+
+# Standard API Response Schemas
+T = TypeVar('T')
+
+class StandardResponse(BaseModel, Generic[T]):
+    """Standard response format for all API endpoints"""
+    success: bool
+    status_code: int
+    message: str
+    data: Optional[T] = None
+
+
+# Custom JSON encoder to handle UUID and datetime objects
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            return str(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+# Custom response class to handle StandardResponse objects
+class StandardJSONResponse(JSONResponse):
+    def __init__(self, content, *args, **kwargs):
+        if isinstance(content, StandardResponse):
+            # Extract status code from the StandardResponse
+            status_code = content.status_code
+            # Convert Pydantic model to dict for proper JSON serialization
+            content = content.model_dump()
+            kwargs["status_code"] = status_code
+            
+            # Log the response for debugging
+            logger.info(f"Returning StandardJSONResponse with status code {status_code} and content: {content}")
+        super().__init__(content, *args, **kwargs)
+        
+    def render(self, content) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            cls=CustomJSONEncoder,
+        ).encode("utf-8")
 
 
 # Agent Template Schemas

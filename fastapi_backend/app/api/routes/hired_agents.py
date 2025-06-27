@@ -3,12 +3,14 @@ from uuid import UUID
 import logging
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_db
-from app.models.models import HiredAgent, Profile
-from app.models.schemas import HiredAgentCreate, HiredAgentResponse, HiredAgentUpdate
+from app.models.models import Profile
+from app.models.schemas import HiredAgentCreate, HiredAgentResponse, HiredAgentUpdate, StandardResponse, StandardJSONResponse
+from app.core.services.hired_agent_service import HiredAgentService
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/hired_agents", tags=["hired_agents"])
 
-@router.post("/", response_model=HiredAgentResponse, status_code=status.HTTP_201_CREATED)
+# Using StandardJSONResponse from schemas.py
+
+@router.post("", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
 def hire_agent(
     request: Request,
     agent: HiredAgentCreate,
@@ -31,81 +35,42 @@ def hire_agent(
         # Log request headers for debugging
         logger.info(f"Request headers: {request.headers}")
         
-        # Handle OPTIONS requests or unauthenticated requests
-        if current_user is None:
-            logger.error("Authentication failed: No current user")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required"
-            )
+        # Initialize the service
+        service = HiredAgentService(db)
         
-        # If user_id is not provided, use the current user's ID
-        if agent.user_id is None:
-            logger.info(f"No user_id provided, using current user ID: {current_user.id}")
-            agent.user_id = current_user.id
+        # Use the service to hire the agent
+        agent_response = service.hire_agent(agent, current_user)
         
-        # Ensure the user can only hire agents for themselves
-        if agent.user_id != current_user.id:
-            logger.error(f"Authorization failed: User {current_user.id} tried to hire agent for user {agent.user_id}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only hire agents for your own account"
-            )
-        
-        # Check if the user already hired this template
-        if agent.template_id:
-            logger.info(f"Checking if user {agent.user_id} already hired template {agent.template_id}")
-            existing = db.query(HiredAgent).filter(
-                HiredAgent.user_id == agent.user_id,
-                HiredAgent.template_id == agent.template_id
-            ).first()
-            
-            if existing:
-                logger.info(f"User {agent.user_id} already hired template {agent.template_id}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="You have already hired this agent template"
-                )
-        
-        # Convert template_id to UUID if it's a string
-        try:
-            if agent.template_id and isinstance(agent.template_id, str):
-                logger.info(f"Converting template_id from string to UUID: {agent.template_id}")
-                agent.template_id = UUID(agent.template_id)
-        except ValueError as e:
-            logger.error(f"Invalid UUID format for template_id: {agent.template_id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid UUID format for template_id: {str(e)}"
-            )
-            
-        # Create the hired agent
-        logger.info(f"Creating hired agent for user {agent.user_id} with template {agent.template_id}")
-        db_agent = HiredAgent(**agent.model_dump())
-        db.add(db_agent)
-        db.commit()
-        db.refresh(db_agent)
-        logger.info(f"Agent hired successfully: {db_agent.id}")
-        return db_agent
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_201_CREATED,
+            message="Agent hired successfully",
+            data=agent_response
+        ))
     except HTTPException as e:
-        # Re-raise HTTP exceptions as they are already properly formatted
+        # Convert HTTP exceptions to StandardResponse format
         logger.error(f"HTTP Exception in hire_agent: {e.detail}")
-        raise
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
         logger.error(f"Unexpected error in hire_agent: {str(e)}")
         logger.error(traceback.format_exc())
-        raise HTTPException(
+        return StandardJSONResponse(StandardResponse(
+            success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(e)}"
-        )
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.get("/", response_model=List[HiredAgentResponse])
+@router.get("", response_model=StandardResponse[List[HiredAgentResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def get_hired_agents(
     request: Request,
     user_id: UUID = Query(None),
-    skip: int = 0,
-    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
@@ -113,61 +78,89 @@ def get_hired_agents(
     try:
         logger.info(f"Get hired agents request received")
         logger.info(f"Request headers: {request.headers}")
-        logger.info(f"Query params: user_id={user_id}, skip={skip}, limit={limit}")
+        logger.info(f"Query params: user_id={user_id}")
         logger.info(f"Current user: {current_user.id if current_user else 'None'}")
         
-        # Handle OPTIONS requests or unauthenticated requests
-        if current_user is None:
-            logger.warning("No authenticated user, returning empty list")
-            return []
-            
-        # If user_id is provided, ensure it's the current user or return 403
-        if user_id and user_id != current_user.id:
-            logger.error(f"Authorization failed: User {current_user.id} tried to view agents for user {user_id}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only view your own hired agents"
-            )
+        # Initialize the service
+        service = HiredAgentService(db)
         
-        # Use the current user's ID if no user_id is provided
-        user_id = user_id or current_user.id
-        logger.info(f"Fetching hired agents for user {user_id}")
+        # Use the service to get hired agents
+        agent_responses = service.get_hired_agents(user_id, current_user)
         
-        agents = db.query(HiredAgent).filter(HiredAgent.user_id == user_id).offset(skip).limit(limit).all()
-        logger.info(f"Found {len(agents)} hired agents for user {user_id}")
-        return agents
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Hired agents retrieved successfully",
+            data=agent_responses
+        ))
     except HTTPException as e:
-        # Re-raise HTTP exceptions as they are already properly formatted
+        # Convert HTTP exceptions to StandardResponse format
         logger.error(f"HTTP Exception in get_hired_agents: {e.detail}")
-        raise
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
         logger.error(f"Unexpected error in get_hired_agents: {str(e)}")
         logger.error(traceback.format_exc())
-        # Return an empty list instead of failing
-        return []
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.get("/{agent_id}", response_model=HiredAgentResponse)
+@router.get("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def get_hired_agent(
     agent_id: UUID,
     db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Get a specific hired agent by ID"""
-    agent = db.query(HiredAgent).filter(HiredAgent.id == agent_id).first()
-    if agent is None:
-        raise HTTPException(status_code=404, detail="Hired agent not found")
-    
-    # Ensure the user can only view their own hired agents
-    if agent.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only view your own hired agents"
-        )
-    
-    return agent
+    try:
+        # Initialize the service
+        service = HiredAgentService(db)
+        
+        # Use the service to get the hired agent
+        agent_response = service.get_hired_agent_by_id(agent_id, current_user)
+        if agent_response is None:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Hired agent not found",
+                data=None
+            ))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Hired agent retrieved successfully",
+            data=agent_response
+        ))
+    except HTTPException as e:
+        # Convert HTTP exceptions to StandardResponse format
+        logger.error(f"HTTP Exception in get_hired_agent: {e.detail}")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        # Log the full stack trace for unexpected errors
+        logger.error(f"Unexpected error in get_hired_agent: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.put("/{agent_id}", response_model=HiredAgentResponse)
+@router.put("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def update_hired_agent(
     agent_id: UUID,
     agent_update: HiredAgentUpdate,
@@ -175,43 +168,89 @@ def update_hired_agent(
     current_user: Profile = Depends(get_current_user)
 ):
     """Update a hired agent"""
-    db_agent = db.query(HiredAgent).filter(HiredAgent.id == agent_id).first()
-    if db_agent is None:
-        raise HTTPException(status_code=404, detail="Hired agent not found")
-    
-    # Ensure the user can only update their own hired agents
-    if db_agent.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own hired agents"
-        )
-    
-    update_data = agent_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_agent, key, value)
-    
-    db.commit()
-    db.refresh(db_agent)
-    return db_agent
+    try:
+        # Initialize the service
+        service = HiredAgentService(db)
+        
+        # Use the service to update the hired agent
+        agent_response = service.update_hired_agent(agent_id, agent_update, current_user)
+        if agent_response is None:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Hired agent not found",
+                data=None
+            ))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Hired agent updated successfully",
+            data=agent_response
+        ))
+    except HTTPException as e:
+        # Convert HTTP exceptions to StandardResponse format
+        logger.error(f"HTTP Exception in update_hired_agent: {e.detail}")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        # Log the full stack trace for unexpected errors
+        logger.error(f"Unexpected error in update_hired_agent: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
 
-@router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{agent_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 def delete_hired_agent(
     agent_id: UUID,
     db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Delete a hired agent"""
-    db_agent = db.query(HiredAgent).filter(HiredAgent.id == agent_id).first()
-    if db_agent is None:
-        raise HTTPException(status_code=404, detail="Hired agent not found")
-    
-    # Ensure the user can only delete their own hired agents
-    if db_agent.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only delete your own hired agents"
-        )
-    
-    db.delete(db_agent)
-    db.commit()
-    return None
+    try:
+        # Initialize the service
+        service = HiredAgentService(db)
+        
+        # Use the service to delete the hired agent
+        success = service.delete_hired_agent(agent_id, current_user)
+        if not success:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Hired agent not found",
+                data=None
+            ))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Hired agent deleted successfully",
+            data=None
+        ))
+    except HTTPException as e:
+        # Convert HTTP exceptions to StandardResponse format
+        logger.error(f"HTTP Exception in delete_hired_agent: {e.detail}")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        # Log the full stack trace for unexpected errors
+        logger.error(f"Unexpected error in delete_hired_agent: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))
