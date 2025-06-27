@@ -1,16 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, ChevronDown, User as UserIcon } from "lucide-react";
+import { Variants } from "framer-motion";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Send, ChevronDown, Bot, User } from "lucide-react";
 import Navigation from "@/components/Navigation";
+
 import { apiClient } from "@/integrations/fastapi/client";
 import { HiredAgent, AgentTemplate } from "@/integrations/fastapi/types";
-import { useRouter } from "next/navigation"; // ✅ Next.js
-import { useSearchParams } from "next/navigation";
+import { useAppSelector } from "@/store";
+import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 
-// Default general agent is always available
+const backdropVariants: Variants = {
+  animate: {
+    rotate: [0, 15, -10, 0],
+    scale: [1, 1.05, 0.98, 1],
+    transition: { duration: 10, repeat: Infinity, ease: "easeInOut" },
+  },
+};
+
 const defaultAgent = {
   id: "general",
   name: "General Agent",
@@ -20,218 +31,248 @@ const defaultAgent = {
 
 const SearchParamRoot = () => {
   const router = useRouter();
-
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q");
-  const initialAgent = searchParams.get("agent");
+
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [selectedAgent, setSelectedAgent] = useState(
     searchParams.get("agent") || "general"
   );
   const [messages, setMessages] = useState<
-    Array<{
-      id: string;
-      type: "user" | "agent";
-      content: string;
-      timestamp: Date;
-    }>
+    { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
-  const [hiredAgents, setHiredAgents] = useState<Array<HiredAgent>>([]);
-  const [agentTemplates, setAgentTemplates] = useState<Array<AgentTemplate>>(
-    []
-  );
+  const [hiredAgents, setHiredAgents] = useState<HiredAgent[]>([]);
+  const [agentTemplates, setAgentTemplates] = useState<AgentTemplate[]>([]);
   const [userAgents, setUserAgents] = useState<
-    Array<{ id: string; name: string; avatar: string; hired: boolean }>
+    { id: string; name: string; avatar: string; hired: boolean }[]
   >([defaultAgent]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
 
-  useEffect(() => {
-    if (initialAgent) {
-      setSelectedAgent(initialAgent);
-    }
+  const darkMode = useAppSelector((s) => s.theme.dark);
 
-    if (initialQuery) {
-      setQuery(initialQuery);
-      handleSearch(initialQuery);
+  useEffect(() => {
+    const initialQ = searchParams.get("q");
+    const initialA = searchParams.get("agent");
+    if (initialA) setSelectedAgent(initialA);
+    if (initialQ) {
+      setQuery(initialQ);
+      handleSearch(initialQ);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Fetch hired agents and agent templates
   useEffect(() => {
     const fetchAgents = async () => {
       setIsLoadingAgents(true);
       try {
-        // Fetch both hired agents and agent templates
-        const [hiredAgentsData, templatesData] = await Promise.all([
+        const [hired, templates] = await Promise.all([
           apiClient.getHiredAgents(),
           apiClient.getAgentTemplates(),
         ]);
+        setHiredAgents(hired);
+        setAgentTemplates(templates);
 
-        setHiredAgents(hiredAgentsData);
-        setAgentTemplates(templatesData);
-
-        // Map hired agents to the format needed for the dropdown
-        const mappedAgents = [defaultAgent];
-
-        for (const hiredAgent of hiredAgentsData) {
-          // Find the template for this hired agent
-          const template = templatesData.find(
-            (t) => t.id === hiredAgent.template_id
-          );
-          if (template) {
-            // Determine avatar based on template category
-            let avatar = "🤖"; // Default
-            if (template.category.toLowerCase().includes("sales")) {
-              avatar = "💼";
-            } else if (template.category.toLowerCase().includes("hr")) {
-              avatar = "👥";
-            }
-
-            mappedAgents.push({
-              id: hiredAgent.id,
-              name: hiredAgent.name || template.name,
+        const mapped = [defaultAgent];
+        for (const ha of hired) {
+          const tpl = templates.find((t) => t.id === ha.template_id);
+          if (tpl) {
+            const avatar = tpl.category.toLowerCase().includes("sales")
+              ? "💼"
+              : tpl.category.toLowerCase().includes("hr")
+              ? "👥"
+              : "🤖";
+            mapped.push({
+              id: ha.id,
+              name: ha.name || tpl.name,
               avatar,
               hired: true,
             });
           }
         }
-
-        setUserAgents(mappedAgents);
-      } catch (error) {
-        console.error("Failed to fetch agents:", error);
+        setUserAgents(mapped);
+      } catch (err) {
+        console.error("Failed to fetch agents:", err);
       } finally {
         setIsLoadingAgents(false);
       }
     };
-
     fetchAgents();
   }, []);
 
   const handleAgentSelect = (agentId: string) => {
     const agent = userAgents.find((a) => a.id === agentId);
-    if (agent && !agent.hired) {
-      // If agent is not hired, navigate to marketplace
-      router.push(`/marketplace?agent=${agentId}`);
-    } else {
+    if (agent && !agent.hired) router.push(`/marketplace?agent=${agentId}`);
+    else {
       setSelectedAgent(agentId);
       setShowAgentDropdown(false);
     }
   };
 
-  const handleSearch = async (searchQuery?: string) => {
-    const queryToSearch = searchQuery || query;
-    if (!queryToSearch.trim()) return;
+  const handleSearch = async (incoming?: string) => {
+    const q = incoming ?? query;
+    if (!q.trim()) return;
 
-    const userMessage = {
-      id: Date.now().toString(),
-      type: "user" as const,
-      content: queryToSearch,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((m) => [
+      ...m,
+      {
+        id: Date.now().toString(),
+        type: "user",
+        content: q,
+        timestamp: new Date(),
+      },
+    ]);
     setIsLoading(true);
 
-    // Simulate AI response
     setTimeout(() => {
-      const selectedAgentData = userAgents.find((a) => a.id === selectedAgent);
-      const agentMessage = {
-        id: (Date.now() + 1).toString(),
-        type: "agent" as const,
-        content: `${selectedAgentData?.avatar} **${selectedAgentData?.name}** here! I understand you're asking about "${queryToSearch}". Here's what I found:\n\nThis is a comprehensive response about your query. I've analyzed the information and here are the key insights:\n\n• Key point 1 about your search\n• Important detail 2 to consider\n• Additional insight 3 that might help\n\nWould you like me to dive deeper into any specific aspect?`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, agentMessage]);
+      const agentData =
+        userAgents.find((a) => a.id === selectedAgent) || defaultAgent;
+      setMessages((m) => [
+        ...m,
+        {
+          id: (Date.now() + 1).toString(),
+          type: "agent",
+          content: `${agentData.avatar} **${agentData.name}** here! I understand you're asking about "${q}".\n\n• Insight 1 …\n• Insight 2 …\n• Insight 3 …`,
+          timestamp: new Date(),
+        },
+      ]);
       setIsLoading(false);
     }, 1500);
 
     setQuery("");
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
     }
   };
 
-  const selectedAgentData = userAgents.find((a) => a.id === selectedAgent);
-
+  const agentData =
+    userAgents.find((a) => a.id === selectedAgent) || defaultAgent;
   return (
-    <div className="min-h-screen bg-white">
+    <div
+      className={`min-h-screen transition-colors duration-500 relative ${
+        darkMode
+          ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
+          : "bg-gradient-to-br from-blue-50 to-purple-50"
+      }`}
+    >
       <Navigation />
 
-      <div className="container mx-auto px-4 pt-32">
-        {/* Logo/Title - only show when no messages */}
+      <ToggleSystemTheme className="fixed top-5 right-5 z-30 " />
+      <div className="container mx-auto px-4 pt-32 pb-20 relative z-10">
+        {/* Hero header */}
+        {/* Who you want to search? ------- */}
+{/* Engineers, Leads, People */}
         {messages.length === 0 && (
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <h1
+              className={`text-4xl font-bold mb-4 ${
+                darkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
               Who can I help you find?
             </h1>
-            <p className="text-gray-600 text-lg max-w-xl mx-auto">
+            <p
+              className={`max-w-xl mx-auto text-lg ${
+                darkMode ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
               Our AI filters through millions of profiles to surface genuinely
               relevant people.
             </p>
           </div>
         )}
 
-        {/* Search Box */}
+        {/* Search bar */}
         <div
-          className={`max-w-2xl mx-auto ${
-            messages.length > 0 ? "mb-8" : "mb-16"
-          }`}
+          className={`max-w-2xl mx-auto ${messages.length ? "mb-8" : "mb-16"}`}
         >
           <div className="relative">
-            <div className="flex items-center border-2 border-gray-200 rounded-full px-5 py-4 shadow-sm hover:shadow-md transition-shadow duration-200 focus-within:shadow-md focus-within:border-blue-500">
-              <Search className="h-5 w-5 text-gray-400 mr-3" />
-
+            <div
+              className={`flex items-center rounded-full px-5 py-4 shadow-sm transition-shadow duration-200 focus-within:shadow-md ${
+                darkMode
+                  ? "border border-gray-700 bg-gray-900/60 hover:shadow-lg"
+                  : "border-2 border-gray-200 bg-white hover:shadow-md"
+              }`}
+            >
+              <Search
+                className={`h-5 w-5 mr-3 ${
+                  darkMode ? "text-gray-400" : "text-gray-500"
+                }`}
+              />
               <Input
                 type="text"
-                placeholder="Search for people by skills, experience, or interests..."
+                placeholder="Search for people by skills, experience, or interests…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1 border-none outline-none focus:ring-0 text-gray-900 placeholder-gray-500 bg-transparent"
+                onKeyPress={onKey}
+                className={`
+    flex-1 bg-transparent text-base
+    border-0 focus:border-0
+    outline-none focus:outline-none
+    ring-0 focus:ring-0
+    ${
+      darkMode
+        ? "text-white placeholder-gray-500"
+        : "text-gray-900 placeholder-gray-500"
+    }
+  `}
               />
 
-              {/* Agent Selector */}
+              {/* Agent selector */}
               <div className="relative">
                 <Button
-                  onClick={() => setShowAgentDropdown(!showAgentDropdown)}
                   variant="ghost"
-                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full px-3 py-2 border border-gray-200 ml-2"
+                  onClick={() => setShowAgentDropdown((s) => !s)}
+                  className={`flex items-center space-x-2 rounded-full px-3 py-2 border ${
+                    darkMode
+                      ? "border-gray-700 text-gray-300 hover:bg-gray-800"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
                 >
-                  {selectedAgentData ? (
-                    <span className="mr-1">{selectedAgentData.avatar}</span>
-                  ) : (
-                    <Bot className="h-4 w-4 text-blue-500" />
-                  )}
+                  <span className="mr-1">{agentData.avatar}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
 
                 {showAgentDropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div
+                    className={`absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 ${
+                      darkMode
+                        ? "bg-gray-900 border border-gray-700"
+                        : "bg-white border border-gray-200"
+                    }`}
+                  >
                     {isLoadingAgents ? (
                       <div className="p-4 text-center text-gray-500">
-                        Loading your agents...
+                        Loading your agents…
                       </div>
                     ) : (
                       userAgents.map((agent) => (
                         <button
                           key={agent.id}
                           onClick={() => handleAgentSelect(agent.id)}
-                          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                          className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                            darkMode
+                              ? "hover:bg-gray-800 text-gray-200"
+                              : "hover:bg-gray-50 text-gray-900"
+                          }`}
                         >
                           <div className="flex items-center space-x-3">
                             <span className="text-lg">{agent.avatar}</span>
-                            <span className="text-sm text-gray-900">
-                              {agent.name}
-                            </span>
+                            <span className="text-sm">{agent.name}</span>
                           </div>
                           {!agent.hired && agent.id !== "general" && (
-                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                darkMode
+                                  ? "bg-blue-900 text-blue-300"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
                               Hire
                             </span>
                           )}
@@ -242,10 +283,19 @@ const SearchParamRoot = () => {
                 )}
               </div>
 
+              {/* Search button */}
               <Button
                 onClick={() => handleSearch()}
                 disabled={!query.trim() || isLoading}
-                className="ml-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2"
+                className={`ml-3 rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
+                  !query.trim() || isLoading
+                    ? darkMode
+                      ? "bg-gray-800 cursor-not-allowed"
+                      : "bg-gray-300 cursor-not-allowed"
+                    : darkMode
+                    ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
+                    : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
+                }`}
               >
                 Search
               </Button>
@@ -253,64 +303,106 @@ const SearchParamRoot = () => {
           </div>
         </div>
 
-        {/* Results Section */}
+        {/* Results */}
         {messages.length > 0 && (
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+            <h2
+              className={`text-2xl font-semibold mb-6 ${
+                darkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
               Results
             </h2>
 
-            {/* Results List */}
             <div className="space-y-6">
               {messages.map(
-                (message) =>
-                  message.type === "agent" && (
+                (m) =>
+                  m.type === "agent" && (
                     <div
-                      key={message.id}
-                      className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                      key={m.id}
+                      className={`rounded-xl p-6 transition-shadow ${
+                        darkMode
+                          ? "bg-gray-900/70 border border-gray-700 shadow-md hover:shadow-lg"
+                          : "bg-white border border-gray-200 shadow-sm hover:shadow-md"
+                      }`}
                     >
                       <div className="flex items-start">
-                        <div className="bg-blue-50 rounded-full p-3 mr-4">
-                          <User className="h-6 w-6 text-blue-600" />
+                        <div
+                          className={`rounded-full p-3 mr-4 ${
+                            darkMode ? "bg-blue-900/30" : "bg-blue-50"
+                          }`}
+                        >
+                          <UserIcon
+                            className={`h-6 w-6 ${
+                              darkMode ? "text-blue-400" : "text-blue-600"
+                            }`}
+                          />
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-xl font-medium text-gray-900 mb-2">
+                          <h3
+                            className={`text-xl font-medium mb-2 ${
+                              darkMode ? "text-white" : "text-gray-900"
+                            }`}
+                          >
                             John Doe
                           </h3>
-                          <p className="text-gray-600 mb-3">
+                          <p
+                            className={`mb-3 ${
+                              darkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
                             Senior Software Engineer at Tech Company
                           </p>
-                          <div className="whitespace-pre-wrap text-gray-700">
-                            {message.content}
+                          <div
+                            className={`whitespace-pre-wrap ${
+                              darkMode ? "text-gray-300" : "text-gray-700"
+                            }`}
+                          >
+                            {m.content}
                           </div>
 
                           <div className="mt-4 flex flex-wrap gap-2">
-                            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                              React
-                            </span>
-                            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                              TypeScript
-                            </span>
-                            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                              Node.js
-                            </span>
+                            {["React", "TypeScript", "Node.js"].map((tag) => (
+                              <span
+                                key={tag}
+                                className={`px-3 py-1 rounded-full text-sm ${
+                                  darkMode
+                                    ? "bg-gray-800 text-gray-300"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
                           </div>
 
                           <div className="mt-4 flex justify-between items-center">
-                            <div className="text-sm text-gray-500">
-                              {message.timestamp.toLocaleString()}
-                            </div>
+                            <span
+                              className={`text-sm ${
+                                darkMode ? "text-gray-500" : "text-gray-500"
+                              }`}
+                            >
+                              {m.timestamp.toLocaleString()}
+                            </span>
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="rounded-full border-gray-200"
+                                className={`rounded-full ${
+                                  darkMode
+                                    ? "border-gray-700 text-gray-300 hover:bg-gray-800"
+                                    : "border-gray-200"
+                                }`}
                               >
                                 View Profile
                               </Button>
                               <Button
                                 size="sm"
-                                className="rounded-full bg-blue-600 hover:bg-blue-700"
+                                className={`rounded-full text-white ${
+                                  darkMode
+                                    ? "bg-blue-700 hover:bg-blue-600"
+                                    : "bg-blue-600 hover:bg-blue-700"
+                                }`}
                               >
                                 Contact
                               </Button>
@@ -322,14 +414,23 @@ const SearchParamRoot = () => {
                   )
               )}
 
+              {/* Loader */}
               {isLoading && (
-                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                    <span className="text-gray-600 font-medium">
-                      Searching for the perfect match...
-                    </span>
-                  </div>
+                <div
+                  className={`rounded-xl p-6 flex items-center justify-center ${
+                    darkMode
+                      ? "bg-gray-900/70 border border-gray-700"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                  <span
+                    className={`font-medium ${
+                      darkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    Searching for the perfect match…
+                  </span>
                 </div>
               )}
             </div>
@@ -337,7 +438,7 @@ const SearchParamRoot = () => {
         )}
       </div>
 
-      {/* Click outside to close dropdown */}
+      {/* Click-away catcher for dropdown */}
       {showAgentDropdown && (
         <div
           className="fixed inset-0 z-40"

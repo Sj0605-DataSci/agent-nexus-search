@@ -9,6 +9,9 @@ import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { supabase } from "@/integrations/supabase/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import { generateToken } from "@/utils/globalconstant";
+import Aurora from "./Aurora";
+import ToggleSystemTheme from "./ToggleSystemTheme";
+import { useAppSelector } from "@/store";
 
 const schema = yup.object().shape({
   name: yup.string().required("Full name is required").min(2),
@@ -36,7 +39,7 @@ const backdropVariants: Variants = {
 };
 
 const NewAnimatedWaitlist: React.FC = () => {
-  const [darkMode, setDarkMode] = useState(true);
+  const darkMode = useAppSelector((s) => s.theme.dark);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -119,10 +122,10 @@ const NewAnimatedWaitlist: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
+      className={`min-h-screen flex items-center  justify-center transition-colors duration-500 ${
         darkMode
           ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
-          : "bg-gray-100"
+          : "bg-gradient-to-br from-blue-50 to-purple-50"
       }`}
     >
       <AnimatePresence>
@@ -137,9 +140,29 @@ const NewAnimatedWaitlist: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Animated 3D-style Backdrop */}
+      <div
+        className={`absolute top-0 left-0 z-0 ${darkMode ? "flex" : "hidden"}`}
+        style={{
+          width: "100vw",
+          height: "320px", // or any custom height you prefer
+          overflow: "hidden",
+        }}
+      >
+        <Aurora
+          colorStops={
+            darkMode
+              ? ["#5227ff", "#7cff67", "#5227ff"]
+              : ["#caf0f8", "#d9ed92", "#caf0f8"]
+          }
+          dark={darkMode}
+          blend={0.5}
+          amplitude={1.0}
+          speed={0.5}
+        />
+      </div>
+
       <motion.div
-        className="absolute z-0 hidden md:flex"
+        className="absolute z-0 -mt-30 hidden md:flex"
         style={{
           width: 420,
           height: 520,
@@ -181,7 +204,6 @@ const NewAnimatedWaitlist: React.FC = () => {
         </svg>
       </motion.div>
 
-      {/* Main Card */}
       <motion.main
         className={`relative mx-2 z-10 w-full max-w-md rounded-3xl shadow-2xl border transition-colors duration-500 ${
           darkMode
@@ -192,18 +214,7 @@ const NewAnimatedWaitlist: React.FC = () => {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.7, ease: "easeOut" }}
       >
-        {/* Theme Switcher */}
-        <button
-          aria-label="Toggle dark mode"
-          className={`absolute top-5 right-5 rounded-full p-2 bg-opacity-20 backdrop-blur-md transition-colors duration-300 ${
-            darkMode
-              ? "bg-gray-700 text-yellow-300"
-              : "bg-gray-200 text-blue-600"
-          }`}
-          onClick={() => setDarkMode((dm) => !dm)}
-        >
-          {darkMode ? <FaSun size={20} /> : <FaMoon size={20} />}
-        </button>
+        <ToggleSystemTheme className={`absolute top-5 right-5  `} />
 
         {isSuccess ? (
           <div className="text-center py-8">
@@ -241,7 +252,7 @@ const NewAnimatedWaitlist: React.FC = () => {
           <>
             <div>
               <p
-                className={`text-xs font-semibold mb-2 ${
+                className={`text-xs font-semibold ${
                   darkMode ? "text-gray-400" : "text-gray-500"
                 }`}
               >
@@ -255,22 +266,13 @@ const NewAnimatedWaitlist: React.FC = () => {
                 Join the Waitlist
               </h1>
               <p
-                className={`mb-4 text-sm ${
+                className={` text-sm ${
                   darkMode ? "text-gray-300" : "text-gray-700"
                 }`}
               >
                 Reimagine how you find the perfect hire or your perfect lead
                 smarter, faster, more personal.
               </p>
-              <ul
-                className={`mb-1 text-sm space-y-1 ${
-                  darkMode ? "text-blue-300" : "text-blue-700"
-                }`}
-              >
-                <li>✓ Make searching smarter</li>
-                <li>✓ 79% faster candidate shortlisting</li>
-                <li>✓ 3x more qualified matches</li>
-              </ul>
             </div>
             <form
               onSubmit={handleSubmit(onSubmit)}

@@ -12,11 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings, Save, User } from "lucide-react";
+import { Save } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 const agentTemplates = {
   "69ce1f3a-7bcf-4c4e-a65d-4a127ea51641": {
@@ -59,10 +60,13 @@ const Agents = () => {
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     if (user) {
       fetchHiredAgentsAndConfigs();
+    } else {
+      router.push("/login");
     }
   }, [user]);
 
