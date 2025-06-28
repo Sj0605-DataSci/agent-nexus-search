@@ -27,44 +27,12 @@ app = FastAPI(
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:3001", 
-        "https://www.discoverminds.ai", 
-        "https://discoverminds.ai",
-        "https://www.discoverminds.ai/",
-        "https://discoverminds.ai/"
-    ],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/"],  # Include localhost development URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
-    max_age=86400,  # Cache preflight requests for 24 hours
 )
-
-# Add middleware to log request info including preflight requests
-@app.middleware("http")
-async def log_request_info(request: Request, call_next):
-    logger.info(f"Request method: {request.method}")
-    logger.info(f"Request URL: {request.url}")
-    logger.info(f"Request origin: {request.headers.get('origin')}")
-    logger.info(f"Request headers: {request.headers}")
-    
-    # Special handling for OPTIONS requests to ensure they always succeed
-    if request.method == "OPTIONS":
-        logger.info("Handling OPTIONS preflight request")
-        response = Response(status_code=200)
-        origin = request.headers.get("origin")
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Access-Control-Max-Age"] = "86400"
-        return response
-        
-    response = await call_next(request)
-    return response
 
 # Custom exception handlers to convert exceptions to StandardResponse format
 @app.exception_handler(HTTPException)
