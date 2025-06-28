@@ -52,29 +52,31 @@ const Signup = () => {
     async data => {
       setIsSubmitting(true);
       try {
-        const { error, emailExists, weakPassword, invalidEmail, serverError } = await signUp(
-          data.email,
-          data.password,
-          data.name
-        );
+        // const { error, emailExists, weakPassword, invalidEmail, serverError } =
+        //   await signUp(data.email, data.password, data.name);
 
-        if (error) {
-          if (emailExists) {
-            showErrorToast("This email is already registered. Please log in instead.");
-          } else if (weakPassword) {
-            showErrorToast("Your password is too weak. Use at least 6 characters.");
-          } else if (invalidEmail) {
-            showErrorToast("Please enter a valid email address.");
-          } else if (serverError) {
-            showErrorToast("Server error. Please try again later.");
-          } else {
-            showErrorToast(error.message); // fallback
-          }
-          return;
-        }
+        // if (error) {
+        //   if (emailExists) {
+        //     showErrorToast(
+        //       "This email is already registered. Please log in instead."
+        //     );
+        //   } else if (weakPassword) {
+        //     showErrorToast(
+        //       "Your password is too weak. Use at least 6 characters."
+        //     );
+        //   } else if (invalidEmail) {
+        //     showErrorToast("Please enter a valid email address.");
+        //   } else if (serverError) {
+        //     showErrorToast("Server error. Please try again later.");
+        //   } else {
+        //     showErrorToast(error.message); // fallback
+        //   }
+        //   return;
+        // }
 
-        showSuccessToast("Signup success! Check your email.");
-        setIsSuccess(true);
+        // showSuccessToast("Signup success! Check your email.");
+        // setIsSuccess(true);
+        showErrorToast("Signup functionality is disabled, Please try again later.");
         reset();
       } catch (err) {
         console.log("Signup exception", err);

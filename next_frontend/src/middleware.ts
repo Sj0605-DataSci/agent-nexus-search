@@ -4,6 +4,10 @@ const lockIsOn = process.env.NODE_ENV != "development";
 
 export function middleware(req: NextRequest) {
   if (!lockIsOn) return NextResponse.next();
+  //Info: To prevent the middleware from running in prod mode
+  else {
+    return NextResponse.next();
+  }
 
   const { pathname } = req.nextUrl;
 

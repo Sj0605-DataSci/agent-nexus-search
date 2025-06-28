@@ -74,31 +74,31 @@ export interface ProfileUpdate {
 
 // Chat types
 export interface Source {
-	title: string;
-	value: string;
-	short_url: string;
-	score: number;
-	summary?: string;
+  title: string;
+  value: string;
+  short_url: string;
+  score: number;
+  summary?: string;
 }
 
 export interface ChatRequest {
-	user_id: string;
-	agent_id: string;
-	messages: string | Array<{content: string; type: string}>;
+  user_id: string;
+  agent_id: string;
+  messages: string | Array<{ content: string; type: string }>;
 }
 
 export interface StreamingChatRequest extends ChatRequest {
-	stream: boolean;
+  stream: boolean;
 }
 
 export interface ChatResponse {
-	messages: Array<{content: string; type: string}>;
-	sources_gathered?: Source[];
-	search_query?: string[];
-	web_research_result?: string[];
+  messages: Array<{ content: string; type: string }>;
+  sources_gathered?: Source[];
+  search_query?: string[];
+  web_research_result?: string[];
 }
 
 export interface StreamingChatUpdate {
-	type: 'thinking' | 'search_query' | 'source' | 'message' | 'done' | 'error';
-	content: any;
+  type: "thinking" | "search_query" | "source" | "message" | "done" | "error";
+  content: any;
 }

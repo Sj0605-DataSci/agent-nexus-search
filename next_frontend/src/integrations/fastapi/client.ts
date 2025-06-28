@@ -157,9 +157,9 @@ export const apiClient = {
       const chatRequest: ChatRequest = {
         user_id: userId,
         agent_id: agentId,
-        messages: message
+        messages: message,
       };
-      
+
       const res = await axiosInstance.post("/chat", chatRequest);
       return res.data.data; // Return the data field from StandardResponse
     } catch (error) {
@@ -183,9 +183,9 @@ export const apiClient = {
 
     // Use fetch directly for SSE support
     const response = await fetch(`${axiosInstance.defaults.baseURL}/chat/stream`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
@@ -199,28 +199,28 @@ export const apiClient = {
     const decoder = new TextDecoder();
 
     if (!reader) {
-      throw new Error('No reader available');
+      throw new Error("No reader available");
     }
 
     // Process the stream
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) {
         break;
       }
-      
+
       const text = decoder.decode(value);
-      const lines = text.split('\n\n');
-      
+      const lines = text.split("\n\n");
+
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
+        if (line.startsWith("data: ")) {
           try {
             const jsonStr = line.slice(6); // Remove 'data: ' prefix
             const update = JSON.parse(jsonStr) as StreamingChatUpdate;
             onUpdate(update);
           } catch (e) {
-            console.error('Error parsing SSE message:', e);
+            console.error("Error parsing SSE message:", e);
           }
         }
       }
