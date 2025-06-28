@@ -117,7 +117,7 @@ const SearchParamRoot = () => {
     if (!q.trim()) return;
 
     // Add user message to chat
-    setMessages((m) => [
+    setMessages(m => [
       ...m,
       {
         id: Date.now().toString(),
@@ -126,13 +126,13 @@ const SearchParamRoot = () => {
         timestamp: new Date(),
       },
     ]);
-    
+
     // Show loading indicator
     setIsLoading(true);
-    
+
     // Add a temporary loading message from the agent
     const loadingMessageId = (Date.now() + 1).toString();
-    setMessages((m) => [
+    setMessages(m => [
       ...m,
       {
         id: loadingMessageId,
@@ -144,96 +144,96 @@ const SearchParamRoot = () => {
 
     try {
       // Get the current user ID from Supabase auth
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const userId = session?.user?.id;
 
       if (!userId) {
         console.error("No user ID found. User might not be authenticated.");
         // Replace the loading message with an error
-        setMessages((m) => m.map(msg => 
-          msg.id === loadingMessageId 
-            ? {
-                ...msg,
-                content: "Error: You need to be logged in to use this feature.",
-              }
-            : msg
-        ));
+        setMessages(m =>
+          m.map(msg =>
+            msg.id === loadingMessageId
+              ? {
+                  ...msg,
+                  content: "Error: You need to be logged in to use this feature.",
+                }
+              : msg
+          )
+        );
         return;
       }
 
       // Log userAgents and selectedAgent for debugging
-      console.log('Available userAgents:', userAgents);
-      console.log('Selected agent ID:', selectedAgent);
+      console.log("Available userAgents:", userAgents);
+      console.log("Selected agent ID:", selectedAgent);
 
-      const agentData = userAgents.find((a) => a.id === selectedAgent) || defaultAgent;
-      console.log('Agent data being used:', agentData);
+      const agentData = userAgents.find(a => a.id === selectedAgent) || defaultAgent;
+      console.log("Agent data being used:", agentData);
 
       // Use streaming API instead of regular chat request
       let currentContent = "⏳ Searching for information...";
       let sources: any[] = [];
       let searchQueries: string[] = [];
 
-      await apiClient.sendStreamingChatRequest(
-        userId, 
-        agentData.id, 
-        q,
-        (update) => {
-          console.log('Streaming update:', update);
+      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, update => {
+        console.log("Streaming update:", update);
 
-          switch (update.type) {
-            case 'thinking':
-              // Update the loading message with thinking indicator
-              currentContent = "🧠 Thinking...";
-              setMessages((m) => m.map(msg => 
-                msg.id === loadingMessageId 
-                  ? { ...msg, content: currentContent }
-                  : msg
-              ));
-              break;
+        switch (update.type) {
+          case "thinking":
+            // Update the loading message with thinking indicator
+            currentContent = "🧠 Thinking...";
+            setMessages(m =>
+              m.map(msg =>
+                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+              )
+            );
+            break;
 
-            case 'search_query':
-              // Show search queries being used
-              searchQueries.push(update.content.query);
-              currentContent = `🔍 Searching: ${searchQueries.join(', ')}...`;
-              setMessages((m) => m.map(msg => 
-                msg.id === loadingMessageId 
-                  ? { ...msg, content: currentContent }
-                  : msg
-              ));
-              break;
+          case "search_query":
+            // Show search queries being used
+            searchQueries.push(update.content.query);
+            currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
+            setMessages(m =>
+              m.map(msg =>
+                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+              )
+            );
+            break;
 
-            case 'source':
-              // Collect sources
-              sources.push(update.content);
-              currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? 's' : ''}...`;
-              setMessages((m) => m.map(msg => 
-                msg.id === loadingMessageId 
-                  ? { ...msg, content: currentContent }
-                  : msg
-              ));
-              break;
+          case "source":
+            // Collect sources
+            sources.push(update.content);
+            currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
+            setMessages(m =>
+              m.map(msg =>
+                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+              )
+            );
+            break;
 
-            case 'message':
-              // Final message
-              if (update.content && update.content.content) {
-                currentContent = update.content.content;
-                setMessages((m) => m.map(msg => 
-                  msg.id === loadingMessageId 
-                    ? { ...msg, content: currentContent }
-                    : msg
-                ));
-              }
-              break;
+          case "message":
+            // Final message
+            if (update.content && update.content.content) {
+              currentContent = update.content.content;
+              setMessages(m =>
+                m.map(msg =>
+                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                )
+              );
+            }
+            break;
 
-            case 'error':
-              // Handle error
-              currentContent = `Error: ${update.content.message || 'Something went wrong'}`;
-              setMessages((m) => m.map(msg => 
-                msg.id === loadingMessageId
-                  ? { ...msg, content: currentContent }
-                  : msg
-              ));
-              break;
+          case "error":
+            // Handle error
+            currentContent = `Error: ${update.content.message || "Something went wrong"}`;
+            setMessages(m =>
+              m.map(msg =>
+                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+              )
+            );
+            break;
 
           case "done":
             // All done
@@ -243,20 +243,21 @@ const SearchParamRoot = () => {
             }
             break;
         }
-      }
-    );
-  } catch (error) {
-    console.error("Error sending chat request:", error);
-    // Replace the loading message with an error
-    setMessages((m) =>
-      m.map((msg) =>
-        msg.id === loadingMessageId
-          ? {
-              ...msg,
-              content: "Sorry, there was an error processing your request. Please try again later.",
-            }
-          : msg
-      ));
+      });
+    } catch (error) {
+      console.error("Error sending chat request:", error);
+      // Replace the loading message with an error
+      setMessages(m =>
+        m.map(msg =>
+          msg.id === loadingMessageId
+            ? {
+                ...msg,
+                content:
+                  "Sorry, there was an error processing your request. Please try again later.",
+              }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
       setQuery("");
