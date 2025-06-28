@@ -52,30 +52,34 @@ const Signup = () => {
     async (data) => {
       setIsSubmitting(true);
       try {
-        const { error, emailExists, weakPassword, invalidEmail, serverError } =
-          await signUp(data.email, data.password, data.name);
+        // const { error, emailExists, weakPassword, invalidEmail, serverError } =
+        //   await signUp(data.email, data.password, data.name);
 
-        if (error) {
-          if (emailExists) {
-            showErrorToast(
-              "This email is already registered. Please log in instead."
-            );
-          } else if (weakPassword) {
-            showErrorToast(
-              "Your password is too weak. Use at least 6 characters."
-            );
-          } else if (invalidEmail) {
-            showErrorToast("Please enter a valid email address.");
-          } else if (serverError) {
-            showErrorToast("Server error. Please try again later.");
-          } else {
-            showErrorToast(error.message); // fallback
-          }
-          return;
-        }
+        // if (error) {
+        //   if (emailExists) {
+        //     showErrorToast(
+        //       "This email is already registered. Please log in instead."
+        //     );
+        //   } else if (weakPassword) {
+        //     showErrorToast(
+        //       "Your password is too weak. Use at least 6 characters."
+        //     );
+        //   } else if (invalidEmail) {
+        //     showErrorToast("Please enter a valid email address.");
+        //   } else if (serverError) {
+        //     showErrorToast("Server error. Please try again later.");
+        //   } else {
+        //     showErrorToast(error.message); // fallback
+        //   }
+        //   return;
+        // }
 
-        showSuccessToast("Signup success! Check your email.");
-        setIsSuccess(true);
+        // showSuccessToast("Signup success! Check your email.");
+        // setIsSuccess(true);
+        showErrorToast(
+          "Signup functionality is disabled, Please try again later."
+        );
+
         reset();
       } catch (err) {
         console.log("Signup exception", err);
@@ -251,8 +255,8 @@ const Signup = () => {
                         field === "name"
                           ? "Full Name"
                           : field === "email"
-                          ? "you@example.com"
-                          : "Password"
+                            ? "you@example.com"
+                            : "Password"
                       }
                       {...register(field as keyof FormData)}
                       className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
@@ -324,8 +328,8 @@ const Signup = () => {
                 {isSuccess
                   ? "Success!"
                   : isSubmitting
-                  ? "Signing Up..."
-                  : "Sign Up"}
+                    ? "Signing Up..."
+                    : "Sign Up"}
               </motion.button>
               <div className="mt-4 text-center text-sm">
                 <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
