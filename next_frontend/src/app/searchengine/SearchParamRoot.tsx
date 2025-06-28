@@ -176,6 +176,7 @@ const SearchParamRoot = () => {
       let currentContent = "⏳ Searching for information...";
       let sources: any[] = [];
       let searchQueries: string[] = [];
+      let hasExtractedFinalAnswer = false; // Track if we've extracted a final answer
 
       await apiClient.sendStreamingChatRequest(userId, agentData.id, q, update => {
         console.log("Streaming update:", update);
@@ -189,6 +190,27 @@ const SearchParamRoot = () => {
                 msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
               )
             );
+            break;
+            
+          case "token":
+            // Handle token updates from LLM streaming - show complete content directly
+            const tokenContent = typeof update.content === 'string' ? update.content : 
+                              (update.content && update.content.text ? update.content.text : '');
+          
+            if (tokenContent) {
+              console.log("Token content:", tokenContent); // Debug log full content
+              
+              // Just use the token content directly without any filtering
+              currentContent = tokenContent;
+              hasExtractedFinalAnswer = true;
+              
+              // Update the message with the complete token content
+              setMessages(m =>
+                m.map(msg =>
+                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                )
+              );
+            }
             break;
 
           case "search_query":
@@ -205,12 +227,16 @@ const SearchParamRoot = () => {
           case "source":
             // Collect sources
             sources.push(update.content);
-            currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
-            setMessages(m =>
-              m.map(msg =>
-                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-              )
-            );
+            
+            // Only update the message with source count if we haven't extracted a final answer yet
+            if (!hasExtractedFinalAnswer) {
+              currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
+              setMessages(m =>
+                m.map(msg =>
+                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                )
+              );
+            }
             break;
 
           case "message":
@@ -227,7 +253,7 @@ const SearchParamRoot = () => {
 
           case "error":
             // Handle error
-            currentContent = `Error: ${update.content.message || "Something went wrong"}`;
+            currentContent = `Something went wrong`;
             setMessages(m =>
               m.map(msg =>
                 msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg

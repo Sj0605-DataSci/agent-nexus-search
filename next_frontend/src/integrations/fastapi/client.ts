@@ -211,14 +211,26 @@ export const apiClient = {
       }
 
       const text = decoder.decode(value);
-      const lines = text.split("\n\n");
+      const events = text.split("\n\n");
 
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
+      for (const event of events) {
+        if (event.trim() === "") continue;
+        
+        // Parse the SSE event
+        const eventLines = event.split("\n");
+        let eventData = "";
+        
+        for (const line of eventLines) {
+          if (line.startsWith("data: ")) {
+            eventData = line.slice(6); // Remove 'data: ' prefix
+          }
+        }
+        
+        if (eventData) {
           try {
-            const jsonStr = line.slice(6); // Remove 'data: ' prefix
-            const update = JSON.parse(jsonStr) as StreamingChatUpdate;
+            const update = JSON.parse(eventData) as StreamingChatUpdate;
             onUpdate(update);
+            console.log("Received SSE update:", update);
           } catch (e) {
             console.error("Error parsing SSE message:", e);
           }

@@ -69,7 +69,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
     # Use OpenRouter client
     llm = OpenRouterChatModel(
-        model="moonshotai/kimi-dev-72b:free",
+        model="mistralai/mistral-small-3.2-24b-instruct:free",
         temperature=1.0
     )
 
@@ -323,7 +323,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     )
     # Use OpenRouter client
     llm = OpenRouterChatModel(
-        model="moonshotai/kimi-dev-72b:free",
+        model="mistralai/mistral-small-3.2-24b-instruct:free",
         temperature=1.0
     )
     response = llm.invoke(formatted_prompt)
@@ -438,7 +438,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
 
     # Use OpenRouter client
     llm = OpenRouterChatModel(
-        model="moonshotai/kimi-dev-72b:free",
+        model="mistralai/mistral-small-3.2-24b-instruct:free",
         temperature=0
     )
     result = llm.invoke(formatted_prompt)

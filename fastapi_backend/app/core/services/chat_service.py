@@ -136,6 +136,115 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
+            
+    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]]):
+        """
+        Stream chat with the research agent using LangGraph's streaming capabilities
+        
+        Args:
+            user_id: User ID
+            agent_id: Agent ID
+            messages: List of messages in the conversation
+            
+        Returns:
+            Async generator yielding streaming updates
+        """
+        try:
+            # Fetch agent configuration
+            agent_config = await self.get_agent_config(user_id, agent_id)
+            
+            # Convert string messages to HumanMessage objects if needed
+            formatted_messages = []
+            if isinstance(messages, str):
+                formatted_messages = [HumanMessage(content=messages)]
+            elif isinstance(messages, list):
+                # If it's already a list of BaseMessage objects, use as is
+                if messages and hasattr(messages[0], 'content'):
+                    formatted_messages = messages
+                # Otherwise convert dict messages to BaseMessage objects
+                else:
+                    for msg in messages:
+                        if isinstance(msg, dict) and 'content' in msg:
+                            role = msg.get('role', 'human').lower()
+                            if role == 'assistant':
+                                formatted_messages.append(AIMessage(content=msg['content']))
+                            else:
+                                formatted_messages.append(HumanMessage(content=msg['content']))
+            
+            # Create initial state with agent configuration
+            initial_state = {
+                "messages": formatted_messages,
+                "agent_config": agent_config,
+                "initial_search_query_count": 3,
+                "research_loop_count": 1,
+                "web_research_result": [],
+                "sources_gathered": [],
+                "search_query": []
+            }
+            
+            # Use LangGraph's astream method to stream results
+            # Stream both messages (LLM tokens) and updates (state changes)
+            async for chunk_type, chunk_data in graph.astream(
+                initial_state, 
+                stream_mode=["messages", "updates"]
+            ):
+                # Handle different types of streaming chunks
+                if chunk_type == "messages":
+                    # This is a token from an LLM
+                    message_chunk, metadata = chunk_data
+                    if message_chunk.content:
+                        # Stream the token with metadata about which node it came from
+                        yield {
+                            "type": "token",
+                            "content": message_chunk.content,
+                            "node": metadata.get("node_name", "unknown"),
+                            "tags": metadata.get("tags", [])
+                        }
+                        
+                elif chunk_type == "updates":
+                    # This is a state update from a node
+                    node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
+                    node_data = chunk_data.get(node_name, {})
+                    
+                    # Handle different types of updates based on the node
+                    if "search_query" in node_data:
+                        # Stream search queries
+                        for query in node_data["search_query"]:
+                            if isinstance(query, dict) and "query" in query:
+                                yield {
+                                    "type": "search_query",
+                                    "content": {"query": query["query"]}
+                                }
+                            elif isinstance(query, str):
+                                yield {
+                                    "type": "search_query",
+                                    "content": {"query": query}
+                                }
+                    
+                    if "sources_gathered" in node_data:
+                        # Stream sources
+                        for source in node_data["sources_gathered"]:
+                            yield {
+                                "type": "source",
+                                "content": source
+                            }
+            
+            # Send completion signal
+            yield {
+                "type": "done",
+                "content": {"message": "Chat response complete"}
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in stream_chat: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            
+            # Send error message
+            yield {
+                "type": "error",
+                "content": {"message": f"Error: {str(e)}"}
+            }
     
     def _format_chat_response(self, result: Dict[str, Any]) -> 'ChatResponse':
         """
