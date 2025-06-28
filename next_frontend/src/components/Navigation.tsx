@@ -8,7 +8,7 @@ import { Search, LogIn, LogOut, Menu as MenuIcon, X as CloseIcon } from "lucide-
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSelector } from "@/store";
-import ThemeToggle from "./ToggleSystemTheme";
+import ToggleSystemTheme from "./ToggleSystemTheme";
 
 const Navigation = () => {
   const darkMode = useAppSelector(s => s.theme.dark);
@@ -70,7 +70,7 @@ const Navigation = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <ThemeToggle rounded={false} size={18} />
+          <ToggleSystemTheme rounded={false} size={18} />
 
           {user ? (
             <>
