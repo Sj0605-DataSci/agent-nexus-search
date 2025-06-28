@@ -99,6 +99,6 @@ export interface ChatResponse {
 }
 
 export interface StreamingChatUpdate {
-  type: "thinking" | "search_query" | "source" | "message" | "done" | "error";
+  type: "thinking" | "search_query" | "source" | "message" | "done" | "error" | "token";
   content: any;
 }
