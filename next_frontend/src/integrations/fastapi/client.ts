@@ -65,7 +65,7 @@ export const apiClient = {
   async getHiredAgents(): Promise<HiredAgent[]> {
     try {
       const res = await axiosInstance.get("/hired_agents");
-      return res.data?.data;
+      return res.data;
     } catch (error) {
       console.error("Error in getHiredAgents:", error);
       return [];
@@ -75,7 +75,7 @@ export const apiClient = {
   async getHiredAgent(id: string): Promise<HiredAgent> {
     try {
       const res = await axiosInstance.get(`/hired_agents/${id}`);
-      return res.data?.data;
+      return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -126,7 +126,7 @@ export const apiClient = {
   async getProfile(): Promise<Profile> {
     try {
       const res = await axiosInstance.get("/auth/me");
-      return res.data?.data;
+      return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -215,17 +215,17 @@ export const apiClient = {
 
       for (const event of events) {
         if (event.trim() === "") continue;
-
+        
         // Parse the SSE event
         const eventLines = event.split("\n");
         let eventData = "";
-
+        
         for (const line of eventLines) {
           if (line.startsWith("data: ")) {
             eventData = line.slice(6); // Remove 'data: ' prefix
           }
         }
-
+        
         if (eventData) {
           try {
             const update = JSON.parse(eventData) as StreamingChatUpdate;
