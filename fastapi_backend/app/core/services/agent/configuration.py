@@ -1,4 +1,3 @@
-
 import os
 from pydantic import BaseModel, Field
 from typing import Any, Optional
@@ -15,8 +14,23 @@ class Configuration(BaseModel):
     )
 
     max_research_loops: int = Field(
-        default=2,
+        default=3,
         metadata={"description": "The maximum number of research loops to perform."},
+    )
+    
+    agent_id: Optional[str] = Field(
+        default=None,
+        metadata={"description": "The ID of the agent being used."},
+    )
+    
+    user_id: Optional[str] = Field(
+        default=None,
+        metadata={"description": "The ID of the user."},
+    )
+    
+    chat_thread_id: Optional[str] = Field(
+        default=None,
+        metadata={"description": "The ID of the chat thread."},
     )
 
     @classmethod

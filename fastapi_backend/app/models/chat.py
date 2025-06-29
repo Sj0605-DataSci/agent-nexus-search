@@ -1,43 +1,92 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TypedDict, List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
+from uuid import UUID
 from pydantic import BaseModel, Field
 from langgraph.graph import add_messages
 from typing_extensions import Annotated
 import operator
 
 
-class OverallState(TypedDict):
-    messages: Annotated[list, add_messages]
-    search_query: Annotated[list, operator.add]
-    web_research_result: Annotated[list, operator.add]
-    sources_gathered: Annotated[list, operator.add]
-    initial_search_query_count: int
-    max_research_loops: int
-    research_loop_count: int
-    agent_config: Dict[str, Any]
+class OverallState(BaseModel):
+    messages: Annotated[list, add_messages] = Field(
+        description="A list of messages in the conversation."
+    )
+    search_query: Annotated[list, operator.add] = Field(
+        description="A list of search queries to be used for web research."
+    )
+    web_research_result: Annotated[list, operator.add] = Field(
+        description="A list of web research results."
+    )
+    sources_gathered: Annotated[list, operator.add] = Field(
+        description="A list of sources used in the research."
+    )
+    initial_search_query_count: int = Field(
+        description="The number of initial search queries to be used for web research."
+    )
+    research_loop_count: int = Field(
+        description="The number of research loops that have been executed."
+    )
+    max_research_loops: int = Field(
+        description="The maximum number of research loops that can be executed."
+    )
+    user_id: str = Field(
+        description="The ID of the user."
+    )
+    agent_config: Dict[str, Any] = Field(
+        description="The configuration for the agent."
+    )
+    chat_thread_id: Optional[str] = Field(
+        description="The ID of the chat thread."
+    )
 
 
-class ReflectionState(TypedDict):
-    is_sufficient: bool
-    knowledge_gap: str
-    follow_up_queries: Annotated[list, operator.add]
-    research_loop_count: int
-    number_of_ran_queries: int
+class ReflectionState(BaseModel):
+    is_sufficient: bool = Field(
+        description="Whether the provided summaries are sufficient to answer the user's question."
+    )
+    knowledge_gap: str = Field(
+        description="A description of what information is missing or needs clarification."
+    )
+    follow_up_queries: Annotated[list, operator.add] = Field(
+        description="A list of follow-up queries to address the knowledge gap."
+    )
+    research_loop_count: int = Field(
+        description="The number of research loops that have been executed."
+    )
+    number_of_ran_queries: int = Field(
+        description="The number of queries that have been executed."
+    )
+    max_research_loops: int = Field(
+        description="The maximum number of research loops that have been executed."
+    )
 
 
-class Query(TypedDict):
-    query: str
-    rationale: str
+class Query(BaseModel):
+    query: str = Field(
+        description="The search query to be used for web research."
+    )
+    rationale: str = Field(
+        description="A brief explanation of why this query is relevant to the research topic."
+    )
 
 
-class QueryGenerationState(TypedDict):
-    search_query: list[Query]
+class QueryGenerationState(BaseModel):
+    search_query: list[Query] = Field(
+        description="A list of search queries to be used for web research."
+    )
+    max_research_loops: int = Field(
+        description="The maximum number of research loops that have been executed."
+    )
 
 
-class WebSearchState(TypedDict):
-    search_query: str
-    id: str
+class WebSearchState(BaseModel):
+    search_query: str = Field(
+        description="The search query to be used for web research."
+    )
+    id: str = Field(
+        description="The ID of the web search."
+    )
 
 
 @dataclass(kw_only=True)

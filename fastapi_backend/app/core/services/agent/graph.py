@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Union
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langgraph.types import Send
@@ -8,7 +8,9 @@ from langgraph.graph import START, END
 from langchain_core.runnables import RunnableConfig
 from app.models.chat import OverallState, QueryGenerationState, ReflectionState, WebSearchState, SearchQueryList, Reflection
 from app.core.services.search_apis import ExaSearch
-from app.core.utils.llm_utils import OpenRouterChatModel, get_openrouter_llm
+from app.core.utils.llm_utils import OpenRouterChatModel
+from app.db.clients import get_supabase_client
+import json
 
 from app.core.services.agent.configuration import Configuration
 from app.core.services.agent.prompts import (
@@ -17,17 +19,17 @@ from app.core.services.agent.prompts import (
     reflection_instructions,
     answer_instructions,
 )
+from uuid import UUID, uuid4
 
 load_dotenv()
 
 if os.getenv("OPENROUTER_API_KEY") is None:
     raise ValueError("OPENROUTER_API_KEY is not set")
 
-# Get OpenRouter client
-openrouter_client = get_openrouter_llm()
+supabase_client = get_supabase_client()
 
 
-def get_research_topic(messages: List[BaseMessage]) -> str:
+def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """
     Get the research topic from the messages.
     """
@@ -36,11 +38,22 @@ def get_research_topic(messages: List[BaseMessage]) -> str:
         return ""
         
     if len(messages) == 1:
-        research_topic = messages[-1].content
+        message = messages[-1]
+        if isinstance(message, dict):
+            research_topic = message.get("content", "")
+        else:
+            research_topic = message.content
     else:
         research_topic = ""
         for message in messages:
-            if isinstance(message, HumanMessage):
+            if isinstance(message, dict):
+                role = message.get("type", "")
+                content = message.get("content", "")
+                if role == "human":
+                    research_topic += f"User: {content}\n"
+                elif role == "ai":
+                    research_topic += f"Assistant: {content}\n"
+            elif isinstance(message, HumanMessage):
                 research_topic += f"User: {message.content}\n"
             elif isinstance(message, AIMessage):
                 research_topic += f"Assistant: {message.content}\n"
@@ -48,7 +61,7 @@ def get_research_topic(messages: List[BaseMessage]) -> str:
 
 
 # Nodes
-def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
+async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
     """LangGraph node that generates search queries based on the User's question.
 
     Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
@@ -62,10 +75,9 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         Dictionary with state update, including search_query key containing the generated queries
     """
     configurable = Configuration.from_runnable_config(config)
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
 
-    # check for custom initial search query count
-    if state.get("initial_search_query_count") is None:
-        state["initial_search_query_count"] = configurable.number_of_initial_queries
 
     # Use OpenRouter client
     llm = OpenRouterChatModel(
@@ -73,13 +85,32 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         temperature=1.0
     )
 
-    # Format the prompt
+    messages = state["messages"]
+    
+    # Handle different message formats
+    if isinstance(messages[0], dict):
+        main_query = messages[0].get("content", "")
+    else:
+        main_query = messages[0].content
+        
+    chat_thread_id = str(uuid4())
+
+    agent_config = state["agent_config"]
+    agent_id = agent_config["id"]
+    user_id = agent_config["user_id"]
+    configurable.chat_thread_id = chat_thread_id
+
+    # check for custom initial search query count
+    try :
+        initial_search_query_count = supabase_client.table("hired_agents").select("initial_search_query_count").eq("user_id", user_id).eq("agent_id", agent_id).execute().data[0]["initial_search_query_count"]    
+    except Exception as e:
+        initial_search_query_count = 1
     current_date = get_current_date()
     formatted_prompt = query_writer_instructions.format(
         current_date=current_date,
         research_topic=get_research_topic(state["messages"]),
-        agent_config=state["agent_config"],
-        number_queries=state["initial_search_query_count"],
+        agent_config=agent_config,
+        number_queries=initial_search_query_count,
     )
     
     # Generate the search queries
@@ -123,18 +154,34 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             result_dict = json.loads(json_str)
             
         queries = result_dict.get("query", [])
+        sub_query_count = len(queries)
         rationale = result_dict.get("rationale", "")
         
         # Convert to the expected format
         search_queries = []
+        sub_queries = []
         for query in queries:
             search_queries.append({"query": query, "rationale": rationale})
+            sub_queries.append(query)
         
         if not search_queries:
             # Fallback if no queries were found
             search_queries = [{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}]
+        
+        try:
+            # Use the global Supabase client directly
+            supabase_client.table("chat_messages").insert({
+                "user_id": user_id, 
+                "agent_id": agent_id, 
+                "chat_thread_id": chat_thread_id, 
+                "sub_queries": sub_queries, 
+                "main_query": main_query
+            }).execute()
+        except Exception as e:
+            print(f"Error inserting data into Supabase: {e}")
             
-        return {"search_query": search_queries}
+        return {"search_query": search_queries, "chat_thread_id": chat_thread_id, "user_id": state["user_id"], "max_research_loops": state["max_research_loops"]}
+
     except json.JSONDecodeError:
         # Fallback to a simple query if JSON parsing fails
         return {"search_query": [{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}]}
@@ -145,6 +192,8 @@ def continue_to_web_research(state: QueryGenerationState):
 
     This is used to spawn n number of web research nodes, one for each search query.
     """
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
     return [
         Send("web_research", {"search_query": search_query, "id": int(idx)})
         for idx, search_query in enumerate(state["search_query"])
@@ -166,6 +215,10 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     """
     # Configure
     configurable = Configuration.from_runnable_config(config)
+    
+    # Convert to dict if it's a Pydantic model
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
     
     # Initialize Exa API client
     exa_search = ExaSearch()
@@ -285,7 +338,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     }
 
 
-def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
+async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     """LangGraph node that identifies knowledge gaps and generates potential follow-up queries.
 
     Analyzes the current summary to identify areas for further research and generates
@@ -299,9 +352,12 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     Returns:
         Dictionary with state update, including search_query key containing the generated follow-up query
     """
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+
     configurable = Configuration.from_runnable_config(config)
     # Increment the research loop count and get the reasoning model
-    state["research_loop_count"] = state.get("research_loop_count", 0) + 1
+    state["research_loop_count"] = state["research_loop_count"] + 1
 
     # Format the prompt with enhanced context
     research_topic = get_research_topic(state["messages"])
@@ -310,9 +366,9 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     summaries = state["web_research_result"]
     
     # Add information about sources if available
-    if state.get("sources_gathered"):
+    if state["sources_gathered"]:
         source_info = "\n\nSources used:\n"
-        for i, source in enumerate(state.get("sources_gathered", [])):
+        for i, source in enumerate(state["sources_gathered"]):
             source_info += f"- {source.get('short_url', f'[{i+1}]')}: {source.get('title', 'Unknown')} ({source.get('value', 'No URL')})\n"
         summaries.append(source_info)
     
@@ -377,7 +433,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
         }
 
 
-def evaluate_research(
+async def evaluate_research(
     state: ReflectionState,
     config: RunnableConfig,
 ) -> OverallState:
@@ -393,12 +449,19 @@ def evaluate_research(
     Returns:
         String literal indicating the next node to visit ("web_research" or "finalize_summary")
     """
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
     configurable = Configuration.from_runnable_config(config)
-    max_research_loops = (
-        state.get("max_research_loops")
-        if state.get("max_research_loops") is not None
-        else configurable.max_research_loops
-    )
+
+    user_id = configurable.user_id
+    agent_id = configurable.agent_id
+
+    try:
+        max_research_loops_response = supabase_client.table("hired_agents").select("max_research_loops").eq("user_id", user_id).eq("agent_id", agent_id).execute()
+        max_research_loops = max_research_loops_response.data[0]["max_research_loops"]
+    except Exception as e:
+        max_research_loops = 1
+
     if state["is_sufficient"] or state["research_loop_count"] >= max_research_loops:
         return "finalize_answer"
     else:
@@ -414,7 +477,7 @@ def evaluate_research(
         ]
 
 
-def finalize_answer(state: OverallState, config: RunnableConfig):
+async def finalize_answer(state: OverallState, config: RunnableConfig):
     """LangGraph node that finalizes the research summary.
 
     Prepares the final output by deduplicating and formatting sources, then
@@ -428,6 +491,9 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
         Dictionary with state update, including running_summary key containing the formatted final summary with sources
     """
     configurable = Configuration.from_runnable_config(config)
+
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
     # Format the prompt
     current_date = get_current_date()
     formatted_prompt = answer_instructions.format(
@@ -435,6 +501,10 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
         research_topic=get_research_topic(state["messages"]),
         summaries="\n---\n\n".join(state["web_research_result"]),
     )
+    agent_config = state["agent_config"]
+    user_id = agent_config["user_id"]
+    agent_id = agent_config["id"]
+    chat_thread_id = state["chat_thread_id"]
 
     # Use OpenRouter client
     llm = OpenRouterChatModel(
@@ -442,19 +512,22 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
         temperature=0
     )
     result = llm.invoke(formatted_prompt)
-
-    # Replace the short urls with the original urls and add all used urls to the sources_gathered
-    unique_sources = []
-    for source in state["sources_gathered"]:
-        if source["short_url"] in result.content:
-            result.content = result.content.replace(
-                source["short_url"], source["value"]
-            )
-            unique_sources.append(source)
-
+    
+    final_message = AIMessage(content=result.content)
+    
+    try:
+        # Use the global Supabase client directly
+        supabase_client.table("chat_messages").update({
+            "message": json.dumps(final_message.content), 
+            "sources_gathered": state["sources_gathered"]
+        }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).execute()
+    except Exception as e:
+        print(f"Error inserting data into Supabase: {e}")
+        # Continue with the flow even if database operation fails
+        
     return {
-        "messages": [AIMessage(content=result.content)],
-        "sources_gathered": unique_sources,
+        "messages": [final_message],
+        "sources_gathered": state["sources_gathered"],
     }
 
 
