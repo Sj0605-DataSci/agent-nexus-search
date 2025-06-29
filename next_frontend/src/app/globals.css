@@ -6,11 +6,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@layer utilities {
-  .animate-pulse svg {
-    @apply opacity-50;
-  }
-}
 @layer base {
   :is(input, textarea, select, button):focus-visible {
     outline: none !important; /* kills the browser outline        */

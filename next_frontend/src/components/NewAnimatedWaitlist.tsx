@@ -354,7 +354,7 @@ const NewAnimatedWaitlist: React.FC = () => {
               <img
                 src="https://randomuser.me/api/portraits/men/32.jpg"
                 alt=""
-                className="w-6 h-6 rounded-full border-2 border-white ml-1"
+                className="w-6 h-6 rounded-full border-2 border-white -ml-1"
               />
               <img
                 src="https://randomuser.me/api/portraits/women/44.jpg"
