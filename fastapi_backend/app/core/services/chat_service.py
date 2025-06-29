@@ -39,7 +39,7 @@ class ChatService:
             logger.info(f"Querying Supabase for agent_id={agent_id} and user_id={user_id}")
             
             # Try with the regular query first
-            response = await self.supabase_client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
+            response = self.supabase_client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
             
             # Log the raw response for debugging
             logger.info(f"Supabase response: {response}")
@@ -50,15 +50,15 @@ class ChatService:
                 logger.info("Trying with simplified queries")
                 try:
                     # Try querying just by ID to see if the record exists at all
-                    id_only_response = await self.supabase_client.table("hired_agents").select("*").eq("id", agent_id).execute()
+                    id_only_response = self.supabase_client.table("hired_agents").select("*").eq("id", agent_id).execute()
                     logger.info(f"ID-only query response: {id_only_response.data}")
                     
                     # Try querying just by user_id to see if any records exist for this user
-                    user_only_response = await self.supabase_client.table("hired_agents").select("*").eq("user_id", user_id).execute()
+                    user_only_response = self.supabase_client.table("hired_agents").select("*").eq("user_id", user_id).execute()
                     logger.info(f"User-only query response: {user_only_response.data}")
                     
                     # Get all records to see what's in the table
-                    all_records = await self.supabase_client.table("hired_agents").select("*").limit(5).execute()
+                    all_records = self.supabase_client.table("hired_agents").select("*").limit(5).execute()
                     logger.info(f"Sample records in hired_agents: {all_records.data}")
                 except Exception as e:
                     logger.error(f"Error in simplified queries: {str(e)}")
@@ -121,8 +121,7 @@ class ChatService:
             initial_state = {
                 "messages": formatted_messages,
                 "agent_config": agent_config,
-                "initial_search_query_count": 3,
-                "research_loop_count": 1,
+                "research_loop_count": 0,
                 "web_research_result": [],
                 "sources_gathered": [],
                 "search_query": []
@@ -175,8 +174,11 @@ class ChatService:
             initial_state = {
                 "messages": formatted_messages,
                 "agent_config": agent_config,
-                "initial_search_query_count": 3,
-                "research_loop_count": 1,
+                "user_id": user_id,
+                "initial_search_query_count": 0,
+                "research_loop_count": 0,
+                "max_research_loops": 0,
+                "chat_thread_id": None,
                 "web_research_result": [],
                 "sources_gathered": [],
                 "search_query": []

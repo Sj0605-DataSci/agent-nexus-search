@@ -95,9 +95,22 @@ Instructions:
 - You have access to the user's question.
 - Generate a high-quality answer to the user's question based on the provided summaries and the user's question.
 - Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
+- Answer in the below json format and generate multiple dict objects in one dict if multiple people are there
 
 User Context:
 - {research_topic}
 
 Summaries:
-{summaries}"""
+{summaries}
+
+Output format : 
+```json
+{{
+    "name": "name of person",
+    "profession": "profession of person",
+    "score": "score of person profile based on user context",
+    "reason": "reason for the score",
+    "sources": ["Source 1", "Source 2", ...]
+}}
+```
+"""
