@@ -20,7 +20,7 @@ export const apiClient = {
   async getAgentTemplates(): Promise<AgentTemplate[]> {
     try {
       const res = await axiosInstance.get("/agent_templates");
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -29,7 +29,7 @@ export const apiClient = {
   async getAgentTemplate(id: string): Promise<AgentTemplate> {
     try {
       const res = await axiosInstance.get(`/agent_templates/${id}`);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -38,7 +38,7 @@ export const apiClient = {
   async createAgentTemplate(data: AgentTemplateCreate): Promise<AgentTemplate> {
     try {
       const res = await axiosInstance.post("/agent_templates", data);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -47,7 +47,7 @@ export const apiClient = {
   async updateAgentTemplate(id: string, data: AgentTemplateUpdate): Promise<AgentTemplate> {
     try {
       const res = await axiosInstance.put(`/agent_templates/${id}`, data);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -65,7 +65,7 @@ export const apiClient = {
   async getHiredAgents(): Promise<HiredAgent[]> {
     try {
       const res = await axiosInstance.get("/hired_agents");
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       console.error("Error in getHiredAgents:", error);
       return [];
@@ -75,7 +75,7 @@ export const apiClient = {
   async getHiredAgent(id: string): Promise<HiredAgent> {
     try {
       const res = await axiosInstance.get(`/hired_agents/${id}`);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -84,7 +84,7 @@ export const apiClient = {
   async hireAgent(data: HiredAgentCreate): Promise<HiredAgent> {
     try {
       const res = await axiosInstance.post("/hired_agents", data);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -93,7 +93,7 @@ export const apiClient = {
   async updateHiredAgent(id: string, data: HiredAgentUpdate): Promise<HiredAgent> {
     try {
       const res = await axiosInstance.put(`/hired_agents/${id}`, data);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -126,7 +126,7 @@ export const apiClient = {
   async getProfile(): Promise<Profile> {
     try {
       const res = await axiosInstance.get("/auth/me");
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -135,7 +135,7 @@ export const apiClient = {
   async updateProfile(data: ProfileUpdate): Promise<Profile> {
     try {
       const res = await axiosInstance.put("/profiles/me", data);
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -145,7 +145,7 @@ export const apiClient = {
   async verifyToken() {
     try {
       const res = await axiosInstance.post("/auth/verify-token");
-      return res.data;
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -215,17 +215,17 @@ export const apiClient = {
 
       for (const event of events) {
         if (event.trim() === "") continue;
-        
+
         // Parse the SSE event
         const eventLines = event.split("\n");
         let eventData = "";
-        
+
         for (const line of eventLines) {
           if (line.startsWith("data: ")) {
             eventData = line.slice(6); // Remove 'data: ' prefix
           }
         }
-        
+
         if (eventData) {
           try {
             const update = JSON.parse(eventData) as StreamingChatUpdate;

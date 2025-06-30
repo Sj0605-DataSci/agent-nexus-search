@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 
 import SearchParamRoot from "./SearchParamRoot";
+import withAuth from "@/hoc/withAuth";
 
 const SearchEngine = () => {
   return (
@@ -11,5 +12,4 @@ const SearchEngine = () => {
     </Suspense>
   );
 };
-
-export default SearchEngine;
+export default withAuth(SearchEngine);
