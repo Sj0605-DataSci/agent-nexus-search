@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppSelector } from "@/store";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import Link from "next/link";
+import { Search } from "lucide-react";
 
 const schema = yup.object().shape({
   name: yup.string().required("Name is required").min(2),
@@ -26,7 +27,7 @@ const backdropVariants: Variants = {
   animate: {
     rotate: [0, 15, -10, 0],
     scale: [1, 1.08, 0.95, 1],
-    transition: { duration: 12, repeat: Infinity, ease: "easeInOut" },
+    transition: { duration: 15, repeat: Infinity, ease: "easeInOut" },
   },
 };
 
@@ -192,7 +193,6 @@ const Signup = () => {
               </svg>
             </motion.div>
 
-            {/* ✅ Textual Confirmation */}
             <motion.h2
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -214,6 +214,27 @@ const Signup = () => {
         ) : (
           <>
             <div>
+              <div className=" mb-6">
+                <Link href="/" className="inline-flex items-center gap-2 mb-3">
+                  <div
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      darkMode
+                        ? "bg-gradient-to-r from-blue-700 to-indigo-700"
+                        : "bg-gradient-to-r from-blue-500 to-purple-500"
+                    }`}
+                  >
+                    <Search className="h-6 w-6 text-white" />
+                  </div>
+                  <span
+                    className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}
+                  >
+                    DiscoverMinds.ai
+                  </span>
+                </Link>
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  Sign in to your account
+                </p>
+              </div>
               <h1
                 className={`text-2xl sm:text-3xl font-extrabold mb-3 ${
                   darkMode ? "text-white" : "text-gray-900"
