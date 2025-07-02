@@ -168,7 +168,7 @@ const SearchParamRoot = () => {
 
             if (tokenContent) {
               console.log("Token content:", tokenContent); // Debug log full content
-              
+
               // Process content based on format
               if (format === "table") {
                 // For table format, try to extract JSON if it exists
@@ -190,7 +190,7 @@ const SearchParamRoot = () => {
                 // For chat format, use the raw content directly
                 currentContent = tokenContent;
               }
-              
+
               hasExtractedFinalAnswer = true;
 
               // Update the message with the processed content
@@ -294,9 +294,6 @@ const SearchParamRoot = () => {
           : "bg-gradient-to-br from-blue-50 to-purple-50"
       }`}
     >
-      <Navigation />
-
-      <ToggleSystemTheme className="fixed top-5 right-5 z-30 " />
       <div className="container mx-auto px-4 pt-32 pb-20 relative z-10">
         {/* Hero header */}
         {/* Who you want to search? ------- */}
@@ -344,18 +341,18 @@ const SearchParamRoot = () => {
               <div className="flex items-center ml-2 gap-1">
                 <button
                   onClick={() => setFormat("table")}
-                  className={`p-1.5 rounded-md ${format === "table" ? 
-                    (darkMode ? "bg-gray-700" : "bg-gray-200") : 
-                    ""}`}
+                  className={`p-1.5 rounded-md ${
+                    format === "table" ? (darkMode ? "bg-gray-700" : "bg-gray-200") : ""
+                  }`}
                   title="Table format"
                 >
                   <Table className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setFormat("chat")}
-                  className={`p-1.5 rounded-md ${format === "chat" ? 
-                    (darkMode ? "bg-gray-700" : "bg-gray-200") : 
-                    ""}`}
+                  className={`p-1.5 rounded-md ${
+                    format === "chat" ? (darkMode ? "bg-gray-700" : "bg-gray-200") : ""
+                  }`}
                   title="Chat format"
                 >
                   <MessageSquare className="h-4 w-4" />

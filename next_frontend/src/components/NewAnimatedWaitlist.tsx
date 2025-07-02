@@ -208,8 +208,6 @@ const NewAnimatedWaitlist: React.FC = () => {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.7, ease: "easeOut" }}
       >
-        <ToggleSystemTheme className={`absolute top-5 right-5  `} />
-
         {isSuccess ? (
           <div className="text-center py-8">
             <div
