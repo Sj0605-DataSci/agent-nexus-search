@@ -90,12 +90,10 @@ answer_instructions = """Generate a high-quality answer to the user's question b
 
 Instructions:
 - The current date is {current_date}.
-- You are the final step of a multi-step research process, don't mention that you are the final step. 
+- The user wants answer in from of {format}
 - You have access to all the information gathered from the previous steps.
 - You have access to the user's question.
-- Generate a high-quality answer to the user's question based on the provided summaries and the user's question.
 - Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
-- Answer in the below json format and generate multiple dict objects in one dict if multiple people are there
 
 User Context:
 - {research_topic}
@@ -103,14 +101,35 @@ User Context:
 Summaries:
 {summaries}
 
-Output format : 
+IMPORTANT: You must follow the correct output format based on the specified format parameter:
+
+1. If format is "table":
+   You MUST return a JSON object with the following structure. If you don't have information for a field, use "NA".
+   ```json
+   {{
+       "name": "Person's name",
+       "profession": "Their profession",
+       "score": "Relevance score",
+       "reason": "Why they are relevant",
+       "sources": ["Citation 1", "Citation 2"]
+   }}
+   ```
+
+2. If format is "chat":
+   DO NOT use JSON format at all. Instead, provide a natural conversational response.
+   Write in plain text as if you're having a conversation with the user.
+   Include relevant information from the sources and cite them properly.
+   Be concise, helpful, and natural in your response.
+
+For example if you don't have any content and format is "table", just fill the fields with NA:
 ```json
 {{
-    "name": "name of person",
-    "profession": "profession of person",
-    "score": "score of person profile based on user context",
-    "reason": "reason for the score",
-    "sources": ["Source 1", "Source 2", ...]
+    "name": "NA",
+    "profession": "NA",
+    "score": "NA",
+    "reason": "NA",
+    "sources": ["NA"]
 }}
 ```
+
 """

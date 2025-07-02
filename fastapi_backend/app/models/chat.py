@@ -1,12 +1,22 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any, Union, Optional, Annotated
 from uuid import UUID
 from pydantic import BaseModel, Field
 from langgraph.graph import add_messages
 from typing_extensions import Annotated
 import operator
 
+
+class IntentClassifierState(BaseModel):
+    """State for the intent classifier node."""
+    intent: str = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
+    user_id: str = Field(default="", description="User ID")
+    agent_id: str = Field(default="", description="Agent ID")
+    chat_thread_id: str = Field(default="", description="Chat thread ID")
+    number_of_results_returned: int = Field(default=3, description="Number of results to return")
+    format: str = Field(default="table", description="Response format: 'table' or 'chat'")
+    messages: List[Any] = Field(default_factory=list, description="Messages in the conversation")
 
 class OverallState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
@@ -18,6 +28,8 @@ class OverallState(BaseModel):
     web_research_result: Annotated[list, operator.add] = Field(
         description="A list of web research results."
     )
+    intent: str = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
+    format: str = Field(default="table", description="Response format: 'table' or 'chat'")
     sources_gathered: Annotated[list, operator.add] = Field(
         description="A list of sources used in the research."
     )
@@ -38,6 +50,12 @@ class OverallState(BaseModel):
     )
     chat_thread_id: Optional[str] = Field(
         description="The ID of the chat thread."
+    )
+    number_of_results_returned: int = Field(
+        description="The number of results returned."
+    )
+    format: str = Field(
+        description="The format of the response."
     )
 
 
@@ -60,6 +78,18 @@ class ReflectionState(BaseModel):
     max_research_loops: int = Field(
         description="The maximum number of research loops that have been executed."
     )
+    number_of_results_returned: int = Field(
+        description="The number of results returned."
+    )
+    user_id: str = Field(
+        description="The ID of the user."
+    )
+    agent_id: str = Field(
+        description="The ID of the agent."
+    )
+    chat_thread_id: str = Field(
+        description="The ID of the chat thread."
+    )
 
 
 class Query(BaseModel):
@@ -78,14 +108,54 @@ class QueryGenerationState(BaseModel):
     max_research_loops: int = Field(
         description="The maximum number of research loops that have been executed."
     )
+    chat_thread_id: str = Field(
+        description="The ID of the chat thread."
+    )
+    user_id: str = Field(
+        description="The ID of the user."
+    )
+    agent_id: str = Field(
+        description="The ID of the agent."
+    )
+    initial_search_query_count: int = Field(
+        description="The initial search query count."
+    )
+    number_of_results_returned: int = Field(
+        description="The number of results returned."
+    )
 
 
 class WebSearchState(BaseModel):
-    search_query: str = Field(
-        description="The search query to be used for web research."
+    search_query: Any = Field(
+        description="The search query to be used for web research. Can be a string, list, or dictionary."
     )
-    id: str = Field(
-        description="The ID of the web search."
+    id: Optional[Union[str, int]] = Field(
+        description="The ID of the web search. Can be a string or integer.",
+        default=None
+    )
+    chat_thread_id: str = Field(
+        description="The ID of the chat thread."
+    )
+    user_id: str = Field(
+        description="The ID of the user."
+    )
+    agent_id: str = Field(
+        description="The ID of the agent."
+    )
+    initial_search_sub_query_count: int = Field(
+        description="The initial search sub query count.",
+        default=0
+    )
+    number_of_results_returned: int = Field(
+        description="The number of results returned."
+    )
+    sources_gathered: List[Any] = Field(
+        description="A list of sources used in the research.",
+        default_factory=list
+    )
+    web_research_result: List[str] = Field(
+        description="A list of web research results.",
+        default_factory=list
     )
 
 
@@ -113,6 +183,21 @@ class Reflection(BaseModel):
     follow_up_queries: List[str] = Field(
         description="A list of follow-up queries to address the knowledge gap."
     )
+    number_of_ran_queries: int = Field(
+        description="The number of queries that have been executed."
+    )
+    research_loop_count: int = Field(
+        description="The number of research loops that have been executed."
+    )
+    user_id: str = Field(
+        description="The ID of the user."
+    )
+    agent_id: str = Field(
+        description="The ID of the agent."
+    )
+    chat_thread_id: str = Field(
+        description="The ID of the chat thread."
+    )
 
 
 class Source(BaseModel):
@@ -129,6 +214,7 @@ class ChatRequest(BaseModel):
     user_id: str = Field(description="ID of the user")
     agent_id: str = Field(description="ID of the agent being used")
     messages: Union[str, List[Dict[str, Any]]] = Field(description="Message content or list of messages in the conversation")
+    format: str = Field(description="The format of the response.", default="table")
 
 
 class StreamingChatRequest(ChatRequest):

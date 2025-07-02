@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, User as UserIcon } from "lucide-react";
+import { Search, User as UserIcon, Table, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navigation from "@/components/Navigation";
@@ -17,6 +17,7 @@ const SearchParamRoot = () => {
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [format, setFormat] = useState<"table" | "chat">("table");
   const [selectedAgent, setSelectedAgent] = useState(
     searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
   );
@@ -142,7 +143,7 @@ const SearchParamRoot = () => {
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
 
-      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, update => {
+      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, format, update => {
         console.log("Streaming update:", update);
 
         switch (update.type) {
@@ -167,12 +168,32 @@ const SearchParamRoot = () => {
 
             if (tokenContent) {
               console.log("Token content:", tokenContent); // Debug log full content
-
-              // Just use the token content directly without any filtering
-              currentContent = tokenContent;
+              
+              // Process content based on format
+              if (format === "table") {
+                // For table format, try to extract JSON if it exists
+                const jsonMatch = tokenContent.match(/```json\s*([\s\S]*?)\s*```/);
+                if (jsonMatch && jsonMatch[1]) {
+                  try {
+                    // Try to parse the JSON
+                    const jsonContent = JSON.parse(jsonMatch[1]);
+                    // Format the JSON nicely for display
+                    currentContent = JSON.stringify(jsonContent, null, 2);
+                  } catch (e) {
+                    // If JSON parsing fails, use the raw content
+                    currentContent = tokenContent;
+                  }
+                } else {
+                  currentContent = tokenContent;
+                }
+              } else {
+                // For chat format, use the raw content directly
+                currentContent = tokenContent;
+              }
+              
               hasExtractedFinalAnswer = true;
 
-              // Update the message with the complete token content
+              // Update the message with the processed content
               setMessages(m =>
                 m.map(msg =>
                   msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
@@ -310,16 +331,36 @@ const SearchParamRoot = () => {
                 onChange={e => setQuery(e.target.value)}
                 onKeyPress={onKey}
                 className={`
-    flex-1 bg-transparent
-    text-sm         
-    mt-[2px]           
-    placeholder:text-md       
-    md:placeholder:text-base        
-    border-0 focus:border-0
-    outline-none ring-0 focus:ring-0
-    ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
-  `}
+                  flex-1 bg-transparent
+                  text-sm         
+                  mt-[2px]           
+                  placeholder:text-md       
+                  md:placeholder:text-base        
+                  border-0 focus:border-0
+                  outline-none ring-0 focus:ring-0
+                  ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
+                `}
               />
+              <div className="flex items-center ml-2 gap-1">
+                <button
+                  onClick={() => setFormat("table")}
+                  className={`p-1.5 rounded-md ${format === "table" ? 
+                    (darkMode ? "bg-gray-700" : "bg-gray-200") : 
+                    ""}`}
+                  title="Table format"
+                >
+                  <Table className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setFormat("chat")}
+                  className={`p-1.5 rounded-md ${format === "chat" ? 
+                    (darkMode ? "bg-gray-700" : "bg-gray-200") : 
+                    ""}`}
+                  title="Chat format"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </button>
+              </div>
 
               <div className="relative">
                 <Button
