@@ -163,6 +163,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGe
     agent_id = agent_config["id"]
     user_id = agent_config["user_id"]
     num_results = agent_config["number_of_results_returned"]
+    chat_thread_id = state["chat_thread_id"]
 
     # check for custom initial search query count
     try :
