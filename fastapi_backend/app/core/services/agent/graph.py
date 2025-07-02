@@ -1,16 +1,17 @@
-import os
 from typing import List, Union
-from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langgraph.types import Send
 from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 from langchain_core.runnables import RunnableConfig
-from app.models.chat import OverallState, QueryGenerationState, ReflectionState, WebSearchState, SearchQueryList, Reflection
-from app.core.services.search_apis import ExaSearch
-from app.core.utils.llm_utils import OpenRouterChatModel
+from app.models.chat import OverallState, QueryGenerationState, ReflectionState, WebSearchState, SearchQueryList, Reflection, IntentClassifierState
+from app.core.utils.llm_utils import GeminiChatModel
 from app.db.clients import get_supabase_client
 import json
+import re
+from tavily import TavilyClient
+from app.core.config import settings
+
 
 from app.core.services.agent.configuration import Configuration
 from app.core.services.agent.prompts import (
@@ -21,10 +22,8 @@ from app.core.services.agent.prompts import (
 )
 from uuid import UUID, uuid4
 
-load_dotenv()
-
-if os.getenv("OPENROUTER_API_KEY") is None:
-    raise ValueError("OPENROUTER_API_KEY is not set")
+if settings.GOOGLE_API_KEY is None:
+    raise ValueError("GOOGLE_API_KEY is not set")
 
 supabase_client = get_supabase_client()
 
@@ -61,6 +60,73 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 
 # Nodes
+async def intent_classifier(state: OverallState, config: RunnableConfig) -> OverallState:
+    """LangGraph node that classifies the User's intent.
+    
+    Determines if the user's message requires web search or can be answered directly.
+    """
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Get the latest user message
+    latest_message = ""
+    if state["messages"]:
+        last_message = state["messages"][-1]
+        if isinstance(last_message, dict):
+            latest_message = last_message.get("content", "")
+        else:
+            latest_message = last_message.content if hasattr(last_message, "content") else ""
+    
+    # Use LLM to classify the intent
+    llm = GeminiChatModel(model="gemini-2.0-flash", temperature=0)
+    
+    # Create a prompt for intent classification
+    prompt_content = f"""
+        Classify the user's message intent. Is this a greeting, general question, or search query?
+        
+        User message: "{latest_message}"
+        
+        If this is a greeting (like hello, hi) or a simple question that doesn't require web search,
+        respond with "direct_answer".
+        
+        If this is a search query or requires looking up information, respond with "search".
+        
+        Just respond with either "direct_answer" or "search" - nothing else.
+        """
+    
+    # Get the classification
+    response = llm.invoke(prompt_content)
+    intent = "direct_answer" if "direct_answer" in response.content.lower() else "search"
+    
+    # Update the state with the classified intent
+    return OverallState(
+        intent=intent,
+        messages=state.get("messages", []),
+        search_query=state.get("search_query", []),
+        web_research_result=state.get("web_research_result", []),
+        user_id=state.get("user_id", ""),
+        agent_id=state.get("agent_config", {}).get("id", ""),
+        chat_thread_id=str(uuid4()),
+        number_of_results_returned=state.get("number_of_results_returned", 1),
+        format=state.get("format", "table"),
+        sources_gathered=state.get("sources_gathered", []),
+        initial_search_query_count=state.get("initial_search_query_count", 0),
+        research_loop_count=state.get("research_loop_count", 0),
+        max_research_loops=state.get("max_research_loops", 3),
+        agent_config=state.get("agent_config", {}),
+    )
+
+
+def continue_to_query_generation(state: OverallState):
+    """Router function that decides whether to proceed with search or direct answer."""
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    if state["intent"] == "search":
+        return "generate_query"
+    else:
+        return "finalize_answer"
+
+
 async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
     """LangGraph node that generates search queries based on the User's question.
 
@@ -79,9 +145,9 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGe
         state = state.model_dump()
 
 
-    # Use OpenRouter client
-    llm = OpenRouterChatModel(
-        model="mistralai/mistral-small-3.2-24b-instruct:free",
+    # Use Gemini client
+    llm = GeminiChatModel(
+        model="gemini-2.0-flash",
         temperature=1.0
     )
 
@@ -93,16 +159,14 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGe
     else:
         main_query = messages[0].content
         
-    chat_thread_id = str(uuid4())
-
     agent_config = state["agent_config"]
     agent_id = agent_config["id"]
     user_id = agent_config["user_id"]
-    configurable.chat_thread_id = chat_thread_id
+    num_results = agent_config["number_of_results_returned"]
 
     # check for custom initial search query count
     try :
-        initial_search_query_count = supabase_client.table("hired_agents").select("initial_search_query_count").eq("user_id", user_id).eq("agent_id", agent_id).execute().data[0]["initial_search_query_count"]    
+        initial_search_query_count = supabase_client.table("hired_agents").select("initial_search_query_count").eq("user_id", user_id).eq("id", agent_id).execute().data[0]["initial_search_query_count"]    
     except Exception as e:
         initial_search_query_count = 1
     current_date = get_current_date()
@@ -180,11 +244,11 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGe
         except Exception as e:
             print(f"Error inserting data into Supabase: {e}")
             
-        return {"search_query": search_queries, "chat_thread_id": chat_thread_id, "user_id": state["user_id"], "max_research_loops": state["max_research_loops"]}
+        return WebSearchState(search_query=search_queries, agent_id=agent_id, chat_thread_id=chat_thread_id, user_id=state["user_id"], max_research_loops=state["max_research_loops"], number_of_results_returned=num_results)
 
     except json.JSONDecodeError:
         # Fallback to a simple query if JSON parsing fails
-        return {"search_query": [{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}]}
+        return WebSearchState(search_query=[{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}], agent_id=agent_id, chat_thread_id=chat_thread_id, user_id=state["user_id"], max_research_loops=state["max_research_loops"], number_of_results_returned=num_results)
 
 
 def continue_to_web_research(state: QueryGenerationState):
@@ -195,7 +259,14 @@ def continue_to_web_research(state: QueryGenerationState):
     if hasattr(state, "model_dump"):
         state = state.model_dump()
     return [
-        Send("web_research", {"search_query": search_query, "id": int(idx)})
+        Send("web_research", WebSearchState(
+            search_query=search_query.query if hasattr(search_query, "query") else search_query,
+            id=int(idx),
+            chat_thread_id=state["chat_thread_id"],
+            user_id=state["user_id"],
+            agent_id=state["agent_id"],
+            number_of_results_returned=state["number_of_results_returned"]
+        ))
         for idx, search_query in enumerate(state["search_query"])
     ]
 
@@ -213,85 +284,137 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     Returns:
         Dictionary with state update, including sources_gathered, research_loop_count, and web_research_results
     """
-    # Configure
-    configurable = Configuration.from_runnable_config(config)
-    
     # Convert to dict if it's a Pydantic model
     if hasattr(state, "model_dump"):
+        # Get the number of results before converting to dict
+        num_results = state.number_of_results_returned
         state = state.model_dump()
+    else:
+        # Fallback if it's already a dict
+        num_results = state["number_of_results_returned"]
     
     # Initialize Exa API client
-    exa_search = ExaSearch()
+    tavily_api_key = settings.TAVILY_API_KEY
+    tavilly_search = TavilyClient(api_key=tavily_api_key)    
+    # Extract the query from the state
+    search_query = state.get("search_query") if isinstance(state, dict) else state.search_query
     
-    # Extract the query string from the search_query
-    query = ""
-    if isinstance(state["search_query"], dict):
+    if isinstance(search_query, dict):
         # Handle dictionary format
-        if "query" in state["search_query"]:
-            if isinstance(state["search_query"]["query"], list):
-                query = state["search_query"]["query"][0]
+        if "query" in search_query:
+            if isinstance(search_query["query"], list):
+                query = search_query["query"][0]
             else:
-                query = state["search_query"]["query"]
-    elif isinstance(state["search_query"], str):
+                query = search_query["query"]
+    elif isinstance(search_query, str):
         # Handle string format
-        query = state["search_query"]
+        query = search_query
+    else:
+        # Default fallback
+        query = ""
     
     print(f"Using search query: {query}")
     
     # Perform search with Exa API
-    search_results = await exa_search.search(
+    search_results = tavilly_search.search(
         query=query,
-        num_results=configurable.number_of_initial_queries,  # Configurable number of results
-        search_type="neural",
-        get_text=True,
-        get_highlights=True,
-        get_summary=True
+        max_results=state["number_of_results_returned"],
+        include_raw_content=True,
+        search_depth="basic",
+        include_domains=["linkedin.com","github.com","medium.com","twitter.com"],
+        exclude_domains=["facebook.com","instagram.com"],
+        
     )
 
     print(search_results)
     
+    # Process search results from Tavily API
+    processed_results = []
+    
+    # Handle the search results based on Tavily API structure
+    if isinstance(search_results, dict) and 'results' in search_results:
+        # Extract results from Tavily API response
+        tavily_results = search_results['results']
+        
+        for result in tavily_results:
+            processed_result = {
+                "url": result.get("url", ""),
+                "title": result.get("title", "No title"),
+                "content": result.get("content", ""),
+                "raw_content": result.get("raw_content", ""),
+                "score": result.get("relevance_score", 0.0),
+                "summary": result.get("summary", "")
+            }
+            processed_results.append(processed_result)
+    
     # Check if we need to fetch more content for any results
     urls_to_fetch = []
-    for result in search_results:
-        if result.get("url") and (not result.get("content") or len(result.get("content", "")) < 200):
+    for result in processed_results:
+        if result.get("url"):
             urls_to_fetch.append(result.get("url"))
     
     # Fetch additional content if needed
+    url_to_content = {}
     if urls_to_fetch:
-        content_results = await exa_search.get_contents(urls_to_fetch)
-        print(content_results)
-        
-        # Update search results with fetched content
-        url_to_content = {r.get("url"): r for r in content_results}
-        for i, result in enumerate(search_results):
-            url = result.get("url")
-            if url in url_to_content:
-                search_results[i]["content"] = url_to_content[url].get("content", result.get("content", ""))
-                if not search_results[i].get("summary") and url_to_content[url].get("summary"):
-                    search_results[i]["summary"] = url_to_content[url].get("summary")
+        try:
+            extraction_results = tavilly_search.extract(
+                urls=urls_to_fetch,
+                include_raw_content=True,
+                extract_depth="advanced",
+                format="text",
+            )
+            
+            # Process extraction results
+            if extraction_results:
+                # Handle the extraction result based on its structure
+                if isinstance(extraction_results, dict) and 'results' in extraction_results:
+                    # New API format
+                    for extract_result in extraction_results['results']:
+                        url = extract_result.get('url', '')
+                        if url:
+                            url_to_content[url] = extract_result
+                elif isinstance(extraction_results, list):
+                    # Old API format
+                    for extract_result in extraction_results:
+                        url = extract_result.get('url', '')
+                        if url:
+                            url_to_content[url] = extract_result
+        except Exception as e:
+            print(f"Error extracting content: {e}")
+    
+    # Update processed results with extracted content
+    for i, result in enumerate(processed_results):
+        url = result.get("url")
+        if url in url_to_content:
+            extracted_content = url_to_content[url]
+            processed_results[i]["raw_content"] = extracted_content.get("raw_content", result.get("raw_content", ""))
+            if not processed_results[i].get("content") and extracted_content.get("content"):
+                processed_results[i]["content"] = extracted_content.get("content")
     
     # Format the search results into a readable text
-    response_text = f"Research on: {state['search_query']}\n\n"
+    response_text = f"Research on: {query}\n\n"
     print(response_text)
     
     # Process search results
-    for i, result in enumerate(search_results):
-        # Use summary if available, otherwise use content
-        content_to_show = result.get("summary", "") if result.get("summary") else result.get("content", "No content")[:500]
+    for i, result in enumerate(processed_results):
+        # Use summary if available, otherwise use content or raw_content
+        content_to_show = ""
+        if result.get("content"):
+            content_to_show = content_to_show + result.get("content")
+        if result.get("raw_content"):
+            content_to_show = content_to_show + result.get("raw_content")
+        if not content_to_show:
+            content_to_show = "No content available"    
         
         response_text += f"Source {i+1}: {result.get('title', 'No title')}\n"
         response_text += f"URL: {result.get('url')}\n"
-        
-        # Add highlights if available
-        if result.get("highlights") and len(result.get("highlights", [])) > 0:
-            response_text += f"Highlights: {', '.join(result.get('highlights')[:3])}\n"
             
         response_text += f"Content: {content_to_show}\n\n"
         print(response_text)
     
     # Create citation structure
     resolved_urls = []
-    for i, result in enumerate(search_results):
+    for i, result in enumerate(processed_results):
         if "url" in result:
             resolved_urls.append({
                 "original_url": result["url"],
@@ -306,16 +429,16 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
             "segments": [{
                 "value": url_data["original_url"],
                 "short_url": url_data["short_url"],
-                "title": search_results[i].get("title", "No title") if i < len(search_results) else ""
+                "title": processed_results[i].get("title", "No title") if i < len(processed_results) else ""
             }]
         })
     
     # Add citation markers to the text
     modified_text = response_text
     for i, url_data in enumerate(resolved_urls):
-        if i < len(search_results):
+        if i < len(processed_results):
             modified_text = modified_text.replace(
-                f"URL: {search_results[i].get('url')}", 
+                f"URL: {processed_results[i].get('url')}", 
                 f"URL: {url_data['short_url']}"
             )
     
@@ -323,19 +446,17 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     sources_gathered = []
     for citation in citations:
         for item in citation["segments"]:
-            # Add more metadata to sources
-            if "id" in item:
-                idx = item["id"]
-                if idx < len(search_results):
-                    item["score"] = search_results[idx].get("score", 0.0)
-                    item["title"] = search_results[idx].get("title", "")
             sources_gathered.append(item)
 
-    return {
-        "sources_gathered": sources_gathered,
-        "search_query": [state["search_query"]],
-        "web_research_result": [modified_text],
-    }
+    return WebSearchState(
+        sources_gathered=sources_gathered,
+        search_query=[state["search_query"]],
+        web_research_result=[modified_text],
+        user_id=state["user_id"],
+        agent_id=state["agent_id"],
+        chat_thread_id=state["chat_thread_id"],
+        number_of_results_returned=num_results
+    )
 
 
 async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
@@ -377,9 +498,9 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         research_topic=research_topic,
         summaries="\n\n---\n\n".join(summaries)
     )
-    # Use OpenRouter client
-    llm = OpenRouterChatModel(
-        model="mistralai/mistral-small-3.2-24b-instruct:free",
+    # Use Gemini client
+    llm = GeminiChatModel(
+        model="gemini-2.0-flash",
         temperature=1.0
     )
     response = llm.invoke(formatted_prompt)
@@ -397,45 +518,49 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             json_str = json_match.group(0)
         else:
             # Fallback values if parsing fails
-            return {
-                "is_sufficient": False,
-                "knowledge_gap": "Unable to parse reflection response. Need more information.",
-                "follow_up_queries": [get_research_topic(state["messages"])],
-                "research_loop_count": state["research_loop_count"],
-                "number_of_ran_queries": len(state["search_query"]),
-            }
+            return Reflection(
+                is_sufficient=False,
+                knowledge_gap="Unable to parse reflection response. Need more information.",
+                follow_up_queries=[get_research_topic(state["messages"])],
+                research_loop_count=state["research_loop_count"],
+                number_of_ran_queries=len(state["search_query"]),
+                user_id=state["user_id"],
+                agent_id=state["agent_config"]["id"],
+                chat_thread_id=state["chat_thread_id"]
+            )
     else:
         json_str = json_match.group(1)
     
     try:
         result_dict = json.loads(json_str)
         
-        # Extract values with fallbacks
-        is_sufficient = result_dict.get("is_sufficient", False)
-        knowledge_gap = result_dict.get("knowledge_gap", "")
-        follow_up_queries = result_dict.get("follow_up_queries", [])
-        
-        return {
-            "is_sufficient": is_sufficient,
-            "knowledge_gap": knowledge_gap,
-            "follow_up_queries": follow_up_queries,
-            "research_loop_count": state["research_loop_count"],
-            "number_of_ran_queries": len(state["search_query"]),
-        }
+        # Create a Reflection model with values from the result_dict
+        return Reflection(
+            is_sufficient=result_dict.get("is_sufficient", False),
+            knowledge_gap=result_dict.get("knowledge_gap", ""),
+            follow_up_queries=result_dict.get("follow_up_queries", []),
+            research_loop_count=state["research_loop_count"],
+            number_of_ran_queries=len(state["search_query"]),
+            user_id=state["user_id"],
+            agent_id=state["agent_config"]["id"],
+            chat_thread_id=state["chat_thread_id"]
+        )
     except json.JSONDecodeError:
         # Fallback values if JSON parsing fails
-        return {
-            "is_sufficient": False,
-            "knowledge_gap": "Unable to parse reflection response. Need more information.",
-            "follow_up_queries": [get_research_topic(state["messages"])],
-            "research_loop_count": state["research_loop_count"],
-            "number_of_ran_queries": len(state["search_query"]),
-        }
+        return Reflection(
+            is_sufficient=False,
+            knowledge_gap="Unable to parse reflection response. Need more information.",
+            follow_up_queries=[get_research_topic(state["messages"])],
+            research_loop_count=state["research_loop_count"],
+            number_of_ran_queries=len(state["search_query"]),
+            user_id=state["user_id"],
+            agent_id=state["agent_config"]["id"],
+            chat_thread_id=state["chat_thread_id"]
+        )
 
 
 async def evaluate_research(
     state: ReflectionState,
-    config: RunnableConfig,
 ) -> OverallState:
     """LangGraph routing function that determines the next step in the research flow.
 
@@ -451,13 +576,12 @@ async def evaluate_research(
     """
     if hasattr(state, "model_dump"):
         state = state.model_dump()
-    configurable = Configuration.from_runnable_config(config)
 
-    user_id = configurable.user_id
-    agent_id = configurable.agent_id
+    user_id = state["user_id"]
+    agent_id = state["agent_id"]
 
     try:
-        max_research_loops_response = supabase_client.table("hired_agents").select("max_research_loops").eq("user_id", user_id).eq("agent_id", agent_id).execute()
+        max_research_loops_response = supabase_client.table("hired_agents").select("max_research_loops").eq("user_id", user_id).eq("id", agent_id).execute()
         max_research_loops = max_research_loops_response.data[0]["max_research_loops"]
     except Exception as e:
         max_research_loops = 1
@@ -468,10 +592,14 @@ async def evaluate_research(
         return [
             Send(
                 "web_research",
-                {
-                    "search_query": follow_up_query,
-                    "id": state["number_of_ran_queries"] + int(idx),
-                },
+                WebSearchState(
+                    search_query=follow_up_query,
+                    id=state["number_of_ran_queries"] + int(idx),
+                    chat_thread_id=state["chat_thread_id"],
+                    user_id=state["user_id"],
+                    agent_id=state["agent_id"],
+                    number_of_results_returned=state["number_of_results_returned"]
+                )
             )
             for idx, follow_up_query in enumerate(state["follow_up_queries"])
         ]
@@ -490,41 +618,71 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     Returns:
         Dictionary with state update, including running_summary key containing the formatted final summary with sources
     """
-    configurable = Configuration.from_runnable_config(config)
-
     if hasattr(state, "model_dump"):
         state = state.model_dump()
     # Format the prompt
     current_date = get_current_date()
-    formatted_prompt = answer_instructions.format(
-        current_date=current_date,
-        research_topic=get_research_topic(state["messages"]),
-        summaries="\n---\n\n".join(state["web_research_result"]),
-    )
-    agent_config = state["agent_config"]
-    user_id = agent_config["user_id"]
-    agent_id = agent_config["id"]
-    chat_thread_id = state["chat_thread_id"]
+    if state["intent"] == "search":
+        formatted_prompt = answer_instructions.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            summaries="\n---\n\n".join(state["web_research_result"]),
+            format=state.get("format", "table")
+        )
+    else:
+        formatted_prompt = answer_instructions.format(
+            current_date=current_date,
+            research_topic=state.get("messages", []),
+            summaries="",
+            format=state.get("format", "table")
+        )
+    
+    agent_config = state.get("agent_config", {})
+    user_id = agent_config.get("user_id", "")
+    agent_id = agent_config.get("id", "")
+    chat_thread_id = state.get("chat_thread_id", str(uuid4()))
 
-    # Use OpenRouter client
-    llm = OpenRouterChatModel(
-        model="mistralai/mistral-small-3.2-24b-instruct:free",
+    # Use Gemini client
+    llm = GeminiChatModel(
+        model="gemini-2.0-flash",
         temperature=0
     )
     result = llm.invoke(formatted_prompt)
     
     final_message = AIMessage(content=result.content)
     
+    # Try to parse the content as JSON if it's in JSON format and format is table
+    message_content = final_message.content
+    parsed_content = None
+    
+    # Only try to parse JSON if format is table
+    if state["format"] == "table" and "```json" in message_content:
+        try:
+            # Extract JSON from code block
+            json_match = re.search(r'```json\s*(.+?)\s*```', message_content, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+                parsed_content = json.loads(json_str)
+                # Use the parsed JSON instead of the raw string for database storage
+                message_content = parsed_content
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON from LLM response: {e}")
+            # Fall back to using the original content
+    
     try:
         # Use the global Supabase client directly
         supabase_client.table("chat_messages").update({
-            "message": json.dumps(final_message.content), 
+            "message": message_content, 
             "sources_gathered": state["sources_gathered"]
         }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).execute()
     except Exception as e:
         print(f"Error inserting data into Supabase: {e}")
         # Continue with the flow even if database operation fails
         
+    # For the return value, we need to ensure we're returning a proper message object
+    # If we're in chat format, return the original message
+    # If we're in table format and successfully parsed JSON, return the original message too
+    # The frontend will handle displaying the content appropriately based on format
     return {
         "messages": [final_message],
         "sources_gathered": state["sources_gathered"],
@@ -535,17 +693,22 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
 builder = StateGraph(OverallState, config_schema=Configuration)
 
 # Define the nodes we will cycle between
+builder.add_node("intent_classifier", intent_classifier)
 builder.add_node("generate_query", generate_query)
 builder.add_node("web_research", web_research)
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
-# Set the entrypoint as `generate_query`
+# Set the entrypoint as `intent_classifier`
 # This means that this node is the first one called
-builder.add_edge(START, "generate_query")
+builder.add_edge(START, "intent_classifier")
 # Add conditional edge to continue with search queries in a parallel branch
 builder.add_conditional_edges(
     "generate_query", continue_to_web_research, ["web_research"]
+)
+
+builder.add_conditional_edges(
+    "intent_classifier", continue_to_query_generation, ["generate_query", "finalize_answer"]
 )
 # Reflect on the web research
 builder.add_edge("web_research", "reflection")

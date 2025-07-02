@@ -172,6 +172,7 @@ export const apiClient = {
     userId: string,
     agentId: string,
     message: string,
+    format: string = "table",
     onUpdate: (update: StreamingChatUpdate) => void
   ): Promise<void> {
     const payload: StreamingChatRequest = {
@@ -179,6 +180,7 @@ export const apiClient = {
       agent_id: agentId,
       messages: message,
       stream: true,
+      format: format,
     };
 
     // Use fetch directly for SSE support

@@ -85,6 +85,7 @@ export interface ChatRequest {
   user_id: string;
   agent_id: string;
   messages: string | Array<{ content: string; type: string }>;
+  format?: string;
 }
 
 export interface StreamingChatRequest extends ChatRequest {

@@ -83,7 +83,7 @@ class ChatService:
             raise
 
 
-    async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]]) -> 'ChatResponse':
+    async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table") -> 'ChatResponse':
         """
         Chat with the research agent
         
@@ -124,7 +124,9 @@ class ChatService:
                 "research_loop_count": 0,
                 "web_research_result": [],
                 "sources_gathered": [],
-                "search_query": []
+                "search_query": [],
+                "number_of_results_returned":1,
+                "format": format
             }
             
             # Execute the graph
@@ -136,7 +138,7 @@ class ChatService:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
             
-    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]]):
+    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table"):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
         
@@ -175,13 +177,15 @@ class ChatService:
                 "messages": formatted_messages,
                 "agent_config": agent_config,
                 "user_id": user_id,
-                "initial_search_query_count": 0,
+                "initial_search_query_count": agent_config["initial_search_query_count"],
                 "research_loop_count": 0,
-                "max_research_loops": 0,
+                "max_research_loops": agent_config["max_research_loops"],
                 "chat_thread_id": None,
                 "web_research_result": [],
                 "sources_gathered": [],
-                "search_query": []
+                "search_query": [],
+                "number_of_results_returned":agent_config["number_of_results_returned"],
+                "format": format
             }
             
             # Use LangGraph's astream method to stream results
