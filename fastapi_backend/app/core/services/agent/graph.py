@@ -148,7 +148,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGe
     # Use Gemini client
     llm = GeminiChatModel(
         model="gemini-2.0-flash",
-        temperature=1.0
+        temperature=0
     )
 
     messages = state["messages"]
@@ -321,9 +321,9 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         query=query,
         max_results=state["number_of_results_returned"],
         include_raw_content=True,
-        search_depth="basic",
-        include_domains=["linkedin.com","github.com","medium.com","twitter.com"],
-        exclude_domains=["facebook.com","instagram.com"],
+        search_depth="advanced",
+        include_domains=[],
+        exclude_domains=[],
         
     )
 
@@ -343,8 +343,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                 "title": result.get("title", "No title"),
                 "content": result.get("content", ""),
                 "raw_content": result.get("raw_content", ""),
-                "score": result.get("relevance_score", 0.0),
-                "summary": result.get("summary", "")
+                "score": result.get("score", 0.0),
             }
             processed_results.append(processed_result)
     
@@ -502,7 +501,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     # Use Gemini client
     llm = GeminiChatModel(
         model="gemini-2.0-flash",
-        temperature=1.0
+        temperature=0
     )
     response = llm.invoke(formatted_prompt)
     

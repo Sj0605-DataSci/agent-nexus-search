@@ -93,6 +93,7 @@ Instructions:
 - The user wants answer in from of {format}
 - You have access to all the information gathered from the previous steps.
 - You have access to the user's question.
+- Go in depth and provide a detailed answer.
 - Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
 
 User Context:
@@ -119,7 +120,7 @@ IMPORTANT: You must follow the correct output format based on the specified form
    DO NOT use JSON format at all. Instead, provide a natural conversational response.
    Write in plain text as if you're having a conversation with the user.
    Include relevant information from the sources and cite them properly.
-   Be concise, helpful, and natural in your response.
+   Be natural in your response.
 
 For example if you don't have any content and format is "table", just fill the fields with NA:
 ```json
