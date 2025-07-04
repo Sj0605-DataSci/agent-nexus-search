@@ -127,7 +127,7 @@ def continue_to_query_generation(state: OverallState):
         return "finalize_answer"
 
 
-async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
+async def generate_query(state: OverallState, config: RunnableConfig) -> WebSearchState:
     """LangGraph node that generates search queries based on the User's question.
 
     Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
@@ -252,7 +252,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> QueryGe
         return WebSearchState(search_query=[{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}], agent_id=agent_id, chat_thread_id=chat_thread_id, user_id=state["user_id"], max_research_loops=state["max_research_loops"], number_of_results_returned=num_results)
 
 
-def continue_to_web_research(state: QueryGenerationState):
+def continue_to_web_research(state: WebSearchState):
     """LangGraph node that sends the search queries to the web research node.
 
     This is used to spawn n number of web research nodes, one for each search query.
@@ -496,6 +496,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     # Format the prompt with all available context
     formatted_prompt = reflection_instructions.format(
         research_topic=research_topic,
+        agent_config=state["agent_config"],
         summaries="\n\n---\n\n".join(summaries)
     )
     # Use Gemini client
@@ -625,6 +626,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     if state["intent"] == "search":
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
+            agent_config=state["agent_config"],
             research_topic=get_research_topic(state["messages"]),
             summaries="\n---\n\n".join(state["web_research_result"]),
             format=state.get("format", "table")
@@ -632,6 +634,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     else:
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
+            agent_config=state["agent_config"],
             research_topic=state.get("messages", []),
             summaries="",
             format=state.get("format", "table")

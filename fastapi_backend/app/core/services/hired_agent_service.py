@@ -163,7 +163,7 @@ class HiredAgentService:
     def delete_hired_agent(self, agent_id: UUID, current_user: Profile) -> bool:
         """Delete a hired agent"""
         try:
-            db_agent = self.db.query(HiredAgent).filter(HiredAgent.id == agent_id).first()
+            db_agent = self.db.query(HiredAgent).filter(HiredAgent.id == agent_id).filter(HiredAgent.can_hire_unhire == True).first()
             if db_agent is None:
                 return False
             

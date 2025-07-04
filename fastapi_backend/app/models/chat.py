@@ -31,33 +31,31 @@ class OverallState(BaseModel):
     intent: str = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
     format: str = Field(default="table", description="Response format: 'table' or 'chat'")
     sources_gathered: Annotated[list, operator.add] = Field(
-        description="A list of sources used in the research."
+        description="A list of sources used in the research.",
+        default_factory=list
     )
-    initial_search_query_count: int = Field(
-        description="The number of initial search queries to be used for web research."
+    research_loop_count: Annotated[int, lambda x, y: y or x] = Field(
+        description="The number of research loops that have been executed.",
+        default=0
     )
-    research_loop_count: int = Field(
-        description="The number of research loops that have been executed."
-    )
-    max_research_loops: int = Field(
+    max_research_loops: Annotated[int, lambda x, y: y or x] = Field(
         description="The maximum number of research loops that can be executed."
     )
-    user_id: str = Field(
+    user_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the user."
     )
     agent_config: Dict[str, Any] = Field(
         description="The configuration for the agent."
     )
-    chat_thread_id: Optional[str] = Field(
+    chat_thread_id: Annotated[Optional[str], lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
     )
-    number_of_results_returned: int = Field(
+    number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of results returned."
     )
     format: str = Field(
         description="The format of the response."
     )
-
 
 class ReflectionState(BaseModel):
     is_sufficient: bool = Field(
@@ -69,25 +67,25 @@ class ReflectionState(BaseModel):
     follow_up_queries: Annotated[list, operator.add] = Field(
         description="A list of follow-up queries to address the knowledge gap."
     )
-    research_loop_count: int = Field(
+    research_loop_count: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of research loops that have been executed."
     )
-    number_of_ran_queries: int = Field(
+    number_of_ran_queries: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of queries that have been executed."
     )
-    max_research_loops: int = Field(
+    max_research_loops: Annotated[int, lambda x, y: y or x] = Field(
         description="The maximum number of research loops that have been executed."
     )
-    number_of_results_returned: int = Field(
+    number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of results returned."
     )
-    user_id: str = Field(
+    user_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the user."
     )
-    agent_id: str = Field(
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the agent."
     )
-    chat_thread_id: str = Field(
+    chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
     )
 
@@ -105,22 +103,22 @@ class QueryGenerationState(BaseModel):
     search_query: list[Query] = Field(
         description="A list of search queries to be used for web research."
     )
-    max_research_loops: int = Field(
+    max_research_loops: Annotated[int, lambda x, y: y or x] = Field(
         description="The maximum number of research loops that have been executed."
     )
-    chat_thread_id: str = Field(
+    chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
     )
-    user_id: str = Field(
+    user_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the user."
     )
-    agent_id: str = Field(
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the agent."
     )
-    initial_search_query_count: int = Field(
+    initial_search_query_count: Annotated[int, lambda x, y: y or x] = Field(
         description="The initial search query count."
     )
-    number_of_results_returned: int = Field(
+    number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of results returned."
     )
 
@@ -133,27 +131,27 @@ class WebSearchState(BaseModel):
         description="The ID of the web search. Can be a string or integer.",
         default=None
     )
-    chat_thread_id: str = Field(
+    chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
     )
-    user_id: str = Field(
+    user_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the user."
     )
-    agent_id: str = Field(
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the agent."
     )
-    initial_search_sub_query_count: int = Field(
+    initial_search_sub_query_count: Annotated[int, lambda x, y: y or x] = Field(
         description="The initial search sub query count.",
         default=0
     )
-    number_of_results_returned: int = Field(
+    number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of results returned."
     )
-    sources_gathered: List[Any] = Field(
+    sources_gathered: Annotated[List[Any], lambda x, y: y or x] = Field(
         description="A list of sources used in the research.",
         default_factory=list
     )
-    web_research_result: List[str] = Field(
+    web_research_result: Annotated[List[str], lambda x, y: y or x] = Field(
         description="A list of web research results.",
         default_factory=list
     )
@@ -180,22 +178,22 @@ class Reflection(BaseModel):
     knowledge_gap: str = Field(
         description="A description of what information is missing or needs clarification."
     )
-    follow_up_queries: List[str] = Field(
+    follow_up_queries: Annotated[List[str], lambda x, y: y or x] = Field(
         description="A list of follow-up queries to address the knowledge gap."
     )
-    number_of_ran_queries: int = Field(
+    number_of_ran_queries: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of queries that have been executed."
     )
-    research_loop_count: int = Field(
+    research_loop_count: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of research loops that have been executed."
     )
-    user_id: str = Field(
+    user_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the user."
     )
-    agent_id: str = Field(
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the agent."
     )
-    chat_thread_id: str = Field(
+    chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
     )
 
@@ -224,10 +222,10 @@ class StreamingChatRequest(ChatRequest):
 
 class ChatResponse(BaseModel):
     """Model for chat response to client"""
-    messages: List[Dict[str, Any]] = Field(description="List of messages including the new response")
-    sources_gathered: List[Source] = Field(description="Sources used in the research", default_factory=list)
-    search_query: List[str] = Field(description="Search queries used", default_factory=list)
-    web_research_result: List[str] = Field(description="Research results", default_factory=list)
+    messages: Annotated[List[Dict[str, Any]], lambda x, y: y or x] = Field(description="List of messages including the new response")
+    sources_gathered: Annotated[List[Source], lambda x, y: y or x] = Field(description="Sources used in the research", default_factory=list)
+    search_query: Annotated[List[str], lambda x, y: y or x] = Field(description="Search queries used", default_factory=list)
+    web_research_result: Annotated[List[str], lambda x, y: y or x] = Field(description="Research results", default_factory=list)
 
 
 class StreamingChatUpdate(BaseModel):

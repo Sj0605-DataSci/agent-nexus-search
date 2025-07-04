@@ -6,20 +6,19 @@ def get_current_date():
     return datetime.now().strftime("%B %d, %Y")
 
 
-query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for an advanced automated web research tool capable of analyzing complex results, following links, and synthesizing information.
+query_writer_instructions = query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for an advanced automated web research tool capable of analyzing complex results, following links, and synthesizing information.
 
 You are {agent_config}
 
-
 Instructions:
 - Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
-- Each query should focus on one specific aspect of the original question.
+- Each query should focus on the original question.
+- Queries will be always regarding finding people, if you got HR config, then you are hiring for a position, if sales then you are looking for leads to sell to.
 - Don't produce more than {number_queries} queries.
-- Queries should be diverse, if the topic is broad, generate more than 1 query.
-- Don't generate multiple similar queries, 1 is enough.
-- Query should ensure that the most current information is gathered. The current date is {current_date}.
+- Don't generate multiple similar queries.
+- Query should ensure that the most current and relevant public data about people is gathered. The current date is {current_date}.
 - Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
-- Don't want your think tags or big response before JSON object
+- Don't include your own explanation outside the JSON object.
 
 Format: 
 - Format your response as a JSON object with ALL two of these exact keys:
@@ -28,55 +27,42 @@ Format:
 
 Example:
 
-Topic: What revenue grew more last year apple stock or the number of people buying an iphone
+Topic: Find experienced React developers in Berlin with GitHub activity or public
 ```json
 {{
-    "rationale": "To answer this comparative growth question accurately, we need specific data points on Apple's stock performance and iPhone sales metrics. These queries target the precise financial information needed: company revenue trends, product-specific unit sales figures, and stock price movement over the same fiscal period for direct comparison.",
-    "query": ["Apple total revenue growth fiscal year 2024", "iPhone unit sales growth fiscal year 2024", "Apple stock price growth fiscal year 2024"],
+    "rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
+    "query": ["site:github.com \"React developer\" Berlin", "intitle:portfolio \"React developer\" Berlin -jobs -job", "\"React developer\" Berlin site:linkedin.com/in", "\"Frontend developer\" React Tailwind site:about.me OR site:behance.net"]
 }}
 ```
 
-Context: {research_topic}"""
+Context: {research_topic}
 
 
-web_searcher_instructions = """Conduct targeted Google Searches to gather the most recent, credible information on "{research_topic}" and synthesize it into a verifiable text artifact.
-
-Instructions:
-- Query should ensure that the most current information is gathered. The current date is {current_date}.
-- Conduct multiple, diverse searches to gather comprehensive information.
-- Consolidate key findings while meticulously tracking the source(s) for each specific piece of information.
-- The output should be a well-written summary or report based on your search findings. 
-- Only include the information found in the search results, don't make up any information.
-
-Research Topic:
-{research_topic}
 """
 
 reflection_instructions = """You are an expert research assistant analyzing summaries about "{research_topic}".
 
 Instructions:
-- Identify knowledge gaps or areas that need deeper exploration and generate a follow-up query. (1 or multiple).
-- If provided summaries are sufficient to answer the user's question, don't generate a follow-up query.
-- If there is a knowledge gap, generate a follow-up query that would help expand your understanding.
-- Focus on technical details, implementation specifics, or emerging trends that weren't fully covered.
+- You can use persona of {agent_config} to generate the follow-up queries.
+- Follow up queries should always be regarding finding people.
+- Your job is to analyze if the provided summaries are **sufficient to fulfill the research objective**.
+- If not, identify what key information is missing or unclear (knowledge gap).
+- Then generate one or more **follow-up search queries** to address that knowledge gap.
 
 Requirements:
-- Ensure the follow-up query is self-contained and includes necessary context for web search.
+- If the summaries are sufficient, return "is_sufficient": true, and leave "knowledge_gap" as an empty string and "follow_up_queries" as an empty list.
+- If not, return "is_sufficient": false, include a short explanation in "knowledge_gap", and one or more focused queries in "follow_up_queries".
 
 Output Format:
-- Always return the JSON object. Nothing before JSON or after JSON.
-- Don't want your think tags or big response before JSON object
-- Format your response as a JSON object with these exact keys:
-   - "is_sufficient": true or false
-   - "knowledge_gap": Describe what information is missing or needs clarification
-   - "follow_up_queries": Write a specific question to address this gap
+- Always return a JSON object with the exact three keys below.
+- Do not include any commentary outside the JSON.
 
 Example:
 ```json
 {{
-    "is_sufficient": true, // or false
-    "knowledge_gap": "The summary lacks information about performance metrics and benchmarks", // "" if is_sufficient is true
-    "follow_up_queries": ["What are typical performance benchmarks and metrics used to evaluate [specific technology]?"] // [] if is_sufficient is true
+    "is_sufficient": false,
+    "knowledge_gap": "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
+    "follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
 }}
 ```
 
@@ -89,6 +75,7 @@ Summaries:
 answer_instructions = """Generate a high-quality answer to the user's question based on the provided summaries.
 
 Instructions:
+- You are {agent_config}
 - The current date is {current_date}.
 - The user wants answer in from of {format}
 - You have access to all the information gathered from the previous steps.

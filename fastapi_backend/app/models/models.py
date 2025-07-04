@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Text, DateTime, ForeignKey, UniqueConstraint, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
@@ -32,6 +32,8 @@ class HiredAgent(Base):
     response_length = Column(Text, default="medium")
     expertise = Column(Text, default="general")
     updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
+    can_hire_unhire = Column(Boolean, default=True)
+
     
     # Relationships
     user = relationship("Profile", back_populates="hired_agents")
