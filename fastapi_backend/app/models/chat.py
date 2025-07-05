@@ -10,13 +10,13 @@ import operator
 
 class IntentClassifierState(BaseModel):
     """State for the intent classifier node."""
-    intent: str = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
-    user_id: str = Field(default="", description="User ID")
-    agent_id: str = Field(default="", description="Agent ID")
-    chat_thread_id: str = Field(default="", description="Chat thread ID")
-    number_of_results_returned: int = Field(default=3, description="Number of results to return")
-    format: str = Field(default="table", description="Response format: 'table' or 'chat'")
-    messages: List[Any] = Field(default_factory=list, description="Messages in the conversation")
+    intent: Annotated[str, lambda x, y: y or x] = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
+    user_id: Annotated[str, lambda x, y: y or x] = Field(default="", description="User ID")
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(default="", description="Agent ID")
+    chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(default="", description="Chat thread ID")
+    number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(default=3, description="Number of results to return")
+    format: Annotated[str, lambda x, y: y or x] = Field(default="table", description="Response format: 'table' or 'chat'")
+    messages: Annotated[List[Any], lambda x, y: y or x] = Field(default_factory=list, description="Messages in the conversation")
 
 class OverallState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
@@ -28,8 +28,8 @@ class OverallState(BaseModel):
     web_research_result: Annotated[list, operator.add] = Field(
         description="A list of web research results."
     )
-    intent: str = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
-    format: str = Field(default="table", description="Response format: 'table' or 'chat'")
+    intent: Annotated[str, lambda x, y: y or x] = Field(default="search", description="The classified intent: 'search' or 'direct_answer'")
+    format: Annotated[str, lambda x, y: y or x] = Field(default="table", description="Response format: 'table' or 'chat'")
     sources_gathered: Annotated[list, operator.add] = Field(
         description="A list of sources used in the research.",
         default_factory=list
@@ -44,7 +44,7 @@ class OverallState(BaseModel):
     user_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the user."
     )
-    agent_config: Dict[str, Any] = Field(
+    agent_config: Annotated[Dict[str, Any], lambda x, y: y or x] = Field(
         description="The configuration for the agent."
     )
     chat_thread_id: Annotated[Optional[str], lambda x, y: y or x] = Field(
@@ -53,15 +53,28 @@ class OverallState(BaseModel):
     number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(
         description="The number of results returned."
     )
-    format: str = Field(
-        description="The format of the response."
+    world_connections: Annotated[str, lambda x, y: y or x] = Field(
+        description="The world connections to be used."
+    )
+    sql_queries: Annotated[Optional[list], operator.add] = Field(
+        description="The SQL queries to be used for web research.",
+        default_factory=list
     )
 
 class ReflectionState(BaseModel):
-    is_sufficient: bool = Field(
+    messages: Annotated[list, add_messages] = Field(
+        description="A list of messages in the conversation."
+    )
+    intent: Annotated[str, lambda x, y: y or x] = Field(
+        description="The intent of the web search."
+    )
+    format: Annotated[str, lambda x, y: y or x] = Field(
+        description="The intent of the web search."
+    )
+    is_sufficient: Annotated[bool, lambda x, y: y or x] = Field(
         description="Whether the provided summaries are sufficient to answer the user's question."
     )
-    knowledge_gap: str = Field(
+    knowledge_gap: Annotated[str, lambda x, y: y or x] = Field(
         description="A description of what information is missing or needs clarification."
     )
     follow_up_queries: Annotated[list, operator.add] = Field(
@@ -88,19 +101,25 @@ class ReflectionState(BaseModel):
     chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
     )
+    world_connections: Annotated[str, lambda x, y: y or x] = Field(
+        description="The world connections to be used."
+    )
+    agent_config: Annotated[Dict[str, Any], lambda x, y: y or x] = Field(
+        description="The agent configuration."
+    )
 
 
 class Query(BaseModel):
-    query: str = Field(
+    query: Annotated[str, lambda x, y: y or x] = Field(
         description="The search query to be used for web research."
     )
-    rationale: str = Field(
+    rationale: Annotated[str, lambda x, y: y or x] = Field(
         description="A brief explanation of why this query is relevant to the research topic."
     )
 
 
 class QueryGenerationState(BaseModel):
-    search_query: list[Query] = Field(
+    search_query: Annotated[list[Query], lambda x, y: y or x] = Field(
         description="A list of search queries to be used for web research."
     )
     max_research_loops: Annotated[int, lambda x, y: y or x] = Field(
@@ -124,10 +143,23 @@ class QueryGenerationState(BaseModel):
 
 
 class WebSearchState(BaseModel):
-    search_query: Any = Field(
+    messages: Annotated[list, add_messages] = Field(
+        description="A list of messages in the conversation."
+    )
+    intent: Annotated[str, lambda x, y: y or x] = Field(
+        description="The intent of the web search.", default="search"
+    )
+    format: Annotated[str, lambda x, y: y or x] = Field(
+        description="The format of the web search."
+    )
+    search_query: Annotated[Any, lambda x, y: y or x] = Field(
         description="The search query to be used for web research. Can be a string, list, or dictionary."
     )
-    id: Optional[Union[str, int]] = Field(
+    sql_queries: Annotated[Optional[list], operator.add] = Field(
+        description="The SQL queries to be used for web research.",
+        default_factory=list
+    )
+    id: Annotated[Optional[Union[str, int]], lambda x, y: y or x] = Field(
         description="The ID of the web search. Can be a string or integer.",
         default=None
     )
@@ -155,27 +187,34 @@ class WebSearchState(BaseModel):
         description="A list of web research results.",
         default_factory=list
     )
+    world_connections: Annotated[str, lambda x, y: y or x] = Field(
+        description="The world connections to be used.",
+        default="world"
+    )
+    agent_config: Annotated[Dict[str, Any], lambda x, y: y or x] = Field(
+        description="The configuration for the agent."
+    )
 
 
 @dataclass(kw_only=True)
 class SearchStateOutput:
-    running_summary: str = field(default=None)  # Final report
+    running_summary: Annotated[str, lambda x, y: y or x] = field(default=None)  # Final report
 
 
 class SearchQueryList(BaseModel):
-    query: List[str] = Field(
+    query: Annotated[List[str], lambda x, y: y or x] = Field(
         description="A list of search queries to be used for web research."
     )
-    rationale: str = Field(
+    rationale: Annotated[str, lambda x, y: y or x] = Field(
         description="A brief explanation of why these queries are relevant to the research topic."
     )
 
 
 class Reflection(BaseModel):
-    is_sufficient: bool = Field(
+    is_sufficient: Annotated[bool, lambda x, y: y or x] = Field(
         description="Whether the provided summaries are sufficient to answer the user's question."
     )
-    knowledge_gap: str = Field(
+    knowledge_gap: Annotated[str, lambda x, y: y or x] = Field(
         description="A description of what information is missing or needs clarification."
     )
     follow_up_queries: Annotated[List[str], lambda x, y: y or x] = Field(
@@ -209,15 +248,19 @@ class Source(BaseModel):
 
 class ChatRequest(BaseModel):
     """Model for chat request from client"""
-    user_id: str = Field(description="ID of the user")
-    agent_id: str = Field(description="ID of the agent being used")
-    messages: Union[str, List[Dict[str, Any]]] = Field(description="Message content or list of messages in the conversation")
-    format: str = Field(description="The format of the response.", default="table")
+    user_id: Annotated[str, lambda x, y: y or x] = Field(description="ID of the user")
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(description="ID of the agent being used")
+    messages: Annotated[Union[str, List[Dict[str, Any]]], lambda x, y: y or x] = Field(description="Message content or list of messages in the conversation")
+    format: Annotated[str, lambda x, y: y or x] = Field(description="The format of the response.", default="table")
+    search_mode: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="basic")
+    world_connections: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="world")
 
 
 class StreamingChatRequest(ChatRequest):
     """Model for streaming chat request from client"""
-    stream: bool = Field(description="Whether to stream the response", default=True)
+    stream: Annotated[bool, lambda x, y: y or x] = Field(description="Whether to stream the response", default=True)
+    search_mode: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="basic")
+    world_connections: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="world")
 
 
 class ChatResponse(BaseModel):

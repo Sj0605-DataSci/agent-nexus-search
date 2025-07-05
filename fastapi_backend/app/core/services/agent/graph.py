@@ -11,17 +11,20 @@ import json
 import re
 from tavily import TavilyClient
 from app.core.config import settings
-
-
+import json
+import re   
 from app.core.services.agent.configuration import Configuration
 from app.core.services.agent.prompts import (
     get_current_date,
     query_writer_instructions,
     reflection_instructions,
     answer_instructions,
+    optimised_query_instructions,
+    sql_query_instructions,
+    reflection_instructions_sql,
+    answer_instructions_sql
 )
 from uuid import UUID, uuid4
-
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
 
@@ -114,6 +117,8 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
         research_loop_count=state.get("research_loop_count", 0),
         max_research_loops=state.get("max_research_loops", 3),
         agent_config=state.get("agent_config", {}),
+        world_connections=state.get("world_connections", "world"),
+        sql_queries=state.get("sql_queries", []),
     )
 
 
@@ -140,7 +145,6 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
     Returns:
         Dictionary with state update, including search_query key containing the generated queries
     """
-    configurable = Configuration.from_runnable_config(config)
     if hasattr(state, "model_dump"):
         state = state.model_dump()
 
@@ -171,86 +175,108 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
     except Exception as e:
         initial_search_query_count = 1
     current_date = get_current_date()
-    formatted_prompt = query_writer_instructions.format(
-        current_date=current_date,
-        research_topic=get_research_topic(state["messages"]),
-        agent_config=agent_config,
-        number_queries=initial_search_query_count,
+
+    if state["world_connections"]=="world":
+        formatted_prompt = query_writer_instructions.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            agent_config=agent_config,
+            number_queries=initial_search_query_count,
+    )
+    elif state["world_connections"]=="connections":
+        formatted_prompt = optimised_query_instructions.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            number_queries=initial_search_query_count,
     )
     
     # Generate the search queries
     response = llm.invoke(formatted_prompt)
-    print(response)
-    
-    # Parse the JSON response manually
-    import json
-    import re
-    
     print(f"Raw response: {response.content}")
     
-    # First try to extract JSON from the response if it's in a code block
-    json_match = re.search(r'```json\s*(.+?)\s*```', response.content, re.DOTALL)
-    if json_match:
-        json_str = json_match.group(1)
-    else:
-        # Try to find JSON without code block markers
-        json_match = re.search(r'\{[\s\S]*?\}', response.content, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-        else:
-            # Fallback to a simple query if parsing fails
-            print("No JSON found in response, using fallback")
-            return {"search_query": [{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}]}
-    
-    print(f"Extracted JSON string: {json_str}")
-    
+    # Extract JSON from response
     try:
-        # Clean the string - replace escaped newlines, handle single quotes
-        json_str = json_str.replace('\n', ' ').replace('\\n', ' ')
+        # Try to extract JSON from code block first
+        json_match = re.search(r'```json\s*(.+?)\s*```', response.content, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1).strip()
+        else:
+            # Try to find JSON object directly
+            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+            else:
+                raise ValueError("No JSON found")
         
-        # Try to parse as is
-        try:
-            result_dict = json.loads(json_str)
-        except json.JSONDecodeError:
-            # If that fails, try to fix common issues
-            # Replace single quotes with double quotes for JSON compliance
-            json_str = re.sub(r"'([^']*)'\s*:", r'"\1":', json_str)
-            json_str = re.sub(r":\s*'([^']*)'(,|\})", r':"\1"\2', json_str)
-            result_dict = json.loads(json_str)
-            
-        queries = result_dict.get("query", [])
-        sub_query_count = len(queries)
-        rationale = result_dict.get("rationale", "")
+        print(f"Extracted JSON: {json_str}")
         
-        # Convert to the expected format
+        # Parse JSON
+        response_data = json.loads(json_str)
+        
+        # Convert to expected format
         search_queries = []
-        sub_queries = []
-        for query in queries:
-            search_queries.append({"query": query, "rationale": rationale})
-            sub_queries.append(query)
+        if isinstance(response_data, dict) and "query" in response_data:
+            # Handle the expected format: {"rationale": "...", "query": [...]}
+            queries_list = response_data["query"]
+            rationale = response_data.get("rationale", "Optimized search query for finding relevant professionals")
+            
+            if isinstance(queries_list, list):
+                for query in queries_list:
+                    search_queries.append({
+                        "query": query,
+                        "rationale": rationale
+                    })
+            else:
+                # Single query
+                search_queries.append({
+                    "query": queries_list,
+                    "rationale": rationale
+                })
+        else:
+            # Fallback: treat as list of queries
+            queries_list = response_data if isinstance(response_data, list) else [response_data]
+            for query in queries_list:
+                search_queries.append({
+                    "query": query, 
+                    "rationale": "Optimized search query for finding relevant professionals"
+                })
         
-        if not search_queries:
-            # Fallback if no queries were found
-            search_queries = [{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}]
-        
+        # Log to Supabase
         try:
-            # Use the global Supabase client directly
+            # Extract just the query strings for logging
+            query_strings = [q["query"] for q in search_queries]
             supabase_client.table("chat_messages").insert({
                 "user_id": user_id, 
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id, 
-                "sub_queries": sub_queries, 
+                "sub_queries": query_strings, 
                 "main_query": main_query
             }).execute()
         except Exception as e:
             print(f"Error inserting data into Supabase: {e}")
-            
-        return WebSearchState(search_query=search_queries, agent_id=agent_id, chat_thread_id=chat_thread_id, user_id=state["user_id"], max_research_loops=state["max_research_loops"], number_of_results_returned=num_results)
-
-    except json.JSONDecodeError:
-        # Fallback to a simple query if JSON parsing fails
-        return WebSearchState(search_query=[{"query": get_research_topic(state["messages"]), "rationale": "Direct search based on research topic."}], agent_id=agent_id, chat_thread_id=chat_thread_id, user_id=state["user_id"], max_research_loops=state["max_research_loops"], number_of_results_returned=num_results)
-
+        
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"JSON parsing failed: {e}. Using fallback query.")
+        search_queries = [{
+            "query": get_research_topic(state["messages"]), 
+            "rationale": "Direct search based on research topic."
+        }]
+    
+    # Return WebSearchState
+    return WebSearchState(
+        messages=state["messages"],
+        intent=state["intent"],
+        format=state["format"],
+        search_query=search_queries, 
+        agent_id=agent_id, 
+        agent_config=agent_config,
+        sql_queries=[],
+        chat_thread_id=chat_thread_id, 
+        user_id=state["user_id"], 
+        max_research_loops=state["max_research_loops"], 
+        number_of_results_returned=num_results, 
+        world_connections=state["world_connections"]
+    )
 
 def continue_to_web_research(state: WebSearchState):
     """LangGraph node that sends the search queries to the web research node.
@@ -259,13 +285,39 @@ def continue_to_web_research(state: WebSearchState):
     """
     if hasattr(state, "model_dump"):
         state = state.model_dump()
-    return [
-        Send("web_research", WebSearchState(
+
+    if state["world_connections"] == "world":       
+        return [
+            Send("web_research", WebSearchState(
+            messages=state["messages"],
             search_query=search_query.query if hasattr(search_query, "query") else search_query,
+            intent=state["intent"],
+            format=state["format"],
             id=int(idx),
+            sql_queries=[],
             chat_thread_id=state["chat_thread_id"],
             user_id=state["user_id"],
             agent_id=state["agent_id"],
+            agent_config=state["agent_config"],
+            world_connections=state["world_connections"],
+            number_of_results_returned=state["number_of_results_returned"]
+        ))
+        for idx, search_query in enumerate(state["search_query"])
+    ]
+    elif state["world_connections"] == "connections":
+        return [
+            Send("sql_query_generation", WebSearchState(
+            messages=state["messages"],
+            search_query=search_query.query if hasattr(search_query, "query") else search_query,
+            intent=state["intent"],
+            format=state["format"],
+            id=int(idx),
+            sql_queries=[],
+            chat_thread_id=state["chat_thread_id"],
+            user_id=state["user_id"],
+            agent_id=state["agent_id"],
+            agent_config=state["agent_config"],
+            world_connections=state["world_connections"],
             number_of_results_returned=state["number_of_results_returned"]
         ))
         for idx, search_query in enumerate(state["search_query"])
@@ -448,16 +500,180 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         for item in citation["segments"]:
             sources_gathered.append(item)
 
-    return WebSearchState(
+    return OverallState(
         sources_gathered=sources_gathered,
-        search_query=[state["search_query"]],
+        intent=state["intent"],
+        messages=state.get("messages", []),
+        max_research_loops=state.get("max_research_loops", 0),
+        agent_config=state.get("agent_config", {}),
+        world_connections=state.get("world_connections", ""),
+        format=state.get("format", ""),
+        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else [state.get("search_query", [])],
+        sql_queries=state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])],
         web_research_result=[modified_text],
-        user_id=state["user_id"],
-        agent_id=state["agent_id"],
-        chat_thread_id=state["chat_thread_id"],
+        user_id=state.get("user_id", ""),
+        agent_id=state.get("agent_id", ""),
+        chat_thread_id=state.get("chat_thread_id", ""),
         number_of_results_returned=num_results
     )
 
+async def sql_query_generation(state:WebSearchState) -> OverallState:
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+
+    sql_queries = []
+    llm = GeminiChatModel(
+        model="gemini-2.0-flash",
+        temperature=0
+    )
+
+    # Handle both single dict and list of dicts for search_query
+    search_queries = state["search_query"]
+    if isinstance(search_queries, dict):
+        search_queries = [search_queries]  # Convert single dict to list
+    
+    for idx, search_query in enumerate(search_queries):
+        # Extract the actual query string from the dictionary
+        query_text = search_query["query"] if isinstance(search_query, dict) else search_query
+        print(f"Processing query: {query_text}")
+        
+        formatted_prompt = sql_query_instructions.format(
+            user_id=state["user_id"],
+            subquery=query_text,
+            number_of_results_returned=state["number_of_results_returned"]
+            )
+    
+        # Generate the search queries
+        response = llm.invoke(formatted_prompt)
+    
+        # Access the response content correctly
+        if hasattr(response, 'content'):
+            sql_query = response.content.strip()
+        elif hasattr(response, 'text'):
+            sql_query = response.text.strip() if callable(response.text) else response.text
+        else:
+            sql_query = str(response).strip()
+            
+        # Clean up the response if it contains markdown code blocks
+        if "```sql" in sql_query:
+            sql_query = sql_query.split("```sql")[1].split("```")[0].strip()
+        elif "```" in sql_query:
+            sql_query = sql_query.split("```")[1].strip()
+    
+        sql_queries.append(sql_query)
+        
+    return OverallState(
+        messages=state.get("messages", []),
+        intent=state["intent"],
+        format=state["format"],
+        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else [state.get("search_query", [])],
+        sql_queries=sql_queries,
+        web_research_result=state.get("web_research_result", []),
+        sources_gathered=state.get("sources_gathered", []),
+        research_loop_count=state.get("research_loop_count", 0),
+        max_research_loops=state["max_research_loops"],
+        agent_config=state["agent_config"],
+        world_connections=state["world_connections"],
+        user_id=state["user_id"],
+        agent_id=state["agent_id"],
+        chat_thread_id=state["chat_thread_id"],
+        number_of_results_returned=state["number_of_results_returned"],
+    )    
+    
+async def sql_query_execution(state: OverallState) -> OverallState:
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Execute SQL queries against Supabase
+    query_results = []
+    
+    for sql_query in state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])]:
+        try:
+            print(f"Executing SQL query: {sql_query}")
+            
+            # Clean the SQL query by removing trailing semicolon
+            clean_query = sql_query.strip().rstrip(';')
+            
+            # Execute the SQL query using a modified approach
+            # Wrap the query to return JSON to avoid type mismatch
+            json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
+            
+            try:
+                # Execute with JSON wrapper to ensure consistent return type
+                result = supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
+                
+                if result.data:
+                    # Extract the actual data from the JSONB wrapper
+                    for row in result.data:
+                        if isinstance(row, dict) and 'to_jsonb' in row:
+                            query_results.append(row['to_jsonb'])
+                        else:
+                            query_results.append(row)
+                    print(f"Query returned {len(result.data)} results")
+                else:
+                    print("Query returned no results")
+                    
+            except Exception as rpc_error:
+                print(f"RPC execution failed: {rpc_error}")
+                # Fallback: try direct table query if it's a simple SELECT
+                if sql_query.strip().upper().startswith('SELECT') and 'connections' in sql_query.lower():
+                    try:
+                        # Extract table and conditions for direct query
+                        result = supabase_client.table('connections').select('*').eq('user_id', state.get('user_id', '')).limit(1).execute()
+                        if result.data:
+                            query_results.extend(result.data)
+                            print(f"Fallback query returned {len(result.data)} results")
+                    except Exception as fallback_error:
+                        print(f"Fallback query also failed: {fallback_error}")
+                
+        except Exception as e:
+            print(f"Error executing SQL query '{sql_query}': {e}")
+            # Continue with other queries even if one fails
+            continue
+    
+    return OverallState(
+        messages=state.get("messages", []),
+        search_query=state.get("search_query", []),
+        sql_queries=state.get("sql_queries", []),
+        web_research_result=query_results,
+        intent=state["intent"],
+        format=state.get("format", ""),
+        sources_gathered=state.get("sources_gathered", []),
+        research_loop_count=state.get("research_loop_count", 0),
+        max_research_loops=state.get("max_research_loops", 0),
+        user_id=state.get("user_id", ""),
+        agent_config=state.get("agent_config", {}),
+        chat_thread_id=state.get("chat_thread_id", ""),
+        number_of_results_returned=state.get("number_of_results_returned", 0),
+        world_connections=state.get("world_connections", ""),
+    )
+
+# async def get_extra_info(state: OverallState) -> OverallState:
+#     if hasattr(state, "model_dump"):
+#         state = state.model_dump()
+
+#     extra_info = ""
+#     if state["query_results"]:
+#         url_extractor = urls.format
+    
+    
+#     return OverallState(
+#         sql_queries=state["sql_queries"],
+#         messages=state["messages"],
+#         search_query=state["search_query"],
+#         web_research_result=state["web_research_result"],
+#         intent=state["intent"],
+#         format=state["format"],
+#         sources_gathered=state["sources_gathered"],
+#         research_loop_count=state["research_loop_count"],
+#         max_research_loops=state["max_research_loops"],
+#         user_id=state["user_id"],
+#         agent_config=state["agent_config"],
+#         chat_thread_id=state["chat_thread_id"],
+#         number_of_results_returned=state["number_of_results_returned"],
+#         world_connections=state["world_connections"],
+#     )
+    
 
 async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     """LangGraph node that identifies knowledge gaps and generates potential follow-up queries.
@@ -483,22 +699,19 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     # Format the prompt with enhanced context
     research_topic = get_research_topic(state["messages"])
     
-    # Add metadata about the search process to help with reflection
     summaries = state["web_research_result"]
     
-    # Add information about sources if available
-    if state["sources_gathered"]:
-        source_info = "\n\nSources used:\n"
-        for i, source in enumerate(state["sources_gathered"]):
-            source_info += f"- {source.get('short_url', f'[{i+1}]')}: {source.get('title', 'Unknown')} ({source.get('value', 'No URL')})\n"
-        summaries.append(source_info)
-    
-    # Format the prompt with all available context
-    formatted_prompt = reflection_instructions.format(
-        research_topic=research_topic,
-        agent_config=state["agent_config"],
-        summaries="\n\n---\n\n".join(summaries)
-    )
+    if state["sources_gathered"] and state["world_connections"] == "world":
+        formatted_prompt = reflection_instructions.format(
+            research_topic=research_topic,
+            agent_config=state["agent_config"],
+            summaries="\n\n---\n\n".join(summaries)
+        )
+    elif state["world_connections"] == "connections":
+        formatted_prompt = reflection_instructions_sql.format(
+            research_topic=research_topic,
+            summaries="\n\n---\n\n".join(str(summaries))
+        )
     # Use Gemini client
     llm = GeminiChatModel(
         model="gemini-2.0-flash",
@@ -521,11 +734,13 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             # Fallback values if parsing fails
             return Reflection(
                 is_sufficient=False,
+                messages=state["messages"],
                 knowledge_gap="Unable to parse reflection response. Need more information.",
                 follow_up_queries=[get_research_topic(state["messages"])],
                 research_loop_count=state["research_loop_count"],
                 number_of_ran_queries=len(state["search_query"]),
                 user_id=state["user_id"],
+                world_connections=state["world_connections"],
                 agent_id=state["agent_config"]["id"],
                 chat_thread_id=state["chat_thread_id"]
             )
@@ -538,11 +753,13 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         # Create a Reflection model with values from the result_dict
         return Reflection(
             is_sufficient=result_dict.get("is_sufficient", False),
+            messages=state["messages"],
             knowledge_gap=result_dict.get("knowledge_gap", ""),
             follow_up_queries=result_dict.get("follow_up_queries", []),
             research_loop_count=state["research_loop_count"],
             number_of_ran_queries=len(state["search_query"]),
             user_id=state["user_id"],
+            world_connections=state["world_connections"],
             agent_id=state["agent_config"]["id"],
             chat_thread_id=state["chat_thread_id"]
         )
@@ -555,6 +772,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             research_loop_count=state["research_loop_count"],
             number_of_ran_queries=len(state["search_query"]),
             user_id=state["user_id"],
+            world_connections=state["world_connections"],
             agent_id=state["agent_config"]["id"],
             chat_thread_id=state["chat_thread_id"]
         )
@@ -580,6 +798,7 @@ async def evaluate_research(
 
     user_id = state["user_id"]
     agent_id = state["agent_id"]
+    world_connections = state["world_connections"]
 
     try:
         max_research_loops_response = supabase_client.table("hired_agents").select("max_research_loops").eq("user_id", user_id).eq("id", agent_id).execute()
@@ -589,16 +808,38 @@ async def evaluate_research(
 
     if state["is_sufficient"] or state["research_loop_count"] >= max_research_loops:
         return "finalize_answer"
-    else:
+    elif world_connections == "world":
         return [
             Send(
                 "web_research",
                 WebSearchState(
+                    messages=state["messages"],
                     search_query=follow_up_query,
                     id=state["number_of_ran_queries"] + int(idx),
+                    format=state["format"],
+                    intent=state["intent"],
                     chat_thread_id=state["chat_thread_id"],
                     user_id=state["user_id"],
                     agent_id=state["agent_id"],
+                    agent_config=state["agent_config"],
+                    number_of_results_returned=state["number_of_results_returned"]
+                )
+            )
+            for idx, follow_up_query in enumerate(state["follow_up_queries"])
+        ]
+    elif world_connections == "connections":
+        return [
+            Send(
+                "sql_query_generation",
+                WebSearchState(
+                    search_query=follow_up_query,
+                    id=state["number_of_ran_queries"] + int(idx),
+                    format=state["format"],
+                    intent=state["intent"],
+                    chat_thread_id=state["chat_thread_id"],
+                    user_id=state["user_id"],
+                    agent_id=state["agent_id"],
+                    agent_config=state["agent_config"],
                     number_of_results_returned=state["number_of_results_returned"]
                 )
             )
@@ -623,12 +864,19 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
         state = state.model_dump()
     # Format the prompt
     current_date = get_current_date()
-    if state["intent"] == "search":
+    if state["intent"] == "search" and state["world_connections"] == "world":
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
             agent_config=state["agent_config"],
             research_topic=get_research_topic(state["messages"]),
-            summaries="\n---\n\n".join(state["web_research_result"]),
+            summaries=str(state["web_research_result"]),
+            format=state.get("format", "table")
+        )
+    elif state["intent"] == "search" and state["world_connections"] == "connections":
+        formatted_prompt = answer_instructions_sql.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            summaries=str(state["web_research_result"]),
             format=state.get("format", "table")
         )
     else:
@@ -699,6 +947,8 @@ builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("intent_classifier", intent_classifier)
 builder.add_node("generate_query", generate_query)
 builder.add_node("web_research", web_research)
+builder.add_node("sql_query_generation", sql_query_generation)
+builder.add_node("sql_query_execution", sql_query_execution)
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
@@ -707,7 +957,7 @@ builder.add_node("finalize_answer", finalize_answer)
 builder.add_edge(START, "intent_classifier")
 # Add conditional edge to continue with search queries in a parallel branch
 builder.add_conditional_edges(
-    "generate_query", continue_to_web_research, ["web_research"]
+    "generate_query", continue_to_web_research, ["web_research", "sql_query_generation"]
 )
 
 builder.add_conditional_edges(
@@ -715,6 +965,8 @@ builder.add_conditional_edges(
 )
 # Reflect on the web research
 builder.add_edge("web_research", "reflection")
+builder.add_edge("sql_query_generation", "sql_query_execution")
+builder.add_edge("sql_query_execution", "reflection")
 # Evaluate the research
 builder.add_conditional_edges(
     "reflection", evaluate_research, ["web_research", "finalize_answer"]

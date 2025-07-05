@@ -173,6 +173,8 @@ export const apiClient = {
     agentId: string,
     message: string,
     format: string = "table",
+    searchMode: string = "basic",
+    worldConnectionsMode: string = "connections",
     onUpdate: (update: StreamingChatUpdate) => void
   ): Promise<void> {
     const payload: StreamingChatRequest = {
@@ -181,6 +183,8 @@ export const apiClient = {
       messages: message,
       stream: true,
       format: format,
+      search_mode: searchMode,
+      world_connections: worldConnectionsMode,
     };
 
     // Use fetch directly for SSE support

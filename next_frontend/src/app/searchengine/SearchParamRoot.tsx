@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, User as UserIcon, Table, MessageSquare } from "lucide-react";
+import { Search, User as UserIcon, Table, MessageSquare, Plus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navigation from "@/components/Navigation";
@@ -16,8 +16,10 @@ const SearchParamRoot = () => {
   const searchParams = useSearchParams();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [query, setQuery] = useState(searchParams.get("q") || "");  
   const [format, setFormat] = useState<"table" | "chat">("table");
+  const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
+  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">("connections");
   const [selectedAgent, setSelectedAgent] = useState(
     searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
   );
@@ -25,6 +27,7 @@ const SearchParamRoot = () => {
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
 
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
 
@@ -143,7 +146,7 @@ const SearchParamRoot = () => {
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
 
-      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, format, update => {
+      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, format, searchMode, worldConnectionsMode, (update: any) => {
         console.log("Streaming update:", update);
 
         switch (update.type) {
@@ -313,14 +316,15 @@ const SearchParamRoot = () => {
 
         <div className={`max-w-2xl mx-auto ${messages.length ? "mb-8" : "mb-16"}`}>
           <div className="relative">
+            {/* Main Search Bar */}
             <div
-              className={`flex items-center rounded-full px-5 py-2 shadow-sm transition-shadow duration-200 focus-within:shadow-md ${
+              className={`flex items-center rounded-full px-5 py-3 shadow-sm transition-all duration-200 focus-within:shadow-md ${
                 darkMode
                   ? "border border-gray-700 bg-gray-900/60 hover:shadow-lg"
                   : "border-2 border-gray-200 bg-white hover:shadow-md"
               }`}
             >
-              <Search className={`h-5 w-5  ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+              <Search className={`h-5 w-5 mr-3 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
               <Input
                 type="text"
                 placeholder="Search for people by skills, experience, or interests…"
@@ -328,75 +332,48 @@ const SearchParamRoot = () => {
                 onChange={e => setQuery(e.target.value)}
                 onKeyPress={onKey}
                 className={`
-                  flex-1 bg-transparent
-                  text-sm         
-                  mt-[2px]           
-                  placeholder:text-md       
-                  md:placeholder:text-base        
-                  border-0 focus:border-0
-                  outline-none ring-0 focus:ring-0
+                  flex-1 bg-transparent text-base
+                  border-0 focus:border-0 outline-none ring-0 focus:ring-0
                   ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
                 `}
               />
-              <div className="flex items-center ml-2 gap-1">
-                <button
-                  onClick={() => setFormat("table")}
-                  className={`p-1.5 rounded-md ${
-                    format === "table" ? (darkMode ? "bg-gray-700" : "bg-gray-200") : ""
-                  }`}
-                  title="Table format"
-                >
-                  <Table className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setFormat("chat")}
-                  className={`p-1.5 rounded-md ${
-                    format === "chat" ? (darkMode ? "bg-gray-700" : "bg-gray-200") : ""
-                  }`}
-                  title="Chat format"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                </button>
-              </div>
+              
+              {/* Options Toggle Button */}
+              <button
+                onClick={() => setShowOptions(!showOptions)}
+                className={`p-2 rounded-full transition-colors mr-2 ${
+                  showOptions 
+                    ? (darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-700")
+                    : (darkMode ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800" : "text-gray-600 hover:text-gray-700 hover:bg-gray-100")
+                }`}
+                title="Search options"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
 
+              {/* Agent Selector */}
               <div className="relative">
                 <Button
                   variant="ghost"
                   ref={toggleBtnRef}
                   onClick={() => setShowAgentDropdown(s => !s)}
                   disabled={agentsStatus === "loading"}
-                  aria-disabled={agentsStatus === "loading"}
                   className={`
-    flex items-center space-x-2 rounded-full px-3  border
-    ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
-    ${
-      darkMode
-        ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-        : "border-gray-200 text-gray-600 hover:bg-gray-50"
-    }
-  `}
+                    flex items-center space-x-2 rounded-full px-3 py-2 border mr-3
+                    ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
+                    ${
+                      darkMode
+                        ? "border-gray-700 text-gray-300 hover:bg-gray-800"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }
+                  `}
                 >
                   {agentsStatus === "loading" ? (
-                    <span
-                      className="
-        block h-3 w-3 rounded-full
-        border-2 border-current border-t-transparent
-        animate-spin
-      "
-                    />
+                    <span className="block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
                   ) : (
                     <>
-                      <span className="-mr-1 ">{agentData?.avatar}</span>
-
-                      <svg
-                        className="h-4 w-4"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
+                      <span>{agentData?.avatar}</span>
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M6 8l4 4 4-4" />
                       </svg>
                     </>
@@ -407,9 +384,7 @@ const SearchParamRoot = () => {
                   <div
                     ref={dropdownRef}
                     className={`absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 ${
-                      darkMode
-                        ? "bg-gray-900 border border-gray-700"
-                        : "bg-white border border-gray-200"
+                      darkMode ? "bg-gray-900 border border-gray-700" : "bg-white border border-gray-200"
                     }`}
                   >
                     {agentsStatus === "loading" ? (
@@ -420,19 +395,18 @@ const SearchParamRoot = () => {
                           type="button"
                           key={a.id}
                           onClick={e => handleAgentSelect(e, a.id, a.hired)}
-                          className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors
-        ${darkMode ? "hover:bg-gray-800 text-gray-200" : "hover:bg-gray-50  text-gray-900"}`}
+                          className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                            darkMode ? "hover:bg-gray-800 text-gray-200" : "hover:bg-gray-50 text-gray-900"
+                          }`}
                         >
                           <span className="flex items-center space-x-3">
                             <span className="text-lg">{a?.avatar}</span>
                             <span className="text-sm">{a?.name}</span>
                           </span>
-
                           {!a.hired && (
-                            <span
-                              className={`text-xs px-2 py-1 rounded-full
-          ${darkMode ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-700"}`}
-                            >
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              darkMode ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-700"
+                            }`}>
                               Hire
                             </span>
                           )}
@@ -443,14 +417,13 @@ const SearchParamRoot = () => {
                 )}
               </div>
 
+              {/* Search Button */}
               <Button
                 onClick={() => handleSearch()}
                 disabled={!query.trim() || isLoading}
-                className={`ml-3 rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
+                className={`rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
                   !query.trim() || isLoading
-                    ? darkMode
-                      ? "bg-gray-800 cursor-not-allowed"
-                      : "bg-gray-300 cursor-not-allowed"
+                    ? darkMode ? "bg-gray-800 cursor-not-allowed" : "bg-gray-300 cursor-not-allowed"
                     : darkMode
                       ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
                       : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
@@ -459,6 +432,129 @@ const SearchParamRoot = () => {
                 Search
               </Button>
             </div>
+
+            {/* Collapsible Options Panel */}
+            {showOptions && (
+              <div className={`mt-3 p-4 rounded-lg border transition-all duration-200 ${
+                darkMode ? "bg-gray-900/80 border-gray-700" : "bg-white border-gray-200"
+              }`}>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Search Mode Options */}
+                    <div className="flex-1">
+                      <label className={`block text-sm font-medium mb-2 ${
+                        darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}>
+                        Search Mode
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSearchMode("basic")}
+                          className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors ${
+                            searchMode === "basic" 
+                              ? (darkMode ? "bg-blue-700 text-blue-100" : "bg-blue-100 text-blue-700") 
+                              : (darkMode ? "bg-gray-800 text-gray-400 hover:text-gray-300" : "bg-gray-100 text-gray-600 hover:text-gray-700")
+                          }`}
+                        >
+                          Basic
+                        </button>
+                        <button
+                          onClick={() => setSearchMode("deep")}
+                          className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors ${
+                            searchMode === "deep" 
+                              ? (darkMode ? "bg-purple-700 text-purple-100" : "bg-purple-100 text-purple-700") 
+                              : (darkMode ? "bg-gray-800 text-gray-400 hover:text-gray-300" : "bg-gray-100 text-gray-600 hover:text-gray-700")
+                          }`}
+                        >
+                          Deep
+                        </button>
+                      </div>
+                      <p className={`text-xs mt-1 ${
+                        darkMode ? "text-gray-500" : "text-gray-500"
+                      }`}>
+                        {searchMode === "basic" ? "Faster, lighter search" : "Comprehensive, thorough search"}
+                      </p>
+                    </div>
+
+                    {/* Format Options */}
+                    <div className="flex-1">
+                      <label className={`block text-sm font-medium mb-2 ${
+                        darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}>
+                        Response Format
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setFormat("table")}
+                          className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
+                            format === "table" 
+                              ? (darkMode ? "bg-green-700 text-green-100" : "bg-green-100 text-green-700") 
+                              : (darkMode ? "bg-gray-800 text-gray-400 hover:text-gray-300" : "bg-gray-100 text-gray-600 hover:text-gray-700")
+                          }`}
+                        >
+                          <Table className="h-4 w-4" />
+                          Table
+                        </button>
+                        <button
+                          onClick={() => setFormat("chat")}
+                          className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
+                            format === "chat" 
+                              ? (darkMode ? "bg-orange-700 text-orange-100" : "bg-orange-100 text-orange-700") 
+                              : (darkMode ? "bg-gray-800 text-gray-400 hover:text-gray-300" : "bg-gray-100 text-gray-600 hover:text-gray-700")
+                          }`}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          Chat
+                        </button>
+                      </div>
+                      <p className={`text-xs mt-1 ${
+                        darkMode ? "text-gray-500" : "text-gray-500"
+                      }`}>
+                        {format === "table" ? "Structured data view" : "Conversational response"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Search Source Options */}
+                  <div className="flex-1">
+                    <label className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}>
+                      Search Source
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setWorldConnectionsMode("connections")}
+                        className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
+                          worldConnectionsMode === "connections" 
+                            ? (darkMode ? "bg-indigo-700 text-indigo-100" : "bg-indigo-100 text-indigo-700") 
+                            : (darkMode ? "bg-gray-800 text-gray-400 hover:text-gray-300" : "bg-gray-100 text-gray-600 hover:text-gray-700")
+                        }`}
+                      >
+                        <UserIcon className="h-4 w-4" />
+                        My Connections
+                      </button>
+                      <button
+                        onClick={() => setWorldConnectionsMode("world")}
+                        className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
+                          worldConnectionsMode === "world" 
+                            ? (darkMode ? "bg-teal-700 text-teal-100" : "bg-teal-100 text-teal-700") 
+                            : (darkMode ? "bg-gray-800 text-gray-400 hover:text-gray-300" : "bg-gray-100 text-gray-600 hover:text-gray-700")
+                        }`}
+                      >
+                        <Search className="h-4 w-4" />
+                        Global Search
+                      </button>
+                    </div>
+                    <p className={`text-xs mt-1 ${
+                      darkMode ? "text-gray-500" : "text-gray-500"
+                    }`}>
+                      {worldConnectionsMode === "connections" ? "Search within your LinkedIn connections" : "Search across the entire web"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

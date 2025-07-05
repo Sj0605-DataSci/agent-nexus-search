@@ -83,7 +83,7 @@ class ChatService:
             raise
 
 
-    async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table") -> 'ChatResponse':
+    async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world") -> 'ChatResponse':
         """
         Chat with the research agent
         
@@ -126,7 +126,9 @@ class ChatService:
                 "sources_gathered": [],
                 "search_query": [],
                 "number_of_results_returned":1,
-                "format": format
+                "format": format,
+                "search_mode": search_mode,
+                "world_connections": world_connections
             }
             
             # Execute the graph
@@ -138,7 +140,7 @@ class ChatService:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
             
-    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table"):
+    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world"):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
         
@@ -172,8 +174,42 @@ class ChatService:
                             else:
                                 formatted_messages.append(HumanMessage(content=msg['content']))
             
-            # Create initial state with agent configuration
-            initial_state = {
+            if search_mode == "basic" and world_connections == "world":
+                initial_state = {
+                "messages": formatted_messages,
+                "agent_config": agent_config,
+                "user_id": user_id,
+                "initial_search_query_count": 3,
+                "research_loop_count": 0,
+                "max_research_loops": 0,
+                "chat_thread_id": None,
+                "web_research_result": [],
+                "sources_gathered": [],
+                "search_query": [],
+                "number_of_results_returned":6,
+                "format": format,
+                "world_connections": world_connections,
+                "sql_queries": []
+            }
+            elif search_mode == "basic" and world_connections == "connections":
+                initial_state = {
+                "messages": formatted_messages,
+                "agent_config": agent_config,
+                "user_id": user_id,
+                "initial_search_query_count": 3,
+                "research_loop_count": 0,
+                "max_research_loops": 0,
+                "chat_thread_id": None,
+                "web_research_result": [],
+                "sources_gathered": [],
+                "search_query": [],
+                "number_of_results_returned":6,
+                "format": format,
+                "world_connections": world_connections,
+                "sql_queries": []
+            }
+            elif search_mode == "deep" and world_connections == "world":
+                initial_state = {
                 "messages": formatted_messages,
                 "agent_config": agent_config,
                 "user_id": user_id,
@@ -185,8 +221,29 @@ class ChatService:
                 "sources_gathered": [],
                 "search_query": [],
                 "number_of_results_returned":agent_config["number_of_results_returned"],
-                "format": format
+                "format": format,
+                "world_connections": world_connections,
+                "sql_queries": []
             }
+            elif search_mode == "deep" and world_connections == "connections":
+                initial_state = {
+                "messages": formatted_messages,
+                "agent_config": agent_config,
+                "user_id": user_id,
+                "initial_search_query_count": agent_config["initial_search_query_count"],
+                "research_loop_count": 0,
+                "max_research_loops": agent_config["max_research_loops"],
+                "chat_thread_id": None,
+                "web_research_result": [],
+                "sources_gathered": [],
+                "search_query": [],
+                "number_of_results_returned":agent_config["number_of_results_returned"],
+                "format": format,
+                "world_connections": world_connections,
+                "sql_queries": []
+            }
+            else:
+                raise ValueError(f"Invalid search mode: {search_mode}")
             
             # Use LangGraph's astream method to stream results
             # Stream both messages (LLM tokens) and updates (state changes)

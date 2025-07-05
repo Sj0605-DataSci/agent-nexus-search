@@ -6,7 +6,7 @@ def get_current_date():
     return datetime.now().strftime("%B %d, %Y")
 
 
-query_writer_instructions = query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for an advanced automated web research tool capable of analyzing complex results, following links, and synthesizing information.
+query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for an advanced automated web research tool capable of analyzing complex results, following links, and synthesizing information.
 
 You are {agent_config}
 
@@ -121,3 +121,128 @@ For example if you don't have any content and format is "table", just fill the f
 ```
 
 """
+
+answer_instructions_sql = """Generate a high-quality answer to the user's question based on the provided summaries.
+
+Instructions:
+- The current date is {current_date}.
+- The user wants answer in from of {format}
+- You have access to all the information gathered from the previous steps.
+- You have access to the user's question.
+- Go in depth and provide a detailed answer.
+- Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
+
+User Context:
+- {research_topic}
+
+Summaries:
+{summaries}
+
+IMPORTANT: You must follow the correct output format based on the specified format parameter:
+
+1. If format is "table":
+   You MUST return a JSON object with the following structure. If you don't have information for a field, use "NA".
+   ```json
+   {{
+       "name": "Person's name",
+       "profession": "Their profession",
+       "score": "Relevance score",
+       "reason": "Why they are relevant",
+       "sources": ["Citation 1", "Citation 2"]
+   }}
+   ```
+
+2. If format is "chat":
+   DO NOT use JSON format at all. Instead, provide a natural conversational response.
+   Write in plain text as if you're having a conversation with the user.
+   Include relevant information from the sources and cite them properly.
+   Be natural in your response.
+
+For example if you don't have any content and format is "table", just fill the fields with NA:
+```json
+{{
+    "name": "NA",
+    "profession": "NA",
+    "score": "NA",
+    "reason": "NA",
+    "sources": ["NA"]
+}}
+```
+
+"""
+
+optimised_query_instructions = """You are an expert at optimizing search queries for finding professional profiles.
+        
+        Original query: {research_topic}
+        
+        Please rewrite this query into {number_queries} optimized subqueries that would help find relevant professional profiles.
+        Each subquery should focus on different aspects or interpretations of the original query.
+        
+        Format your response as a JSON array of strings, with each string being an optimized subquery.
+        Do not include any explanations or other text outside the JSON array.
+
+        Example:
+       ```json
+{{
+    "query": "React Developers Berlin",
+    "query2": "Software Developers Berlin"
+}}
+``` """
+
+sql_query_instructions = """You are an expert at converting natural language queries into SQL.
+
+            This is the user id of the user: {user_id}
+            
+            I have a database table called 'connections' with these exact columns:
+            - first_name
+            - last_name
+            - linkedin_url
+            - email_address
+            - headline
+            - company
+            - position
+            - connected_on
+            - extra_info
+            - user_id
+            
+            Convert this search query into a SQL query that will find relevant profiles:
+            "{subquery}"
+            
+            ONLY use columns company, position, user_id, linkedin_url
+            Return ONLY the SQL query without any explanations or markdown formatting.
+            The query should select all columns (*) and limit to {number_of_results_returned} results.
+
+            Example:
+            SELECT * FROM connections WHERE company = 'Google' AND position = 'Software Engineer' AND user_id = '{user_id}' LIMIT 2 ;"""
+
+reflection_instructions_sql="""You are an expert research assistant analyzing answers about "{research_topic}".
+
+Instructions:
+- Follow up queries should always be regarding finding people.
+- Your job is to analyze if the provided answers are **sufficient to fulfill the search objective**.
+- If not, identify what key information is missing.
+- Then generate one or more **follow-up search queries** to address that knowledge gap.
+- For now cater to 1 linkedin URL or whatever  is coming in case of sql here, so let is_sufficient be true always.
+
+Requirements:
+- If the answers are sufficient, return "is_sufficient": true, and leave "knowledge_gap" as an empty string and "follow_up_queries" as an empty list.
+- If not, return "is_sufficient": false, include a short explanation in "knowledge_gap", and one or more focused queries in "follow_up_queries".
+
+Output Format:
+- Always return a JSON object with the exact three keys below.
+- Do not include any commentary outside the JSON.
+
+Example:
+```json
+{{
+    "is_sufficient": false,
+    "knowledge_gap": "The answer lacks specific examples of candidates' open-source contributions or portfolio links.",
+    "follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
+}}
+```
+
+Reflect carefully on the answers to identify knowledge gaps and produce a follow-up query. Then, produce your output following this JSON format:
+
+Answers:
+{summaries}
+"""            

@@ -35,7 +35,7 @@ async def process_chat(
         chat_service = ChatService(supabase_client)
         
         # Process the chat request
-        result = await chat_service.chat(request.user_id, request.agent_id, request.messages, request.format)
+        result = await chat_service.chat(request.user_id, request.agent_id, request.messages, request.format, request.search_mode, request.world_connections)
         
         # The result is already a ChatResponse object, so we can use it directly
         response = result
@@ -92,7 +92,9 @@ async def stream_chat(
                 request.user_id, 
                 request.agent_id, 
                 request.messages,
-                request.format
+                request.format,
+                request.search_mode,
+                request.world_connections
             ):
                 # Convert the update to a StreamingChatUpdate
                 if update["type"] == "token":
