@@ -3,11 +3,9 @@ from uuid import UUID
 import logging
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
-from app.db.database import get_db
+from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import HiredAgentCreate, HiredAgentResponse, HiredAgentUpdate, StandardResponse, StandardJSONResponse
 from app.core.services.hired_agent_service import HiredAgentService
@@ -21,10 +19,9 @@ router = APIRouter(prefix="/hired_agents", tags=["hired_agents"])
 # Using StandardJSONResponse from schemas.py
 
 @router.post("", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
-def hire_agent(
+async def hire_agent(
     request: Request,
     agent: HiredAgentCreate,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Hire a new agent for the user"""
@@ -36,7 +33,7 @@ def hire_agent(
         logger.info(f"Request headers: {request.headers}")
         
         # Initialize the service
-        service = HiredAgentService(db)
+        service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to hire the agent
         agent_response = service.hire_agent(agent, current_user)
@@ -68,10 +65,9 @@ def hire_agent(
         ))
 
 @router.get("", response_model=StandardResponse[List[HiredAgentResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def get_hired_agents(
+async def get_hired_agents(
     request: Request,
     user_id: UUID = Query(None),
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Get all hired agents for a user"""
@@ -82,10 +78,10 @@ def get_hired_agents(
         logger.info(f"Current user: {current_user.id if current_user else 'None'}")
         
         # Initialize the service
-        service = HiredAgentService(db)
+        service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to get hired agents
-        agent_responses = service.get_hired_agents(user_id, current_user)
+        agent_responses = await service.get_hired_agents(user_id, current_user)
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -114,18 +110,17 @@ def get_hired_agents(
         ))
 
 @router.get("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def get_hired_agent(
+async def get_hired_agent(
     agent_id: UUID,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Get a specific hired agent by ID"""
     try:
         # Initialize the service
-        service = HiredAgentService(db)
+        service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to get the hired agent
-        agent_response = service.get_hired_agent_by_id(agent_id, current_user)
+        agent_response = await service.get_hired_agent_by_id(agent_id, current_user)
         if agent_response is None:
             return StandardJSONResponse(StandardResponse(
                 success=False,
@@ -161,19 +156,18 @@ def get_hired_agent(
         ))
 
 @router.put("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def update_hired_agent(
+async def update_hired_agent(
     agent_id: UUID,
     agent_update: HiredAgentUpdate,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Update a hired agent"""
     try:
         # Initialize the service
-        service = HiredAgentService(db)
+        service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to update the hired agent
-        agent_response = service.update_hired_agent(agent_id, agent_update, current_user)
+        agent_response = await service.update_hired_agent(agent_id, agent_update, current_user)
         if agent_response is None:
             return StandardJSONResponse(StandardResponse(
                 success=False,
@@ -209,18 +203,17 @@ def update_hired_agent(
         ))
 
 @router.delete("/{agent_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def delete_hired_agent(
+async def delete_hired_agent(
     agent_id: UUID,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Delete a hired agent"""
     try:
         # Initialize the service
-        service = HiredAgentService(db)
+        service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to delete the hired agent
-        success = service.delete_hired_agent(agent_id, current_user)
+        success = await service.delete_hired_agent(agent_id, current_user)
         if not success:
             return StandardJSONResponse(StandardResponse(
                 success=False,

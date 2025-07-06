@@ -60,6 +60,9 @@ class OverallState(BaseModel):
         description="The SQL queries to be used for web research.",
         default_factory=list
     )
+    initial_search_query_count: Annotated[int, lambda x, y: y or x] = Field(
+        description="The initial search query count."
+    )
 
 class ReflectionState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
@@ -172,8 +175,8 @@ class WebSearchState(BaseModel):
     agent_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the agent."
     )
-    initial_search_sub_query_count: Annotated[int, lambda x, y: y or x] = Field(
-        description="The initial search sub query count.",
+    initial_search_query_count: Annotated[int, lambda x, y: y or x] = Field(
+        description="The initial search query count.",
         default=0
     )
     number_of_results_returned: Annotated[int, lambda x, y: y or x] = Field(
@@ -193,6 +196,9 @@ class WebSearchState(BaseModel):
     )
     agent_config: Annotated[Dict[str, Any], lambda x, y: y or x] = Field(
         description="The configuration for the agent."
+    )
+    max_research_loops: Annotated[int, lambda x, y: y or x] = Field(
+        description="The maximum number of research loops that have been executed."
     )
 
 

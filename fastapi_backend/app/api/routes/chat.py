@@ -1,15 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate
 from app.core.services.chat_service import ChatService
-from typing import Annotated, Optional, AsyncGenerator, Dict, Any
-import json
+from typing import Annotated, AsyncGenerator
 import traceback
 import logging
-import asyncio
-from app.db.clients import get_supabase_client
+from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
-from supabase import Client
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -21,7 +18,6 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def process_chat(
     request: ChatRequest,
-    supabase_client: Annotated[any, Depends(get_supabase_client)],
 ):
     """
     Process a chat request and return search results
@@ -32,7 +28,7 @@ async def process_chat(
     """
     try:
         # Initialize chat service
-        chat_service = ChatService(supabase_client)
+        chat_service = ChatService(client=await get_async_supabase_client())
         
         # Process the chat request
         result = await chat_service.chat(request.user_id, request.agent_id, request.messages, request.format, request.search_mode, request.world_connections)
@@ -70,13 +66,12 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
-    supabase: Annotated[Client, Depends(get_supabase_client)]
 ) -> StreamingResponse:
     """
     Stream chat response as Server-Sent Events (SSE) using LangGraph's streaming capabilities
     """
     # Initialize chat service
-    chat_service = ChatService(supabase)
+    chat_service = ChatService(client=await get_async_supabase_client())
     
     async def event_generator() -> AsyncGenerator[str, None]:
         try:

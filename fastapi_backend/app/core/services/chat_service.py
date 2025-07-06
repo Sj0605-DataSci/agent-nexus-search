@@ -1,7 +1,5 @@
-import os
 from typing import Dict, Any, List, Union
 import logging
-from langchain_openai import ChatOpenAI
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -9,26 +7,26 @@ from langchain_core.messages import HumanMessage, AIMessage
 logger = logging.getLogger(__name__)
 
 class ChatService:
-    """
-    Service for handling chat functionality using LangGraph research agent
-    """
+    """Service for handling agent template operations"""
     
-    def __init__(self, supabase_client):
-        """
-        Initialize the chat service with a Supabase client
-        """
-        self.supabase_client = supabase_client
-        
-        # Initialize OpenAI client with OpenRouter
-        self.llm = ChatOpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.environ.get("OPENROUTER_API_KEY", ""),
-            model="google/gemini-2.0-flash-exp:free",
-            headers={
-                "HTTP-Referer": "https://agent-nexus-search.com",  # Replace with your site URL
-                "X-Title": "Discover new Minds"  # Replace with your site name
-            }
-        )
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls, client=None):
+        """Singleton pattern implementation"""
+        if cls._instance is None:
+            cls._instance = super(ChatService, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self, client=None):
+        """Initialize the service with a Supabase client if provided"""
+        # Only initialize once
+        if not self._initialized and client is not None:
+            self.client = client
+            self._initialized = True
+        # If client is provided and we're already initialized, update the client
+        elif client is not None:
+            self.client = client
     
     async def get_agent_config(self, user_id: str, agent_id: str) -> Dict[str, Any]:
         """
@@ -39,7 +37,7 @@ class ChatService:
             logger.info(f"Querying Supabase for agent_id={agent_id} and user_id={user_id}")
             
             # Try with the regular query first
-            response = self.supabase_client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
+            response = await self.client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
             
             # Log the raw response for debugging
             logger.info(f"Supabase response: {response}")
@@ -50,15 +48,15 @@ class ChatService:
                 logger.info("Trying with simplified queries")
                 try:
                     # Try querying just by ID to see if the record exists at all
-                    id_only_response = self.supabase_client.table("hired_agents").select("*").eq("id", agent_id).execute()
+                    id_only_response = await self.client.table("hired_agents").select("*").eq("id", agent_id).execute()
                     logger.info(f"ID-only query response: {id_only_response.data}")
                     
                     # Try querying just by user_id to see if any records exist for this user
-                    user_only_response = self.supabase_client.table("hired_agents").select("*").eq("user_id", user_id).execute()
+                    user_only_response = await self.client.table("hired_agents").select("*").eq("user_id", user_id).execute()
                     logger.info(f"User-only query response: {user_only_response.data}")
                     
                     # Get all records to see what's in the table
-                    all_records = self.supabase_client.table("hired_agents").select("*").limit(5).execute()
+                    all_records = await self.client.table("hired_agents").select("*").limit(5).execute()
                     logger.info(f"Sample records in hired_agents: {all_records.data}")
                 except Exception as e:
                     logger.error(f"Error in simplified queries: {str(e)}")

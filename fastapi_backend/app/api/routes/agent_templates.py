@@ -3,10 +3,10 @@ from uuid import UUID
 import logging
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.core.auth import get_current_user
-from app.db.database import get_db
+from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import AgentTemplateCreate, AgentTemplateResponse, AgentTemplateUpdate
 from app.models.schemas import StandardResponse, StandardJSONResponse
@@ -18,18 +18,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent_templates", tags=["agent_templates"])
 
 @router.post("", response_model=StandardResponse[AgentTemplateResponse], status_code=status.HTTP_201_CREATED, response_class=StandardJSONResponse)
-def create_agent_template(
+async def create_agent_template(
     template: AgentTemplateCreate,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Create a new agent template"""
     try:
-        # Initialize the service
-        service = AgentTemplateService(db)
+        # Initialize the service with the Supabase client
+        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to create the template
-        template_response = service.create_template(template)
+        template_response = await service.create_template(template)
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -55,18 +54,17 @@ def create_agent_template(
         ))
 
 @router.get("", response_model=StandardResponse[List[AgentTemplateResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def get_agent_templates(
+async def get_agent_templates(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
 ):
     """Get all agent templates"""
     try:
-        # Initialize the service
-        service = AgentTemplateService(db)
+        # Initialize the service with the Supabase client
+        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to get templates
-        template_responses = service.get_templates(skip, limit)
+        template_responses = await service.get_templates(skip, limit)
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -91,18 +89,84 @@ def get_agent_templates(
             data=None
         ))
 
+@router.get("/with-supabase", response_model=StandardResponse[List[AgentTemplateResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+async def get_agent_templates(
+    skip: int = 0,
+    limit: int = 100,
+):
+    """Get all agent templates using Supabase directly"""
+    try:
+        # Get the Supabase client
+        supabase = await get_async_supabase_client()
+        
+        try:
+            # Query the agent_templates table using the correct pattern
+            logger.info("Querying Supabase for agent_templates")
+            
+            # Use .table() instead of .from_() and await the execute() call
+            response = await supabase.table("agent_templates").select("*").execute()
+            
+            # Get the data from the response
+            templates_data = response.data
+            logger.info(f"Received data from Supabase: {templates_data}")
+            
+            # If no data was returned, return an empty list
+            if not templates_data:
+                return StandardJSONResponse(StandardResponse(
+                    success=True,
+                    status_code=status.HTTP_200_OK,
+                    message="No agent templates found",
+                    data=[]
+                ))
+        except Exception as supabase_error:
+            logger.error(f"Supabase error: {str(supabase_error)}")
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=f"Error from Supabase: {str(supabase_error)}",
+                data=None
+            ))
+        
+        # Convert the Supabase data to Pydantic models
+        template_responses = []
+        for template_data in templates_data:
+            # Convert the Supabase timestamps to datetime objects
+            if 'created_at' in template_data and template_data['created_at']:
+                template_data['created_at'] = datetime.fromisoformat(template_data['created_at'].replace('Z', '+00:00'))
+            if 'updated_at' in template_data and template_data['updated_at']:
+                template_data['updated_at'] = datetime.fromisoformat(template_data['updated_at'].replace('Z', '+00:00'))
+            
+            # Create a Pydantic model from the data
+            template_response = AgentTemplateResponse(**template_data)
+            template_responses.append(template_response)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Agent templates retrieved successfully",
+            data=template_responses
+        ))
+    except Exception as e:
+        logger.error(f"Error in get_agent_templates_supabase: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"An unexpected error occurred: {str(e)}",
+            data=None
+        ))        
+
 @router.get("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def get_agent_template(
+async def get_agent_template(
     template_id: UUID,
-    db: Session = Depends(get_db)
 ):
     """Get a specific agent template by ID"""
     try:
-        # Initialize the service
-        service = AgentTemplateService(db)
+        # Initialize the service with the Supabase client
+        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to get the template
-        template_response = service.get_template_by_id(template_id)
+        template_response = await service.get_template_by_id(template_id)
         if template_response is None:
             return StandardJSONResponse(StandardResponse(
                 success=False,
@@ -135,19 +199,18 @@ def get_agent_template(
         ))
 
 @router.put("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def update_agent_template(
+async def update_agent_template(
     template_id: UUID,
     template_update: AgentTemplateUpdate,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Update an agent template"""
     try:
-        # Initialize the service
-        service = AgentTemplateService(db)
+        # Initialize the service with the Supabase client
+        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to update the template
-        template_response = service.update_template(template_id, template_update)
+        template_response = await service.update_template(template_id, template_update)
         if template_response is None:
             return StandardJSONResponse(StandardResponse(
                 success=False,
@@ -180,18 +243,17 @@ def update_agent_template(
         ))
 
 @router.delete("/{template_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-def delete_agent_template(
+async def delete_agent_template(
     template_id: UUID,
-    db: Session = Depends(get_db),
     current_user: Profile = Depends(get_current_user)
 ):
     """Delete an agent template"""
     try:
-        # Initialize the service
-        service = AgentTemplateService(db)
+        # Initialize the service with the Supabase client
+        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to delete the template
-        success = service.delete_template(template_id)
+        success = await service.delete_template(template_id)
         if not success:
             return StandardJSONResponse(StandardResponse(
                 success=False,

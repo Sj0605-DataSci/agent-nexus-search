@@ -208,7 +208,7 @@ sql_query_instructions = """You are an expert at converting natural language que
             Convert this search query into a SQL query that will find relevant profiles:
             "{subquery}"
             
-            ONLY use columns company, position, user_id, linkedin_url
+            ONLY use columns company, position, user_id, linkedin_url, first_name, last_name
             Return ONLY the SQL query without any explanations or markdown formatting.
             The query should select all columns (*) and limit to {number_of_results_returned} results.
 

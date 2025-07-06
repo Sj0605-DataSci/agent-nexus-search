@@ -4,12 +4,11 @@ import logging
 import jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
 from uuid import UUID
 from jose import JWTError
 
 from app.core.config import settings
-from app.db.database import get_db
+from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import TokenData, StandardResponse, StandardJSONResponse
 
@@ -29,7 +28,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, settings.SUPABASE_JWT_SECRET, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-def verify_supabase_token(token: str, credentials_exception):
+async def verify_supabase_token(token: str, credentials_exception):
     try:
         # First, check if the token is empty or malformed
         if not token or len(token) < 10:  # Basic sanity check
@@ -84,8 +83,7 @@ class OptionalAuthDependency:
     async def __call__(
         self,
         request: Request,
-        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-        db: Session = Depends(get_db)
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
     ):
         # Allow OPTIONS requests to bypass authentication
         if request.method == "OPTIONS":
@@ -107,29 +105,32 @@ class OptionalAuthDependency:
             data=None
         )
         
-        token_data = verify_supabase_token(credentials.credentials, credentials_exception)
+        token_data = await verify_supabase_token(credentials.credentials, credentials_exception)
         
         # If verify_supabase_token returned a StandardJSONResponse, raise an HTTPException
         if isinstance(token_data, StandardJSONResponse):
             # This will cause FastAPI to use this response directly
             # Instead of continuing with the dependency chain
             raise HTTPException(status_code=401, detail="Could not validate credentials")
-            
-        user = db.query(Profile).filter(Profile.id == token_data.user_id).first()
         
-        # If user doesn't exist in profiles table but JWT is valid,
-        # we could optionally create the profile here
-        if user is None:
+        # Get Supabase client
+        client = await get_async_supabase_client()
+        
+        # Query the profiles table using Supabase client
+        response = await client.table("profiles").select("*").eq("id", str(token_data.user_id)).execute()
+        
+        # Check if user exists
+        if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=401, detail="User not found")
+            
+        # Create a Profile object from the response data
+        user = Profile(**response.data[0])
             
         return user
 
-# Create an instance of the dependency
-get_current_user_optional = OptionalAuthDependency()
-
 async def get_current_user(
     request: Request,
-    user = Depends(get_current_user_optional)
+    user = Depends(OptionalAuthDependency())
 ):
     # This will be None for OPTIONS requests
     if user is None and request.method != "OPTIONS":

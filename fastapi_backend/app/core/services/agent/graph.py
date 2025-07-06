@@ -6,7 +6,7 @@ from langgraph.graph import START, END
 from langchain_core.runnables import RunnableConfig
 from app.models.chat import OverallState, QueryGenerationState, ReflectionState, WebSearchState, SearchQueryList, Reflection, IntentClassifierState
 from app.core.utils.llm_utils import GeminiChatModel
-from app.db.clients import get_supabase_client
+from app.db.clients import get_async_supabase_client
 import json
 import re
 from tavily import TavilyClient
@@ -27,9 +27,6 @@ from app.core.services.agent.prompts import (
 from uuid import UUID, uuid4
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
-
-supabase_client = get_supabase_client()
-
 
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """
@@ -148,7 +145,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
     if hasattr(state, "model_dump"):
         state = state.model_dump()
 
-
+    supabase_client = await get_async_supabase_client()
     # Use Gemini client
     llm = GeminiChatModel(
         model="gemini-2.0-flash",
@@ -171,7 +168,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
 
     # check for custom initial search query count
     try :
-        initial_search_query_count = supabase_client.table("hired_agents").select("initial_search_query_count").eq("user_id", user_id).eq("id", agent_id).execute().data[0]["initial_search_query_count"]    
+        initial_search_query_count = state["initial_search_query_count"]    
     except Exception as e:
         initial_search_query_count = 1
     current_date = get_current_date()
@@ -245,7 +242,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         try:
             # Extract just the query strings for logging
             query_strings = [q["query"] for q in search_queries]
-            supabase_client.table("chat_messages").insert({
+            await supabase_client.table("chat_messages").insert({
                 "user_id": user_id, 
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id, 
@@ -275,6 +272,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         user_id=state["user_id"], 
         max_research_loops=state["max_research_loops"], 
         number_of_results_returned=num_results, 
+        initial_search_query_count=state["initial_search_query_count"],
         world_connections=state["world_connections"]
     )
 
@@ -300,7 +298,9 @@ def continue_to_web_research(state: WebSearchState):
             agent_id=state["agent_id"],
             agent_config=state["agent_config"],
             world_connections=state["world_connections"],
-            number_of_results_returned=state["number_of_results_returned"]
+            number_of_results_returned=state["number_of_results_returned"],
+            initial_search_query_count=state["initial_search_query_count"],
+            max_research_loops=state["max_research_loops"]
         ))
         for idx, search_query in enumerate(state["search_query"])
     ]
@@ -318,7 +318,9 @@ def continue_to_web_research(state: WebSearchState):
             agent_id=state["agent_id"],
             agent_config=state["agent_config"],
             world_connections=state["world_connections"],
-            number_of_results_returned=state["number_of_results_returned"]
+            number_of_results_returned=state["number_of_results_returned"],
+            initial_search_query_count=state["initial_search_query_count"],
+            max_research_loops=state["max_research_loops"]
         ))
         for idx, search_query in enumerate(state["search_query"])
     ]
@@ -508,12 +510,13 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         agent_config=state.get("agent_config", {}),
         world_connections=state.get("world_connections", ""),
         format=state.get("format", ""),
-        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else [state.get("search_query", [])],
+        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
         sql_queries=state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])],
         web_research_result=[modified_text],
         user_id=state.get("user_id", ""),
         agent_id=state.get("agent_id", ""),
         chat_thread_id=state.get("chat_thread_id", ""),
+        initial_search_query_count=state.get("initial_search_query_count", 0),
         number_of_results_returned=num_results
     )
 
@@ -566,12 +569,13 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         messages=state.get("messages", []),
         intent=state["intent"],
         format=state["format"],
-        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else [state.get("search_query", [])],
+        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
         sql_queries=sql_queries,
         web_research_result=state.get("web_research_result", []),
         sources_gathered=state.get("sources_gathered", []),
         research_loop_count=state.get("research_loop_count", 0),
         max_research_loops=state["max_research_loops"],
+        initial_search_query_count=state["initial_search_query_count"],
         agent_config=state["agent_config"],
         world_connections=state["world_connections"],
         user_id=state["user_id"],
@@ -586,6 +590,7 @@ async def sql_query_execution(state: OverallState) -> OverallState:
     
     # Execute SQL queries against Supabase
     query_results = []
+    supabase_client = await get_async_supabase_client()
     
     for sql_query in state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])]:
         try:
@@ -600,7 +605,7 @@ async def sql_query_execution(state: OverallState) -> OverallState:
             
             try:
                 # Execute with JSON wrapper to ensure consistent return type
-                result = supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
+                result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
                 
                 if result.data:
                     # Extract the actual data from the JSONB wrapper
@@ -619,7 +624,7 @@ async def sql_query_execution(state: OverallState) -> OverallState:
                 if sql_query.strip().upper().startswith('SELECT') and 'connections' in sql_query.lower():
                     try:
                         # Extract table and conditions for direct query
-                        result = supabase_client.table('connections').select('*').eq('user_id', state.get('user_id', '')).limit(1).execute()
+                        result = await supabase_client.table('connections').select('*').eq('user_id', state.get('user_id', '')).limit(1).execute()
                         if result.data:
                             query_results.extend(result.data)
                             print(f"Fallback query returned {len(result.data)} results")
@@ -633,10 +638,11 @@ async def sql_query_execution(state: OverallState) -> OverallState:
     
     return OverallState(
         messages=state.get("messages", []),
-        search_query=state.get("search_query", []),
-        sql_queries=state.get("sql_queries", []),
+        search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
+        sql_queries=state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])],
         web_research_result=query_results,
         intent=state["intent"],
+        initial_search_query_count=state["initial_search_query_count"],
         format=state.get("format", ""),
         sources_gathered=state.get("sources_gathered", []),
         research_loop_count=state.get("research_loop_count", 0),
@@ -801,8 +807,7 @@ async def evaluate_research(
     world_connections = state["world_connections"]
 
     try:
-        max_research_loops_response = supabase_client.table("hired_agents").select("max_research_loops").eq("user_id", user_id).eq("id", agent_id).execute()
-        max_research_loops = max_research_loops_response.data[0]["max_research_loops"]
+        max_research_loops = state["max_research_loops"]
     except Exception as e:
         max_research_loops = 1
 
@@ -887,7 +892,8 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries="",
             format=state.get("format", "table")
         )
-    
+
+    supabase_client = await get_async_supabase_client()    
     agent_config = state.get("agent_config", {})
     user_id = agent_config.get("user_id", "")
     agent_id = agent_config.get("id", "")
@@ -922,7 +928,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     
     try:
         # Use the global Supabase client directly
-        supabase_client.table("chat_messages").update({
+        await supabase_client.table("chat_messages").update({
             "message": message_content, 
             "sources_gathered": state["sources_gathered"]
         }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).execute()
