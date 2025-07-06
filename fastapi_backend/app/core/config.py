@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     SUPABASE_JWT_EXPIRY: int = int(os.getenv("SUPABASE_JWT_EXPIRY", "3600"))
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+    # Use Railway Redis environment variables if available
+    REDIS_HOST: str = os.getenv("REDISHOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDISPORT", "6379"))
+    REDIS_PASSWORD: str = os.getenv("REDISPASSWORD", "password")
+    REDIS_URL: str = os.getenv("REDIS_URL", "")
 
     class Config:
         case_sensitive = True

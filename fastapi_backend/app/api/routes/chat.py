@@ -68,95 +68,49 @@ async def stream_chat(
     request: StreamingChatRequest,
 ) -> StreamingResponse:
     """
-    Stream chat response as Server-Sent Events (SSE) using LangGraph's streaming capabilities
-    """
-    # Initialize chat service
-    chat_service = ChatService(client=await get_async_supabase_client())
+    Stream chat response as Server-Sent Events (SSE) using Redis-based background workers
     
-    async def event_generator() -> AsyncGenerator[str, None]:
-        try:
-            # Send initial thinking state
-            thinking_update = StreamingChatUpdate(
-                type="thinking",
-                content={"message": "Thinking..."}
-            )
-            yield f"event: update\ndata: {thinking_update.model_dump_json()}\n\n"
-            
-            # Use the new stream_chat method that leverages LangGraph streaming
-            async for update in chat_service.stream_chat(
-                request.user_id, 
-                request.agent_id, 
-                request.messages,
-                request.format,
-                request.search_mode,
-                request.world_connections
-            ):
-                # Convert the update to a StreamingChatUpdate
-                if update["type"] == "token":
-                    # For token updates, we'll send them as "thinking" updates
-                    # to show the LLM is generating text
-                    token_update = StreamingChatUpdate(
-                        type="token",
-                        content={
-                            "text": update["content"],
-                            "node": update["node"]
-                        }
-                    )
-                    yield f"event: update\ndata: {token_update.model_dump_json()}\n\n"
-                    
-                elif update["type"] == "search_query":
-                    # For search query updates
-                    query_update = StreamingChatUpdate(
-                        type="search_query",
-                        content=update["content"]
-                    )
-                    yield f"event: update\ndata: {query_update.model_dump_json()}\n\n"
-                    
-                elif update["type"] == "source":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
-                        type="source",
-                        content=update["content"]
-                    )
-                    yield f"event: update\ndata: {source_update.model_dump_json()}\n\n"
-                    
-                elif update["type"] == "message":
-                    # For final message updates
-                    message_update = StreamingChatUpdate(
-                        type="message",
-                        content=update["content"]
-                    )
-                    yield f"event: update\ndata: {message_update.model_dump_json()}\n\n"
-                    
-                elif update["type"] == "done":
-                    # For completion signal
-                    done_update = StreamingChatUpdate(
-                        type="done",
-                        content=update["content"]
-                    )
-                    yield f"event: update\ndata: {done_update.model_dump_json()}\n\n"
-                    
-                elif update["type"] == "error":
-                    # For error messages
-                    error_update = StreamingChatUpdate(
-                        type="error",
-                        content=update["content"]
-                    )
-                    yield f"event: update\ndata: {error_update.model_dump_json()}\n\n"
-                    
-        except Exception as e:
-            # Log the error
-            logger.error(f"Error in stream_chat endpoint: {str(e)}")
-            logger.error(traceback.format_exc())
-            
-            # Send error message
+    This endpoint queues the chat request to be processed by a background worker,
+    then streams the response using Redis Pub/Sub as the worker processes it.
+    This allows multiple users to get responses concurrently without blocking.
+    """
+    from app.core.worker import enqueue_chat_task
+    from app.core.services.stream_service import stream_service
+    
+    try:
+        # Queue the chat request to be processed by a background worker
+        # This returns immediately without blocking
+        request_id = await enqueue_chat_task(
+            user_id=request.user_id,
+            agent_id=request.agent_id,
+            messages=request.messages,
+            format=request.format,
+            search_mode=request.search_mode,
+            world_connections=request.world_connections
+        )
+        
+        logger.info(f"Chat request queued with ID: {request_id}")
+        
+        # Return a streaming response that subscribes to the Redis Pub/Sub channel
+        return StreamingResponse(
+            stream_service.subscribe_to_chat_stream(request_id),
+            media_type="text/event-stream"
+        )
+        
+    except Exception as e:
+        # Log the error
+        logger.error(f"Error queueing chat request: {str(e)}")
+        logger.error(traceback.format_exc())
+        
+        # Return an error response
+        async def error_generator():
             error_update = StreamingChatUpdate(
                 type="error",
                 content={"message": f"Error: {str(e)}"}
             )
             yield f"event: update\ndata: {error_update.model_dump_json()}\n\n"
-    
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream"
-    )
+            
+        return StreamingResponse(
+            error_generator(),
+            media_type="text/event-stream"
+        )
