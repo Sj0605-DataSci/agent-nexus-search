@@ -8,6 +8,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import traceback
 from typing import Callable, Union
+from app.db.clients import get_async_supabase_client
+from fastapi.responses import JSONResponse
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
 
@@ -87,3 +89,31 @@ app.include_router(chat.router, prefix="/api", tags=["chat"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to Agent Search API"}
+
+@app.get("/health")
+async def health():
+    try:
+        # Check Supabase connection
+        supabase = await get_async_supabase_client()
+        # Try a simple query to verify connection
+        response = await supabase.from_("profiles").select("count", count="exact").limit(1).execute()
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status": "healthy",
+                "message": "Agent Search API is healthy",
+                "database": "connected"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "message": "Agent Search API is unhealthy",
+                "database": "disconnected",
+                "error": str(e)
+            }
+        )
