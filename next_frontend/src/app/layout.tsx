@@ -19,7 +19,8 @@ export const metadata: Metadata = {
   description: "Its time to Discover new Minds",
   authors: [{ name: "Team DiscoverMinds.ai" }],
   icons: {
-    icon: "https://www.discovermind.com/_site/images/logo-dark.png",
+    // icon: "https://www.discovermind.com/_site/images/logo-dark.png",
+    icon: "/logo.png",
   },
   openGraph: {
     title: "Discover new Minds",
@@ -27,7 +28,8 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://www.discovermind.com/_site/images/logo-dark.png",
+        // url: "https://www.discovermind.com/_site/images/logo-dark.png",
+        url: "/logo.png",
         width: 1200,
         height: 630,
         alt: "Its time to Discover new Minds",

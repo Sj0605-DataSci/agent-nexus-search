@@ -1,0 +1,313 @@
+<!-- <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 300px;
+        padding: 20px;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: #1a1a1a;
+        color: white;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .icon {
+        width: 32px;
+        height: 32px;
+        background: #22c55e;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .status {
+        background: #2d2d2d;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      }
+
+      .status-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .status-text {
+        color: #a1a1a1;
+        font-size: 14px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        flex: 1;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      .primary {
+        background: #22c55e;
+        color: white;
+      }
+
+      .secondary {
+        background: #404040;
+        color: white;
+      }
+
+      .primary:hover {
+        background: #16a34a;
+      }
+
+      .secondary:hover {
+        background: #525252;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="icon">🍀</div>
+      <h1>Happenstance</h1>
+    </div>
+
+    <div class="status">
+      <div class="status-title">Extension Status</div>
+      <div class="status-text" id="statusText">Ready and active</div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="testNotification">Test Notification</button>
+      <button class="secondary" id="openOptions">Options</button>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 320px;
+        padding: 0;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: #2a2a2a;
+        color: white;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px;
+        background: #333333;
+        border-bottom: 1px solid #404040;
+      }
+
+      .icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 500;
+        color: #ffffff;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      .social-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid #404040;
+      }
+
+      .social-item:last-child {
+        border-bottom: none;
+      }
+
+      .social-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-size: 18px;
+      }
+
+      .linkedin-icon {
+        background: #0077b5;
+        color: white;
+      }
+
+      .twitter-icon {
+        background: #1da1f2;
+        color: white;
+      }
+
+      .social-info {
+        flex: 1;
+      }
+
+      .social-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: #ffffff;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .beta-tag {
+        background: #666666;
+        color: #cccccc;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 400;
+      }
+
+      .social-status {
+        font-size: 14px;
+        color: #999999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ff6b6b;
+      }
+
+      .login-section {
+        padding: 20px;
+        border-top: 1px solid #404040;
+      }
+
+      .login-button {
+        width: 100%;
+        padding: 12px 16px;
+        background: transparent;
+        border: 1px solid #666666;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+      }
+
+      .login-button:hover {
+        background: #404040;
+        border-color: #777777;
+      }
+
+      .arrow-icon {
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="icon">🍀</div>
+      <h1>Happenstance</h1>
+    </div>
+
+    <div class="content">
+      <div class="social-item">
+        <div class="social-icon linkedin-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
+            />
+          </svg>
+        </div>
+        <div class="social-info">
+          <div class="social-name">LinkedIn</div>
+          <div class="social-status">
+            <div class="status-dot"></div>
+            Not connected
+          </div>
+        </div>
+      </div>
+
+      <div class="social-item">
+        <div class="social-icon twitter-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"
+            />
+          </svg>
+        </div>
+        <div class="social-info">
+          <div class="social-name">
+            Twitter
+            <span class="beta-tag">Beta</span>
+          </div>
+          <div class="social-status">
+            <div class="status-dot"></div>
+            Not connected
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-section">
+      <button class="login-button" id="loginButton">
+        Log in to Happenstance
+        <span class="arrow-icon">↗</span>
+      </button>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
