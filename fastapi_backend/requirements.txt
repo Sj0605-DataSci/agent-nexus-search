@@ -37,3 +37,6 @@ bs4
 sse-starlette
 
 email-validator
+
+redis
+psutil
