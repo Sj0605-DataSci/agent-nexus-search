@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_URL,
   timeout: 10000,
-  withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -71,8 +70,7 @@ axiosInstance.interceptors.response.use(
       try {
         const { data } = await axios.post(
           `${process.env.NEXT_PUBLIC_BASE_URL}/auth/refresh-token`,
-          {},
-          { withCredentials: true }
+          {}
         );
 
         const newAccessToken = data.access_token;
