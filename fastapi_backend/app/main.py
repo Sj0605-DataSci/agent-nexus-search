@@ -1,3 +1,6 @@
+import logging
+import os
+import gc
 from fastapi import FastAPI, Request, Response, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -10,11 +13,14 @@ import traceback
 from typing import Callable, Union
 from app.db.clients import get_async_supabase_client
 from fastapi.responses import JSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from app.db.redis_client import redis_client
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status
 from app.core.config import settings
+from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +40,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
+)
+
+# Add Gzip compression middleware
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000  # Only compress responses larger than 1KB
 )
 
 # Custom exception handlers to convert exceptions to StandardResponse format
@@ -85,10 +97,77 @@ app.include_router(agent_templates.router, prefix="/api", tags=["agent_templates
 app.include_router(hired_agents.router, prefix="/api", tags=["hired_agents"])
 app.include_router(profiles.router, prefix="/api", tags=["profiles"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(worker_status.router, prefix="/api", tags=["worker"])
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to Agent Search API"}
+
+# Redis client initialization
+@app.on_event("startup")
+async def startup_db_client():
+    """Initialize database client on startup"""
+    try:
+        # Log initial memory state
+        logger.info("Application starting up - Initial memory state:")
+        log_memory_usage("Startup memory")
+        take_memory_snapshot("startup")
+        
+        # Set garbage collection thresholds for more aggressive collection
+        # Default is (700, 10, 10) - lower numbers mean more frequent collection
+        old_thresholds = gc.get_threshold()
+        gc.set_threshold(500, 10, 10)
+        logger.info(f"GC thresholds changed from {old_thresholds} to {gc.get_threshold()}")
+        
+        # Initialize the Supabase client
+        client = await get_async_supabase_client()
+        logger.info("Supabase client initialized")
+        
+        # Initialize Redis client
+        await redis_client.initialize(
+            host=settings.REDIS_HOST if hasattr(settings, 'REDIS_HOST') else 'localhost',
+            port=settings.REDIS_PORT if hasattr(settings, 'REDIS_PORT') else 6379,
+            password=settings.REDIS_PASSWORD if hasattr(settings, 'REDIS_PASSWORD') else None,
+            url=settings.REDIS_URL if settings.REDIS_URL else None
+        )
+        logger.info("Redis client initialized")
+        
+        # Initialize worker manager for background processing
+        from app.core.worker_manager import worker_manager
+        # Use 1 worker for Railway free tier to conserve resources
+        await worker_manager.initialize(num_workers=1)
+        logger.info("Worker manager initialized")
+        
+        # Log memory after initialization
+        log_memory_usage("After client initialization")
+    except Exception as e:
+        logger.error(f"Error initializing database client: {str(e)}")
+        # Don't crash the app, but log the error allow app to start even if Redis is not available
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    """Cleanup on shutdown"""
+    try:
+        # Log memory state before shutdown
+        logger.info("Application shutting down - Memory state:")
+        log_memory_usage("Shutdown memory")
+        take_memory_snapshot("shutdown")
+        
+        # Shutdown worker manager
+        try:
+            from app.core.worker_manager import worker_manager
+            await worker_manager.shutdown()
+            logger.info("Worker manager shutdown complete")
+        except Exception as worker_error:
+            logger.error(f"Error shutting down worker manager: {str(worker_error)}")
+        
+        # Force garbage collection to free up memory
+        force_garbage_collection()
+        
+        # Log memory after garbage collection
+        log_memory_usage("After garbage collection")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {str(e)}")
 
 @app.get("/health")
 async def health():
