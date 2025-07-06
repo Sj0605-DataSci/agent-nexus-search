@@ -1,4 +1,4 @@
-// Background script for Happenstance extension
+
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     // Show the installation notification
@@ -20,7 +20,7 @@ function showInstallNotification() {
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "extensionInstalled") {
-    console.log("Happenstance extension installed successfully");
+    console.log("Discover Minds extension installed successfully");
     sendResponse({ status: "acknowledged" });
   }
 });
