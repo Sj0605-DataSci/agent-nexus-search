@@ -8,13 +8,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 function showInstallationPopup() {
   // Check if notification already exists
-  if (document.getElementById("happenstance-notification")) {
+  if (document.getElementById("discover-minds-notification")) {
     return;
   }
 
   // Create the notification popup
   const notification = document.createElement("div");
-  notification.id = "happenstance-notification";
+  notification.id = "discover-minds-notification";
   notification.innerHTML = `
     <div style="
       position: fixed;
@@ -52,7 +52,7 @@ function showInstallationPopup() {
             font-weight: 600;
             color: white;
           ">
-            Happenstance has been added to Chrome
+            Discover Minds has been added to Chrome
           </h3>
           <p style="
             margin: 0;
@@ -62,7 +62,7 @@ function showInstallationPopup() {
             Manage your extensions by clicking Extensions in the Window menu.
           </p>
         </div>
-        <button id="happenstance-close" style="
+        <button id="discover-minds-close" style="
           background: none;
           border: none;
           color: #a1a1a1;
@@ -113,9 +113,9 @@ function showInstallationPopup() {
   document.body.appendChild(notification);
 
   // Add close functionality
-  const closeBtn = document.getElementById("happenstance-close");
+  const closeBtn = document.getElementById("discover-minds-close");
   closeBtn.addEventListener("click", () => {
-    const notificationEl = document.getElementById("happenstance-notification");
+    const notificationEl = document.getElementById("discover-minds-notification");
     if (notificationEl) {
       notificationEl.style.animation = "slideOut 0.3s ease-in";
       setTimeout(() => {
@@ -126,7 +126,7 @@ function showInstallationPopup() {
 
   // Auto-close after 5 seconds
   setTimeout(() => {
-    const notificationEl = document.getElementById("happenstance-notification");
+    const notificationEl = document.getElementById("discover-minds-notification");
     if (notificationEl) {
       notificationEl.style.animation = "slideOut 0.3s ease-in";
       setTimeout(() => {

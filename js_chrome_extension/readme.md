@@ -1,4 +1,4 @@
-# Happenstance Chrome Extension
+# Discover Minds Chrome Extension
 
 A Chrome extension that shows a beautiful notification popup when installed, just like in your screenshot.
 
@@ -12,7 +12,7 @@ A Chrome extension that shows a beautiful notification popup when installed, jus
 
 ## Installation
 
-1. **Download the files**: Save all the provided files in a folder called `happenstance-extension`
+1. **Download the files**: Save all the provided files in a folder called `discover-minds-extension`
 
 2. **Required files**:
 
@@ -32,7 +32,7 @@ A Chrome extension that shows a beautiful notification popup when installed, jus
    - Open Chrome and go to `chrome://extensions/`
    - Enable "Developer mode" (toggle in top right)
    - Click "Load unpacked"
-   - Select your `happenstance-extension` folder
+   - Select your `discover-minds-extension` folder
 
 5. **Test it**:
    - The notification should appear automatically when you install
@@ -41,7 +41,7 @@ A Chrome extension that shows a beautiful notification popup when installed, jus
 ## File Structure
 
 ```
-happenstance-extension/
+discover-minds-extension/
 ├── manifest.json          # Extension configuration
 ├── background.js          # Service worker for handling installation
 ├── content.js            # Content script for showing notifications

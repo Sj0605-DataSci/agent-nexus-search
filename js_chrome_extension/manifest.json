@@ -1,15 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Happenstance",
+  "name": "__MSG_extensionName__",
   "version": "1.0",
-  "description": "A Chrome extension that shows installation notifications",
-  "permissions": ["notifications", "storage"],
+  "default_locale": "en",
+  "description": "__MSG_extensionDescription__",
+  "category": "productivity",
+  "permissions": ["storage", "notifications"],
+  "host_permissions": ["https://*.discoverminds.ai/*"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Happenstance",
+    "default_title": "Discover Minds",
     "default_icon": {
       "16": "icon16.png",
       "48": "icon48.png",
@@ -26,5 +29,12 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
-  ]
+  ],
+  "author": {
+    "email": "teamdiscoverminds@gmail.com",
+    "name": "Discover Minds Team",
+    "url": "https://discoverminds.ai/team"
+  },
+  "homepage_url": "https://discoverminds.ai",
+  "minimum_chrome_version": "88"
 }

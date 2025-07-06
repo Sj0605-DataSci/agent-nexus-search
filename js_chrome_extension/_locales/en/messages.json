@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "Discover Minds",
+    "description": "The name of the extension"
+  },
+  "extensionDescription": {
+    "message": "AI-powered search assistant that helps you discover and connect with people based on their expertise and professional background.",
+    "description": "The description of the extension"
+  }
+}

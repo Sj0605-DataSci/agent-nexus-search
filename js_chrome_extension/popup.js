@@ -1,4 +1,4 @@
-// Popup script for Happenstance extension
+
 document.addEventListener("DOMContentLoaded", () => {
   const testBtn = document.getElementById("testNotification");
   const optionsBtn = document.getElementById("openOptions");
