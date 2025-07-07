@@ -28,15 +28,30 @@ class StreamService:
             str: SSE formatted messages from the stream
         """
         channel_name = f"{CHAT_CHANNEL_PREFIX}{request_id}"
+        pubsub = None
         client = await redis_client.get_client()
         
         try:
-            # Check if channel exists
-            exists = await client.exists(f"channel:{channel_name}")
-            if not exists:
-                logger.warning(f"Channel {channel_name} does not exist")
-                yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Stream not found or expired'}})}\n\n"
+            # Check if channel exists with timeout handling
+            try:
+                exists = await asyncio.wait_for(client.exists(f"channel:{channel_name}"), timeout=2.0)
+                if not exists:
+                    logger.warning(f"Channel {channel_name} does not exist")
+                    yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Stream not found or expired'}})}\n\n"
+                    return
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout checking if channel {channel_name} exists")
+                yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Redis connection timeout - please try again later'}})}\n\n"
                 return
+            except Exception as e:
+                if "circuit breaker open" in str(e).lower():
+                    logger.error(f"Redis circuit breaker open when checking channel {channel_name}")
+                    yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Redis service temporarily unavailable - please try again in 30 seconds'}})}\n\n"
+                    return
+                else:
+                    logger.error(f"Error checking if channel {channel_name} exists: {str(e)}")
+                    yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': f'Error connecting to stream: {str(e)}'}})}\n\n"
+                    return
                 
             # Create a pubsub instance
             pubsub = client.pubsub()
@@ -78,10 +93,19 @@ class StreamService:
         finally:
             # Unsubscribe and clean up
             try:
-                await pubsub.unsubscribe(channel_name)
-                logger.info(f"Unsubscribed from channel {channel_name}")
+                if pubsub:
+                    await pubsub.unsubscribe(channel_name)
+                    logger.info(f"Unsubscribed from channel {channel_name}")
             except Exception as e:
                 logger.error(f"Error unsubscribing from channel {channel_name}: {str(e)}")
+                
+            # Clean up channel metadata with TTL
+            try:
+                # Set a shorter TTL for completed channels
+                await client.expire(f"channel:{channel_name}", 300)  # 5 minute TTL after completion
+                logger.debug(f"Set cleanup TTL for channel {channel_name}")
+            except Exception as e:
+                logger.error(f"Error setting cleanup TTL for channel {channel_name}: {str(e)}")
 
 # Create singleton instance
 stream_service = StreamService()

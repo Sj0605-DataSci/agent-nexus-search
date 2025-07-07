@@ -18,7 +18,7 @@ from app.db.redis_client import redis_client
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
 
@@ -98,6 +98,7 @@ app.include_router(hired_agents.router, prefix="/api", tags=["hired_agents"])
 app.include_router(profiles.router, prefix="/api", tags=["profiles"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(worker_status.router, prefix="/api", tags=["worker"])
+app.include_router(connections_processing.router, prefix="/api", tags=["connections_processing"])
 
 @app.get("/")
 async def root():
@@ -125,17 +126,17 @@ async def startup_db_client():
         
         # Initialize Redis client
         await redis_client.initialize(
-            host=settings.REDIS_HOST if hasattr(settings, 'REDIS_HOST') else 'localhost',
-            port=settings.REDIS_PORT if hasattr(settings, 'REDIS_PORT') else 6379,
-            password=settings.REDIS_PASSWORD if hasattr(settings, 'REDIS_PASSWORD') else None,
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD,
             url=settings.REDIS_URL if settings.REDIS_URL else None
         )
         logger.info("Redis client initialized")
         
         # Initialize worker manager for background processing
         from app.core.worker_manager import worker_manager
-        # Use 1 worker for Railway free tier to conserve resources
-        await worker_manager.initialize(num_workers=1)
+        # Worker manager is configured to use 1 worker for Railway free tier
+        await worker_manager.initialize()
         logger.info("Worker manager initialized")
         
         # Log memory after initialization

@@ -28,12 +28,14 @@ CHAT_CHANNEL_PREFIX = "chat:stream:"
 STREAM_CHANNEL_TTL = 3600  # 1 hour
 
 class ChatWorker:
-    """Worker for processing chat requests in the background"""
+    """Worker for processing chat requests from Redis queue"""
     
     def __init__(self):
-        self.running = False
+        """Initialize the worker"""
         self.worker_id = str(uuid.uuid4())
+        self.running = False
         self.current_task = None
+        self.request_restart = False  # Flag to request restart due to memory issues
     
     async def start(self):
         """Start the worker process"""
@@ -104,8 +106,17 @@ class ChatWorker:
     
     async def _process_chat_task(self, task: Dict[str, Any]):
         """Process a chat task"""
+        from app.core.memory import get_memory_usage, force_garbage_collection, memory_intensive
+        
         request_id = task.get("request_id")
         channel = f"{CHAT_CHANNEL_PREFIX}{request_id}"
+        
+        # Check memory before processing
+        start_memory = get_memory_usage()
+        logger.debug(f"Starting task {request_id} with memory: RSS={start_memory['rss']:.2f}MB")
+        
+        # Reset restart flag
+        self.request_restart = False
         
         try:
             # Initialize chat service
@@ -215,6 +226,18 @@ class ChatWorker:
                 logger.info(f"Removed task {request_id} from processing list")
             except Exception as e:
                 logger.error(f"Error removing task from processing: {str(e)}")
+                
+            # Force garbage collection after task processing
+            force_garbage_collection()
+            
+            # Check memory after processing
+            end_memory = get_memory_usage()
+            logger.debug(f"Finished task {request_id} with memory: RSS={end_memory['rss']:.2f}MB (change: {end_memory['rss'] - start_memory['rss']:.2f}MB)")
+            
+            # Request restart if memory usage is too high
+            if end_memory['rss'] > 400:  # 400MB threshold (below 512MB limit)
+                logger.warning(f"Worker memory usage too high: {end_memory['rss']:.2f}MB, requesting restart")
+                self.request_restart = True
 
 
 # Helper functions for enqueueing tasks
@@ -225,18 +248,33 @@ async def enqueue_chat_task(
     format: str = "table",
     search_mode: str = "basic",
     world_connections: str = "world"
-) -> str:
+) -> Optional[str]:
     """
     Add a chat task to the queue
     
     Returns:
-        str: Request ID for tracking the task
+        str: Request ID for tracking the task, or None if queue is full
     """
     try:
+        client = await redis_client.get_client()
+        
+        # Check queue size before adding
+        queue_size = await client.llen(CHAT_QUEUE)
+        processing_size = await client.llen(CHAT_PROCESSING)
+        total_tasks = queue_size + processing_size
+        
+        # Set a reasonable limit for Railway free tier
+        if total_tasks > 100:  # Limit total tasks in system
+            logger.warning(f"Chat queue too large (queue: {queue_size}, processing: {processing_size}), rejecting request")
+            return None
+        
         # Generate a unique request ID
         request_id = str(uuid.uuid4())
         
-        # Create the task
+        # Create the task with TTL
+        import time
+        current_time = time.time()
+        
         task = {
             "request_id": request_id,
             "user_id": user_id,
@@ -245,18 +283,19 @@ async def enqueue_chat_task(
             "format": format,
             "search_mode": search_mode,
             "world_connections": world_connections,
+            "created_at": current_time,
+            "ttl": 600,  # 10 minute TTL
             "timestamp": str(asyncio.get_event_loop().time())
         }
         
         # Add to queue
-        client = await redis_client.get_client()
         await client.lpush(CHAT_QUEUE, json.dumps(task))
         
         # Create a pub/sub channel for this request with TTL
         channel = f"{CHAT_CHANNEL_PREFIX}{request_id}"
         await client.set(f"channel:{channel}", "active", ex=STREAM_CHANNEL_TTL)
         
-        logger.info(f"Enqueued chat task with request_id {request_id}")
+        logger.info(f"Enqueued chat task with request_id {request_id} (queue size: {queue_size+1})")
         return request_id
         
     except Exception as e:

@@ -168,6 +168,17 @@ export const apiClient = {
     }
   },
 
+  // Connections
+  async processConnectionFile(fileId: string): Promise<any> {
+    try {
+      const res = await axiosInstance.post("/process-connection-file", { file_id: fileId });
+      return res.data?.data;
+    } catch (error) {
+      console.error("Error processing connection file:", error);
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async sendStreamingChatRequest(
     userId: string,
     agentId: string,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, LogIn, LogOut, Menu as MenuIcon, X as CloseIcon } from "lucide-react";
+import { Search, LogIn, LogOut, Menu as MenuIcon, X as CloseIcon, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,6 +77,7 @@ const Navigation = () => {
             ["/searchengine", "Search"],
             ["/marketplace", "Marketplace"],
             ["/agents", "Agents"],
+            ["/profile", "Profile"],
           ].map(([href, label]) => (
             <Link
               key={href}
@@ -196,6 +197,7 @@ const Navigation = () => {
             ["/searchengine", "Search"],
             ["/marketplace", "Marketplace"],
             ["/agents", "Agents"],
+            ["/profile", "Profile"],
           ].map(([href, label]) => (
             <Link
               key={href}
