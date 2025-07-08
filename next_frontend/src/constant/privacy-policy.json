@@ -1,0 +1,117 @@
+{
+  "lastUpdated": "July 8, 2025",
+  "title": "Privacy Policy",
+  "introduction": "This Privacy Policy explains how Discoverminds ('we', 'us', 'our') collects, uses, discloses, and protects your information when you use our website, Chrome extension, and related services ('Services'). It applies to all users, including agents, customers, and visitors. By using our Services, you agree to the terms described in this policy.",
+  "contact": {
+    "sendto": "founders@discoverminds.ai",
+    "address": "Indranagar, Bangalore, India"
+  },
+  "sections": [
+    {
+      "title": "What Information We Collect",
+      "content": [
+        "Personal Information: Name, email address, phone number, profile photo, payment details, and other identifiers you provide.",
+        "Professional Data: Work history, education, skills, and information from uploaded connections (such as LinkedIn profiles).",
+        "Usage Information: Search queries, interaction logs, device information (IP address, browser type, operating system), and extension usage statistics.",
+        "Payment Information: Transaction details, billing address, and payment method (processed securely via third-party providers).",
+        "Communications: Messages sent to agents or support, feedback, and correspondence.",
+        "We may also collect any other information you choose to provide while using our Services."
+      ]
+    },
+    {
+      "title": "How We Collect Information",
+      "content": [
+        "Directly from You: When you register, fill out forms, upload connections, make payments, or communicate with us.",
+        "Automatically: Through cookies, web beacons, and similar technologies when you use our website or Chrome extension.",
+        "From Third Parties: If you connect your LinkedIn or other professional accounts, we collect data as authorized by you."
+      ]
+    },
+    {
+      "title": "How We Use Your Information",
+      "content": [
+        "Provide, operate, and improve our Services and features.",
+        "Enable global and connection-based searches.",
+        "Facilitate agent hiring, onboarding, and payment processing.",
+        "Personalize your experience and deliver relevant search results.",
+        "Communicate updates, offers, and support information.",
+        "Analyze usage trends and improve our offerings.",
+        "Detect, prevent, and address fraud, abuse, or security issues.",
+        "Comply with legal obligations."
+      ]
+    },
+    {
+      "title": "Legal Bases for Processing",
+      "content": [
+        "Your consent (e.g., for marketing or uploading connections).",
+        "Contractual necessity (to deliver our Services).",
+        "Legitimate interests (improving and securing our Services).",
+        "Legal obligations (complying with applicable laws)."
+      ]
+    },
+    {
+      "title": "How We Share and Disclose Information",
+      "content": [
+        "Other Users: As necessary for searches and agent interactions, according to your privacy settings.",
+        "Service Providers: For hosting, analytics, payment processing, customer support, and technical services.",
+        "Third Parties: For legal compliance, fraud prevention, or business transfers (e.g., merger or acquisition).",
+        "With Your Consent: As directed or authorized by you.",
+        "We do not sell your personal information to third parties."
+      ]
+    },
+    {
+      "title": "Cookies and Tracking Technologies",
+      "content": [
+        "We use cookies and similar technologies to:",
+        "Authenticate users and maintain sessions.",
+        "Analyze site and extension usage.",
+        "Personalize content and remember preferences.",
+        "You can manage cookie preferences through your browser settings. Disabling cookies may affect your experience."
+      ]
+    },
+    {
+      "title": "Data Storage, Security, and Retention",
+      "content": [
+        "Storage: Data is stored securely on servers operated by trusted third-party providers.",
+        "Security: We use industry-standard measures (encryption, access controls, regular audits) to protect your information.",
+        "Retention: We retain your data as long as your account is active or as needed for legal, business, or security purposes. Data may be deleted upon request, subject to legal requirements."
+      ]
+    },
+    {
+      "title": "Your Data Rights and Choices",
+      "content": [
+        "Access, correct, or delete your personal information.",
+        "Restrict or object to certain processing.",
+        "Download a copy of your data (data portability).",
+        "Withdraw consent at any time (where processing is based on consent).",
+        "Opt out of cookies and marketing communications.",
+        "To exercise your rights, contact us at support@discoverminds.com."
+      ]
+    },
+    {
+      "title": "International Data Transfers",
+      "content": [
+        "Your information may be processed and stored in countries outside your own. We take steps to ensure appropriate safeguards are in place for such transfers, as required by law."
+      ]
+    },
+    {
+      "title": "Children’s Privacy",
+      "content": [
+        "Discoverminds is not intended for individuals under 18. We do not knowingly collect data from children. If you believe a child has provided us with personal information, contact us to have it removed."
+      ]
+    },
+    {
+      "title": "Changes to This Policy",
+      "content": [
+        "We may update this Privacy Policy as our practices or legal requirements change. We will notify you of significant changes via email or through the Service. Continued use after changes constitutes acceptance of the new policy."
+      ]
+    },
+    {
+      "title": "Contact Us",
+      "content": [
+        "For questions or concerns regarding this Privacy Policy or your personal data, contact:",
+        "Email: founders@discoverminds.ai",
+        "Address: Indranagar, Bangalore, India"
+      ]
+    }
+  ]
+}
