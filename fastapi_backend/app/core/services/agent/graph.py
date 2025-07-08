@@ -781,6 +781,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
                 is_sufficient=False,
                 current_message_id=state["current_message_id"],
                 messages=state["messages"],
+                max_research_loops=state["max_research_loops"],
                 knowledge_gap="Unable to parse reflection response. Need more information.",
                 follow_up_queries=[get_research_topic(state["messages"])],
                 research_loop_count=state["research_loop_count"],
@@ -801,6 +802,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             is_sufficient=result_dict.get("is_sufficient", False),
             current_message_id=state["current_message_id"],
             messages=state["messages"],
+            max_research_loops=state["max_research_loops"],
             knowledge_gap=result_dict.get("knowledge_gap", ""),
             follow_up_queries=result_dict.get("follow_up_queries", []),
             research_loop_count=state["research_loop_count"],
@@ -815,6 +817,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         return Reflection(
             is_sufficient=False,
             current_message_id=state["current_message_id"],
+            max_research_loops=state["max_research_loops"],
             knowledge_gap="Unable to parse reflection response. Need more information.",
             follow_up_queries=[get_research_topic(state["messages"])],
             research_loop_count=state["research_loop_count"],
@@ -870,7 +873,8 @@ async def evaluate_research(
                     user_id=state["user_id"],
                     agent_id=state["agent_id"],
                     agent_config=state["agent_config"],
-                    number_of_results_returned=state["number_of_results_returned"]
+                    number_of_results_returned=state["number_of_results_returned"],
+                    max_research_loops=state["max_research_loops"]
                 )
             )
             for idx, follow_up_query in enumerate(state["follow_up_queries"])
@@ -890,7 +894,8 @@ async def evaluate_research(
                     user_id=state["user_id"],
                     agent_id=state["agent_id"],
                     agent_config=state["agent_config"],
-                    number_of_results_returned=state["number_of_results_returned"]
+                    number_of_results_returned=state["number_of_results_returned"],
+                    max_research_loops=state["max_research_loops"]
                 )
             )
             for idx, follow_up_query in enumerate(state["follow_up_queries"])
