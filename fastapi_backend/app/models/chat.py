@@ -71,6 +71,9 @@ class ReflectionState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
         description="A list of messages in the conversation."
     )
+    current_message_id: Annotated[str, lambda x, y: y or x] = Field(
+        description="The ID of the current message."
+    )
     intent: Annotated[str, lambda x, y: y or x] = Field(
         description="The intent of the web search."
     )

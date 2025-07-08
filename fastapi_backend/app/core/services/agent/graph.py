@@ -779,6 +779,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             # Fallback values if parsing fails
             return Reflection(
                 is_sufficient=False,
+                current_message_id=state["current_message_id"],
                 messages=state["messages"],
                 knowledge_gap="Unable to parse reflection response. Need more information.",
                 follow_up_queries=[get_research_topic(state["messages"])],
@@ -798,6 +799,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         # Create a Reflection model with values from the result_dict
         return Reflection(
             is_sufficient=result_dict.get("is_sufficient", False),
+            current_message_id=state["current_message_id"],
             messages=state["messages"],
             knowledge_gap=result_dict.get("knowledge_gap", ""),
             follow_up_queries=result_dict.get("follow_up_queries", []),
@@ -812,6 +814,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         # Fallback values if JSON parsing fails
         return Reflection(
             is_sufficient=False,
+            current_message_id=state["current_message_id"],
             knowledge_gap="Unable to parse reflection response. Need more information.",
             follow_up_queries=[get_research_topic(state["messages"])],
             research_loop_count=state["research_loop_count"],
