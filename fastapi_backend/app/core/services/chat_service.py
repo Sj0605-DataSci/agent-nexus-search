@@ -138,7 +138,7 @@ class ChatService:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
             
-    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world"):
+    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
         
@@ -180,7 +180,7 @@ class ChatService:
                 "initial_search_query_count": 3,
                 "research_loop_count": 0,
                 "max_research_loops": 0,
-                "chat_thread_id": None,
+                "chat_thread_id": thread_id,
                 "web_research_result": [],
                 "sources_gathered": [],
                 "search_query": [],
@@ -197,7 +197,7 @@ class ChatService:
                 "initial_search_query_count": 3,
                 "research_loop_count": 0,
                 "max_research_loops": 0,
-                "chat_thread_id": None,
+                "chat_thread_id": thread_id,
                 "web_research_result": [],
                 "sources_gathered": [],
                 "search_query": [],
@@ -214,7 +214,7 @@ class ChatService:
                 "initial_search_query_count": agent_config["initial_search_query_count"],
                 "research_loop_count": 0,
                 "max_research_loops": agent_config["max_research_loops"],
-                "chat_thread_id": None,
+                "chat_thread_id": thread_id,
                 "web_research_result": [],
                 "sources_gathered": [],
                 "search_query": [],
@@ -231,7 +231,7 @@ class ChatService:
                 "initial_search_query_count": agent_config["initial_search_query_count"],
                 "research_loop_count": 0,
                 "max_research_loops": agent_config["max_research_loops"],
-                "chat_thread_id": None,
+                "chat_thread_id": thread_id,
                 "web_research_result": [],
                 "sources_gathered": [],
                 "search_query": [],
@@ -349,4 +349,73 @@ class ChatService:
             web_research_result=result.get("web_research_result", [])
         )
     
+    async def get_chat_threads(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all chat threads for a specific user
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            List of chat thread objects with their IDs and metadata
+        """
+        try:
+            logger.info(f"Fetching chat threads for user_id={user_id}")
+            
+            # Query Supabase for chat threads where the user is a participant
+            response = await self.client.table("chat_messages") \
+                .select("chat_thread_id, created_at") \
+                .eq("user_id", user_id) \
+                .order("created_at", desc=True) \
+                .execute()
+            
+            # Extract unique chat thread IDs with their latest timestamps
+            thread_map = {}
+            for item in response.data:
+                thread_id = item.get("chat_thread_id")
+                created_at = item.get("created_at")
+                
+                if thread_id not in thread_map or created_at > thread_map[thread_id]["last_message_at"]:
+                    thread_map[thread_id] = {
+                        "id": thread_id,
+                        "last_message_at": created_at
+                    }
+            
+            # Convert to list and sort by most recent activity
+            threads = list(thread_map.values())
+            threads.sort(key=lambda x: x["last_message_at"], reverse=True)
+            
+            return threads
+        
+        except Exception as e:
+            logger.error(f"Error fetching chat threads: {str(e)}")
+            raise
+    
+    async def get_messages_for_thread(self, user_id: str, chat_thread_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all messages for a specific chat thread and user
+        
+        Args:
+            user_id: User ID
+            chat_thread_id: Chat thread ID
+            
+        Returns:
+            List of message objects with their content and metadata
+        """
+        try:
+            logger.info(f"Fetching messages for chat_thread_id={chat_thread_id} and user_id={user_id}")
+            
+            # Query Supabase for messages in the specified chat thread
+            response = await self.client.table("chat_messages") \
+                .select("id, user_id, agent_id, main_query, message, created_at, updated_at") \
+                .eq("chat_thread_id", chat_thread_id) \
+                .eq("user_id", user_id) \
+                .order("created_at", desc=False) \
+                .execute()
+            
+            return response.data
+        
+        except Exception as e:
+            logger.error(f"Error fetching messages for thread: {str(e)}")
+            raise
     

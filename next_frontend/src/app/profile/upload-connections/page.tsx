@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
+import { useAppSelector } from "@/store";
 
 export default function UploadConnectionsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const darkMode = useAppSelector(s => s.theme.dark);
   
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -140,24 +142,25 @@ export default function UploadConnectionsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-24 pb-16 max-w-2xl">
+    <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+      <div className="container mx-auto px-4 pt-8 pb-16 max-w-2xl">
       <Button
         onClick={() => router.back()}
         variant="ghost"
-        className="mb-6 flex items-center gap-2"
+        className={`mb-6 flex items-center gap-2 ${darkMode ? "text-white hover:text-gray-300" : "text-gray-900 hover:text-gray-700"}`}
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </Button>
       
-      <h1 className="text-3xl font-bold mb-2">Upload LinkedIn Connections</h1>
-      <p className="text-gray-600 dark:text-gray-300 mb-8">
+      <h1 className={`text-3xl font-bold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>Upload LinkedIn Connections</h1>
+      <p className={`mb-8 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
         Upload your LinkedIn connections CSV file to import your network.
       </p>
       
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
+      <div className={`rounded-xl shadow-md p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
         <div 
-          className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors"
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${darkMode ? "border-gray-600 hover:border-indigo-400" : "border-gray-300 hover:border-indigo-500"}`}
           onClick={() => fileInputRef.current?.click()}
         >
           <input
@@ -168,16 +171,16 @@ export default function UploadConnectionsPage() {
             className="hidden"
           />
           
-          <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+          <Upload className={`mx-auto h-12 w-12 mb-4 ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
           
           {file ? (
-            <p className="font-medium text-indigo-600 dark:text-indigo-400">
+            <p className={`font-medium ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
               {file.name} ({(file.size / 1024).toFixed(1)} KB)
             </p>
           ) : (
             <>
-              <p className="font-medium mb-1">Click to select or drag and drop</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className={`font-medium mb-1 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>Click to select or drag and drop</p>
+              <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                 CSV files only (max 5MB)
               </p>
             </>
@@ -185,14 +188,14 @@ export default function UploadConnectionsPage() {
         </div>
         
         {errorMessage && (
-          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg flex items-center gap-2">
+          <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${darkMode ? "bg-red-900/20 text-red-400" : "bg-red-50 text-red-700"}`}>
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
         
         {uploadStatus === 'success' && (
-          <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg flex items-center gap-2">
+          <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${darkMode ? "bg-green-900/20 text-green-400" : "bg-green-50 text-green-700"}`}>
             <CheckCircle className="h-5 w-5 flex-shrink-0" />
             <span>Upload successful! Redirecting...</span>
           </div>
@@ -215,10 +218,10 @@ export default function UploadConnectionsPage() {
           </Button>
         </div>
         
-        <div className="mt-6 text-sm text-gray-500 dark:text-gray-400">
-          <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">How to export your LinkedIn connections:</h3>
+        <div className={`mt-6 text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+          <h3 className={`font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>How to export your LinkedIn connections:</h3>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Go to <a href="https://www.linkedin.com/mynetwork/network-manager/people/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">LinkedIn Network Manager</a></li>
+            <li>Go to <a href="https://www.linkedin.com/mynetwork/network-manager/people/" target="_blank" rel="noopener noreferrer" className={`hover:underline ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>LinkedIn Network Manager</a></li>
             <li>Click on "Manage synced and imported contacts"</li>
             <li>Under "Advanced actions", click "Export contacts"</li>
             <li>Select "Connections" and click "Request archive"</li>
@@ -226,6 +229,7 @@ export default function UploadConnectionsPage() {
             <li>Download and upload the CSV file here</li>
           </ol>
         </div>
+      </div>
       </div>
     </div>
   );

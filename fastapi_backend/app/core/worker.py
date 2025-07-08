@@ -130,6 +130,7 @@ class ChatWorker:
             format = task.get("format", "table")
             search_mode = task.get("search_mode", "basic")
             world_connections = task.get("world_connections", "world")
+            thread_id = task.get("thread_id", "")
             
             # Send initial thinking state
             thinking_update = StreamingChatUpdate(
@@ -145,7 +146,8 @@ class ChatWorker:
                 messages,
                 format,
                 search_mode,
-                world_connections
+                world_connections,
+                thread_id
             ):
                 # Convert the update to a StreamingChatUpdate
                 if update["type"] == "token":
@@ -247,7 +249,8 @@ async def enqueue_chat_task(
     messages: Union[str, List[Dict[str, Any]]],
     format: str = "table",
     search_mode: str = "basic",
-    world_connections: str = "world"
+    world_connections: str = "world",
+    thread_id: str = ""
 ) -> Optional[str]:
     """
     Add a chat task to the queue
@@ -283,6 +286,7 @@ async def enqueue_chat_task(
             "format": format,
             "search_mode": search_mode,
             "world_connections": world_connections,
+            "thread_id": thread_id,
             "created_at": current_time,
             "ttl": 600,  # 10 minute TTL
             "timestamp": str(asyncio.get_event_loop().time())

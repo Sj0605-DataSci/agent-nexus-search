@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
 from fastapi.responses import StreamingResponse
 from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate
 from app.core.services.chat_service import ChatService
-from typing import Annotated, AsyncGenerator
+from typing import Annotated, AsyncGenerator, List, Dict, Any
 import traceback
 import logging
 from app.db.clients import get_async_supabase_client
@@ -86,7 +86,8 @@ async def stream_chat(
             messages=request.messages,
             format=request.format,
             search_mode=request.search_mode,
-            world_connections=request.world_connections
+            world_connections=request.world_connections,
+            thread_id=request.thread_id
         )
         
         logger.info(f"Chat request queued with ID: {request_id}")
@@ -114,3 +115,89 @@ async def stream_chat(
             error_generator(),
             media_type="text/event-stream"
         )
+
+
+@router.get("/threads/{user_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+async def get_chat_threads(user_id: str = Path(..., description="ID of the user")):
+    """
+    Get all chat threads for a specific user
+    
+    - **user_id**: The ID of the user
+    
+    Returns a list of chat thread objects with their IDs and metadata
+    """
+    try:
+        # Initialize chat service
+        chat_service = ChatService(client=await get_async_supabase_client())
+        
+        # Get chat threads for the user
+        threads = await chat_service.get_chat_threads(user_id)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Chat threads retrieved successfully",
+            data=threads
+        ))
+    except HTTPException as e:
+        logger.error(f"HTTP Exception in get_chat_threads: {e.detail}")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Unexpected error in get_chat_threads: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error retrieving chat threads: {str(e)}",
+            data=None
+        ))
+
+
+@router.get("/messages/{user_id}/{chat_thread_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+async def get_messages_for_thread(
+    user_id: str = Path(..., description="ID of the user"),
+    chat_thread_id: str = Path(..., description="ID of the chat thread")
+):
+    """
+    Get all messages for a specific chat thread and user
+    
+    - **user_id**: The ID of the user
+    - **chat_thread_id**: The ID of the chat thread
+    
+    Returns a list of message objects with their content and metadata
+    """
+    try:
+        # Initialize chat service
+        chat_service = ChatService(client=await get_async_supabase_client())
+        
+        # Get messages for the chat thread
+        messages = await chat_service.get_messages_for_thread(user_id, chat_thread_id)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Chat messages retrieved successfully",
+            data=messages
+        ))
+    except HTTPException as e:
+        logger.error(f"HTTP Exception in get_messages_for_thread: {e.detail}")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.error(f"Unexpected error in get_messages_for_thread: {str(e)}")
+        logger.error(traceback.format_exc())
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error retrieving chat messages: {str(e)}",
+            data=None
+        ))

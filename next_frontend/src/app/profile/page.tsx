@@ -6,6 +6,7 @@ import { User, Settings, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useAppSelector } from "@/store";
 
 interface UserProfile {
   id: string;
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+  const darkMode = useAppSelector(s => s.theme.dark);
 
   useEffect(() => {
     if (!user) {
@@ -86,35 +88,36 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-24 pb-16 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8">My Profile</h1>
+    <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+      <div className="container mx-auto px-4 pt-8 pb-16 max-w-4xl">
+        <h1 className={`text-3xl font-bold mb-8 ${darkMode ? "text-white" : "text-gray-900"}`}>My Profile</h1>
       
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : profile ? (
-        <div className="space-y-8">
-          {/* Profile Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : profile ? (
+          <div className="space-y-8">
+            {/* Profile Card */}
+            <div className={`rounded-xl shadow-md p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
             <div className="flex items-center space-x-4">
-              <div className="bg-indigo-100 dark:bg-indigo-900 p-3 rounded-full">
-                <User className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              <div className={`p-3 rounded-full ${darkMode ? "bg-indigo-900" : "bg-indigo-100"}`}>
+                <User className={`h-6 w-6 ${darkMode ? "text-indigo-400" : "text-indigo-600"}`} />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{profile.full_name || profile.email}</h2>
-                <p className="text-gray-600 dark:text-gray-300">{profile.email}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <h2 className={`text-xl font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{profile.full_name || profile.email}</h2>
+                <p className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>{profile.email}</p>
+                <p className={`text-sm mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                   Member since {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* LinkedIn Connection Status */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Connection Status</h2>
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            {/* LinkedIn Connection Status */}
+            <div className="space-y-4">
+              <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>Connection Status</h2>
+              <div className={`p-4 rounded-lg border flex items-center justify-between ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
               <div className="flex items-center gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
@@ -151,19 +154,20 @@ export default function ProfilePage() {
 
           {/* Additional profile information can be added here */}
         </div>
-      ) : (
-        <div className="text-center py-8">
-          <p>Unable to load profile. Please try again later.</p>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-8">
+            <p className={darkMode ? "text-gray-300" : "text-gray-700"}>Unable to load profile. Please try again later.</p>
+          </div>
+        )}
+      </div>
 
       {/* Connections Import Modal */}
       {showConnectionsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 relative">
+          <div className={`rounded-xl shadow-xl max-w-md w-full p-6 relative ${darkMode ? "bg-gray-800" : "bg-white"}`}>
             <button 
               onClick={() => setShowConnectionsModal(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className={`absolute top-4 right-4 ${darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-700"}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -171,8 +175,8 @@ export default function ProfilePage() {
               </svg>
             </button>
             
-            <h3 className="text-xl font-semibold mb-4">Import LinkedIn Connections</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <h3 className={`text-xl font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>Import LinkedIn Connections</h3>
+            <p className={`mb-6 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
               Choose how you'd like to import your LinkedIn connections:
             </p>
             
@@ -195,7 +199,7 @@ export default function ProfilePage() {
               </Button>
             </div>
             
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+            <p className={`text-sm mt-4 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
               Your connections data will be securely stored and only accessible to you.
             </p>
           </div>

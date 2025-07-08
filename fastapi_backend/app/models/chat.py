@@ -22,6 +22,9 @@ class OverallState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
         description="A list of messages in the conversation."
     )
+    current_message_id: Annotated[str, lambda x, y: y or x] = Field(
+        description="The ID of the current message."
+    )
     search_query: Annotated[list, operator.add] = Field(
         description="A list of search queries to be used for web research."
     )
@@ -149,6 +152,9 @@ class WebSearchState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
         description="A list of messages in the conversation."
     )
+    current_message_id: Annotated[str, lambda x, y: y or x] = Field(
+        description="The ID of the current message."
+    )
     intent: Annotated[str, lambda x, y: y or x] = Field(
         description="The intent of the web search.", default="search"
     )
@@ -260,6 +266,7 @@ class ChatRequest(BaseModel):
     format: Annotated[str, lambda x, y: y or x] = Field(description="The format of the response.", default="table")
     search_mode: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="basic")
     world_connections: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="world")
+    thread_id: Annotated[str, lambda x, y: y or x] = Field(description="The ID of the thread.")
 
 
 class StreamingChatRequest(ChatRequest):
@@ -267,6 +274,7 @@ class StreamingChatRequest(ChatRequest):
     stream: Annotated[bool, lambda x, y: y or x] = Field(description="Whether to stream the response", default=True)
     search_mode: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="basic")
     world_connections: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="world")
+    thread_id: Annotated[str, lambda x, y: y or x] = Field(description="The ID of the thread.")
 
 
 class ChatResponse(BaseModel):

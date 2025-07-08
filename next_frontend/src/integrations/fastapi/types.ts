@@ -88,6 +88,7 @@ export interface ChatRequest {
   format?: string;
   search_mode?: string;
   world_connections?: string;
+  thread_id?: string; // Optional thread ID for tracking conversation history
 }
 
 export interface StreamingChatRequest extends ChatRequest {

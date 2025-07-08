@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Save } from "lucide-react";
-import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
 import { useToast } from "@/hooks/use-toast";

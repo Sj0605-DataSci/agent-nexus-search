@@ -7,7 +7,7 @@ import { ToastContainer } from "react-toastify";
 import { Provider as ReduxProvider } from "react-redux";
 import { store } from "@/store";
 import "react-toastify/dist/ReactToastify.css";
-import Navigation from "@/components/Navigation";
+import Sidebar from "@/components/Sidebar";
 import { usePathname } from "next/navigation"; 
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -22,7 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ReduxProvider store={store}>
         <AuthProvider>
-          {shouldShowNavbar && <Navigation />}
+          {shouldShowNavbar && <Sidebar />}
           <ToastContainer
             position="top-right"
             autoClose={5000}
@@ -33,7 +33,9 @@ export function Providers({ children }: { children: ReactNode }) {
             draggable
             theme="light"
           />
-          {children}
+          <main className={shouldShowNavbar ? "pl-64" : ""}>
+            {children}
+          </main>
         </AuthProvider>
       </ReduxProvider>
     </QueryClientProvider>

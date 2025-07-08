@@ -11,8 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
 
-
-const SearchParamRoot = () => {
+const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
@@ -24,10 +23,11 @@ const SearchParamRoot = () => {
   const [selectedAgent, setSelectedAgent] = useState(
     searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
   );
-  const [threadId, setThreadId] = useState(searchParams.get("threadId") || "");
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
+  const [chatPairs, setChatPairs] = useState<any[]>([]);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
 
@@ -40,12 +40,74 @@ const SearchParamRoot = () => {
   const agentsStatus = useAppSelector(selectAgentsStatus);
   const agentCards = useAppSelector(selectAgentCards);
 
+
   // const templates = useAppSelector(selectTemplates);
   // const hiredAgents = useAppSelector(selectHired);
 
   useEffect(() => {
     if (agentsStatus === "idle") dispatch(loadAgents());
   }, [agentsStatus, dispatch]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!threadId) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+
+        if (!userId) {
+          console.error("User not authenticated.");
+          return;
+        }
+
+        const chatMessages = await apiClient.getChatMessages(userId, threadId);
+
+        if (chatMessages && chatMessages.length > 0) {
+          setChatPairs(chatMessages);
+          setCurrentMessageIndex(chatMessages.length - 1);
+        }
+      } catch (error) {
+        console.error("Error fetching chat messages:", error);
+      }
+    };
+
+    fetchMessages();
+  }, [threadId]);
+
+  useEffect(() => {
+    if (chatPairs.length > 0) {
+      const currentPair = chatPairs[currentMessageIndex];
+      setQuery(currentPair.main_query);
+
+      const userMessage = {
+        id: `${currentPair.id}-user`,
+        type: 'user' as const,
+        content: currentPair.main_query,
+        timestamp: new Date(currentPair.created_at),
+      };
+      
+      // Make sure we're correctly extracting the agent message content
+      // It could be either a string or an object depending on the response format
+      let messageContent = currentPair.message;
+      
+      // If it's an object, stringify it for display
+      if (typeof messageContent === 'object' && messageContent !== null) {
+        messageContent = JSON.stringify(messageContent, null, 2);
+      }
+      
+      const agentMessage = {
+        id: currentPair.id,
+        type: 'agent' as const,
+        content: messageContent,
+        timestamp: new Date(currentPair.updated_at),
+      };
+
+      // Update the messages state with just this pair's messages
+      // This ensures we only see the messages for the current index
+      setMessages([userMessage, agentMessage]);
+    }
+  }, [currentMessageIndex, chatPairs]);
 
   useEffect(() => {
     function handleClickAway(e: MouseEvent) {
@@ -149,7 +211,7 @@ const SearchParamRoot = () => {
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
 
-      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, format, searchMode, worldConnectionsMode,threadId ,(update: any) => {
+      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, format, searchMode, worldConnectionsMode, threadId, (update: any) => {
         console.log("Streaming update:", update);
 
         switch (update.type) {
@@ -324,7 +386,7 @@ const SearchParamRoot = () => {
           </p>
         </div>
 
-        <div className={`max-w-4xl mx-auto ${messages.length ? "mb-8" : "mb-16"} transition-all duration-500`}>
+        <div className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-8" : "mb-16"} transition-all duration-500`}>
           <div className="relative flex justify-center">
             {/* Main Search Bar - Perplexity/ChatGPT/Clado Style */}
             <div
@@ -486,8 +548,34 @@ const SearchParamRoot = () => {
               </Button>
             </div>
 
-            {/* Collapsible Options Panel - Perplexity Style */}
+          </div>
+
+          {chatPairs.length > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
+                disabled={currentMessageIndex === 0}
+              >
+                Previous
+              </Button>
+              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {currentMessageIndex + 1} / {chatPairs.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))}
+                disabled={currentMessageIndex === chatPairs.length - 1}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+
             {showOptions && (
+              /* Collapsible Options Panel - Perplexity Style */
               <div className={`mt-3 p-4 rounded-xl border shadow-lg transition-all duration-200 ${
                 darkMode ? "bg-gray-900/90 border-gray-700" : "bg-white border-gray-200"
               }`}
@@ -639,8 +727,7 @@ const SearchParamRoot = () => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 
-export default SearchParamRoot;
+export default ChatThreadView;

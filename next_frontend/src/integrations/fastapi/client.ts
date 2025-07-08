@@ -179,6 +179,27 @@ export const apiClient = {
     }
   },
 
+  // Chat Threads and Messages
+  async getChatThreads(userId: string): Promise<any[]> {
+    try {
+      const res = await axiosInstance.get(`/chat/threads/${userId}`);
+      return res.data?.data || [];
+    } catch (error) {
+      console.error("Error fetching chat threads:", error);
+      return [];
+    }
+  },
+
+  async getChatMessages(userId: string, chatThreadId: string): Promise<any[]> {
+    try {
+      const res = await axiosInstance.get(`/chat/messages/${userId}/${chatThreadId}`);
+      return res.data?.data || [];
+    } catch (error) {
+      console.error("Error fetching chat messages:", error);
+      return [];
+    }
+  },
+
   async sendStreamingChatRequest(
     userId: string,
     agentId: string,
@@ -186,6 +207,7 @@ export const apiClient = {
     format: string = "table",
     searchMode: string = "basic",
     worldConnectionsMode: string = "connections",
+    threadId: string = "",
     onUpdate: (update: StreamingChatUpdate) => void
   ): Promise<void> {
     const payload: StreamingChatRequest = {
@@ -196,6 +218,7 @@ export const apiClient = {
       format: format,
       search_mode: searchMode,
       world_connections: worldConnectionsMode,
+      thread_id: threadId,
     };
 
     // Use fetch directly for SSE support

@@ -1,11 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import themeReducer from "./themeSlice";
 import agentsReducer from "./agentsSlice";
+import uiReducer from "./uiSlice";
 
 export const store = configureStore({
   reducer: {
     theme: themeReducer,
     agents: agentsReducer,
+    ui: uiReducer,
   },
 });
 

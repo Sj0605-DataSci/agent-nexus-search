@@ -65,6 +65,8 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
     
     Determines if the user's message requires web search or can be answered directly.
     """
+    supabase_client = await get_async_supabase_client()
+
     if hasattr(state, "model_dump"):
         state = state.model_dump()
     
@@ -96,17 +98,42 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
     
     # Get the classification
     response = llm.invoke(prompt_content)
+    agent_config = state["agent_config"]
+    agent_id = agent_config["id"]
+    user_id = agent_config["user_id"]
+    message_id = state.get("current_message_id", "")
+    if state["chat_thread_id"]:
+        chat_thread_id = state["chat_thread_id"]
+    else:
+        chat_thread_id = str(uuid4())
+
     intent = "direct_answer" if "direct_answer" in response.content.lower() else "search"
+
+    if intent == "direct_answer":
+        # Insert the message and capture the response to get the message ID
+        response = await supabase_client.table("chat_messages").insert({
+                "user_id": user_id, 
+                "agent_id": agent_id, 
+                "chat_thread_id": chat_thread_id, 
+                "sub_queries": "", 
+                "main_query": latest_message
+            }).execute()
+        
+        # Extract the message ID from the response and store it in state
+        if response and response.data and len(response.data) > 0:
+            message_id = response.data[0].get("id")
+            state["current_message_id"] = message_id
     
     # Update the state with the classified intent
     return OverallState(
         intent=intent,
         messages=state.get("messages", []),
+        current_message_id=message_id,
         search_query=state.get("search_query", []),
         web_research_result=state.get("web_research_result", []),
         user_id=state.get("user_id", ""),
         agent_id=state.get("agent_config", {}).get("id", ""),
-        chat_thread_id=str(uuid4()),
+        chat_thread_id=chat_thread_id,
         number_of_results_returned=state.get("number_of_results_returned", 1),
         format=state.get("format", "table"),
         sources_gathered=state.get("sources_gathered", []),
@@ -165,6 +192,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
     user_id = agent_config["user_id"]
     num_results = agent_config["number_of_results_returned"]
     chat_thread_id = state["chat_thread_id"]
+    current_message_id = state.get("current_message_id", "")
 
     # check for custom initial search query count
     try :
@@ -242,13 +270,18 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         try:
             # Extract just the query strings for logging
             query_strings = [q["query"] for q in search_queries]
-            await supabase_client.table("chat_messages").insert({
+            response = await supabase_client.table("chat_messages").insert({
                 "user_id": user_id, 
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id, 
                 "sub_queries": query_strings, 
                 "main_query": main_query
             }).execute()
+            
+            # Extract the message ID from the response and store it in state
+            if response and response.data and len(response.data) > 0:
+                message_id = response.data[0].get("id")
+                state["current_message_id"] = message_id
         except Exception as e:
             print(f"Error inserting data into Supabase: {e}")
         
@@ -266,6 +299,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         format=state["format"],
         search_query=search_queries, 
         agent_id=agent_id, 
+        current_message_id=state["current_message_id"],
         agent_config=agent_config,
         sql_queries=[],
         chat_thread_id=chat_thread_id, 
@@ -288,6 +322,7 @@ def continue_to_web_research(state: WebSearchState):
         return [
             Send("web_research", WebSearchState(
             messages=state["messages"],
+            current_message_id=state["current_message_id"],
             search_query=search_query.query if hasattr(search_query, "query") else search_query,
             intent=state["intent"],
             format=state["format"],
@@ -308,6 +343,7 @@ def continue_to_web_research(state: WebSearchState):
         return [
             Send("sql_query_generation", WebSearchState(
             messages=state["messages"],
+            current_message_id=state["current_message_id"],
             search_query=search_query.query if hasattr(search_query, "query") else search_query,
             intent=state["intent"],
             format=state["format"],
@@ -506,6 +542,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         sources_gathered=sources_gathered,
         intent=state["intent"],
         messages=state.get("messages", []),
+        current_message_id=state.get("current_message_id", ""),
         max_research_loops=state.get("max_research_loops", 0),
         agent_config=state.get("agent_config", {}),
         world_connections=state.get("world_connections", ""),
@@ -567,6 +604,7 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         
     return OverallState(
         messages=state.get("messages", []),
+        current_message_id=state.get("current_message_id", ""),
         intent=state["intent"],
         format=state["format"],
         search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
@@ -638,6 +676,7 @@ async def sql_query_execution(state: OverallState) -> OverallState:
     
     return OverallState(
         messages=state.get("messages", []),
+        current_message_id=state.get("current_message_id", ""),
         search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
         sql_queries=state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])],
         web_research_result=query_results,
@@ -819,6 +858,7 @@ async def evaluate_research(
                 "web_research",
                 WebSearchState(
                     messages=state["messages"],
+                    current_message_id=state["current_message_id"],
                     search_query=follow_up_query,
                     id=state["number_of_ran_queries"] + int(idx),
                     format=state["format"],
@@ -837,6 +877,8 @@ async def evaluate_research(
             Send(
                 "sql_query_generation",
                 WebSearchState(
+                    messages=state["messages"],
+                    current_message_id=state["current_message_id"],
                     search_query=follow_up_query,
                     id=state["number_of_ran_queries"] + int(idx),
                     format=state["format"],
@@ -897,7 +939,8 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     agent_config = state.get("agent_config", {})
     user_id = agent_config.get("user_id", "")
     agent_id = agent_config.get("id", "")
-    chat_thread_id = state.get("chat_thread_id", str(uuid4()))
+    chat_thread_id = state.get("chat_thread_id", "")
+    current_message_id = state.get("current_message_id", "")
 
     # Use Gemini client
     llm = GeminiChatModel(
@@ -929,9 +972,9 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     try:
         # Use the global Supabase client directly
         await supabase_client.table("chat_messages").update({
-            "message": message_content, 
+            "message": message_content,
             "sources_gathered": state["sources_gathered"]
-        }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).execute()
+        }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).eq("id", current_message_id).execute()
     except Exception as e:
         print(f"Error inserting data into Supabase: {e}")
         # Continue with the flow even if database operation fails
