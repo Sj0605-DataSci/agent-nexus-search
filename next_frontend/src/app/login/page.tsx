@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import Aurora from "@/components/Aurora";
 import { useAppSelector } from "@/store";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
+import Image from "next/image";
 
 const backdropVariants: Variants = {
   animate: {
@@ -156,14 +157,14 @@ const Login = () => {
 
         <div className=" mb-6">
           <Link href="/" className="inline-flex items-center gap-2 mb-3">
-            <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                darkMode
-                  ? "bg-gradient-to-r from-blue-700 to-indigo-700"
-                  : "bg-gradient-to-r from-blue-500 to-purple-500"
-              }`}
-            >
-              <Search className="h-6 w-6 text-white" />
+            <div className={`w-7 h-7 rounded overflow-hidden flex items-center justify-center`}>
+              <Image
+                src="/icon.png"
+                alt="DiscoverMinds Logo"
+                width={28}
+                height={28}
+                className="h-7 w-7"
+              />
             </div>
             <span className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
               DiscoverMinds.ai

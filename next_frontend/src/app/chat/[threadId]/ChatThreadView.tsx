@@ -1,7 +1,16 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, User as UserIcon, Table, MessageSquare, Plus, Settings, Globe, ChevronDown } from "lucide-react";
+import {
+  Search,
+  User as UserIcon,
+  Table,
+  MessageSquare,
+  Plus,
+  Settings,
+  Globe,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
@@ -16,10 +25,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const searchParams = useSearchParams();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState(searchParams.get("q") || "");  
+  const [query, setQuery] = useState(searchParams.get("q") || "");
   const [format, setFormat] = useState<"table" | "chat">("table");
   const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">("connections");
+  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
+    "connections"
+  );
   const [selectedAgent, setSelectedAgent] = useState(
     searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
   );
@@ -40,7 +51,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const agentsStatus = useAppSelector(selectAgentsStatus);
   const agentCards = useAppSelector(selectAgentCards);
 
-
   // const templates = useAppSelector(selectTemplates);
   // const hiredAgents = useAppSelector(selectHired);
 
@@ -53,7 +63,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       if (!threadId) return;
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         const userId = session?.user?.id;
 
         if (!userId) {
@@ -82,23 +94,23 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
       const userMessage = {
         id: `${currentPair.id}-user`,
-        type: 'user' as const,
+        type: "user" as const,
         content: currentPair.main_query,
         timestamp: new Date(currentPair.created_at),
       };
-      
+
       // Make sure we're correctly extracting the agent message content
       // It could be either a string or an object depending on the response format
       let messageContent = currentPair.message;
-      
+
       // If it's an object, stringify it for display
-      if (typeof messageContent === 'object' && messageContent !== null) {
+      if (typeof messageContent === "object" && messageContent !== null) {
         messageContent = JSON.stringify(messageContent, null, 2);
       }
-      
+
       const agentMessage = {
         id: currentPair.id,
-        type: 'agent' as const,
+        type: "agent" as const,
         content: messageContent,
         timestamp: new Date(currentPair.updated_at),
       };
@@ -211,122 +223,131 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
 
-      await apiClient.sendStreamingChatRequest(userId, agentData.id, q, format, searchMode, worldConnectionsMode, threadId, (update: any) => {
-        console.log("Streaming update:", update);
+      await apiClient.sendStreamingChatRequest(
+        userId,
+        agentData.id,
+        q,
+        format,
+        searchMode,
+        worldConnectionsMode,
+        threadId,
+        (update: any) => {
+          console.log("Streaming update:", update);
 
-        switch (update.type) {
-          case "thinking":
-            // Update the loading message with thinking indicator
-            currentContent = "🧠 Thinking...";
-            setMessages(m =>
-              m.map(msg =>
-                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-              )
-            );
-            break;
+          switch (update.type) {
+            case "thinking":
+              // Update the loading message with thinking indicator
+              currentContent = "🧠 Thinking...";
+              setMessages(m =>
+                m.map(msg =>
+                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                )
+              );
+              break;
 
-          case "token":
-            // Handle token updates from LLM streaming - show complete content directly
-            const tokenContent =
-              typeof update.content === "string"
-                ? update.content
-                : update.content && update.content.text
-                  ? update.content.text
-                  : "";
+            case "token":
+              // Handle token updates from LLM streaming - show complete content directly
+              const tokenContent =
+                typeof update.content === "string"
+                  ? update.content
+                  : update.content && update.content.text
+                    ? update.content.text
+                    : "";
 
-            if (tokenContent) {
-              console.log("Token content:", tokenContent); // Debug log full content
+              if (tokenContent) {
+                console.log("Token content:", tokenContent); // Debug log full content
 
-              // Process content based on format
-              if (format === "table") {
-                // For table format, try to extract JSON if it exists
-                const jsonMatch = tokenContent.match(/```json\s*([\s\S]*?)\s*```/);
-                if (jsonMatch && jsonMatch[1]) {
-                  try {
-                    // Try to parse the JSON
-                    const jsonContent = JSON.parse(jsonMatch[1]);
-                    // Format the JSON nicely for display
-                    currentContent = JSON.stringify(jsonContent, null, 2);
-                  } catch (e) {
-                    // If JSON parsing fails, use the raw content
+                // Process content based on format
+                if (format === "table") {
+                  // For table format, try to extract JSON if it exists
+                  const jsonMatch = tokenContent.match(/```json\s*([\s\S]*?)\s*```/);
+                  if (jsonMatch && jsonMatch[1]) {
+                    try {
+                      // Try to parse the JSON
+                      const jsonContent = JSON.parse(jsonMatch[1]);
+                      // Format the JSON nicely for display
+                      currentContent = JSON.stringify(jsonContent, null, 2);
+                    } catch (e) {
+                      // If JSON parsing fails, use the raw content
+                      currentContent = tokenContent;
+                    }
+                  } else {
                     currentContent = tokenContent;
                   }
                 } else {
+                  // For chat format, use the raw content directly
                   currentContent = tokenContent;
                 }
-              } else {
-                // For chat format, use the raw content directly
-                currentContent = tokenContent;
+
+                hasExtractedFinalAnswer = true;
+
+                // Update the message with the processed content
+                setMessages(m =>
+                  m.map(msg =>
+                    msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                  )
+                );
               }
+              break;
 
-              hasExtractedFinalAnswer = true;
-
-              // Update the message with the processed content
+            case "search_query":
+              // Show search queries being used
+              searchQueries.push(update.content.query);
+              currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
               setMessages(m =>
                 m.map(msg =>
                   msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
                 )
               );
-            }
-            break;
+              break;
 
-          case "search_query":
-            // Show search queries being used
-            searchQueries.push(update.content.query);
-            currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
-            setMessages(m =>
-              m.map(msg =>
-                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-              )
-            );
-            break;
+            case "source":
+              // Collect sources
+              sources.push(update.content);
 
-          case "source":
-            // Collect sources
-            sources.push(update.content);
+              // Only update the message with source count if we haven't extracted a final answer yet
+              if (!hasExtractedFinalAnswer) {
+                currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
+                setMessages(m =>
+                  m.map(msg =>
+                    msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                  )
+                );
+              }
+              break;
 
-            // Only update the message with source count if we haven't extracted a final answer yet
-            if (!hasExtractedFinalAnswer) {
-              currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
+            case "message":
+              // Final message
+              if (update.content && update.content.content) {
+                currentContent = update.content.content;
+                setMessages(m =>
+                  m.map(msg =>
+                    msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                  )
+                );
+              }
+              break;
+
+            case "error":
+              // Handle error
+              currentContent = `Something went wrong`;
               setMessages(m =>
                 m.map(msg =>
                   msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
                 )
               );
-            }
-            break;
+              break;
 
-          case "message":
-            // Final message
-            if (update.content && update.content.content) {
-              currentContent = update.content.content;
-              setMessages(m =>
-                m.map(msg =>
-                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                )
-              );
-            }
-            break;
-
-          case "error":
-            // Handle error
-            currentContent = `Something went wrong`;
-            setMessages(m =>
-              m.map(msg =>
-                msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-              )
-            );
-            break;
-
-          case "done":
-            // All done
-            if (sources.length > 0) {
-              console.log("Sources gathered:", sources);
-              // You could display sources in the UI here
-            }
-            break;
+            case "done":
+              // All done
+              if (sources.length > 0) {
+                console.log("Sources gathered:", sources);
+                // You could display sources in the UI here
+              }
+              break;
+          }
         }
-      });
+      );
     } catch (error) {
       console.error("Error sending chat request:", error);
       // Replace the loading message with an error
@@ -355,30 +376,30 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   };
 
   return (
-    <div className={`min-h-screen w-full ${darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gradient-to-br from-blue-50 to-purple-50"}`}>
+    <div
+      className={`min-h-screen w-full ${darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gradient-to-br from-blue-50 to-purple-50"}`}
+    >
       {/* Background overlay to fill any gaps */}
       <div className={`fixed inset-0 -z-10 ${darkMode ? "bg-gray-900" : "bg-white"}`}></div>
       {/* Main content with padding that adjusts based on sidebar state */}
-      <div className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-5' : 'ml-12'} px-4 py-8 flex flex-col ${
-        messages.length ? "pt-8 pb-20" : "min-h-screen justify-center"
-      }`}>
+      <div
+        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 py-8 flex flex-col ${
+          messages.length ? "pt-8 pb-20" : "min-h-screen justify-center"
+        }`}
+      >
         {/* Hero Section */}
-        <div className={`transition-all duration-500 text-center ${
-          messages.length ? "py-4" : "mb-8"
-        }`}>
+        <div
+          className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
+        >
           <h1
-            className={`text-4xl font-bold mb-4 ${
-              darkMode ? "text-white" : "text-gray-900"
-            } ${
+            className={`text-4xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"} ${
               messages.length ? "text-2xl" : "text-4xl"
             }`}
           >
             Who can I help you find?
           </h1>
           <p
-            className={`max-w-xl mx-auto text-lg ${
-              darkMode ? "text-gray-300" : "text-gray-600"
-            } ${
+            className={`max-w-xl mx-auto text-lg ${darkMode ? "text-gray-300" : "text-gray-600"} ${
               messages.length ? "text-sm hidden sm:block" : "text-lg"
             }`}
           >
@@ -386,7 +407,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </p>
         </div>
 
-        <div className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-8" : "mb-16"} transition-all duration-500`}>
+        <div
+          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-8" : "mb-16"} transition-all duration-500`}
+        >
           <div className="relative flex justify-center">
             {/* Main Search Bar - Perplexity/ChatGPT/Clado Style */}
             <div
@@ -410,59 +433,72 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
                 `}
               />
-              
+
               {/* Small Toggle Buttons - Perplexity Style */}
               <div className="flex items-center gap-2 mr-2">
                 {/* Connections/World Toggle */}
                 <button
-                  onClick={() => setWorldConnectionsMode(worldConnectionsMode === "connections" ? "world" : "connections")}
+                  onClick={() =>
+                    setWorldConnectionsMode(
+                      worldConnectionsMode === "connections" ? "world" : "connections"
+                    )
+                  }
                   className={`px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
-                    darkMode 
-                      ? "bg-gray-800 border border-gray-700 hover:bg-gray-700" 
+                    darkMode
+                      ? "bg-gray-800 border border-gray-700 hover:bg-gray-700"
                       : "bg-gray-100 border border-gray-200 hover:bg-gray-200"
                   }`}
                   title={`Switch to ${worldConnectionsMode === "connections" ? "Global" : "Connections"} search`}
                 >
-                  {worldConnectionsMode === "connections" ? 
+                  {worldConnectionsMode === "connections" ? (
                     <>
                       <UserIcon className="h-4 w-4" />
                       <span className="text-xs font-medium">{"Connections"}</span>
-                    </> : 
+                    </>
+                  ) : (
                     <>
                       <Globe className="h-4 w-4" />
                       <span className="text-xs font-medium">{"Global"}</span>
                     </>
-                  }
+                  )}
                 </button>
-                
 
-                
                 {/* Mode Toggle Button - Basic/Deep */}
                 <button
                   onClick={() => setSearchMode(searchMode === "basic" ? "deep" : "basic")}
                   className={`p-1.5 rounded-md transition-colors ${
-                    darkMode ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800" : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                    darkMode
+                      ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
+                      : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
                   }`}
                   title={`Switch to ${searchMode === "basic" ? "Deep" : "Basic"} search`}
                 >
-                  {searchMode === "basic" ? 
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Basic</span> : 
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">Deep</span>
-                  }
+                  {searchMode === "basic" ? (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                      Basic
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                      Deep
+                    </span>
+                  )}
                 </button>
-                
+
                 {/* Format Toggle Button - Table/Chat */}
                 <button
                   onClick={() => setFormat(format === "table" ? "chat" : "table")}
                   className={`p-1.5 rounded-md transition-colors ${
-                    darkMode ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800" : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                    darkMode
+                      ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
+                      : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
                   }`}
                   title={`Switch to ${format === "table" ? "Chat" : "Table"} view`}
                 >
-                  {format === "table" ? 
-                    <Table className="h-4 w-4" /> : 
+                  {format === "table" ? (
+                    <Table className="h-4 w-4" />
+                  ) : (
                     <MessageSquare className="h-4 w-4" />
-                  }
+                  )}
                 </button>
               </div>
 
@@ -488,7 +524,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   ) : (
                     <>
                       <span>{agentData?.avatar}</span>
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        className="h-4 w-4"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <path d="M6 8l4 4 4-4" />
                       </svg>
                     </>
@@ -499,7 +541,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   <div
                     ref={dropdownRef}
                     className={`absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 ${
-                      darkMode ? "bg-gray-900 border border-gray-700" : "bg-white border border-gray-200"
+                      darkMode
+                        ? "bg-gray-900 border border-gray-700"
+                        : "bg-white border border-gray-200"
                     }`}
                   >
                     {agentsStatus === "loading" ? (
@@ -511,7 +555,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                           key={a.id}
                           onClick={e => handleAgentSelect(e, a.id, a.hired)}
                           className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                            darkMode ? "hover:bg-gray-800 text-gray-200" : "hover:bg-gray-50 text-gray-900"
+                            darkMode
+                              ? "hover:bg-gray-800 text-gray-200"
+                              : "hover:bg-gray-50 text-gray-900"
                           }`}
                         >
                           <span className="flex items-center space-x-3">
@@ -519,9 +565,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                             <span className="text-sm">{a?.name}</span>
                           </span>
                           {!a.hired && (
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              darkMode ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-700"
-                            }`}>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                darkMode ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
                               Hire
                             </span>
                           )}
@@ -538,7 +586,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 disabled={!query.trim() || isLoading}
                 className={`rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
                   !query.trim() || isLoading
-                    ? darkMode ? "bg-gray-800 cursor-not-allowed" : "bg-gray-300 cursor-not-allowed"
+                    ? darkMode
+                      ? "bg-gray-800 cursor-not-allowed"
+                      : "bg-gray-300 cursor-not-allowed"
                     : darkMode
                       ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
                       : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
@@ -547,7 +597,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 Search
               </Button>
             </div>
-
           </div>
 
           {chatPairs.length > 1 && (
@@ -560,13 +609,15 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               >
                 Previous
               </Button>
-              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                 {currentMessageIndex + 1} / {chatPairs.length}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))}
+                onClick={() =>
+                  setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))
+                }
                 disabled={currentMessageIndex === chatPairs.length - 1}
               >
                 Next
@@ -574,159 +625,171 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             </div>
           )}
 
-            {showOptions && (
-              /* Collapsible Options Panel - Perplexity Style */
-              <div className={`mt-3 p-4 rounded-xl border shadow-lg transition-all duration-200 ${
+          {showOptions && (
+            /* Collapsible Options Panel - Perplexity Style */
+            <div
+              className={`mt-3 p-4 rounded-xl border shadow-lg transition-all duration-200 ${
                 darkMode ? "bg-gray-900/90 border-gray-700" : "bg-white border-gray-200"
               }`}
               style={{ backdropFilter: "blur(8px)" }}
-              >
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col sm:flex-row gap-6">
-                    {/* Search Mode Options */}
-                    <div className="flex-1">
-                      <label className={`block text-sm font-medium mb-2 ${
+            >
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {/* Search Mode Options */}
+                  <div className="flex-1">
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
                         darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}>
-                        Search Mode
-                      </label>
-                      <div className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-
-                        <button
-                          onClick={() => setSearchMode("basic")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${searchMode === "basic" ? (darkMode ? "bg-blue-600 text-white" : "bg-blue-500 text-white") : (darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600")}`}
-                        >
-                          Basic
-                        </button>
-                        <button
-                          onClick={() => setSearchMode("deep")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${searchMode === "deep" ? (darkMode ? "bg-purple-600 text-white" : "bg-purple-500 text-white") : (darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600")}`}
-                        >
-                          Deep
-                        </button>
-                      </div>
-                      <p className={`text-xs mt-1 ${
-                        darkMode ? "text-gray-500" : "text-gray-500"
-                      }`}>
-                        {searchMode === "basic" ? "Faster, lighter search" : "Comprehensive, thorough search"}
-                      </p>
+                      }`}
+                    >
+                      Search Mode
+                    </label>
+                    <div
+                      className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+                    >
+                      <button
+                        onClick={() => setSearchMode("basic")}
+                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${searchMode === "basic" ? (darkMode ? "bg-blue-600 text-white" : "bg-blue-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                      >
+                        Basic
+                      </button>
+                      <button
+                        onClick={() => setSearchMode("deep")}
+                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${searchMode === "deep" ? (darkMode ? "bg-purple-600 text-white" : "bg-purple-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                      >
+                        Deep
+                      </button>
                     </div>
-
-                    {/* Response Format Options */}
-                    <div className="flex-1">
-                      <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        Response Format
-                      </label>
-                      <div className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-                        <button
-                          onClick={() => setFormat("table")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "table" ? (darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white") : (darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600")}`}
-                        >
-                          <Table className="h-4 w-4" />
-                          Table
-                        </button>
-                        <button
-                          onClick={() => setFormat("chat")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-orange-600 text-white" : "bg-orange-500 text-white") : (darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600")}`}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          Chat
-                        </button>
-                      </div>
-                      <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                        {format === "table" ? "Structured data view" : "Conversational response"}
-                      </p>
-                    </div>
+                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                      {searchMode === "basic"
+                        ? "Faster, lighter search"
+                        : "Comprehensive, thorough search"}
+                    </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-6">
-                    {/* Search Source Options */}
-                    <div className="flex-1">
-                      <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        Search Source
-                      </label>
-                      <div className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-                        <button
-                          onClick={() => setWorldConnectionsMode("connections")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${worldConnectionsMode === "connections" ? (darkMode ? "bg-indigo-600 text-white" : "bg-indigo-500 text-white") : (darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600")}`}
-                        >
-                          <UserIcon className="h-4 w-4" />
-                          My Connections
-                        </button>
-                        <button
-                          onClick={() => setWorldConnectionsMode("world")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${worldConnectionsMode === "world" ? (darkMode ? "bg-teal-600 text-white" : "bg-teal-500 text-white") : (darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600")}`}
-                        >
-                          <Search className="h-4 w-4" />
-                          Global Search
-                        </button>
-                      </div>
-                      <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                        {worldConnectionsMode === "connections" ? "Search within your LinkedIn connections" : "Search across the entire web"}
-                      </p>
+
+                  {/* Response Format Options */}
+                  <div className="flex-1">
+                    <label
+                      className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                    >
+                      Response Format
+                    </label>
+                    <div
+                      className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+                    >
+                      <button
+                        onClick={() => setFormat("table")}
+                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "table" ? (darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                      >
+                        <Table className="h-4 w-4" />
+                        Table
+                      </button>
+                      <button
+                        onClick={() => setFormat("chat")}
+                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-orange-600 text-white" : "bg-orange-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Chat
+                      </button>
                     </div>
+                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                      {format === "table" ? "Structured data view" : "Conversational response"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {/* Search Source Options */}
+                  <div className="flex-1">
+                    <label
+                      className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+                    >
+                      Search Source
+                    </label>
+                    <div
+                      className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+                    >
+                      <button
+                        onClick={() => setWorldConnectionsMode("connections")}
+                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${worldConnectionsMode === "connections" ? (darkMode ? "bg-indigo-600 text-white" : "bg-indigo-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                      >
+                        <UserIcon className="h-4 w-4" />
+                        My Connections
+                      </button>
+                      <button
+                        onClick={() => setWorldConnectionsMode("world")}
+                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${worldConnectionsMode === "world" ? (darkMode ? "bg-teal-600 text-white" : "bg-teal-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                      >
+                        <Search className="h-4 w-4" />
+                        Global Search
+                      </button>
+                    </div>
+                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                      {worldConnectionsMode === "connections"
+                        ? "Search within your LinkedIn connections"
+                        : "Search across the entire web"}
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {messages.length > 0 && (
-          <div className="w-full mt-8">
-            <div className="mb-4">
-              <h2
-                className={`text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}
-              >
-                Results
-              </h2>
             </div>
+          )}
+        </div>
+      </div>
 
-            <div className="space-y-6">
-              {messages.map(
-                m =>
-                  m.type === "agent" && (
-                    <div
-                      key={m.id}
-                      className={`rounded-xl p-6 transition-shadow ${
-                        darkMode
-                          ? "bg-gray-900/70 border border-gray-700 shadow-md hover:shadow-lg"
-                          : "bg-white border border-gray-200 shadow-sm hover:shadow-md"
-                      }`}
-                    >
-                      <div className="flex items-start">
+      {messages.length > 0 && (
+        <div className="w-full mt-8">
+          <div className="mb-4">
+            <h2 className={`text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+              Results
+            </h2>
+          </div>
+
+          <div className="space-y-6">
+            {messages.map(
+              m =>
+                m.type === "agent" && (
+                  <div
+                    key={m.id}
+                    className={`rounded-xl p-6 transition-shadow ${
+                      darkMode
+                        ? "bg-gray-900/70 border border-gray-700 shadow-md hover:shadow-lg"
+                        : "bg-white border border-gray-200 shadow-sm hover:shadow-md"
+                    }`}
+                  >
+                    <div className="flex items-start">
+                      <div
+                        className={`rounded-full p-3 mr-4 ${
+                          darkMode ? "bg-blue-900/30" : "bg-blue-50"
+                        }`}
+                      >
+                        <UserIcon
+                          className={`h-6 w-6 ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                        />
+                      </div>
+                      <div className="flex-1">
                         <div
-                          className={`rounded-full p-3 mr-4 ${
-                            darkMode ? "bg-blue-900/30" : "bg-blue-50"
+                          className={`whitespace-pre-wrap ${
+                            darkMode ? "text-gray-300" : "text-gray-700"
                           }`}
                         >
-                          <UserIcon
-                            className={`h-6 w-6 ${darkMode ? "text-blue-400" : "text-blue-600"}`}
-                          />
+                          {m.content}
                         </div>
-                        <div className="flex-1">
-                          <div
-                            className={`whitespace-pre-wrap ${
-                              darkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
+                        <div className="mt-4 flex justify-between items-center">
+                          <span
+                            className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}
                           >
-                            {m.content}
-                          </div>
-                          <div className="mt-4 flex justify-between items-center">
-                            <span
-                              className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}
-                            >
-                              {m.timestamp.toLocaleString()}
-                            </span>
-                          </div>
+                            {m.timestamp.toLocaleString()}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  )
-              )}
-            </div>
+                  </div>
+                )
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
   );
 };
 

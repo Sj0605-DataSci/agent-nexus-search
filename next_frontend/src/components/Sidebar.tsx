@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, LogIn, LogOut, User, Settings, ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
+import {
+  Search,
+  LogIn,
+  LogOut,
+  User,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  MessageCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +20,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
 import ToggleSystemTheme from "./ToggleSystemTheme";
 import { apiClient } from "@/integrations/fastapi/client";
+import Image from "next/image";
 
 // Interface for chat thread and message types
 interface ChatThread {
@@ -34,26 +44,26 @@ const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useAppDispatch();
-  
+
   // State for recent chats
   const [recentThreads, setRecentThreads] = useState<ChatThread[]>([]);
-  const [threadMessages, setThreadMessages] = useState<{[key: string]: ChatMessage[]}>({});
+  const [threadMessages, setThreadMessages] = useState<{ [key: string]: ChatMessage[] }>({});
   const [loadingThreads, setLoadingThreads] = useState(false);
 
   // Fetch recent chat threads when user is logged in
   useEffect(() => {
     const fetchRecentThreads = async () => {
       if (!user?.id) return;
-      
+
       setLoadingThreads(true);
       try {
         const threads = await apiClient.getChatThreads(user.id);
         // Get top 5 most recent threads
         const recentThreads = threads.slice(0, 5);
         setRecentThreads(recentThreads);
-        
+
         // Pre-fetch messages for each thread
-        const messagesMap: {[key: string]: ChatMessage[]} = {};
+        const messagesMap: { [key: string]: ChatMessage[] } = {};
         for (const thread of recentThreads) {
           const messages = await apiClient.getChatMessages(user.id, thread.id);
           messagesMap[thread.id] = messages;
@@ -65,7 +75,7 @@ const Sidebar = () => {
         setLoadingThreads(false);
       }
     };
-    
+
     fetchRecentThreads();
   }, [user?.id]);
 
@@ -73,18 +83,18 @@ const Sidebar = () => {
     await signOut();
     router.push("/");
   };
-  
+
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
-  
+
   // Get a preview of the chat thread (first message or query)
   const getThreadPreview = (threadId: string): string => {
     const messages = threadMessages[threadId];
     if (!messages || messages.length === 0) return "Loading...";
-    
+
     // Find the first message with content
     for (const msg of messages) {
       if (msg.main_query) return msg.main_query;
@@ -94,7 +104,7 @@ const Sidebar = () => {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 ${collapsed ? 'w-16' : 'w-64'} flex flex-col transition-all duration-300
+      className={`fixed inset-y-0 left-0 z-50 ${collapsed ? "w-16" : "w-64"} flex flex-col transition-all duration-300
       border-r shadow-lg
       ${
         darkMode
@@ -106,11 +116,14 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="flex items-center justify-between p-4 mb-6">
         <Link href="/" className="flex items-center gap-3 group">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center
-            bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-500 shadow-md group-hover:scale-110 transition-transform"
-          >
-            <Search className="h-5 w-5 text-white" />
+          <div className={`w-7 h-7 rounded overflow-hidden flex items-center justify-center`}>
+            <Image
+              src="/icon.png"
+              alt="DiscoverMinds Logo"
+              width={28}
+              height={28}
+              className="h-7 w-7"
+            />
           </div>
           {!collapsed && (
             <span
@@ -122,17 +135,14 @@ const Sidebar = () => {
             </span>
           )}
         </Link>
-        
+
         {/* Collapse/Expand Button */}
-        <button 
+        <button
           onClick={() => dispatch(toggleSidebar())}
           className={`p-1.5 rounded-full transition-colors ${darkMode ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800" : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"}`}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed ? 
-            <ChevronRight className="h-5 w-5" /> : 
-            <ChevronLeft className="h-5 w-5" />
-          }
+          {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
 
@@ -149,19 +159,19 @@ const Sidebar = () => {
               <Link
                 href={href as string}
                 className={`
-                flex items-center ${collapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg font-medium transition-all
+                flex items-center ${collapsed ? "justify-center" : "gap-3 px-4"} py-3 rounded-lg font-medium transition-all
                 ${
                   pathname.startsWith(href as string)
                     ? darkMode
                       ? "bg-indigo-600/20 text-indigo-400"
                       : "bg-indigo-50 text-indigo-700"
                     : darkMode
-                    ? "text-gray-300 hover:text-white hover:bg-gray-800/60"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                      ? "text-gray-300 hover:text-white hover:bg-gray-800/60"
+                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                 }
               `}
                 aria-current={pathname.startsWith(href as string) ? "page" : undefined}
-                title={collapsed ? label as string : undefined}
+                title={collapsed ? (label as string) : undefined}
               >
                 {icon}
                 {!collapsed && label}
@@ -169,16 +179,18 @@ const Sidebar = () => {
             </li>
           ))}
         </ul>
-        
+
         {/* Recent Chats Section */}
         {user && (
           <div className="mt-8">
             {!collapsed && (
-              <h3 className={`px-4 mb-2 text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+              <h3
+                className={`px-4 mb-2 text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+              >
                 Recent Chats
               </h3>
             )}
-            
+
             <ul className="space-y-1">
               {loadingThreads ? (
                 <li className={`px-4 py-2 text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
@@ -189,12 +201,12 @@ const Sidebar = () => {
                   {!collapsed && "No recent chats"}
                 </li>
               ) : (
-                recentThreads.map((thread) => (
+                recentThreads.map(thread => (
                   <li key={thread.id}>
                     <Link
                       href={`/chat/${thread.id}`}
                       className={`
-                        flex items-center ${collapsed ? 'justify-center' : 'gap-2 px-4'} py-2 rounded-lg text-sm transition-all
+                        flex items-center ${collapsed ? "justify-center" : "gap-2 px-4"} py-2 rounded-lg text-sm transition-all
                         ${darkMode ? "text-gray-300 hover:text-white hover:bg-gray-800/60" : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"}
                       `}
                       title={collapsed ? "Chat thread" : getThreadPreview(thread.id)}
@@ -203,7 +215,9 @@ const Sidebar = () => {
                       {!collapsed && (
                         <div className="flex-1 overflow-hidden">
                           <div className="truncate">{getThreadPreview(thread.id)}</div>
-                          <div className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                          <div
+                            className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}
+                          >
                             {formatDate(thread.last_message_at)}
                           </div>
                         </div>
@@ -238,7 +252,7 @@ const Sidebar = () => {
             <Button
               onClick={handleSignOut}
               variant="ghost"
-              className={`w-full flex items-center justify-center ${!collapsed ? 'gap-2' : ''} px-3 py-2 rounded-lg
+              className={`w-full flex items-center justify-center ${!collapsed ? "gap-2" : ""} px-3 py-2 rounded-lg
               transition-colors text-sm font-medium
               ${
                 darkMode
@@ -258,7 +272,7 @@ const Sidebar = () => {
             <Button
               onClick={() => router.push("/login")}
               variant="ghost"
-              className={`w-full flex items-center justify-center ${!collapsed ? 'gap-2' : ''}`}
+              className={`w-full flex items-center justify-center ${!collapsed ? "gap-2" : ""}`}
               aria-label="Login"
               title="Login"
             >
