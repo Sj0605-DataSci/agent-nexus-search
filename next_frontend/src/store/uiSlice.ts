@@ -13,7 +13,7 @@ export const uiSlice = createSlice({
   name: "ui",
   initialState,
   reducers: {
-    toggleSidebar: (state) => {
+    toggleSidebar: state => {
       state.sidebarCollapsed = !state.sidebarCollapsed;
     },
     setSidebarCollapsed: (state, action: PayloadAction<boolean>) => {
