@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useParams } from "next/navigation";
 import withAuth from "@/hoc/withAuth";
 import ChatThreadView from "./ChatThreadView";

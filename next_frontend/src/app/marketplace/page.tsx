@@ -144,7 +144,6 @@ const Marketplace = () => {
         />
       </div>
 
-
       <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
         <div className="text-center relative">
           <div className="relative inline-block">
@@ -334,7 +333,6 @@ const Marketplace = () => {
                     </svg>
                     Configure Agents
                   </Link>
-
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-opacity-20 border-gray-500">
