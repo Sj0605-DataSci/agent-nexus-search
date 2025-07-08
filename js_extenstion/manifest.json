@@ -1,0 +1,28 @@
+{
+  "name": "LinkedIn OIDC Sign-In",
+  "description": "Authenticates users with LinkedIn and grabs Voyager data.",
+  "version": "1.0.0",
+  "manifest_version": 3,
+
+  "background": { "service_worker": "background.js", "type": "module" },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LinkedIn"
+  },
+
+  "permissions": [
+    "identity",
+    "storage",
+    "cookies",
+    "tabs",
+    "scripting",
+    "webRequest",
+    "declarativeNetRequest"
+  ],
+
+  "host_permissions": ["https://*.linkedin.com/*", "http://localhost:3000/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

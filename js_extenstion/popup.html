@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>LinkedIn Sign-In</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="loginSection">
+      <button id="signinBtn">Sign in with LinkedIn</button>
+    </div>
+    <div id="profileSection" hidden>
+      <div id="profileInfo"></div>
+      <button id="signOutBtn">Sign Out</button>
+    </div>
+    <button id="linkedinGetDataApiBtn">Fetch connections</button>
+    <button id="linkedinGetDataApiBtnConnections">
+      Fetch connection number
+    </button>
+    <div id="spinner" hidden>
+      <div class="loader"></div>
+      <p>Signing you in…</p>
+    </div>
+    <div id="resultsContainer"></div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

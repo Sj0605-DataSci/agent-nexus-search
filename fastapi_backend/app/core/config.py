@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     REDIS_PORT: int = int(os.getenv("REDISPORT", "6379"))
     REDIS_PASSWORD: str = os.getenv("REDISPASSWORD", "password")
     REDIS_URL: str = os.getenv("REDIS_URL", "")
+    
+    # LinkedIn OAuth settings
+    LINKEDIN_CLIENT_ID: str = os.getenv("LINKEDIN_CLIENT_ID", "")
+    LINKEDIN_CLIENT_SECRET: str = os.getenv("LINKEDIN_CLIENT_SECRET", "")
 
     class Config:
         case_sensitive = True
