@@ -8,13 +8,13 @@ import { Provider as ReduxProvider } from "react-redux";
 import { store } from "@/store";
 import "react-toastify/dist/ReactToastify.css";
 import Sidebar from "@/components/Sidebar";
-import { usePathname } from "next/navigation"; 
+import { usePathname } from "next/navigation";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
-  const pathname = usePathname(); 
+  const pathname = usePathname();
 
-  const hideNavbarRoutes = ["/", "/login", "/join-waitlist", "/signup"];
+  const hideNavbarRoutes = ["/", "/login", "/join-waitlist", "/signup", "/privacy-policy"];
 
   const shouldShowNavbar = !hideNavbarRoutes.includes(pathname);
 
@@ -33,9 +33,7 @@ export function Providers({ children }: { children: ReactNode }) {
             draggable
             theme="light"
           />
-          <main className={shouldShowNavbar ? "pl-64" : ""}>
-            {children}
-          </main>
+          <main className={shouldShowNavbar ? "pl-64" : ""}>{children}</main>
         </AuthProvider>
       </ReduxProvider>
     </QueryClientProvider>
