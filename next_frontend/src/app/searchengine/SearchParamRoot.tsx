@@ -26,7 +26,7 @@ const SearchParamRoot = () => {
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [format, setFormat] = useState<"table" | "chat">("table");
+  const [format, setFormat] = useState<"chat" | "chat">("chat");
   const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
   const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
     "connections"
@@ -194,22 +194,10 @@ const SearchParamRoot = () => {
                 console.log("Token content:", tokenContent); // Debug log full content
 
                 // Process content based on format
-                if (format === "table") {
-                  // For table format, try to extract JSON if it exists
-                  const jsonMatch = tokenContent.match(/```json\s*([\s\S]*?)\s*```/);
-                  if (jsonMatch && jsonMatch[1]) {
-                    try {
-                      // Try to parse the JSON
-                      const jsonContent = JSON.parse(jsonMatch[1]);
-                      // Format the JSON nicely for display
-                      currentContent = JSON.stringify(jsonContent, null, 2);
-                    } catch (e) {
+                if (format === "chat") {
+                  
                       // If JSON parsing fails, use the raw content
-                      currentContent = tokenContent;
-                    }
-                  } else {
-                    currentContent = tokenContent;
-                  }
+                      currentContent = tokenContent;                  
                 } else {
                   // For chat format, use the raw content directly
                   currentContent = tokenContent;
@@ -422,16 +410,16 @@ const SearchParamRoot = () => {
 
                 {/* Format Toggle Button - Table/Chat */}
                 <button
-                  onClick={() => setFormat(format === "table" ? "chat" : "table")}
+                  onClick={() => setFormat(format === "chat" ? "chat" : "chat")}
                   className={`p-1.5 rounded-md transition-colors ${
                     darkMode
                       ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
                       : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
                   }`}
-                  title={`Switch to ${format === "table" ? "Chat" : "Table"} view`}
+                  title={`Switch to ${format === "chat" ? "chat" : "chat"} view`}
                 >
-                  {format === "table" ? (
-                    <Table className="h-4 w-4" />
+                  {format === "chat" ? (
+                    <MessageSquare className="h-4 w-4" />
                   ) : (
                     <MessageSquare className="h-4 w-4" />
                   )}
@@ -587,22 +575,22 @@ const SearchParamRoot = () => {
                         className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
                       >
                         <button
-                          onClick={() => setFormat("table")}
-                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "table" ? (darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
+                          onClick={() => setFormat("chat")}
+                          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
                         >
-                          <Table className="h-4 w-4" />
-                          Table
+                          <MessageSquare className="h-4 w-4" />
+                          chat
                         </button>
                         <button
                           onClick={() => setFormat("chat")}
                           className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-orange-600 text-white" : "bg-orange-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
                         >
                           <MessageSquare className="h-4 w-4" />
-                          Chat
+                          chat
                         </button>
                       </div>
                       <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                        {format === "table" ? "Structured data view" : "Conversational response"}
+                        {format === "chat" ? "Structured data view" : "Conversational response"}
                       </p>
                     </div>
                   </div>

@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = int(os.getenv("REDISPORT", "6379"))
     REDIS_PASSWORD: str = os.getenv("REDISPASSWORD", "password")
     REDIS_URL: str = os.getenv("REDIS_URL", "")
+    ENV: str = os.getenv("ENV", "")
 
     class Config:
         case_sensitive = True
