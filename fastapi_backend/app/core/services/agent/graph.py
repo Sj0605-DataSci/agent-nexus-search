@@ -25,8 +25,18 @@ from app.core.services.agent.prompts import (
     answer_instructions_sql
 )
 from uuid import UUID, uuid4
+
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
+
+if settings.ENV == "development":
+    model = "gemini-2.5-flash"
+elif settings.ENV == "production":
+    model = "gemini-2.5-pro"
+elif settings.ENV == "staging":
+    model = "gemini-2.5-flash"
+else:
+    model = "gemini-2.5-flash"
 
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """
@@ -80,7 +90,7 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
             latest_message = last_message.content if hasattr(last_message, "content") else ""
     
     # Use LLM to classify the intent
-    llm = GeminiChatModel(model="gemini-2.0-flash", temperature=0)
+    llm = GeminiChatModel(model=model, temperature=0)
     
     # Create a prompt for intent classification
     prompt_content = f"""
@@ -175,7 +185,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
     supabase_client = await get_async_supabase_client()
     # Use Gemini client
     llm = GeminiChatModel(
-        model="gemini-2.0-flash",
+        model=model,
         temperature=0
     )
 
@@ -563,7 +573,7 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
 
     sql_queries = []
     llm = GeminiChatModel(
-        model="gemini-2.0-flash",
+        model=model,
         temperature=0
     )
 
@@ -759,7 +769,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         )
     # Use Gemini client
     llm = GeminiChatModel(
-        model="gemini-2.0-flash",
+        model=model,
         temperature=0
     )
     response = llm.invoke(formatted_prompt)
@@ -952,7 +962,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
 
     # Use Gemini client
     llm = GeminiChatModel(
-        model="gemini-2.0-flash",
+        model=model,
         temperature=0
     )
     result = llm.invoke(formatted_prompt)
