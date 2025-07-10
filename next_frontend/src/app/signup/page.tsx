@@ -54,18 +54,17 @@ const Signup = () => {
     async data => {
       setIsSubmitting(true);
       try {
-        const { error, emailExists, weakPassword, invalidEmail, serverError } =
-          await signUp(data.email, data.password, data.name);
+        const { error, emailExists, weakPassword, invalidEmail, serverError } = await signUp(
+          data.email,
+          data.password,
+          data.name
+        );
 
         if (error) {
           if (emailExists) {
-            showErrorToast(
-              "This email is already registered. Please log in instead."
-            );
+            showErrorToast("This email is already registered. Please log in instead.");
           } else if (weakPassword) {
-            showErrorToast(
-              "Your password is too weak. Use at least 6 characters."
-            );
+            showErrorToast("Your password is too weak. Use at least 6 characters.");
           } else if (invalidEmail) {
             showErrorToast("Please enter a valid email address.");
           } else if (serverError) {

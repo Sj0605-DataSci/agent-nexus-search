@@ -477,7 +477,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   }`}
                   title={`Switch to ${format === "chat" ? "chat" : "chat"} view`}
                 >
-                  {format === "chat" ? <MessageSquare className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                  {format === "chat" ? (
+                    <MessageSquare className="h-4 w-4" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4" />
+                  )}
                 </button>
               </div>
 

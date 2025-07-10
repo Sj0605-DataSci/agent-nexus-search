@@ -8,8 +8,7 @@ import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
-import { useToast } from "@/hooks/use-toast";
-import { showErrorToast, showInfoToast } from "@/utils/toastManager";
+import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 
 import { useAppDispatch, useAppSelector } from "@/store";
 import withAuth from "@/hoc/withAuth";
@@ -48,7 +47,6 @@ const Marketplace = () => {
   }));
 
   const { user } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
@@ -80,16 +78,12 @@ const Marketplace = () => {
         response_length: "medium",
         expertise: "general",
       });
-      toast({ title: "Agent hired", description: "The agent has been added to your team." });
+      showSuccessToast("Agent hired", "The agent has been added to your team.");
 
       dispatch(loadAgents());
     } catch (err: any) {
       const msg = err.message ?? "Unknown error";
-      toast({
-        title: msg.includes("already") ? "Agent already hired" : "Error hiring agent",
-        description: msg,
-        variant: "destructive",
-      });
+      showErrorToast(msg.includes("already") ? "Agent already hired" : "Error hiring agent", msg);
     } finally {
       setLoading(null);
     }
@@ -97,20 +91,16 @@ const Marketplace = () => {
 
   const handleUnhireAgent = async (agentId: string) => {
     if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to manage agents.",
-        variant: "destructive",
-      });
+      showInfoToast("Authentication required", "Please sign in to manage agents.");
       return;
     }
     setLoading(`unhire-${agentId}`);
     try {
       await apiClient.unhireAgentByTemplateId(agentId);
-      toast({ title: "Agent removed", description: "The agent has been removed from your team." });
+      showSuccessToast("Agent removed", "The agent has been removed from your team.");
       dispatch(loadAgents());
     } catch (err: any) {
-      toast({ title: "Error unhiring agent", description: err.message, variant: "destructive" });
+      showErrorToast("Error unhiring agent", err.message);
     } finally {
       setLoading(null);
     }
