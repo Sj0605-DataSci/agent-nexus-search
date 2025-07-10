@@ -37,7 +37,7 @@ async def hire_agent(
         service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to hire the agent
-        agent_response = service.hire_agent(agent, current_user)
+        agent_response = await service.hire_agent(agent, current_user)
         
         # Invalidate any cached hired agents lists for this user
         await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}:*")
@@ -269,7 +269,7 @@ async def delete_hired_agent(
         if success:
             # Invalidate both the specific agent cache and the user's list cache
             await cache_delete(f"hired_agents:id:{agent_id}")
-            await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}:*")
+            await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
             logger.info(f"Invalidated cache for hired agent {agent_id} after deletion")
         if not success:
             return StandardJSONResponse(StandardResponse(

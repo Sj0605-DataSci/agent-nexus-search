@@ -89,36 +89,12 @@ User Context:
 Summaries:
 {summaries}
 
-IMPORTANT: You must follow the correct output format based on the specified format parameter:
+DO NOT use JSON format at all. Instead, provide a natural conversational response.
+Write in plain text as if you're having a conversation with the user.
+Include relevant information from the sources and cite them properly.
+Be natural in your response.
 
-1. If format is "table":
-   You MUST return a JSON object with the following structure. If you don't have information for a field, use "NA".
-   ```json
-   {{
-       "name": "Person's name",
-       "profession": "Their profession",
-       "score": "Relevance score",
-       "reason": "Why they are relevant",
-       "sources": ["Citation 1", "Citation 2"]
-   }}
-   ```
-
-2. If format is "chat":
-   DO NOT use JSON format at all. Instead, provide a natural conversational response.
-   Write in plain text as if you're having a conversation with the user.
-   Include relevant information from the sources and cite them properly.
-   Be natural in your response.
-
-For example if you don't have any content and format is "table", just fill the fields with NA:
-```json
-{{
-    "name": "NA",
-    "profession": "NA",
-    "score": "NA",
-    "reason": "NA",
-    "sources": ["NA"]
-}}
-```
+If you have a list of people, render them in a list way, or render a table.
 
 """
 
@@ -138,36 +114,12 @@ User Context:
 Summaries:
 {summaries}
 
-IMPORTANT: You must follow the correct output format based on the specified format parameter:
+DO NOT use JSON format at all. Instead, provide a natural conversational response.
+Write in plain text as if you're having a conversation with the user.
+Include relevant information from the sources and cite them properly.
+Be natural in your response.
 
-1. If format is "table":
-   You MUST return a JSON object with the following structure. If you don't have information for a field, use "NA".
-   ```json
-   {{
-       "name": "Person's name",
-       "profession": "Their profession",
-       "score": "Relevance score",
-       "reason": "Why they are relevant",
-       "sources": ["Citation 1", "Citation 2"]
-   }}
-   ```
-
-2. If format is "chat":
-   DO NOT use JSON format at all. Instead, provide a natural conversational response.
-   Write in plain text as if you're having a conversation with the user.
-   Include relevant information from the sources and cite them properly.
-   Be natural in your response.
-
-For example if you don't have any content and format is "table", just fill the fields with NA:
-```json
-{{
-    "name": "NA",
-    "profession": "NA",
-    "score": "NA",
-    "reason": "NA",
-    "sources": ["NA"]
-}}
-```
+If you have a list of people, render them in a list way, or render a table.
 
 """
 

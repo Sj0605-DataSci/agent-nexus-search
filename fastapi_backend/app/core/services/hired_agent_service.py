@@ -41,14 +41,6 @@ class HiredAgentService:
                 logger.info(f"No user_id provided, using current user ID: {current_user.id}")
                 agent.user_id = current_user.id
             
-            # Ensure the user can only hire agents for themselves
-            if agent.user_id != current_user.id:
-                logger.error(f"Authorization failed: User {current_user.id} tried to hire agent for user {agent.user_id}")
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only hire agents for your own account"
-                )
-            
             # Check if the user already hired this template
             if agent.template_id:
                 logger.info(f"Checking if user {agent.user_id} already hired template {agent.template_id}")
