@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 import Aurora from "@/components/Aurora";
 import { useAppSelector } from "@/store";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
@@ -39,7 +39,6 @@ const Login = () => {
   const darkMode = useAppSelector(s => s.theme.dark);
 
   const { signIn, user } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
@@ -54,31 +53,20 @@ const Login = () => {
       try {
         const { error } = await signIn(email, password);
         if (error) {
-          toast({
-            title: "Error signing in",
-            description: error.message,
-            variant: "destructive",
-          });
+          showErrorToast("Error signing in", error.message);
         } else {
           posthog.identify();
-          toast({
-            title: "Welcome back!",
-            description: "You have successfully signed in.",
-          });
+          showSuccessToast("Welcome back!", "You have successfully signed in.");
           router.push("/");
         }
-      } catch (err) {
-        toast({
-          title: "Unexpected error",
-          description: "Please try again.",
-          variant: "destructive",
-        });
+      } catch (err: any) {
+        showErrorToast("Unexpected error", "Please try again.");
         console.error(err);
       } finally {
         setLoading(false);
       }
     },
-    [email, password, signIn, router, toast]
+    [email, password, signIn, router]
   );
 
   return (

@@ -14,15 +14,15 @@ export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const pathname = usePathname();
 
-  const hideNavbarRoutes = ["/", "/login", "/join-waitlist", "/signup", "/privacy-policy"];
+  const showSidebarRoutes = ["/marketplace", "/profile", "/searchengine", "/chat", "/agents"];
 
-  const shouldShowNavbar = !hideNavbarRoutes.includes(pathname);
+  const shouldShowSidebar = showSidebarRoutes.some(route => pathname.startsWith(route));
 
   return (
     <QueryClientProvider client={queryClient}>
       <ReduxProvider store={store}>
         <AuthProvider>
-          {shouldShowNavbar && <Sidebar />}
+          {shouldShowSidebar && <Sidebar />}
           <ToastContainer
             position="top-right"
             autoClose={5000}
@@ -33,7 +33,7 @@ export function Providers({ children }: { children: ReactNode }) {
             draggable
             theme="light"
           />
-          <main className={shouldShowNavbar ? "pl-64" : ""}>{children}</main>
+          <main className={shouldShowSidebar ? "pl-64" : ""}>{children}</main>
         </AuthProvider>
       </ReduxProvider>
     </QueryClientProvider>

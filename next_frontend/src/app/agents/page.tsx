@@ -14,7 +14,7 @@ import {
 import { Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
-import { useToast } from "@/hooks/use-toast";
+import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import withAuth from "@/hoc/withAuth";
@@ -27,7 +27,6 @@ const Agents = () => {
   const [agentConfigs, setAgentConfigs] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
 
   const dispatch = useAppDispatch();
@@ -119,21 +118,17 @@ const Agents = () => {
         expertise: currentConfig.expertise,
       });
 
-      toast({
-        title: "Configuration saved",
-        description: "Your agent configuration has been updated.",
-      });
+      showSuccessToast("Configuration saved", "Your agent configuration has been updated.");
 
       setAgentConfigs(prev => ({
         ...prev,
         [selectedAgent]: { ...currentConfig },
       }));
     } catch (error: any) {
-      toast({
-        title: "Error saving configuration",
-        description: error.message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      showErrorToast(
+        "Error saving configuration",
+        error.message || "An unexpected error occurred."
+      );
     } finally {
       setSaving(false);
     }

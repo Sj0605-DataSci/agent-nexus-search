@@ -195,9 +195,8 @@ const SearchParamRoot = () => {
 
                 // Process content based on format
                 if (format === "chat") {
-                  
-                      // If JSON parsing fails, use the raw content
-                      currentContent = tokenContent;                  
+                  // If JSON parsing fails, use the raw content
+                  currentContent = tokenContent;
                 } else {
                   // For chat format, use the raw content directly
                   currentContent = tokenContent;
