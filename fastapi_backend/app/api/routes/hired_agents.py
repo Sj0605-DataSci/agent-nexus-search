@@ -40,7 +40,7 @@ async def hire_agent(
         agent_response = await service.hire_agent(agent, current_user)
         
         # Invalidate any cached hired agents lists for this user
-        await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}:*")
+        await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
         logger.info(f"Invalidated hired agents cache for user {current_user.id} after hiring new agent")
         
         return StandardJSONResponse(StandardResponse(
@@ -217,7 +217,7 @@ async def update_hired_agent(
         if agent_response is not None:
             # Invalidate both the specific agent cache and the user's list cache
             await cache_delete(f"hired_agents:id:{agent_id}")
-            await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}:*")
+            await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
             logger.info(f"Invalidated cache for hired agent {agent_id} after update")
         if agent_response is None:
             return StandardJSONResponse(StandardResponse(
