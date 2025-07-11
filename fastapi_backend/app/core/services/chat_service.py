@@ -3,11 +3,11 @@ import logging
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
-
+from app.core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
-wandb.login(key="34e4d70412c0f023bd9d37fb35fd261080fb5b55")
+wandb.login(key=settings.WANDB_API_KEY)
 weave.init("Deep-Search")
 
 class ChatService:
