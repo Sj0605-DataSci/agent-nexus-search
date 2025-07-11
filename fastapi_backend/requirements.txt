@@ -40,3 +40,5 @@ email-validator
 
 redis
 psutil
+wandb
+weave
