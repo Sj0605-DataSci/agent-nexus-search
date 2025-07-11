@@ -1,16 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Search,
-  User as UserIcon,
-  Table,
-  MessageSquare,
-  Plus,
-  Settings,
-  Globe,
-  ChevronDown,
-} from "lucide-react";
+import { Search, User as UserIcon, MessageSquare, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
@@ -19,6 +10,8 @@ import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
+import SearchModeToggle from "./SearchModeToggle";
+import WorldConnectionsToggle from "./WorldConnectionsToggle";
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const router = useRouter();
@@ -26,10 +19,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [format, setFormat] = useState<"chat" | "chat">("chat");
+  const [format, setFormat] = useState<"chat" | "table">("chat");
   const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
   const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
-    "connections"
+    "world"
   );
   const [selectedAgent, setSelectedAgent] = useState(
     searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
@@ -99,11 +92,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         timestamp: new Date(currentPair.created_at),
       };
 
-      // Make sure we're correctly extracting the agent message content
-      // It could be either a string or an object depending on the response format
       let messageContent = currentPair.message;
 
-      // If it's an object, stringify it for display
       if (typeof messageContent === "object" && messageContent !== null) {
         messageContent = JSON.stringify(messageContent, null, 2);
       }
@@ -115,8 +105,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         timestamp: new Date(currentPair.updated_at),
       };
 
-      // Update the messages state with just this pair's messages
-      // This ensures we only see the messages for the current index
       setMessages([userMessage, agentMessage]);
     }
   }, [currentMessageIndex, chatPairs]);
@@ -309,6 +297,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   )
                 );
               }
+              if (update.thread_id && threadId === "new") {
+                router.replace(`/chat/${update.thread_id}`);
+              }
               break;
 
             case "error":
@@ -362,15 +353,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     <div
       className={`min-h-screen w-full ${darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gradient-to-br from-blue-50 to-purple-50"}`}
     >
-      {/* Background overlay to fill any gaps */}
-      <div className={`fixed inset-0 -z-10 ${darkMode ? "bg-gray-900" : "bg-white"}`}></div>
-      {/* Main content with padding that adjusts based on sidebar state */}
       <div
         className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 py-8 flex flex-col ${
           messages.length ? "pt-8 pb-20" : "min-h-screen justify-center"
         }`}
       >
-        {/* Hero Section */}
         <div
           className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
         >
@@ -394,105 +381,53 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-8" : "mb-16"} transition-all duration-500`}
         >
           <div className="relative flex justify-center">
-            {/* Main Search Bar - Perplexity/ChatGPT/Clado Style */}
             <div
-              className={`flex items-center rounded-2xl px-6 py-4 shadow-lg transition-all duration-200 focus-within:shadow-xl w-full max-w-3xl ${
+              className={`flex items-center flex-col rounded-2xl px-6 py-4 shadow-lg transition-all duration-200 focus-within:shadow-xl w-full max-w-3xl ${
                 darkMode
                   ? "border border-gray-700 bg-gray-900/80 hover:border-gray-600"
                   : "border border-gray-200 bg-white hover:border-gray-300"
               }`}
               style={{ backdropFilter: "blur(10px)" }}
             >
-              <Search className={`h-5 w-5 mr-4 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
-              <Input
-                type="text"
-                placeholder="Search for people by skills, experience, or interests…"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={onKey}
-                className={`
-                  flex-1 bg-transparent text-base h-10
-                  border-0 focus:border-0 outline-none ring-0 focus:ring-0
-                  ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
-                `}
-              />
-
-              {/* Small Toggle Buttons - Perplexity Style */}
-              <div className="flex items-center gap-2 mr-2">
-                {/* Connections/World Toggle */}
-                <button
-                  onClick={() =>
-                    setWorldConnectionsMode(
-                      worldConnectionsMode === "connections" ? "world" : "connections"
-                    )
-                  }
-                  className={`px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
-                    darkMode
-                      ? "bg-gray-800 border border-gray-700 hover:bg-gray-700"
-                      : "bg-gray-100 border border-gray-200 hover:bg-gray-200"
-                  }`}
-                  title={`Switch to ${worldConnectionsMode === "connections" ? "Global" : "Connections"} search`}
-                >
-                  {worldConnectionsMode === "connections" ? (
-                    <>
-                      <UserIcon className="h-4 w-4" />
-                      <span className="text-xs font-medium">{"Connections"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Globe className="h-4 w-4" />
-                      <span className="text-xs font-medium">{"Global"}</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Mode Toggle Button - Basic/Deep */}
-                <button
-                  onClick={() => setSearchMode(searchMode === "basic" ? "deep" : "basic")}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    darkMode
-                      ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
-                      : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
-                  }`}
-                  title={`Switch to ${searchMode === "basic" ? "Deep" : "Basic"} search`}
-                >
-                  {searchMode === "basic" ? (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                      Basic
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                      Deep
-                    </span>
-                  )}
-                </button>
-
-                {/* Format Toggle Button - Table/Chat */}
-                <button
-                  onClick={() => setFormat(format === "chat" ? "chat" : "chat")}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    darkMode
-                      ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
-                      : "text-gray-600 hover:text-gray-700 hover:bg-gray-100"
-                  }`}
-                  title={`Switch to ${format === "chat" ? "chat" : "chat"} view`}
-                >
-                  {format === "chat" ? (
-                    <MessageSquare className="h-4 w-4" />
-                  ) : (
-                    <MessageSquare className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-
-              {/* Agent Selector */}
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  ref={toggleBtnRef}
-                  onClick={() => setShowAgentDropdown(s => !s)}
-                  disabled={agentsStatus === "loading"}
+              <div className=" flex flex-row w-full items-center">
+                <Search
+                  className={`h-5 w-5 mr-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                />
+                <Input
+                  type="text"
+                  placeholder="Search for people by skills, experience, or interests…"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={onKey}
                   className={`
+                    flex bg-transparent text-base h-10
+                    border-0 focus:border-0 outline-none ring-0 focus:ring-0
+                    ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
+                    `}
+                />
+              </div>
+              <div className=" flex flex-row justify-between w-full">
+                <div className="flex items-center gap-2 mr-2">
+                  <SearchModeToggle
+                    searchMode={searchMode}
+                    darkMode={darkMode}
+                    setSearchMode={setSearchMode}
+                  />
+                  <WorldConnectionsToggle
+                    worldConnectionsMode={worldConnectionsMode}
+                    setWorldConnectionsMode={setWorldConnectionsMode}
+                    darkMode={darkMode}
+                  />
+                </div>
+
+                {/* Agent Selector */}
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    ref={toggleBtnRef}
+                    onClick={() => setShowAgentDropdown(s => !s)}
+                    disabled={agentsStatus === "loading"}
+                    className={`
                     flex items-center space-x-2 rounded-full px-3 py-2 border mr-3
                     ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
                     ${
@@ -501,70 +436,73 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                         : "border-gray-200 text-gray-600 hover:bg-gray-50"
                     }
                   `}
-                >
-                  {agentsStatus === "loading" ? (
-                    <span className="block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                  ) : (
-                    <>
-                      <span>{agentData?.avatar}</span>
-                      <svg
-                        className="h-4 w-4"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M6 8l4 4 4-4" />
-                      </svg>
-                    </>
-                  )}
-                </Button>
-
-                {showAgentDropdown && (
-                  <div
-                    ref={dropdownRef}
-                    className={`absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 ${
-                      darkMode
-                        ? "bg-gray-900 border border-gray-700"
-                        : "bg-white border border-gray-200"
-                    }`}
                   >
                     {agentsStatus === "loading" ? (
-                      <div className="p-4 text-center text-gray-500">Loading your agents…</div>
+                      <span className="block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
                     ) : (
-                      agentCards.map(a => (
-                        <button
-                          type="button"
-                          key={a.id}
-                          onClick={e => handleAgentSelect(e, a.id, a.hired)}
-                          className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                            darkMode
-                              ? "hover:bg-gray-800 text-gray-200"
-                              : "hover:bg-gray-50 text-gray-900"
-                          }`}
+                      <>
+                        <span>{agentData?.avatar}</span>
+                        <svg
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
                         >
-                          <span className="flex items-center space-x-3">
-                            <span className="text-lg">{a?.avatar}</span>
-                            <span className="text-sm">{a?.name}</span>
-                          </span>
-                          {!a.hired && (
-                            <span
-                              className={`text-xs px-2 py-1 rounded-full ${
-                                darkMode ? "bg-blue-900 text-blue-300" : "bg-blue-100 text-blue-700"
-                              }`}
-                            >
-                              Hire
-                            </span>
-                          )}
-                        </button>
-                      ))
+                          <path d="M6 8l4 4 4-4" />
+                        </svg>
+                      </>
                     )}
-                  </div>
-                )}
+                  </Button>
+
+                  {showAgentDropdown && (
+                    <div
+                      ref={dropdownRef}
+                      className={`absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 ${
+                        darkMode
+                          ? "bg-gray-900 border border-gray-700"
+                          : "bg-white border border-gray-200"
+                      }`}
+                    >
+                      {agentsStatus === "loading" ? (
+                        <div className="p-4 text-center text-gray-500">Loading your agents…</div>
+                      ) : (
+                        agentCards.map(a => (
+                          <button
+                            type="button"
+                            key={a.id}
+                            onClick={e => handleAgentSelect(e, a.id, a.hired)}
+                            className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                              darkMode
+                                ? "hover:bg-gray-800 text-gray-200"
+                                : "hover:bg-gray-50 text-gray-900"
+                            }`}
+                          >
+                            <span className="flex items-center space-x-3">
+                              <span className="text-lg">{a?.avatar}</span>
+                              <span className="text-sm">{a?.name}</span>
+                            </span>
+                            {!a.hired && (
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  darkMode
+                                    ? "bg-blue-900 text-blue-300"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}
+                              >
+                                Hire
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Search Button */}
-              <Button
+              {/* <Button
                 onClick={() => handleSearch()}
                 disabled={!query.trim() || isLoading}
                 className={`rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
@@ -578,7 +516,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 }`}
               >
                 Search
-              </Button>
+              </Button> */}
             </div>
           </div>
 
@@ -609,7 +547,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           )}
 
           {showOptions && (
-            /* Collapsible Options Panel - Perplexity Style */
             <div
               className={`mt-3 p-4 rounded-xl border shadow-lg transition-all duration-200 ${
                 darkMode ? "bg-gray-900/90 border-gray-700" : "bg-white border-gray-200"
@@ -618,7 +555,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             >
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col sm:flex-row gap-6">
-                  {/* Search Mode Options */}
                   <div className="flex-1">
                     <label
                       className={`block text-sm font-medium mb-2 ${
@@ -650,7 +586,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     </p>
                   </div>
 
-                  {/* Response Format Options */}
                   <div className="flex-1">
                     <label
                       className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
@@ -668,7 +603,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                         chat
                       </button>
                       <button
-                        onClick={() => setFormat("chat")}
+                        onClick={() => setFormat("table")}
                         className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-orange-600 text-white" : "bg-orange-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -681,7 +616,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-6">
-                  {/* Search Source Options */}
                   <div className="flex-1">
                     <label
                       className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}

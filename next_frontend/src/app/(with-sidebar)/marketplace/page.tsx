@@ -111,11 +111,7 @@ const Marketplace = () => {
   }
 
   return (
-    <div
-      className={`min-h-screen transition-colors duration-500 relative overflow-hidden ${
-        darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
-      }`}
-    >
+    <>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className={`absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl ${
@@ -134,7 +130,7 @@ const Marketplace = () => {
         />
       </div>
 
-      <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
+      <div className=" mx-auto px-4 pt-24 pb-16 ">
         <div className="text-center relative">
           <div className="relative inline-block">
             <h1
@@ -238,14 +234,12 @@ const Marketplace = () => {
                   : "bg-gradient-to-br from-blue-50/80 via-purple-50/60 to-blue-50/80 border-blue-200/50"
               }`}
             >
-              {/* Background Pattern */}
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(59,130,246,0.5),transparent_50%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_75%,rgba(147,51,234,0.5),transparent_50%)]" />
               </div>
 
               <div className="relative z-10">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-4">
                     <div
@@ -376,8 +370,8 @@ const Marketplace = () => {
           }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 
-export default withAuth(Marketplace);
+export default Marketplace;

@@ -20,11 +20,6 @@ export default function UploadConnectionsPage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error" | string>("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  if (!user) {
-    router.push("/login");
-    return null;
-  }
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -48,7 +43,6 @@ export default function UploadConnectionsPage() {
       setErrorMessage("");
       console.log("Starting upload process...");
 
-      // 1. Upload file to Supabase Storage
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
       console.log(`Uploading to storage bucket 'connection-files' with filename: ${fileName}`);
 
@@ -61,9 +55,7 @@ export default function UploadConnectionsPage() {
         throw new Error(`File upload failed: ${uploadError.message}`);
       }
 
-      console.log("File uploaded successfully:", fileData);
 
-      // 2. Get the public URL for the file
       console.log("Getting public URL...");
       const { data: urlData } = await supabase.storage
         .from("connection-files")
@@ -74,11 +66,6 @@ export default function UploadConnectionsPage() {
         throw new Error("Failed to get file URL");
       }
 
-      console.log("Got public URL:", urlData.publicUrl);
-
-      // 3. Create entry in connection_files table
-      console.log("Inserting record into connection_files table...");
-      // Using type assertion to avoid TypeScript errors
       const { data: insertData, error: dbError } = await supabase
         .from("connection_files" as any)
         .insert({
@@ -94,14 +81,7 @@ export default function UploadConnectionsPage() {
         throw new Error(`Database entry failed: ${dbError.message}`);
       }
 
-      console.log("Database record inserted successfully:", insertData);
-
-      // 4. Trigger background processing via API
       try {
-        console.log("Triggering background processing...");
-
-        // Get the file ID from the response
-        // Since we're using type assertion above, we need to handle this carefully
         const fileId = (insertData as any)?.[0]?.id;
 
         if (!fileId) {
@@ -109,9 +89,6 @@ export default function UploadConnectionsPage() {
           throw new Error("Could not get file ID from database response");
         }
 
-        console.log("File ID for processing:", fileId);
-
-        // Use the API client to process the connection file
         try {
           await apiClient.processConnectionFile(fileId);
           console.log("Background processing triggered successfully");
@@ -124,7 +101,6 @@ export default function UploadConnectionsPage() {
         }
       } catch (processingError) {
         console.error("Processing trigger error:", processingError);
-        // Don't fail the whole upload if just the processing trigger fails
         setErrorMessage(
           `Upload successful, but there was an issue triggering background processing: ${processingError instanceof Error ? processingError.message : "Unknown error"}`
         );

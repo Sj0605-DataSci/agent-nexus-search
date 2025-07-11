@@ -213,4 +213,4 @@ Note that there might be some schema differences between your frontend Supabase 
 1. python3 -m venv myenv
 2. source myenv/bin/activate
 3. uv pip install -r requirements.txt
-4. uvicorn app.main:app => starts BE
+4. uvicorn app.main:app or python run.py => starts BE
