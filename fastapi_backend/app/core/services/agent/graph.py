@@ -4,15 +4,11 @@ from langgraph.types import Send
 from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 from langchain_core.runnables import RunnableConfig
-from app.models.chat import OverallState, QueryGenerationState, ReflectionState, WebSearchState, SearchQueryList, Reflection, IntentClassifierState
+from app.models.chat import OverallState, ReflectionState, WebSearchState, Reflection, IntentClassification, QueryWriterOutput, ReflectionOutput
 from app.core.utils.llm_utils import GeminiChatModel
 from app.db.clients import get_async_supabase_client
-import json
-import re
 from tavily import TavilyClient
 from app.core.config import settings
-import json
-import re   
 from app.core.services.agent.configuration import Configuration
 from app.core.services.agent.prompts import (
     get_current_date,
@@ -24,20 +20,14 @@ from app.core.services.agent.prompts import (
     reflection_instructions_sql,
     answer_instructions_sql
 )
-from uuid import UUID, uuid4
+from uuid import uuid4
+import weave
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
 
-if settings.ENV == "development":
-    model = "gemini-2.5-flash"
-elif settings.ENV == "production":
-    model = "gemini-2.5-pro"
-elif settings.ENV == "staging":
-    model = "gemini-2.5-flash"
-else:
-    model = "gemini-2.5-flash"
 
+@weave.op
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """
     Get the research topic from the messages.
@@ -70,6 +60,7 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 
 # Nodes
+@weave.op
 async def intent_classifier(state: OverallState, config: RunnableConfig) -> OverallState:
     """LangGraph node that classifies the User's intent.
     
@@ -90,7 +81,7 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
             latest_message = last_message.content if hasattr(last_message, "content") else ""
     
     # Use LLM to classify the intent
-    llm = GeminiChatModel(model=model, temperature=0)
+    llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
     
     # Create a prompt for intent classification
     prompt_content = f"""
@@ -107,7 +98,10 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
         """
     
     # Get the classification
-    response = llm.invoke(prompt_content)
+    response, usage_metadata = llm.with_structured_output(schema_type=IntentClassification, prompt=prompt_content)
+    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+    
     agent_config = state["agent_config"]
     agent_id = agent_config["id"]
     user_id = agent_config["user_id"]
@@ -115,24 +109,49 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
     if state["chat_thread_id"]:
         chat_thread_id = state["chat_thread_id"]
     else:
+       try: 
         chat_thread_id = str(uuid4())
+        response_chat_thread = await supabase_client.table("chat_threads").insert({
+            "user_id": user_id, 
+            "id": chat_thread_id,
+            "weave_url": state["weave_url"]
+        }).execute() 
+       except Exception as e:
+        print(f"Error inserting data into Supabase: {e}")
 
-    intent = "direct_answer" if "direct_answer" in response.content.lower() else "search"
+    intent = response.answer
 
-    if intent == "direct_answer":
+    if intent == "direct_answer":  
         # Insert the message and capture the response to get the message ID
         response = await supabase_client.table("chat_messages").insert({
                 "user_id": user_id, 
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id, 
                 "sub_queries": "", 
-                "main_query": latest_message
-            }).execute()
+                "main_query": latest_message,
+                "weave_url": state["weave_url"],
+            }).execute()   
         
         # Extract the message ID from the response and store it in state
         if response and response.data and len(response.data) > 0:
             message_id = response.data[0].get("id")
             state["current_message_id"] = message_id
+            
+            cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+            cost_rupees = cost_dollar * 85.86
+            await supabase_client.table("chat_costs").insert({
+                "user_id": user_id, 
+                "agent_id": agent_id, 
+                "chat_thread_id": chat_thread_id,
+                "message_id": message_id,
+                "model": "gemini-2.5-flash",
+                "node": "intent_classifier",
+                "model_input_tokens": float(input_tokens), 
+                "model_output_tokens": float(output_tokens), 
+                "model_cost_dollar": float(cost_dollar),
+                "model_cost_rupees": float(cost_rupees),
+                "weave_url": state["weave_url"],
+            }).execute()    
     
     # Update the state with the classified intent
     return OverallState(
@@ -144,6 +163,7 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
         user_id=state.get("user_id", ""),
         agent_id=state.get("agent_config", {}).get("id", ""),
         chat_thread_id=chat_thread_id,
+        weave_url=state["weave_url"],
         number_of_results_returned=state.get("number_of_results_returned", 1),
         format=state.get("format", "table"),
         sources_gathered=state.get("sources_gathered", []),
@@ -155,7 +175,7 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
         sql_queries=state.get("sql_queries", []),
     )
 
-
+@weave.op
 def continue_to_query_generation(state: OverallState):
     """Router function that decides whether to proceed with search or direct answer."""
     if hasattr(state, "model_dump"):
@@ -166,6 +186,7 @@ def continue_to_query_generation(state: OverallState):
         return "finalize_answer"
 
 
+@weave.op
 async def generate_query(state: OverallState, config: RunnableConfig) -> WebSearchState:
     """LangGraph node that generates search queries based on the User's question.
 
@@ -179,102 +200,59 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
     Returns:
         Dictionary with state update, including search_query key containing the generated queries
     """
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
+    try:
+        if hasattr(state, "model_dump"):
+            state = state.model_dump()
 
-    supabase_client = await get_async_supabase_client()
-    # Use Gemini client
-    llm = GeminiChatModel(
-        model=model,
-        temperature=0
-    )
+        supabase_client = await get_async_supabase_client()
 
-    messages = state["messages"]
-    
-    # Handle different message formats
-    if isinstance(messages[0], dict):
-        main_query = messages[0].get("content", "")
-    else:
-        main_query = messages[0].content
+        llm = GeminiChatModel(
+            model="gemini-2.5-flash",
+            temperature=0
+        )
+
+        messages = state["messages"]
+
+        if isinstance(messages[0], dict):
+            main_query = messages[0].get("content", "")
+        else:
+            main_query = messages[0].content
         
-    agent_config = state["agent_config"]
-    agent_id = agent_config["id"]
-    user_id = agent_config["user_id"]
-    num_results = agent_config["number_of_results_returned"]
-    chat_thread_id = state["chat_thread_id"]
-    current_message_id = state.get("current_message_id", "")
+        agent_config = state["agent_config"]
+        agent_id = agent_config["id"]
+        user_id = agent_config["user_id"]
+        num_results = agent_config["number_of_results_returned"]
+        chat_thread_id = state["chat_thread_id"]
+        current_message_id = state.get("current_message_id", "")
 
     # check for custom initial search query count
-    try :
-        initial_search_query_count = state["initial_search_query_count"]    
-    except Exception as e:
-        initial_search_query_count = 1
-    current_date = get_current_date()
+        initial_search_query_count = state["initial_search_query_count"]
+        current_date = get_current_date()
 
-    if state["world_connections"]=="world":
-        formatted_prompt = query_writer_instructions.format(
-            current_date=current_date,
-            research_topic=get_research_topic(state["messages"]),
-            agent_config=agent_config,
-            number_queries=initial_search_query_count,
-    )
-    elif state["world_connections"]=="connections":
-        formatted_prompt = optimised_query_instructions.format(
-            current_date=current_date,
-            research_topic=get_research_topic(state["messages"]),
-            number_queries=initial_search_query_count,
-    )
+        if state["world_connections"]=="world":
+            formatted_prompt = query_writer_instructions.format(
+                current_date=current_date,
+                research_topic=get_research_topic(state["messages"]),
+                agent_config=agent_config,
+                number_queries=initial_search_query_count,
+            )
+        elif state["world_connections"]=="connections":
+            formatted_prompt = optimised_query_instructions.format(
+                current_date=current_date,
+                research_topic=get_research_topic(state["messages"]),
+                number_queries=initial_search_query_count,
+            )
     
     # Generate the search queries
-    response = llm.invoke(formatted_prompt)
-    print(f"Raw response: {response.content}")
-    
-    # Extract JSON from response
-    try:
-        # Try to extract JSON from code block first
-        json_match = re.search(r'```json\s*(.+?)\s*```', response.content, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(1).strip()
-        else:
-            # Try to find JSON object directly
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-            else:
-                raise ValueError("No JSON found")
-        
-        print(f"Extracted JSON: {json_str}")
-        
-        # Parse JSON
-        response_data = json.loads(json_str)
+        response, usage_metadata = llm.with_structured_output(schema_type=QueryWriterOutput, prompt=formatted_prompt)
         
         # Convert to expected format
         search_queries = []
-        if isinstance(response_data, dict) and "query" in response_data:
-            # Handle the expected format: {"rationale": "...", "query": [...]}
-            queries_list = response_data["query"]
-            rationale = response_data.get("rationale", "Optimized search query for finding relevant professionals")
-            
-            if isinstance(queries_list, list):
-                for query in queries_list:
-                    search_queries.append({
-                        "query": query,
-                        "rationale": rationale
-                    })
-            else:
-                # Single query
-                search_queries.append({
-                    "query": queries_list,
-                    "rationale": rationale
-                })
-        else:
-            # Fallback: treat as list of queries
-            queries_list = response_data if isinstance(response_data, list) else [response_data]
-            for query in queries_list:
-                search_queries.append({
-                    "query": query, 
-                    "rationale": "Optimized search query for finding relevant professionals"
-                })
+        for query in response.query:  # Access the 'query' field of the Pydantic model
+            search_queries.append({
+                "query": query, 
+                "rationale": response.rationale
+            })
         
         # Log to Supabase
         try:
@@ -285,41 +263,59 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id, 
                 "sub_queries": query_strings, 
-                "main_query": main_query
+                "main_query": main_query,
+                "weave_url": state["weave_url"],
             }).execute()
             
             # Extract the message ID from the response and store it in state
             if response and response.data and len(response.data) > 0:
                 message_id = response.data[0].get("id")
                 state["current_message_id"] = message_id
+                
+                input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+                output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+                
+                cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+                cost_rupees = cost_dollar * 85.86
+                await supabase_client.table("chat_costs").insert({
+                    "user_id": user_id, 
+                    "agent_id": agent_id, 
+                    "chat_thread_id": chat_thread_id,
+                    "message_id": message_id,
+                    "model": "gemini-2.5-flash",
+                    "node": "generate_query",
+                    "model_input_tokens": float(input_tokens), 
+                    "model_output_tokens": float(output_tokens), 
+                    "model_cost_dollar": float(cost_dollar),
+                    "model_cost_rupees": float(cost_rupees),
+                    "weave_url": state["weave_url"]
+                }).execute()    
         except Exception as e:
             print(f"Error inserting data into Supabase: {e}")
-        
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"JSON parsing failed: {e}. Using fallback query.")
-        search_queries = [{
-            "query": get_research_topic(state["messages"]), 
-            "rationale": "Direct search based on research topic."
-        }]
     
     # Return WebSearchState
-    return WebSearchState(
-        messages=state["messages"],
-        intent=state["intent"],
-        format=state["format"],
-        search_query=search_queries, 
-        agent_id=agent_id, 
-        current_message_id=state["current_message_id"],
-        agent_config=agent_config,
-        sql_queries=[],
-        chat_thread_id=chat_thread_id, 
-        user_id=state["user_id"], 
-        max_research_loops=state["max_research_loops"], 
-        number_of_results_returned=num_results, 
-        initial_search_query_count=state["initial_search_query_count"],
-        world_connections=state["world_connections"]
-    )
+        return WebSearchState(
+            messages=state["messages"],
+            intent=state["intent"],
+            format=state["format"],
+            search_query=search_queries, 
+            agent_id=agent_id, 
+            current_message_id=state["current_message_id"],
+            agent_config=agent_config,
+            sql_queries=[],
+            chat_thread_id=chat_thread_id, 
+            user_id=state["user_id"], 
+            weave_url=state["weave_url"], 
+            max_research_loops=state["max_research_loops"], 
+            number_of_results_returned=num_results, 
+            initial_search_query_count=state["initial_search_query_count"],
+            world_connections=state["world_connections"]
+        )
+    except Exception as e:
+        print(f"Error generating search queries: {e}")
+        raise    
 
+@weave.op
 def continue_to_web_research(state: WebSearchState):
     """LangGraph node that sends the search queries to the web research node.
 
@@ -328,10 +324,14 @@ def continue_to_web_research(state: WebSearchState):
     if hasattr(state, "model_dump"):
         state = state.model_dump()
 
+    agent_config = state["agent_config"]
+    agent_id = agent_config["id"]
+
     if state["world_connections"] == "world":       
         return [
             Send("web_research", WebSearchState(
             messages=state["messages"],
+            weave_url=state["weave_url"],
             current_message_id=state["current_message_id"],
             search_query=search_query.query if hasattr(search_query, "query") else search_query,
             intent=state["intent"],
@@ -340,8 +340,8 @@ def continue_to_web_research(state: WebSearchState):
             sql_queries=[],
             chat_thread_id=state["chat_thread_id"],
             user_id=state["user_id"],
-            agent_id=state["agent_id"],
-            agent_config=state["agent_config"],
+            agent_id=agent_id,
+            agent_config=agent_config,
             world_connections=state["world_connections"],
             number_of_results_returned=state["number_of_results_returned"],
             initial_search_query_count=state["initial_search_query_count"],
@@ -353,6 +353,7 @@ def continue_to_web_research(state: WebSearchState):
         return [
             Send("sql_query_generation", WebSearchState(
             messages=state["messages"],
+            weave_url=state["weave_url"],
             current_message_id=state["current_message_id"],
             search_query=search_query.query if hasattr(search_query, "query") else search_query,
             intent=state["intent"],
@@ -361,8 +362,8 @@ def continue_to_web_research(state: WebSearchState):
             sql_queries=[],
             chat_thread_id=state["chat_thread_id"],
             user_id=state["user_id"],
-            agent_id=state["agent_id"],
-            agent_config=state["agent_config"],
+            agent_id=agent_id,
+            agent_config=agent_config,
             world_connections=state["world_connections"],
             number_of_results_returned=state["number_of_results_returned"],
             initial_search_query_count=state["initial_search_query_count"],
@@ -372,6 +373,7 @@ def continue_to_web_research(state: WebSearchState):
     ]
 
 
+@weave.op
 async def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     """LangGraph node that performs web research using the Exa API.
 
@@ -552,6 +554,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         sources_gathered=sources_gathered,
         intent=state["intent"],
         messages=state.get("messages", []),
+        weave_url=state["weave_url"],
         current_message_id=state.get("current_message_id", ""),
         max_research_loops=state.get("max_research_loops", 0),
         agent_config=state.get("agent_config", {}),
@@ -561,19 +564,27 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         sql_queries=state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])],
         web_research_result=[modified_text],
         user_id=state.get("user_id", ""),
-        agent_id=state.get("agent_id", ""),
+        agent_id=state.get("agent_config", {}).get("id", ""),
         chat_thread_id=state.get("chat_thread_id", ""),
         initial_search_query_count=state.get("initial_search_query_count", 0),
         number_of_results_returned=num_results
     )
 
+@weave.op
 async def sql_query_generation(state:WebSearchState) -> OverallState:
     if hasattr(state, "model_dump"):
         state = state.model_dump()
 
+    supabase_client = await get_async_supabase_client()
+    
+    user_id = state["user_id"]
+    agent_id = state["agent_config"]["id"]  
+    chat_thread_id = state["chat_thread_id"]
+    message_id = state["current_message_id"]    
+
     sql_queries = []
     llm = GeminiChatModel(
-        model=model,
+        model="gemini-2.5-flash",
         temperature=0
     )
 
@@ -595,7 +606,26 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
     
         # Generate the search queries
         response = llm.invoke(formatted_prompt)
-    
+        usage_metadata = response.usage_metadata
+
+        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+        
+        cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+        cost_rupees = cost_dollar * 85.86
+        await supabase_client.table("chat_costs").insert({
+                    "user_id": user_id, 
+                    "agent_id": agent_id, 
+                    "chat_thread_id": chat_thread_id,
+                    "message_id": message_id,
+                    "model": "gemini-2.5-flash",
+                    "node": "sql_query_generation",
+                    "weave_url": state["weave_url"],    
+                    "model_input_tokens": float(input_tokens), 
+                    "model_output_tokens": float(output_tokens), 
+                    "model_cost_dollar": float(cost_dollar),
+                    "model_cost_rupees": float(cost_rupees)
+                }).execute() 
         # Access the response content correctly
         if hasattr(response, 'content'):
             sql_query = response.content.strip()
@@ -616,7 +646,8 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         messages=state.get("messages", []),
         current_message_id=state.get("current_message_id", ""),
         intent=state["intent"],
-        format=state["format"],
+        format=state.get("format", ""),
+        weave_url=state["weave_url"],
         search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
         sql_queries=sql_queries,
         web_research_result=state.get("web_research_result", []),
@@ -627,11 +658,12 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         agent_config=state["agent_config"],
         world_connections=state["world_connections"],
         user_id=state["user_id"],
-        agent_id=state["agent_id"],
+        agent_id=state["agent_config"]["id"],
         chat_thread_id=state["chat_thread_id"],
         number_of_results_returned=state["number_of_results_returned"],
     )    
     
+@weave.op
 async def sql_query_execution(state: OverallState) -> OverallState:
     if hasattr(state, "model_dump"):
         state = state.model_dump()
@@ -687,6 +719,7 @@ async def sql_query_execution(state: OverallState) -> OverallState:
     return OverallState(
         messages=state.get("messages", []),
         current_message_id=state.get("current_message_id", ""),
+        weave_url=state["weave_url"],
         search_query=state.get("search_query", []) if isinstance(state.get("search_query", []), list) else ([state.get("search_query", [])] if state.get("search_query") else []),
         sql_queries=state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])],
         web_research_result=query_results,
@@ -730,6 +763,7 @@ async def sql_query_execution(state: OverallState) -> OverallState:
 #     )
     
 
+@weave.op
 async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     """LangGraph node that identifies knowledge gaps and generates potential follow-up queries.
 
@@ -747,7 +781,12 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     if hasattr(state, "model_dump"):
         state = state.model_dump()
 
+    supabase_client = await get_async_supabase_client()
     configurable = Configuration.from_runnable_config(config)
+    user_id = state["user_id"]
+    agent_id = state["agent_config"]["id"]
+    chat_thread_id = state["chat_thread_id"]
+    current_message_id = state["current_message_id"]
     # Increment the research loop count and get the reasoning model
     state["research_loop_count"] = state["research_loop_count"] + 1
 
@@ -760,76 +799,57 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         formatted_prompt = reflection_instructions.format(
             research_topic=research_topic,
             agent_config=state["agent_config"],
+            number_queries=state["initial_search_query_count"],
             summaries="\n\n---\n\n".join(summaries)
         )
     elif state["world_connections"] == "connections":
         formatted_prompt = reflection_instructions_sql.format(
             research_topic=research_topic,
+            number_queries=state["initial_search_query_count"],
             summaries="\n\n---\n\n".join(str(summaries))
         )
     # Use Gemini client
     llm = GeminiChatModel(
-        model=model,
+        model="gemini-2.5-pro",
         temperature=0
     )
-    response = llm.invoke(formatted_prompt)
+    response, usage_metadata = llm.with_structured_output(prompt=formatted_prompt, schema_type=ReflectionOutput) 
     
-    # Parse the JSON response manually
-    import json
-    import re
-    
-    # Extract JSON from the response
-    json_match = re.search(r'```json\s*(.+?)\s*```', response.content, re.DOTALL)
-    if not json_match:
-        # Try without code block markers
-        json_match = re.search(r'\{\s*".*"\s*:.+\}', response.content, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-        else:
-            # Fallback values if parsing fails
-            return Reflection(
-                is_sufficient=False,
-                current_message_id=state["current_message_id"],
-                messages=state["messages"],
-                max_research_loops=state["max_research_loops"],
-                knowledge_gap="Unable to parse reflection response. Need more information.",
-                follow_up_queries=[get_research_topic(state["messages"])],
-                research_loop_count=state["research_loop_count"],
-                number_of_ran_queries=len(state["search_query"]),
-                user_id=state["user_id"],
-                world_connections=state["world_connections"],
-                agent_id=state["agent_config"]["id"],
-                chat_thread_id=state["chat_thread_id"]
-            )
+    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+
+    if input_tokens <= 200000:
+        input_tokens_cost = (input_tokens/1000000) * 1.25
     else:
-        json_str = json_match.group(1)
+        input_tokens_cost = (input_tokens/1000000) * 2.5
+    if output_tokens <= 200000:
+        output_tokens_cost = (output_tokens/1000000) * 10
+    else:
+        output_tokens_cost = (output_tokens/1000000) * 15
     
-    try:
-        result_dict = json.loads(json_str)
-        
-        # Create a Reflection model with values from the result_dict
-        return Reflection(
-            is_sufficient=result_dict.get("is_sufficient", False),
+    cost_dollar=input_tokens_cost + output_tokens_cost
+    cost_rupees = cost_dollar * 85.86
+    await supabase_client.table("chat_costs").insert({
+                "user_id": user_id, 
+                "agent_id": agent_id, 
+                "chat_thread_id": chat_thread_id,
+                "message_id": current_message_id,
+                "model": "gemini-2.5-pro",
+                "node": "reflection",
+                "weave_url": state["weave_url"],
+                "model_input_tokens": float(input_tokens), 
+                "model_output_tokens": float(output_tokens), 
+                "model_cost_dollar": float(cost_dollar),
+                "model_cost_rupees": float(cost_rupees)
+            }).execute() 
+    return Reflection(
+            is_sufficient=response.is_sufficient,
             current_message_id=state["current_message_id"],
             messages=state["messages"],
+            weave_url=state["weave_url"],
             max_research_loops=state["max_research_loops"],
-            knowledge_gap=result_dict.get("knowledge_gap", ""),
-            follow_up_queries=result_dict.get("follow_up_queries", []),
-            research_loop_count=state["research_loop_count"],
-            number_of_ran_queries=len(state["search_query"]),
-            user_id=state["user_id"],
-            world_connections=state["world_connections"],
-            agent_id=state["agent_config"]["id"],
-            chat_thread_id=state["chat_thread_id"]
-        )
-    except json.JSONDecodeError:
-        # Fallback values if JSON parsing fails
-        return Reflection(
-            is_sufficient=False,
-            current_message_id=state["current_message_id"],
-            max_research_loops=state["max_research_loops"],
-            knowledge_gap="Unable to parse reflection response. Need more information.",
-            follow_up_queries=[get_research_topic(state["messages"])],
+            knowledge_gap=response.knowledge_gap,
+            follow_up_queries=response.follow_up_queries,
             research_loop_count=state["research_loop_count"],
             number_of_ran_queries=len(state["search_query"]),
             user_id=state["user_id"],
@@ -838,7 +858,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             chat_thread_id=state["chat_thread_id"]
         )
 
-
+@weave.op
 async def evaluate_research(
     state: ReflectionState,
 ) -> OverallState:
@@ -858,7 +878,7 @@ async def evaluate_research(
         state = state.model_dump()
 
     user_id = state["user_id"]
-    agent_id = state["agent_id"]
+    agent_id = state["agent_config"]["id"]
     world_connections = state["world_connections"]
 
     try:
@@ -874,6 +894,7 @@ async def evaluate_research(
                 "web_research",
                 WebSearchState(
                     messages=state["messages"],
+                    weave_url=state["weave_url"],
                     current_message_id=state["current_message_id"],
                     search_query=follow_up_query,
                     id=state["number_of_ran_queries"] + int(idx),
@@ -881,7 +902,7 @@ async def evaluate_research(
                     intent=state["intent"],
                     chat_thread_id=state["chat_thread_id"],
                     user_id=state["user_id"],
-                    agent_id=state["agent_id"],
+                    agent_id=state["agent_config"]["id"],
                     agent_config=state["agent_config"],
                     number_of_results_returned=state["number_of_results_returned"],
                     max_research_loops=state["max_research_loops"]
@@ -895,6 +916,7 @@ async def evaluate_research(
                 "sql_query_generation",
                 WebSearchState(
                     messages=state["messages"],
+                    weave_url=state["weave_url"],
                     current_message_id=state["current_message_id"],
                     search_query=follow_up_query,
                     id=state["number_of_ran_queries"] + int(idx),
@@ -902,7 +924,7 @@ async def evaluate_research(
                     intent=state["intent"],
                     chat_thread_id=state["chat_thread_id"],
                     user_id=state["user_id"],
-                    agent_id=state["agent_id"],
+                    agent_id=state["agent_config"]["id"],
                     agent_config=state["agent_config"],
                     number_of_results_returned=state["number_of_results_returned"],
                     max_research_loops=state["max_research_loops"]
@@ -912,6 +934,7 @@ async def evaluate_research(
         ]
 
 
+@weave.op
 async def finalize_answer(state: OverallState, config: RunnableConfig):
     """LangGraph node that finalizes the research summary.
 
@@ -962,30 +985,17 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
 
     # Use Gemini client
     llm = GeminiChatModel(
-        model=model,
+        model="gemini-2.5-flash",
         temperature=0
     )
     result = llm.invoke(formatted_prompt)
+    usage_metadata = result.usage_metadata
+    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
     
     final_message = AIMessage(content=result.content)
     
-    # Try to parse the content as JSON if it's in JSON format and format is table
     message_content = final_message.content
-    parsed_content = None
-    
-    # Only try to parse JSON if format is table
-    if state["format"] == "table" and "```json" in message_content:
-        try:
-            # Extract JSON from code block
-            json_match = re.search(r'```json\s*(.+?)\s*```', message_content, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-                parsed_content = json.loads(json_str)
-                # Use the parsed JSON instead of the raw string for database storage
-                message_content = parsed_content
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON from LLM response: {e}")
-            # Fall back to using the original content
     
     try:
         # Use the global Supabase client directly
@@ -993,6 +1003,26 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             "message": message_content,
             "sources_gathered": state["sources_gathered"]
         }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).eq("id", current_message_id).execute()
+        
+        input_tokens_cost = (input_tokens/1000000) * 0.3
+        output_tokens_cost = (output_tokens/1000000) * 2.5
+        
+        cost_dollar=input_tokens_cost + output_tokens_cost
+        cost_rupees = cost_dollar * 85.86
+        
+        await supabase_client.table("chat_costs").insert({
+            "user_id": user_id, 
+                "agent_id": agent_id, 
+                "chat_thread_id": chat_thread_id,
+                "message_id": current_message_id,
+                "model": "gemini-2.5-flash",
+                "node": "finalize_answer",
+                "weave_url": state["weave_url"],
+                "model_input_tokens": float(input_tokens), 
+                "model_output_tokens": float(output_tokens), 
+                "model_cost_dollar": float(cost_dollar),
+                "model_cost_rupees": float(cost_rupees),
+        }).execute()
     except Exception as e:
         print(f"Error inserting data into Supabase: {e}")
         # Continue with the flow even if database operation fails
@@ -1036,7 +1066,7 @@ builder.add_edge("sql_query_generation", "sql_query_execution")
 builder.add_edge("sql_query_execution", "reflection")
 # Evaluate the research
 builder.add_conditional_edges(
-    "reflection", evaluate_research, ["web_research", "finalize_answer"]
+    "reflection", evaluate_research, ["web_research", "finalize_answer", "sql_query_generation"]
 )
 # Finalize the answer
 builder.add_edge("finalize_answer", END)

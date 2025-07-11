@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from langgraph.graph import add_messages
 from typing_extensions import Annotated
 import operator
+from typing import Literal
 
 
 class IntentClassifierState(BaseModel):
@@ -66,6 +67,9 @@ class OverallState(BaseModel):
     initial_search_query_count: Annotated[int, lambda x, y: y or x] = Field(
         description="The initial search query count."
     )
+    weave_url: Annotated[str, lambda x, y: y or x] = Field(
+        description="The URL of the Weave graph."
+    )
 
 class ReflectionState(BaseModel):
     messages: Annotated[list, add_messages] = Field(
@@ -116,7 +120,9 @@ class ReflectionState(BaseModel):
     agent_config: Annotated[Dict[str, Any], lambda x, y: y or x] = Field(
         description="The agent configuration."
     )
-
+    weave_url: Annotated[str, lambda x, y: y or x] = Field(
+        description="The URL of the Weave graph."
+    )
 
 class Query(BaseModel):
     query: Annotated[str, lambda x, y: y or x] = Field(
@@ -209,6 +215,9 @@ class WebSearchState(BaseModel):
     max_research_loops: Annotated[int, lambda x, y: y or x] = Field(
         description="The maximum number of research loops that have been executed."
     )
+    weave_url: Annotated[str, lambda x, y: y or x] = Field(
+        description="The URL of the Weave graph."
+    )
 
 
 @dataclass(kw_only=True)
@@ -249,6 +258,9 @@ class Reflection(BaseModel):
     )
     chat_thread_id: Annotated[str, lambda x, y: y or x] = Field(
         description="The ID of the chat thread."
+    )
+    weave_url: Annotated[str, lambda x, y: y or x] = Field(
+        description="The URL of the Weave graph."
     )
 
 
@@ -292,3 +304,35 @@ class StreamingChatUpdate(BaseModel):
     """Model for streaming chat updates"""
     type: str = Field(description="Type of update: 'thinking', 'message', 'source', 'done'")
     content: Dict[str, Any] = Field(description="Content of the update")
+
+
+# Define the intent classification schema
+class IntentClassification(BaseModel):
+    """Schema for intent classification results."""
+    answer: Literal["direct_answer", "search"] = Field(
+        default="direct_answer",
+        description="The classified intent of the user's message"
+    )
+
+# Define the query writer output schema
+class QueryWriterOutput(BaseModel):
+    """Schema for query writer output."""
+    rationale: str = Field(
+        description="Brief explanation of why these queries are relevant"
+    )
+    query: List[str] = Field(
+        description="A list of search queries"
+    )
+
+# Define the reflection output schema
+class ReflectionOutput(BaseModel):
+    """Schema for reflection output."""
+    is_sufficient: bool = Field(
+        description="Whether the summaries are sufficient to fulfill the research objective"
+    )
+    knowledge_gap: str = Field(
+        description="Brief explanation of the knowledge gap"
+    )
+    follow_up_queries: List[str] = Field(
+        description="A list of follow-up search queries"
+    )

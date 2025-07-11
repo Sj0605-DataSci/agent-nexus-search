@@ -1,30 +1,64 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage
 from app.core.config import settings
+from typing import Type, TypeVar
+import weave
+
+T = TypeVar('T')
 
 GOOGLE_API_KEY = settings.GOOGLE_API_KEY
 
 # LangChain Gemini Chat Model wrapper
 class GeminiChatModel:
-    def __init__(self, model="gemini-2.0-flash", temperature=0):
-        self.model = ChatGoogleGenerativeAI(
+    def __init__(self, model="gemini-2.5-flash", temperature=0, thinking_budget=0):
+        if model == "gemini-2.5-flash":
+            self.model = ChatGoogleGenerativeAI(
+            model=model,
+            temperature=temperature,
+            google_api_key=GOOGLE_API_KEY,
+            convert_system_message_to_human=True,
+            thinking_budget=thinking_budget
+        )
+        elif model == "gemini-2.5-pro":
+            self.model = ChatGoogleGenerativeAI(
             model=model,
             temperature=temperature,
             google_api_key=GOOGLE_API_KEY,
             convert_system_message_to_human=True
         )
     
+    @weave.op
     def invoke(self, prompt):
         return self.model.invoke([HumanMessage(content=prompt)])
     
+    @weave.op
     def stream(self, prompt):
         """Stream the response from the model"""
         return self.model.stream([HumanMessage(content=prompt)])
     
-    def astream(self, prompt):
-        """Stream the response from the model asynchronously"""
-        return self.model.astream([HumanMessage(content=prompt)])
-    
+    @weave.op
+    def with_structured_output(self, schema_type: Type[T], prompt):
+        """Get structured output from the model using a Pydantic schema
+        
+        Args:
+            schema_type: A Pydantic model class that defines the output structure
+            prompt: The prompt to send to the model
+            
+        Returns:
+            A tuple containing:
+            - An instance of the Pydantic model populated with the model's response
+            - The usage metadata from the raw response
+        """
+        # Use the include_raw parameter to get both structured output and raw response
+        structured_llm = self.model.with_structured_output(schema_type, include_raw=True)
+        
+        if isinstance(prompt, str):
+            response = structured_llm.invoke([HumanMessage(content=prompt)])
+            # Return the parsed output and usage metadata from raw response
+            return response["parsed"], response["raw"].usage_metadata
+        else:
+            response = structured_llm.invoke(prompt)
+            return response["parsed"], response["raw"].usage_metadata
 
 
 # if __name__ == "__main__":
@@ -44,4 +78,3 @@ class GeminiChatModel:
 #     # For asynchronous streaming 
 #     print("\nAsynchronous streaming:")
 #     asyncio.run(test_async_stream())
-

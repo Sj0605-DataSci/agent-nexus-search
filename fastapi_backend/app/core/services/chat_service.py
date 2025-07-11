@@ -2,9 +2,13 @@ from typing import Dict, Any, List, Union
 import logging
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
+import weave, wandb
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
+wandb.login(key="34e4d70412c0f023bd9d37fb35fd261080fb5b55")
+weave.init("Deep-Search")
 
 class ChatService:
     """Service for handling agent template operations"""
@@ -79,8 +83,7 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error fetching agent config: {str(e)}")
             raise
-
-
+    
     async def chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world") -> 'ChatResponse':
         """
         Chat with the research agent
@@ -137,7 +140,8 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
-            
+    
+    @weave.op
     async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
@@ -151,6 +155,11 @@ class ChatService:
             Async generator yielding streaming updates
         """
         try:
+            # Capture the Weave operation ID
+            op = weave.get_current_call()
+            op_id = op.id
+            weave_url = f"https://wandb.ai/sanyam0605/deep-search/r/call/{op_id}" if op_id else None
+            
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)
             
@@ -177,6 +186,7 @@ class ChatService:
                 "messages": formatted_messages,
                 "agent_config": agent_config,
                 "user_id": user_id,
+                "weave_url": weave_url,
                 "initial_search_query_count": 3,
                 "research_loop_count": 0,
                 "max_research_loops": 0,
@@ -194,6 +204,7 @@ class ChatService:
                 "messages": formatted_messages,
                 "agent_config": agent_config,
                 "user_id": user_id,
+                "weave_url": weave_url,
                 "initial_search_query_count": 3,
                 "research_loop_count": 0,
                 "max_research_loops": 0,
@@ -211,6 +222,7 @@ class ChatService:
                 "messages": formatted_messages,
                 "agent_config": agent_config,
                 "user_id": user_id,
+                "weave_url": weave_url,
                 "initial_search_query_count": agent_config["initial_search_query_count"],
                 "research_loop_count": 0,
                 "max_research_loops": agent_config["max_research_loops"],
@@ -228,6 +240,7 @@ class ChatService:
                 "messages": formatted_messages,
                 "agent_config": agent_config,
                 "user_id": user_id,
+                "weave_url": weave_url,
                 "initial_search_query_count": agent_config["initial_search_query_count"],
                 "research_loop_count": 0,
                 "max_research_loops": agent_config["max_research_loops"],
@@ -418,4 +431,3 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error fetching messages for thread: {str(e)}")
             raise
-    

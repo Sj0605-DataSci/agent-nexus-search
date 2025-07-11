@@ -14,7 +14,7 @@ Instructions:
 - Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
 - Each query should focus on the original question.
 - Queries will be always regarding finding people, if you got HR config, then you are hiring for a position, if sales then you are looking for leads to sell to.
-- Don't produce more than {number_queries} queries.
+- Produce {number_queries} queries always.
 - Don't generate multiple similar queries.
 - Query should ensure that the most current and relevant public data about people is gathered. The current date is {current_date}.
 - Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
@@ -25,18 +25,18 @@ Format:
    - "rationale": Brief explanation of why these queries are relevant
    - "query": A list of search queries
 
-Example:
-
-Topic: Find experienced React developers in Berlin with GitHub activity or public
-```json
-{{
-    "rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
-    "query": ["site:github.com \"React developer\" Berlin", "intitle:portfolio \"React developer\" Berlin -jobs -job", "\"React developer\" Berlin site:linkedin.com/in", "\"Frontend developer\" React Tailwind site:about.me OR site:behance.net"]
-}}
-```
-
 Context: {research_topic}
 
+Example:
+lets say given, produce 3 queries then:
+
+"rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
+"query": ["site:github.com \"React developer\" Berlin",  "intitle:portfolio \"React developer\" Berlin -jobs -job", "\"React developer\" Berlin site:linkedin.com/in" , "\"Frontend developer\" React Tailwind site:about.me OR site:behance.net"]
+
+lets say given, produce 1 query then:
+
+"rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
+"query": ["site:github.com \"React developer\" Berlin"]
 
 """
 
@@ -48,6 +48,7 @@ Instructions:
 - Your job is to analyze if the provided summaries are **sufficient to fulfill the research objective**.
 - If not, identify what key information is missing or unclear (knowledge gap).
 - Then generate one or more **follow-up search queries** to address that knowledge gap.
+- Number of follow up queries should always be {number_queries}
 
 Requirements:
 - If the summaries are sufficient, return "is_sufficient": true, and leave "knowledge_gap" as an empty string and "follow_up_queries" as an empty list.
@@ -57,14 +58,17 @@ Output Format:
 - Always return a JSON object with the exact three keys below.
 - Do not include any commentary outside the JSON.
 
+lets say number of follow up queries is 2 then:
 Example:
-```json
-{{
-    "is_sufficient": false,
-    "knowledge_gap": "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
-    "follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
-}}
-```
+is_sufficient": false,
+knowledge_gap": "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
+follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
+
+lets say number of follow up queries is 1 then:
+Example:
+is_sufficient": false,
+knowledge_gap": "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
+follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions"]
 
 Reflect carefully on the Summaries to identify knowledge gaps and produce a follow-up query. Then, produce your output following this JSON format:
 
@@ -170,7 +174,7 @@ sql_query_instructions = """You are an expert at converting natural language que
 reflection_instructions_sql="""You are an expert research assistant analyzing answers about "{research_topic}".
 
 Instructions:
-- Follow up queries should always be regarding finding people.
+- Follow up queries should always be regarding finding people and number of queries should always be {number_queries}
 - Your job is to analyze if the provided answers are **sufficient to fulfill the search objective**.
 - If not, identify what key information is missing.
 - Then generate one or more **follow-up search queries** to address that knowledge gap.
@@ -184,14 +188,18 @@ Output Format:
 - Always return a JSON object with the exact three keys below.
 - Do not include any commentary outside the JSON.
 
+
+Lets say number of follow up queries is 2 then:
 Example:
-```json
-{{
-    "is_sufficient": false,
-    "knowledge_gap": "The answer lacks specific examples of candidates' open-source contributions or portfolio links.",
-    "follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
-}}
-```
+is_sufficient": false,
+knowledge_gap": "The answer lacks specific examples of candidates' open-source contributions or portfolio links.",
+follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
+
+Lets say number of follow up queries is 1 then:
+Example:
+is_sufficient": false,
+knowledge_gap": "The answer lacks specific examples of candidates' open-source contributions or portfolio links.",
+follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions"]
 
 Reflect carefully on the answers to identify knowledge gaps and produce a follow-up query. Then, produce your output following this JSON format:
 
