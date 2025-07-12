@@ -42,11 +42,32 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Add Gzip compression middleware
-app.add_middleware(
-    GZipMiddleware,
-    minimum_size=1000  # Only compress responses larger than 1KB
-)
+# Add CORS debugging middleware - must be added AFTER the CORS middleware
+@app.middleware("http")
+async def cors_debug_middleware(request: Request, call_next):
+    # Log detailed information about incoming requests
+    is_options = request.method == "OPTIONS"
+    origin = request.headers.get("origin", "No Origin")
+    
+    if is_options:
+        logger.info(f"CORS Preflight Request: {request.method} {request.url}")
+        logger.info(f"CORS Origin: {origin}")
+        logger.info(f"CORS Headers: {dict(request.headers)}")
+    
+    # Process the request
+    response = await call_next(request)
+    
+    # Log response details for debugging
+    if is_options or response.status_code >= 400:
+        cors_headers = {k: v for k, v in response.headers.items() if k.lower().startswith("access-control")}
+        logger.info(f"CORS Response: {response.status_code} to {request.url}")
+        logger.info(f"CORS Response Headers: {cors_headers}")
+        
+        # Log if origin is not in allowed origins
+        if origin not in ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/"] and origin != "No Origin":
+            logger.warning(f"Potential CORS issue: Origin '{origin}' not in allowed origins list")
+    
+    return response
 
 # Custom exception handlers to convert exceptions to StandardResponse format
 @app.exception_handler(HTTPException)
