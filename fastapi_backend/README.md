@@ -210,7 +210,20 @@ Note that there might be some schema differences between your frontend Supabase 
 3. The backend models are based on the schema in `app/supabase/migrations.sql`.
 
 ### Run commands
-1. python3 -m venv myenv
-2. source myenv/bin/activate
-3. uv pip install -r requirements.txt
-4. uvicorn app.main:app or python run.py => starts BE
+
+1. cd fastapi_backend
+2. python3 -m venv myenv
+3. source myenv/bin/activate
+4. (Optional) uv pip install -r requirements.txt
+5. brew services start redis
+6. uvicorn app.main:app or python run.py => starts BE
+7. (In ending) brew services stop redis
+8. (In ending) deactivate
+
+###Other Redis commands
+
+- brew services start redis
+- brew services info redis
+- brew services stop redis
+- redis-server
+- 127.0.0.1:6379> ping
