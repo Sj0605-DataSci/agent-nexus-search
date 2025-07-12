@@ -27,11 +27,6 @@ export default function ProfilePage() {
   const darkMode = useAppSelector(s => s.theme.dark);
 
   useEffect(() => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
     async function fetchProfile() {
       try {
         setLoading(true);
@@ -82,15 +77,12 @@ export default function ProfilePage() {
     if (profile && !profile.has_connections) {
       setShowConnectionsModal(true);
     } else {
-      // Navigate to search page with My Connections selected
       router.push("/searchengine");
     }
   };
 
   return (
-    <div
-      className={`min-h-screen ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
-    >
+    <div>
       <div className="container mx-auto px-4 pt-8 pb-16 max-w-4xl">
         <h1 className={`text-3xl font-bold mb-8 ${darkMode ? "text-white" : "text-gray-900"}`}>
           My Profile
@@ -102,7 +94,6 @@ export default function ProfilePage() {
           </div>
         ) : profile ? (
           <div className="space-y-8">
-            {/* Profile Card */}
             <div
               className={`rounded-xl shadow-md p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
             >
@@ -127,7 +118,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* LinkedIn Connection Status */}
             <div className="space-y-4">
               <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
                 Connection Status
@@ -192,7 +182,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Additional profile information can be added here */}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -203,7 +192,6 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Connections Import Modal */}
       {showConnectionsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div

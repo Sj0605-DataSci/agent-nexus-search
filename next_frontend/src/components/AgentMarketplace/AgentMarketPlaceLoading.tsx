@@ -6,11 +6,7 @@ function AgentMarketPlaceLoading() {
   const darkMode = useAppSelector(s => s.theme.dark);
 
   return (
-    <div
-      className={`min-h-screen transition-colors duration-500 relative overflow-hidden ${
-        darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
-      }`}
-    >
+    <div>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className={`absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl animate-pulse ${
@@ -89,7 +85,9 @@ function AgentMarketPlaceLoading() {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-2">Loading Marketplace</h3>
+              <h3 className="text-xl font-semibold dark:text-gray-400 text-gray-600 mb-2">
+                Loading Marketplace
+              </h3>
               <p className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                 Discovering the perfect AI agents for you...
               </p>

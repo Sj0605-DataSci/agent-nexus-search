@@ -161,3 +161,16 @@ body {
 .btn-primary {
   @apply w-full py-3 rounded-md font-semibold text-white transition bg-blue-600 hover:bg-blue-700;
 }
+
+.perspective {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+.backface-hidden {
+  backface-visibility: hidden;
+}
