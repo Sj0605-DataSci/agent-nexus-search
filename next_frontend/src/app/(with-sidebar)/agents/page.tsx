@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -17,7 +16,6 @@ import { apiClient } from "@/integrations/fastapi/client";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
-import withAuth from "@/hoc/withAuth";
 import Link from "next/link";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
@@ -135,11 +133,7 @@ const Agents = () => {
   };
 
   return (
-    <div
-      className={`min-h-screen transition-colors duration-500 relative overflow-hidden ${
-        darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
-      }`}
-    >
+    <div>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className={`absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl animate-pulse ${
@@ -235,7 +229,11 @@ const Agents = () => {
                 🤖
               </div>
             </div>
-            <h2 className="text-3xl font-bold mb-4">Your Agent Fleet Awaits</h2>
+            <h2
+              className={`text-3xl font-bold mb-4 ${darkMode ? "text-gray-600" : "text-gray-400"}`}
+            >
+              Your Agent Fleet Awaits
+            </h2>
             <p
               className={`text-xl mb-8 max-w-2xl mx-auto ${
                 darkMode ? "text-gray-400" : "text-gray-600"
@@ -690,4 +688,4 @@ const Agents = () => {
   );
 };
 
-export default withAuth(Agents);
+export default Agents;

@@ -77,7 +77,6 @@ const Signup = () => {
 
         showSuccessToast("Signup success! Check your email.");
         setIsSuccess(true);
-        showErrorToast("Signup functionality is disabled, Please try again later.");
         reset();
       } catch (err) {
         console.log("Signup exception", err);

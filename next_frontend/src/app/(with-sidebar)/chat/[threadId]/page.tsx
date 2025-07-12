@@ -1,8 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import withAuth from "@/hoc/withAuth";
-import ChatThreadView from "./ChatThreadView";
+import ChatThreadView from "../../../../components/chats/ChatThreadView";
 
 const ChatThreadPage = () => {
   const params = useParams();
@@ -11,4 +10,4 @@ const ChatThreadPage = () => {
   return <ChatThreadView threadId={threadId} />;
 };
 
-export default withAuth(ChatThreadPage);
+export default ChatThreadPage;
