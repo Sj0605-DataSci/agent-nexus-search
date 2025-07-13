@@ -28,7 +28,6 @@ const Marketplace = () => {
 
   const darkMode = useAppSelector(s => s.theme.dark);
   const templates = useAppSelector(selectTemplates);
-
   const marketplaceAgents = templates.map(t => ({
     id: t.id,
     name: t.name,
@@ -262,7 +261,7 @@ const Marketplace = () => {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold mb-1">Your AI Team</h3>
+                      <h3 className={`text-2xl font-bold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}>Your AI Team</h3>
                       <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                         Managing your hired agents
                       </p>
@@ -271,14 +270,28 @@ const Marketplace = () => {
 
                   <div className="flex items-center space-x-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-500">
+                      <div
+                        className={`text-2xl font-bold ${
+                          darkMode ? "text-green-400" : "text-green-500"
+                        }`}
+                      >
                         {hiredTemplateId.length}
                       </div>
-                      <div className="text-xs opacity-70">Active</div>
+                      <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Active
+                      </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-500">24/7</div>
-                      <div className="text-xs opacity-70">Available</div>
+                      <div
+                        className={`text-2xl font-bold ${
+                          darkMode ? "text-blue-400" : "text-blue-500"
+                        }`}
+                      >
+                        24/7
+                      </div>
+                      <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Available
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -319,22 +332,58 @@ const Marketplace = () => {
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-opacity-20 border-gray-500">
+                <div
+                  className={`grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t ${
+                    darkMode ? "border-gray-700" : "border-gray-200"
+                  }`}
+                >
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-green-500">100%</div>
-                    <div className="text-xs opacity-70">Uptime</div>
+                    <div
+                      className={`text-lg font-semibold ${
+                        darkMode ? "text-green-400" : "text-green-500"
+                      }`}
+                    >
+                      100%
+                    </div>
+                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Uptime
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-blue-500">5/10</div>
-                    <div className="text-xs opacity-70">Requests</div>
+                    <div
+                      className={`text-lg font-semibold ${
+                        darkMode ? "text-blue-400" : "text-blue-500"
+                      }`}
+                    >
+                      5/10
+                    </div>
+                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Requests
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-purple-500">&lt;1s</div>
-                    <div className="text-xs opacity-70">Response</div>
+                    <div
+                      className={`text-lg font-semibold ${
+                        darkMode ? "text-purple-400" : "text-purple-500"
+                      }`}
+                    >
+                      &lt;1s
+                    </div>
+                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Response
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-cyan-500">24/7</div>
-                    <div className="text-xs opacity-70">Support</div>
+                    <div
+                      className={`text-lg font-semibold ${
+                        darkMode ? "text-cyan-400" : "text-cyan-500"
+                      }`}
+                    >
+                      24/7
+                    </div>
+                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Support
+                    </div>
                   </div>
                 </div>
               </div>
