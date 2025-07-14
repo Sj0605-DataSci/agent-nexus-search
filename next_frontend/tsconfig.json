@@ -28,7 +28,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/app/waitlist/page.tsx",
-    "next.config.ts"
+    "next.config.js"
   ],
   "exclude": ["node_modules"]
 }
