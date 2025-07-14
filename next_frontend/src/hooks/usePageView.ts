@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import posthog from 'posthog-js';
 
 /**
@@ -8,16 +8,18 @@ import posthog from 'posthog-js';
  */
 export function usePageView() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+  
   useEffect(() => {
     // Track page views when the route changes
-    if (pathname) {
+    if (pathname && typeof window !== 'undefined') {
+      // Get search params safely on the client side only
+      const searchParamsString = window.location.search;
+      
       let url = window.origin + pathname;
       
       // Add search parameters to the URL if they exist
-      if (searchParams?.toString()) {
-        url += `?${searchParams.toString()}`;
+      if (searchParamsString) {
+        url += searchParamsString;
       }
       
       // Capture page view event
@@ -26,7 +28,7 @@ export function usePageView() {
         path: pathname,
       });
     }
-  }, [pathname, searchParams]);
+  }, [pathname]);
 }
 
 export default usePageView;
