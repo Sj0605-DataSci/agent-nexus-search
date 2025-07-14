@@ -158,7 +158,7 @@ const Agents = () => {
             <h1
               className={`text-5xl md:text-6xl font-bold mb-6 h-[100px] md:h-[80px] bg-gradient-to-r ${
                 darkMode
-                  ? "from-blue-400 via-purple-400 to-cyan-400"
+                  ? "from-blue-300 via-purple-300 to-cyan-300"
                   : "from-blue-600 via-purple-600 to-cyan-600"
               } bg-clip-text text-transparent`}
             >
@@ -166,13 +166,13 @@ const Agents = () => {
             </h1>
             <div
               className={`absolute -inset-4 bg-gradient-to-r ${
-                darkMode ? "from-blue-500/10 to-purple-500/10" : "from-blue-400/10 to-purple-400/10"
+                darkMode ? "from-blue-500/15 to-purple-500/15" : "from-blue-400/10 to-purple-400/10"
               } rounded-3xl blur-xl opacity-50`}
             />
           </div>
           <p
             className={`text-xl max-w-3xl mx-auto leading-relaxed ${
-              darkMode ? "text-gray-300" : "text-gray-600"
+              darkMode ? "text-gray-200" : "text-gray-600"
             }`}
           >
             Fine-tune your AI agents to perfection. Customize personalities, behaviors, and
@@ -191,19 +191,19 @@ const Agents = () => {
               <div
                 className={`animate-spin rounded-full h-16 w-16 border-4 border-transparent ${
                   darkMode
-                    ? "border-t-blue-400 border-r-purple-400"
+                    ? "border-t-blue-300 border-r-purple-300"
                     : "border-t-blue-600 border-r-purple-600"
                 } mx-auto`}
               />
               <div
                 className={`absolute inset-2 animate-spin rounded-full border-4 border-transparent ${
                   darkMode
-                    ? "border-b-cyan-400 border-l-pink-400"
+                    ? "border-b-cyan-300 border-l-pink-300"
                     : "border-b-cyan-600 border-l-pink-600"
                 } animate-reverse-spin`}
               />
             </div>
-            <p className={`mt-6 text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+            <p className={`mt-6 text-lg ${darkMode ? "text-gray-200" : "text-gray-600"}`}>
               Initializing your AI agents...
             </p>
             <div className="flex justify-center mt-4 space-x-1">
@@ -211,7 +211,7 @@ const Agents = () => {
                 <div
                   key={i}
                   className={`w-2 h-2 rounded-full animate-bounce ${
-                    darkMode ? "bg-blue-400" : "bg-blue-600"
+                    darkMode ? "bg-blue-300" : "bg-blue-600"
                   }`}
                   style={{ animationDelay: `${i * 0.2}s` }}
                 />
@@ -221,22 +221,20 @@ const Agents = () => {
         )}
 
         {hiredIds.length === 0 && agentsStatus !== "loading" && (
-          <div className="text-center py-20 z-100">
+          <div className="text-center py-20 z-10">
             <div className="relative inline-block mb-8">
               <div
-                className={`text-8xl opacity-50 ${darkMode ? "text-gray-600" : "text-gray-400"}`}
+                className={`text-8xl opacity-50 ${darkMode ? "text-gray-500" : "text-gray-400"}`}
               >
                 🤖
               </div>
             </div>
-            <h2
-              className={`text-3xl font-bold mb-4 ${darkMode ? "text-gray-600" : "text-gray-400"}`}
-            >
+            <h2 className={`text-3xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-700"}`}>
               Your Agent Fleet Awaits
             </h2>
             <p
               className={`text-xl mb-8 max-w-2xl mx-auto ${
-                darkMode ? "text-gray-400" : "text-gray-600"
+                darkMode ? "text-gray-200" : "text-gray-500"
               }`}
             >
               Ready to build your dream team? Explore our marketplace and hire AI agents that match
@@ -278,7 +276,7 @@ const Agents = () => {
                     }`}
                   >
                     <svg
-                      className={`w-6 h-6 ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                      className={`w-6 h-6 ${darkMode ? "text-blue-300" : "text-blue-600"}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -292,15 +290,25 @@ const Agents = () => {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">Your Agent Team</h2>
-                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                    <h2
+                      className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}
+                    >
+                      Your Agent Team
+                    </h2>
+                    <p className={`text-sm ${darkMode ? "text-gray-200" : "text-gray-600"}`}>
                       Select an agent to customize
                     </p>
                   </div>
                   <div className="ml-auto flex items-center space-x-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-500">{hiredIds.length}</div>
-                      <div className="text-xs opacity-70">Active</div>
+                      <div
+                        className={`text-2xl font-bold ${darkMode ? "text-green-400" : "text-green-500"}`}
+                      >
+                        {hiredIds.length}
+                      </div>
+                      <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-500"}`}>
+                        Active
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -335,9 +343,13 @@ const Agents = () => {
                       <div className="relative flex items-center space-x-3">
                         <div className="text-2xl">{getAgentAvatar(agentData.expertise)}</div>
                         <div className="text-left">
-                          <div className="font-semibold">{agentData.name}</div>
                           <div
-                            className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}
+                            className={`font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}
+                          >
+                            {agentData.name}
+                          </div>
+                          <div
+                            className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
                           >
                             {agentData.expertise}
                           </div>
@@ -346,7 +358,7 @@ const Agents = () => {
                           <div className="ml-2">
                             <div
                               className={`w-2 h-2 rounded-full ${
-                                darkMode ? "bg-blue-400" : "bg-blue-600"
+                                darkMode ? "bg-blue-300" : "bg-blue-600"
                               } animate-pulse`}
                             />
                           </div>
@@ -370,7 +382,9 @@ const Agents = () => {
                   >
                     <div className="text-center mb-6">
                       <div className="text-6xl mb-4 animate">{currentAgent.avatar}</div>
-                      <h3 className="text-2xl font-bold mb-2">
+                      <h3
+                        className={`text-2xl font-bold mb-2 ${darkMode ? "text-white" : "text-gray-800"}`}
+                      >
                         {currentConfig.name || currentAgent.name}
                       </h3>
                       <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
@@ -380,31 +394,53 @@ const Agents = () => {
 
                     <div className="space-y-3 mb-6">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Status</span>
+                        <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"}`}>
+                          Status
+                        </span>
                         <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                          <span className="text-sm text-green-500">Active</span>
+                          <div
+                            className={`w-2 h-2 rounded-full ${darkMode ? "bg-green-400" : "bg-green-500"} animate-pulse`}
+                          />
+                          <span
+                            className={`text-sm ${darkMode ? "text-green-300" : "text-green-600"}`}
+                          >
+                            Active
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Response Time</span>
-                        <span className="text-sm text-blue-500">&lt; 1s</span>
+                        <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"}`}>
+                          Response Time
+                        </span>
+                        <span className={`text-sm ${darkMode ? "text-blue-300" : "text-blue-500"}`}>
+                          &lt; 1s
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Availability</span>
-                        <span className="text-sm text-purple-500">24/7</span>
+                        <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"}`}>
+                          Availability
+                        </span>
+                        <span
+                          className={`text-sm ${darkMode ? "text-purple-300" : "text-purple-500"}`}
+                        >
+                          24/7
+                        </span>
                       </div>
                     </div>
 
                     <div>
-                      <h4 className="font-semibold mb-3">Core Capabilities</h4>
+                      <h4
+                        className={`font-semibold mb-3 ${darkMode ? "text-white" : "text-gray-800"}`}
+                      >
+                        Core Capabilities
+                      </h4>
                       <div className="flex flex-wrap gap-2">
                         {currentAgent.skills.map(skill => (
                           <span
                             key={skill}
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
                               darkMode
-                                ? "bg-blue-900/40 text-blue-200"
+                                ? "bg-blue-600/20 text-blue-300"
                                 : "bg-blue-100 text-blue-800"
                             }`}
                           >
@@ -445,7 +481,11 @@ const Agents = () => {
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-2xl font-bold">Configuration Panel</h3>
+                        <h3
+                          className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}
+                        >
+                          Configuration Panel
+                        </h3>
                         <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                           Customize behavior and personality traits
                         </p>
@@ -459,7 +499,7 @@ const Agents = () => {
                           <div
                             className={`px-2 py-1 rounded text-xs ${
                               darkMode
-                                ? "bg-blue-900/30 text-blue-300"
+                                ? "bg-blue-600/20 text-blue-300"
                                 : "bg-blue-100 text-blue-700"
                             }`}
                           >
@@ -484,7 +524,7 @@ const Agents = () => {
                           <div
                             className={`px-2 py-1 rounded text-xs ${
                               darkMode
-                                ? "bg-green-900/30 text-green-300"
+                                ? "bg-green-600/20 text-green-300"
                                 : "bg-green-100 text-green-700"
                             }`}
                           >
@@ -494,11 +534,15 @@ const Agents = () => {
                         <div
                           className={`p-4 rounded-xl border ${
                             darkMode
-                              ? "bg-gray-700/20 border-gray-600/30"
+                              ? "bg-gray-700/20 border-gray-500/30"
                               : "bg-gray-50/50 border-gray-200/50"
                           }`}
                         >
-                          <p className="text-sm leading-relaxed">{currentConfig?.personality}</p>
+                          <p
+                            className={`text-sm leading-relaxed ${darkMode ? "text-gray-100" : "text-gray-700"}`}
+                          >
+                            {currentConfig?.personality}
+                          </p>
                         </div>
                       </div>
 
@@ -534,11 +578,11 @@ const Agents = () => {
                               <SelectValue placeholder="Select tone" />
                             </SelectTrigger>
                             <SelectContent className="bg-white">
-                              <SelectItem value="professional">🎯 Professional</SelectItem>
-                              <SelectItem value="friendly">😊 Friendly</SelectItem>
-                              <SelectItem value="enthusiastic">🚀 Enthusiastic</SelectItem>
-                              <SelectItem value="casual">😎 Casual</SelectItem>
-                              <SelectItem value="formal">🎩 Formal</SelectItem>
+                              <SelectItem value="professional" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>🎯 Professional</SelectItem>
+                              <SelectItem value="friendly" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>😊 Friendly</SelectItem>
+                              <SelectItem value="enthusiastic" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>🚀 Enthusiastic</SelectItem>
+                              <SelectItem value="casual" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>😎 Casual</SelectItem>
+                              <SelectItem value="formal" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>🎩 Formal</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -620,20 +664,24 @@ const Agents = () => {
                         </div>
                       </div>
 
-                      <div className="pt-6 border-t border-opacity-20 border-gray-500">
+                      <div
+                        className={`pt-6 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+                      >
                         <div className="flex items-center justify-between">
                           <div
-                            className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
+                            className={`text-sm ${darkMode ? "text-gray-200" : "text-gray-600"}`}
                           >
                             Changes are saved automatically to your agent profile
                           </div>
                           <Button
                             onClick={saveConfiguration}
                             disabled={saving}
-                            className={`px-8 py-3 text-base font-semibold ${
+                            className={`px-8 py-3 text-base font-semibold text-white ${
                               saving
                                 ? "opacity-50 cursor-not-allowed"
-                                : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transform hover:scale-105"
+                                : darkMode
+                                  ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 transform hover:scale-105"
+                                  : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transform hover:scale-105"
                             } transition-all duration-300 shadow-lg hover:shadow-xl`}
                           >
                             {saving ? (

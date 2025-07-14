@@ -1,9 +1,18 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, User as UserIcon, MessageSquare, Globe } from "lucide-react";
+import {
+  Search,
+  User as UserIcon,
+  MessageSquare,
+  Globe,
+  ChevronDown,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
@@ -342,20 +351,33 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     }
   };
 
-  const onKey = (e: React.KeyboardEvent) => {
+  const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
+    } else if (e.key === "Enter" && e.shiftKey) {
+      // Allow new line on Shift+Enter
     }
   };
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 120; // Corresponds to max-h-[120px]
+      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+    }
+  }, [query]);
 
   return (
     <div
       className={`min-h-screen w-full ${darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gradient-to-br from-blue-50 to-purple-50"}`}
     >
       <div
-        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 py-8 flex flex-col ${
-          messages.length ? "pt-8 pb-20" : "min-h-screen justify-center"
+        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 pt-8  flex flex-col ${
+          messages.length ? "pt-8 pb-1" : "min-h-screen justify-center"
         }`}
       >
         <div
@@ -378,7 +400,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         </div>
 
         <div
-          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-8" : "mb-16"} transition-all duration-500`}
+          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-6" : "mb-8"} transition-all duration-500`}
         >
           <div className="relative flex justify-center">
             <div
@@ -393,17 +415,19 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 <Search
                   className={`h-5 w-5 mr-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                 />
-                <Input
-                  type="text"
-                  placeholder="Search for people by skills, experience, or interests…"
+                <Textarea
+                  placeholder="Search for people by skills, experience, or interests… (Shift+Enter for new line)"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
+                  ref={textareaRef}
                   onKeyDown={onKey}
+                  rows={1}
                   className={`
-                    flex bg-transparent text-base h-10
-                    border-0 focus:border-0 outline-none ring-0 focus:ring-0
+                    flex bg-transparent text-base resize-none
+                    border-0 focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0
+                    min-h-[40px] max-h-[120px]
                     ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
-                    `}
+                  `}
                 />
               </div>
               <div className=" flex flex-row justify-between w-full">
@@ -428,29 +452,25 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     onClick={() => setShowAgentDropdown(s => !s)}
                     disabled={agentsStatus === "loading"}
                     className={`
-                    flex items-center space-x-2 rounded-full px-3 py-2 border mr-3
-                    ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
-                    ${
-                      darkMode
-                        ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                    }
-                  `}
+                      flex items-center space-x-2 rounded-full px-4 py-1 border mr-3 transition-colors
+                      ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
+                      ${
+                        darkMode
+                          ? "border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      }
+                    `}
                   >
                     {agentsStatus === "loading" ? (
-                      <span className="block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      <>
+                        <span className="block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                        <span className="text-sm">Loading...</span>
+                      </>
                     ) : (
                       <>
-                        <span>{agentData?.avatar}</span>
-                        <svg
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M6 8l4 4 4-4" />
-                        </svg>
+                        <span className="text-lg">{agentData?.avatar}</span>
+                        <span className="text-sm font-medium">{agentData?.name}</span>
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
                       </>
                     )}
                   </Button>
@@ -458,44 +478,60 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   {showAgentDropdown && (
                     <div
                       ref={dropdownRef}
-                      className={`absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg z-50 ${
+                      className={`absolute right-0 top-full mt-2 w-64 rounded-xl shadow-lg z-50 overflow-hidden ${
                         darkMode
                           ? "bg-gray-900 border border-gray-700"
                           : "bg-white border border-gray-200"
                       }`}
                     >
-                      {agentsStatus === "loading" ? (
-                        <div className="p-4 text-center text-gray-500">Loading your agents…</div>
-                      ) : (
-                        agentCards.map(a => (
-                          <button
-                            type="button"
-                            key={a.id}
-                            onClick={e => handleAgentSelect(e, a.id, a.hired)}
-                            className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                              darkMode
-                                ? "hover:bg-gray-800 text-gray-200"
-                                : "hover:bg-gray-50 text-gray-900"
-                            }`}
-                          >
-                            <span className="flex items-center space-x-3">
-                              <span className="text-lg">{a?.avatar}</span>
-                              <span className="text-sm">{a?.name}</span>
-                            </span>
-                            {!a.hired && (
-                              <span
-                                className={`text-xs px-2 py-1 rounded-full ${
-                                  darkMode
-                                    ? "bg-blue-900 text-blue-300"
-                                    : "bg-blue-100 text-blue-700"
-                                }`}
-                              >
-                                Hire
+                      <div className="px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+                        <p
+                          className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                        >
+                          Select Agent
+                        </p>
+                      </div>
+                      <div className="py-2">
+                        {agentsStatus === "loading" ? (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            Loading your agents…
+                          </div>
+                        ) : (
+                          agentCards.map(a => (
+                            <button
+                              type="button"
+                              key={a.id}
+                              onClick={e => handleAgentSelect(e, a.id, a.hired)}
+                              className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors text-sm ${
+                                darkMode
+                                  ? "hover:bg-gray-800 text-gray-300"
+                                  : "hover:bg-gray-100 text-gray-900"
+                              }`}
+                            >
+                              <span className="flex items-center space-x-3">
+                                <span className="text-xl">{a?.avatar}</span>
+                                <span>{a?.name}</span>
                               </span>
-                            )}
-                          </button>
-                        ))
-                      )}
+                              <div className="flex items-center space-x-3">
+                                {!a.hired && (
+                                  <span
+                                    className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                                      darkMode
+                                        ? "bg-blue-600/20 text-blue-300"
+                                        : "bg-blue-100 text-blue-600"
+                                    }`}
+                                  >
+                                    Hire
+                                  </span>
+                                )}
+                                {agentData?.id === a.id && (
+                                  <Check className="h-5 w-5 text-blue-500" />
+                                )}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -521,140 +557,49 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </div>
 
           {chatPairs.length > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-4">
+            <div className="flex justify-center items-center gap-3 mt-6">
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
                 disabled={currentMessageIndex === 0}
+                className={`rounded-full transition-colors ${
+                  darkMode
+                    ? "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                    : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
-                Previous
+                <ChevronLeft className="h-5 w-5" />
               </Button>
-              <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                {currentMessageIndex + 1} / {chatPairs.length}
+              <span
+                className={`text-sm font-medium tabular-nums ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                {currentMessageIndex + 1} of {chatPairs.length}
               </span>
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() =>
                   setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))
                 }
                 disabled={currentMessageIndex === chatPairs.length - 1}
+                className={`rounded-full transition-colors ${
+                  darkMode
+                    ? "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                    : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
-                Next
+                <ChevronRight className="h-5 w-5" />
               </Button>
-            </div>
-          )}
-
-          {showOptions && (
-            <div
-              className={`mt-3 p-4 rounded-xl border shadow-lg transition-all duration-200 ${
-                darkMode ? "bg-gray-900/90 border-gray-700" : "bg-white border-gray-200"
-              }`}
-              style={{ backdropFilter: "blur(8px)" }}
-            >
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <div className="flex-1">
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                    >
-                      Search Mode
-                    </label>
-                    <div
-                      className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
-                    >
-                      <button
-                        onClick={() => setSearchMode("basic")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${searchMode === "basic" ? (darkMode ? "bg-blue-600 text-white" : "bg-blue-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
-                      >
-                        Basic
-                      </button>
-                      <button
-                        onClick={() => setSearchMode("deep")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${searchMode === "deep" ? (darkMode ? "bg-purple-600 text-white" : "bg-purple-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
-                      >
-                        Deep
-                      </button>
-                    </div>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                      {searchMode === "basic"
-                        ? "Faster, lighter search"
-                        : "Comprehensive, thorough search"}
-                    </p>
-                  </div>
-
-                  <div className="flex-1">
-                    <label
-                      className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
-                    >
-                      Response Format
-                    </label>
-                    <div
-                      className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
-                    >
-                      <button
-                        onClick={() => setFormat("chat")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-green-600 text-white" : "bg-green-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        chat
-                      </button>
-                      <button
-                        onClick={() => setFormat("table")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${format === "chat" ? (darkMode ? "bg-orange-600 text-white" : "bg-orange-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        chat
-                      </button>
-                    </div>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                      {format === "chat" ? "Conversational response" : "Structured data view"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <div className="flex-1">
-                    <label
-                      className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
-                    >
-                      Search Source
-                    </label>
-                    <div
-                      className={`flex rounded-md overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
-                    >
-                      <button
-                        onClick={() => setWorldConnectionsMode("connections")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${worldConnectionsMode === "connections" ? (darkMode ? "bg-indigo-600 text-white" : "bg-indigo-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
-                      >
-                        <UserIcon className="h-4 w-4" />
-                        My Connections
-                      </button>
-                      <button
-                        onClick={() => setWorldConnectionsMode("world")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${worldConnectionsMode === "world" ? (darkMode ? "bg-teal-600 text-white" : "bg-teal-500 text-white") : darkMode ? "bg-transparent text-gray-400" : "bg-transparent text-gray-600"}`}
-                      >
-                        <Search className="h-4 w-4" />
-                        Global Search
-                      </button>
-                    </div>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                      {worldConnectionsMode === "connections"
-                        ? "Search within your LinkedIn connections"
-                        : "Search across the entire web"}
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </div>
       </div>
 
       {messages.length > 0 && (
-        <div className="w-full mt-8">
+        <div className="w-full mt-2">
           <div className="mb-4">
             <h2 className={`text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
               Results

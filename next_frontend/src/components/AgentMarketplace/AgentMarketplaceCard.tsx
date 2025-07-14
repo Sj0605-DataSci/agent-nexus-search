@@ -2,8 +2,9 @@ import type { SpringOptions } from "framer-motion";
 import { useRef, useState } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Star, Users, CheckCircle, Sparkles, Zap, Crown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Category =
   | "Data Analysis"
@@ -115,7 +116,6 @@ export default function AgentMarketplaceCard({
     damping: 30,
     mass: 0.8,
   });
-
   const [lastY, setLastY] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
@@ -171,6 +171,8 @@ export default function AgentMarketplaceCard({
       onUnhireAgent(agent.id);
     }
   };
+
+  const isGeneralAgent = agent.name.toLowerCase().includes("general");
 
   return (
     <figure
@@ -253,25 +255,31 @@ export default function AgentMarketplaceCard({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-bold mb-2 truncate">{agent.name}</h3>
+              <h3
+                className={`text-xl font-bold mb-2 truncate ${
+                  darkMode ? "text-gray-100" : "text-gray-800"
+                }`}
+              >
+                {agent.name}
+              </h3>
               <Badge
                 variant="secondary"
                 className={`${
                   darkMode
                     ? "bg-gray-800/80 text-gray-200 border-gray-600/50"
                     : "bg-gray-100/80 text-gray-700 border-gray-300/50"
-                } backdrop-blur-sm flex items-center gap-1`}
+                } backdrop-blur-sm flex items-center max-w-14 gap-1`}
               >
                 <CategoryIcon className="h-3 w-3" />
                 {agent.category}
               </Badge>
             </div>
-            <div className="text-right">
+            {/* <div className="text-right">
               <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                 {agent.price}
               </div>
-              <div className="text-xs opacity-70">per month</div>
-            </div>
+              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>per month</div>
+            </div> */}
           </motion.div>
 
           <motion.div
@@ -280,7 +288,11 @@ export default function AgentMarketplaceCard({
               transform: "translateZ(25px)",
             }}
           >
-            <p className="text-sm leading-relaxed opacity-90">{agent.description}</p>
+            <p
+              className={`text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+            >
+              {agent.description}
+            </p>
           </motion.div>
 
           {agent.features.length > 0 && (
@@ -290,7 +302,11 @@ export default function AgentMarketplaceCard({
                 transform: "translateZ(20px)",
               }}
             >
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <h4
+                className={`text-sm font-semibold mb-3 flex items-center gap-2 ${
+                  darkMode ? "text-gray-200" : "text-gray-700"
+                }`}
+              >
                 <Sparkles className="h-4 w-4 text-yellow-500" />
                 Key Features
               </h4>
@@ -306,7 +322,9 @@ export default function AgentMarketplaceCard({
                     transition={{ delay: index * 0.1 }}
                   >
                     <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex-shrink-0" />
-                    <span className="truncate">{feature}</span>
+                    <span className={`truncate ${darkMode ? "text-gray-300" : "text-gray-500"}`}>
+                      {feature}
+                    </span>
                   </motion.div>
                 ))}
               </div>
@@ -322,9 +340,19 @@ export default function AgentMarketplaceCard({
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1">
                 <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                <span className="font-semibold text-sm">{agent.rating}</span>
+                <span
+                  className={`font-semibold text-sm ${
+                    darkMode ? "text-gray-200" : "text-gray-800"
+                  }`}
+                >
+                  {agent.rating}
+                </span>
               </div>
-              <div className="flex items-center space-x-1 text-xs opacity-70">
+              <div
+                className={`flex items-center space-x-1 text-xs ${
+                  darkMode ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
                 <Users className="h-3 w-3" />
                 <span>{agent.users.toLocaleString()}</span>
               </div>
@@ -358,23 +386,45 @@ export default function AgentMarketplaceCard({
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Hired
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleUnhire}
-                  disabled={loading === `unhire-${agent.id}`}
-                  className="shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  {loading === `unhire-${agent.id}` ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                    />
-                  ) : (
-                    "Remove"
-                  )}
-                </Button>
+                {isGeneralAgent ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled
+                          className="shadow-lg cursor-not-allowed"
+                        >
+                          Default
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        className={`rounded-lg border px-3 py-2 text-sm shadow-lg ${darkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-white text-gray-700 border-gray-200"}`}
+                      >
+                        <p>This is a core agent and cannot be removed.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleUnhire}
+                    disabled={loading === `unhire-${agent.id}`}
+                    className={`shadow-lg hover:shadow-xl transition-all ${darkMode ? "bg-red-900/50 text-red-400/40 border border-red-500/30 hover:bg-red-900/80 hover:text-red-300" : "bg-red-400/70 text-white hover:bg-red-600"}`}
+                  >
+                    {loading === `unhire-${agent.id}` ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                      />
+                    ) : (
+                      "Remove"
+                    )}
+                  </Button>
+                )}
               </div>
             ) : (
               <Button
