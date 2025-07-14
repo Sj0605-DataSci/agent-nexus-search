@@ -620,7 +620,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 </div>
 
                 {/* Agent Selector */}
-                <div className="relative">
+                <div className="relative z-[100]">
                   <Button
                     variant="ghost"
                     ref={toggleBtnRef}
@@ -653,7 +653,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   {showAgentDropdown && (
                     <div
                       ref={dropdownRef}
-                      className={`absolute right-0 top-full mt-2 w-64 rounded-xl shadow-lg z-50 overflow-hidden ${
+                      className={`absolute right-0 top-full mt-2 w-64 rounded-xl shadow-lg z-[500] overflow-hidden ${
                         darkMode
                           ? "bg-gray-900 border border-gray-700"
                           : "bg-white border border-gray-200"
@@ -730,8 +730,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   </Button> */}
             </div>
           </div>
-          {!(messages.length > 0) && (
-            <div className="flex flex-col w-full mt-3">
+          {/* {!(messages.length > 0) && (
+            <div className="flex relative flex-col w-full z-[5] mt-3">
               {[
                 { category: TagCategories.GENERAL, speed: 0.4 },
                 { category: TagCategories.SALES, speed: 0.8 },
@@ -745,7 +745,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 />
               ))}
             </div>
-          )}
+          )} */}
           {chatPairs.length > 1 && (
             <div className="flex justify-center items-center gap-3 mt-6">
               <Button
