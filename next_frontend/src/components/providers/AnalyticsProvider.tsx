@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import posthog from 'posthog-js';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,17 +11,19 @@ interface AnalyticsProviderProps {
 
 export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
 
   // Track page views when the route changes
   useEffect(() => {
-    if (pathname) {
+    if (pathname && typeof window !== 'undefined') {
+      // Get search params safely on the client side only
+      const searchParamsString = window.location.search;
+      
       let url = window.origin + pathname;
       
       // Add search parameters to the URL if they exist
-      if (searchParams?.toString()) {
-        url += `?${searchParams.toString()}`;
+      if (searchParamsString) {
+        url += searchParamsString;
       }
       
       // Capture page view event
@@ -30,7 +32,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
         path: pathname,
       });
     }
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   // Set up super properties that will be sent with every event
   useEffect(() => {

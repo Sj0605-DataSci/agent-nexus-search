@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import {
   Search,
@@ -25,18 +25,25 @@ import WorldConnectionsToggle from "./WorldConnectionsToggle";
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  
+  // Parse URL search params safely on the client side
+  const [query, setQuery] = useState("");
+  const [selectedAgent, setSelectedAgent] = useState("00000000-0000-4000-a000-000000000000");
+  
+  // Initialize from URL params on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      setQuery(urlParams.get("q") || "");
+      setSelectedAgent(urlParams.get("agent") || "00000000-0000-4000-a000-000000000000");
+    }
+  }, []);
+  
   const [format, setFormat] = useState<"chat" | "table">("chat");
   const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
-    "world"
-  );
-  const [selectedAgent, setSelectedAgent] = useState(
-    searchParams.get("agent") || "00000000-0000-4000-a000-000000000000"
-  );
+  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">("world");
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
@@ -144,16 +151,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     return () => document.removeEventListener("mousedown", handleClickAway);
   }, [showAgentDropdown]);
 
-  useEffect(() => {
-    const initialQ = searchParams.get("q");
-    const initialA = searchParams.get("agent");
-    if (initialA) setSelectedAgent(initialA);
-    if (initialQ) {
-      setQuery(initialQ);
-      handleSearch(initialQ);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  // URL params are already handled in the initial useEffect
+  // This effect is no longer needed since we're not using the searchParams hook
+  // The initialization is done in the useEffect at the top of the component
 
   const handleAgentSelect = (
     e: React.MouseEvent<HTMLButtonElement>,

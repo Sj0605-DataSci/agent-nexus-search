@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
-export default function NotFound() {
+function NotFoundContent() {
   const pathname = usePathname();
-
+  
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", pathname);
   }, [pathname]);
@@ -23,6 +23,9 @@ export default function NotFound() {
       <p className="text-xl text-gray-600 mb-6 max-w-md text-center">
         Oops! The page you are looking for does not exist or has been moved.
       </p>
+      <p className="text-sm text-gray-500 mb-6">
+        Path: {pathname}{typeof window !== 'undefined' ? window.location.search : ""}
+      </p>
 
       <div>
         <Link
@@ -33,5 +36,17 @@ export default function NotFound() {
         </Link>
       </div>
     </main>
+  );
+}
+
+export default function NotFound() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    }>
+      <NotFoundContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
 import { useAppSelector } from "@/store";
 
-export default function UploadConnectionsPage() {
+function UploadConnectionsContent() {
   const { user } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -233,5 +233,17 @@ export default function UploadConnectionsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UploadConnectionsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg">Loading...</p>
+      </div>
+    }>
+      <UploadConnectionsContent />
+    </Suspense>
   );
 }

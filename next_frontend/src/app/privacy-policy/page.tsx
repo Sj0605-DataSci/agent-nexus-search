@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import privacyPolicy from "@/constant/privacy-policy.json";
 
-const PrivacyPolicyPage = () => {
+const PrivacyPolicyContent = () => {
   return (
     <div
       className={`min-h-screen flex items-center bg-white/90 justify-center transition-colors duration-500  bg-gradient-to-br from-white/90 to-white/80 `}
@@ -52,6 +53,18 @@ const PrivacyPolicyPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const PrivacyPolicyPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg">Loading...</p>
+      </div>
+    }>
+      <PrivacyPolicyContent />
+    </Suspense>
   );
 };
 
