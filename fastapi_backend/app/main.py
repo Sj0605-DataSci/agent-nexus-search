@@ -35,7 +35,7 @@ app = FastAPI(
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/"],  # Include localhost development URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/"],  # Include localhost development URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,7 +64,7 @@ async def cors_debug_middleware(request: Request, call_next):
         logger.info(f"CORS Response Headers: {cors_headers}")
         
         # Log if origin is not in allowed origins
-        if origin not in ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/"] and origin != "No Origin":
+        if origin not in ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/"] and origin != "No Origin":
             logger.warning(f"Potential CORS issue: Origin '{origin}' not in allowed origins list")
     
     return response
