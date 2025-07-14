@@ -77,7 +77,7 @@ export default function ProfilePage() {
     if (profile && !profile.has_connections) {
       setShowConnectionsModal(true);
     } else {
-      router.push("/searchengine");
+      router.push("/chat/new");
     }
   };
 

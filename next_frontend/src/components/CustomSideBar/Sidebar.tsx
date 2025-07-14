@@ -95,7 +95,6 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    // { href: "/searchengine", label: "Search", icon: <FiSearch /> },
     { href: "/marketplace", label: "Marketplace", icon: <FiShoppingBag /> },
     { href: "/agents", label: "Agents", icon: <FiUsers /> },
   ];

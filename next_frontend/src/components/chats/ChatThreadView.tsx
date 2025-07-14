@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import {
@@ -27,6 +27,8 @@ import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
+  // Web Worker for chat processing
+  const chatWorkerRef = useRef<Worker | null>(null);
   const router = useRouter();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,60 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       thread_id: threadId,
       is_new_thread: threadId === "new",
     });
+
+    // Initialize web worker
+    if (typeof window !== "undefined") {
+      // Check if the browser supports service workers
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then(registration => {
+            console.log("Service Worker registered with scope:", registration.scope);
+          })
+          .catch(error => {
+            console.error("Service Worker registration failed:", error);
+          });
+      }
+
+      // Initialize chat worker
+      if (window.Worker) {
+        chatWorkerRef.current = new Worker("/chatWorker.js");
+
+        // Set up message handler for the worker
+        chatWorkerRef.current.onmessage = event => {
+          const { type, data } = event.data;
+
+          switch (type) {
+            case "processed_message":
+              // Update message content with processed data
+              setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  msg.id === data.id ? { ...msg, content: data.content } : msg
+                )
+              );
+              break;
+
+            case "processed_search_results":
+              // Handle processed search results
+              console.log("Processed search results:", data.sources);
+              break;
+
+            case "query_analysis":
+              // Handle query analysis results
+              console.log("Query analysis:", data);
+              // Could use this data to suggest related searches
+              break;
+          }
+        };
+      }
+    }
+
+    // Cleanup worker on component unmount
+    return () => {
+      if (chatWorkerRef.current) {
+        chatWorkerRef.current.terminate();
+      }
+    };
   }, [agentsStatus, dispatch, threadId]);
 
   useEffect(() => {
@@ -120,18 +176,41 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
       let messageContent = currentPair.message;
 
-      if (typeof messageContent === "object" && messageContent !== null) {
-        messageContent = JSON.stringify(messageContent, null, 2);
+      // Use web worker to process message content if available
+      if (chatWorkerRef.current && typeof messageContent === "object" && messageContent !== null) {
+        // Create a temporary message with loading state
+        const agentMessage = {
+          id: currentPair.id,
+          type: "agent" as const,
+          content: "Processing message...",
+          timestamp: new Date(currentPair.updated_at),
+        };
+
+        setMessages([userMessage, agentMessage]);
+
+        // Send message to worker for processing
+        chatWorkerRef.current.postMessage({
+          type: "process_message",
+          data: {
+            id: currentPair.id,
+            content: messageContent,
+          },
+        });
+      } else {
+        // Fallback to synchronous processing if worker is not available
+        if (typeof messageContent === "object" && messageContent !== null) {
+          messageContent = JSON.stringify(messageContent, null, 2);
+        }
+
+        const agentMessage = {
+          id: currentPair.id,
+          type: "agent" as const,
+          content: messageContent,
+          timestamp: new Date(currentPair.updated_at),
+        };
+
+        setMessages([userMessage, agentMessage]);
       }
-
-      const agentMessage = {
-        id: currentPair.id,
-        type: "agent" as const,
-        content: messageContent,
-        timestamp: new Date(currentPair.updated_at),
-      };
-
-      setMessages([userMessage, agentMessage]);
     }
   }, [currentMessageIndex, chatPairs]);
 
@@ -187,6 +266,14 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const handleSearch = async (incoming?: string) => {
     const q = incoming ?? query;
     if (!q.trim()) return;
+
+    // Use web worker to analyze query if available
+    if (chatWorkerRef.current) {
+      chatWorkerRef.current.postMessage({
+        type: "analyze_query",
+        data: { query: q },
+      });
+    }
 
     // Track search query
     posthog.capture("search_initiated", {
@@ -291,12 +378,23 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
                 hasExtractedFinalAnswer = true;
 
-                // Update the message with the processed content
-                setMessages(m =>
-                  m.map(msg =>
-                    msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                  )
-                );
+                // If web worker is available, use it to process the content
+                if (chatWorkerRef.current) {
+                  chatWorkerRef.current.postMessage({
+                    type: "process_message",
+                    data: {
+                      id: loadingMessageId,
+                      content: currentContent,
+                    },
+                  });
+                } else {
+                  // Fallback to synchronous update if worker is not available
+                  setMessages(m =>
+                    m.map(msg =>
+                      msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
+                    )
+                  );
+                }
               }
               break;
 
@@ -323,6 +421,14 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
                   )
                 );
+              }
+
+              // If we have enough sources, process them in the worker
+              if (sources.length > 0 && sources.length % 5 === 0 && chatWorkerRef.current) {
+                chatWorkerRef.current.postMessage({
+                  type: "process_search_results",
+                  data: { sources },
+                });
               }
               break;
 
@@ -424,6 +530,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
   }, [query]);
+  console.log("messages?.length", messages?.length);
 
   return (
     <div>
@@ -604,6 +711,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   )}
                 </div>
               </div>
+
               {/* Search Button */}
               {/* <Button
                 onClick={() => handleSearch()}
@@ -622,21 +730,22 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   </Button> */}
             </div>
           </div>
-          <div className="flex flex-col mt-3">
-            {[
-              { category: TagCategories.GENERAL, speed: 0.5 },
-              { category: TagCategories.SALES, speed: 0.9 },
-              { category: TagCategories.HR, speed: 0.7 },
-            ].map((item, index) => (
-              <TagCarousel
-                key={index}
-                onTagClick={handleTagClick}
-                category={item.category}
-                scrollSpeed={item.speed}
-              />
-            ))}
-          </div>
-
+          {!(messages.length > 0) && (
+            <div className="flex flex-col w-full mt-3">
+              {[
+                { category: TagCategories.GENERAL, speed: 0.4 },
+                { category: TagCategories.SALES, speed: 0.8 },
+                { category: TagCategories.HR, speed: 0.5 },
+              ].map((item, index) => (
+                <TagCarousel
+                  key={index}
+                  onTagClick={handleTagClick}
+                  category={item.category}
+                  scrollSpeed={item.speed}
+                />
+              ))}
+            </div>
+          )}
           {chatPairs.length > 1 && (
             <div className="flex justify-center items-center gap-3 mt-6">
               <Button
@@ -678,8 +787,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           )}
         </div>
       </div>
-
-      {messages.length > 0 && (
+      {messages?.length && messages.length > 0 && (
         <div className="w-full mt-2">
           <div className="mb-4">
             <h2 className={`text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>

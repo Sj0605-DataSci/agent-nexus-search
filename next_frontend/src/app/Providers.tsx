@@ -11,6 +11,7 @@ import Sidebar from "@/components/CustomSideBar/Sidebar";
 import { usePathname } from "next/navigation";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -31,6 +32,7 @@ export function Providers({ children }: { children: ReactNode }) {
                 draggable
                 theme="light"
               />
+              <ServiceWorkerRegistration />
               <main>{children}</main>
             </AnalyticsProvider>
           </PostHogProvider>

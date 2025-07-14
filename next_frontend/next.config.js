@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from "@sentry/nextjs";
+import withPWA from "next-pwa";
 
 const advancedHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -7,6 +8,7 @@ const advancedHeaders = [
   { key: "X-XSS-Protection", value: "1; mode=block" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "origin-when-cross-origin" },
+  { key: "Service-Worker-Allowed", value: "/" },
 ];
 
 const API_HOST = "https://discoverminds-ai.up.railway.app";
@@ -15,6 +17,13 @@ const LOCAL_API = "http://localhost:8000";
 const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
+  },
+  pwa: {
+    dest: "public",
+    register: true,
+    skipWaiting: true,
+    disable: process.env.NODE_ENV === "development",
+    sw: "/sw.js",
   },
   async headers() {
     return [{ source: "/:path*", headers: advancedHeaders }];
