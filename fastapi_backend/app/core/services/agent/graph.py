@@ -18,10 +18,26 @@ from app.core.services.agent.prompts import (
     optimised_query_instructions,
     sql_query_instructions,
     reflection_instructions_sql,
-    answer_instructions_sql
+    answer_instructions_sql,
+    answer_instructions_table_format
 )
 from uuid import uuid4
 import weave
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class PersonDetails(BaseModel):
+    """Pydantic model for person details in table format."""
+    fname: str = Field(description="First name of the person")
+    lname: str = Field(description="Last name of the person")
+    social_links: List[str] = Field(description="List of social media links (LinkedIn, GitHub, etc.)")
+    email: str = Field(description="Email address of the person")
+    phone_no: str = Field(description="Phone number of the person")
+
+class PersonDetailsResponse(BaseModel):
+    """Pydantic model for response containing one or more person details."""
+    content: List[PersonDetails] = Field(description="List of person details")
+
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
@@ -398,7 +414,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     
     # Initialize Exa API client
     tavily_api_key = settings.TAVILY_API_KEY
-    tavilly_search = TavilyClient(api_key=tavily_api_key)    
+    tavilly_search = TavilyClient(api_key="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")    
     # Extract the query from the state
     search_query = state.get("search_query") if isinstance(state, dict) else state.search_query
     
@@ -952,7 +968,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
         state = state.model_dump()
     # Format the prompt
     current_date = get_current_date()
-    if state["intent"] == "search" and state["world_connections"] == "world":
+    if state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "chat":
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
             agent_config=state["agent_config"],
@@ -960,9 +976,28 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries=str(state["web_research_result"]),
             format=state.get("format", "table")
         )
-    elif state["intent"] == "search" and state["world_connections"] == "connections":
-        formatted_prompt = answer_instructions_sql.format(
+    elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "chat":
+        formatted_prompt = answer_instructions.format(
             current_date=current_date,
+            agent_config=state["agent_config"],
+            research_topic=get_research_topic(state["messages"]),
+            summaries=str(state["web_research_result"]),
+            format=state.get("format", "table")
+        )
+    elif state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "table":
+        formatted_prompt_table = answer_instructions_table_format.format(
+            current_date=current_date,
+            agent_config=state["agent_config"],
+            links = state["sources_gathered"],
+            research_topic=get_research_topic(state["messages"]),
+            summaries=str(state["web_research_result"]),
+            format=state.get("format", "table")
+        )
+    elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "table":
+        formatted_prompt_table = answer_instructions_table_format.format(
+            current_date=current_date,
+            agent_config=state["agent_config"],
+            links = state["sources_gathered"],
             research_topic=get_research_topic(state["messages"]),
             summaries=str(state["web_research_result"]),
             format=state.get("format", "table")
@@ -988,12 +1023,33 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
         model="gemini-2.5-flash",
         temperature=0
     )
-    result = llm.invoke(formatted_prompt)
-    usage_metadata = result.usage_metadata
-    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+    if state["format"] == "table":
+        result_table, usage_metadata_table = llm.with_structured_output(prompt=formatted_prompt_table, schema_type=PersonDetailsResponse)
+    else:
+        result = llm.invoke(formatted_prompt)
+
+    if state["format"] == "table":
+        usage_metadata = usage_metadata_table
+        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+    else:
+        usage_metadata = result.usage_metadata
+        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
     
-    final_message = AIMessage(content=result.content)
+    if state["format"] == "table":
+        # Convert PersonDetailsResponse to a string format
+        formatted_content = ""
+        for person in result_table.content:
+            formatted_content += f"FName : {person.fname}\n"
+            formatted_content += f"LName : {person.lname}\n"
+            formatted_content += f"Social links : {', '.join(person.social_links)}\n"
+            formatted_content += f"Email : {person.email}\n"
+            formatted_content += f"Phone No : {person.phone_no}\n\n"
+        
+        final_message = AIMessage(content=formatted_content.strip())
+    else:
+        final_message = AIMessage(content=result.content)
     
     message_content = final_message.content
     

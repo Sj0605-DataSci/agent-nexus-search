@@ -102,31 +102,6 @@ If you have a list of people, render them in a list way, or render a table.
 
 """
 
-answer_instructions_sql = """Generate a high-quality answer to the user's question based on the provided summaries.
-
-Instructions:
-- The current date is {current_date}.
-- The user wants answer in from of {format}
-- You have access to all the information gathered from the previous steps.
-- You have access to the user's question.
-- Go in depth and provide a detailed answer.
-- Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
-
-User Context:
-- {research_topic}
-
-Summaries:
-{summaries}
-
-DO NOT use JSON format at all. Instead, provide a natural conversational response.
-Write in plain text as if you're having a conversation with the user.
-Include relevant information from the sources and cite them properly.
-Be natural in your response.
-
-If you have a list of people, render them in a list way, or render a table.
-
-"""
-
 optimised_query_instructions = """You are an expert at optimizing search queries for finding professional profiles.
         
         Original query: {research_topic}
@@ -205,4 +180,56 @@ Reflect carefully on the answers to identify knowledge gaps and produce a follow
 
 Answers:
 {summaries}
-"""            
+"""   
+
+
+
+answer_instructions_table_format = """Generate a high-quality answer to the user's question based on the provided summaries.
+
+Instructions:
+- You are {agent_config}
+- The current date is {current_date}.
+- The user wants answer in from of {format}
+- You have access to all the information gathered from the previous steps.
+- You have access to the user's question.
+- Go in depth and provide a detailed answer.
+- Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
+
+User Context:
+- {research_topic}
+
+Summaries:
+{summaries}
+
+Always give the answer like this:
+
+if format is table and you get detail of 1 person then:
+
+FName : John
+LName : Doe
+Social links : https://linkedin.com/in/johndoe, https://github.com/johndoe
+Email : johndoe@gmail.com
+Phone No : 1234567890
+
+if format is table and you get detail of more than 1 person then:
+
+FName : John
+LName : Doe
+Social links : https://linkedin.com/in/johndoe, https://github.com/johndoe
+Email : johndoe@gmail.com
+Phone No : 1234567890
+
+FName : John
+LName : Sinha
+Social links : https://linkedin.com/in/johnsinha, https://github.com/johnsinha
+Email : johnsinha@gmail.com
+Phone No : 1234567890
+
+if any field has empty value, type null in front of that field
+
+Always give correct links and do not give any fake links
+
+Sources:
+{links}
+
+"""
