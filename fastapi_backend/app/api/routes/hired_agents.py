@@ -9,7 +9,7 @@ from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import HiredAgentCreate, HiredAgentResponse, HiredAgentUpdate, StandardResponse, StandardJSONResponse
 from app.core.services.hired_agent_service import HiredAgentService
-from app.db.redis_client import cache_get, cache_set, cache_delete, cache_invalidate_pattern
+# from app.db.redis_client import cache_get, cache_set, cache_delete, cache_invalidate_pattern
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +40,7 @@ async def hire_agent(
         agent_response = await service.hire_agent(agent, current_user)
         
         # Invalidate any cached hired agents lists for this user
-        await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
+        # await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
         logger.info(f"Invalidated hired agents cache for user {current_user.id} after hiring new agent")
         
         return StandardJSONResponse(StandardResponse(
@@ -85,28 +85,28 @@ async def get_hired_agents(
         # Initialize the service
         service = HiredAgentService(client=await get_async_supabase_client())
         
-        # Create a cache key based on the query parameters and user
-        target_user_id = user_id if user_id else current_user.id
-        cache_key = f"hired_agents:user:{target_user_id}"
+        # # Create a cache key based on the query parameters and user
+        # target_user_id = user_id if user_id else current_user.id
+        # cache_key = f"hired_agents:user:{target_user_id}"
         
-        # Try to get data from cache first
-        cached_data = await cache_get(cache_key)
-        if cached_data is not None:
-            logger.info(f"Returning hired agents from cache: {cache_key}")
-            return StandardJSONResponse(StandardResponse(
-                success=True,
-                status_code=status.HTTP_200_OK,
-                message="Hired agents retrieved from cache",
-                data=cached_data
-            ))
+        # # Try to get data from cache first
+        # cached_data = await cache_get(cache_key)
+        # if cached_data is not None:
+        #     logger.info(f"Returning hired agents from cache: {cache_key}")
+        #     return StandardJSONResponse(StandardResponse(
+        #         success=True,
+        #         status_code=status.HTTP_200_OK,
+        #         message="Hired agents retrieved from cache",
+        #         data=cached_data
+        #     ))
         
-        # If not in cache, get from database
-        logger.info(f"Cache miss for {cache_key}, fetching from database")
+        # # If not in cache, get from database
+        # logger.info(f"Cache miss for {cache_key}, fetching from database")
         agent_responses = await service.get_hired_agents(user_id, current_user)
         
-        # Store in cache for future requests (expire in 5 minutes)
-        await cache_set(cache_key, agent_responses, expire=300)
-        logger.info(f"Stored hired agents in cache: {cache_key}")
+        # # Store in cache for future requests (expire in 5 minutes)
+        # await cache_set(cache_key, agent_responses, expire=300)
+        # logger.info(f"Stored hired agents in cache: {cache_key}")
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -144,28 +144,28 @@ async def get_hired_agent(
         # Initialize the service
         service = HiredAgentService(client=await get_async_supabase_client())
         
-        # Create a cache key for this specific agent
-        cache_key = f"hired_agents:id:{agent_id}"
+        # # Create a cache key for this specific agent
+        # cache_key = f"hired_agents:id:{agent_id}"
         
-        # Try to get from cache first
-        cached_agent = await cache_get(cache_key)
-        if cached_agent is not None:
-            logger.info(f"Returning hired agent {agent_id} from cache")
-            return StandardJSONResponse(StandardResponse(
-                success=True,
-                status_code=status.HTTP_200_OK,
-                message="Hired agent retrieved from cache",
-                data=cached_agent
-            ))
+        # # Try to get from cache first
+        # cached_agent = await cache_get(cache_key)
+        # if cached_agent is not None:
+            # logger.info(f"Returning hired agent {agent_id} from cache")
+            # return StandardJSONResponse(StandardResponse(
+            #     success=True,
+            #     status_code=status.HTTP_200_OK,
+            #     message="Hired agent retrieved from cache",
+            #     data=cached_agent
+            # ))
         
         # If not in cache, get from database
-        logger.info(f"Cache miss for hired agent {agent_id}, fetching from database")
+        # logger.info(f"Cache miss for hired agent {agent_id}, fetching from database")
         agent_response = await service.get_hired_agent_by_id(agent_id, current_user)
         
-        if agent_response is not None:
+        # if agent_response is not None:
             # Store in cache for future requests (expire in 10 minutes)
-            await cache_set(cache_key, agent_response, expire=600)
-            logger.info(f"Stored hired agent {agent_id} in cache")
+            # await cache_set(cache_key, agent_response, expire=600)
+            # logger.info(f"Stored hired agent {agent_id} in cache")
         if agent_response is None:
             return StandardJSONResponse(StandardResponse(
                 success=False,
@@ -214,11 +214,11 @@ async def update_hired_agent(
         # Use the service to update the hired agent
         agent_response = await service.update_hired_agent(agent_id, agent_update, current_user)
         
-        if agent_response is not None:
-            # Invalidate both the specific agent cache and the user's list cache
-            await cache_delete(f"hired_agents:id:{agent_id}")
-            await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
-            logger.info(f"Invalidated cache for hired agent {agent_id} after update")
+        # if agent_response is not None:
+        #     # # Invalidate both the specific agent cache and the user's list cache
+        #     # await cache_delete(f"hired_agents:id:{agent_id}")
+        #     # await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
+        #     # logger.info(f"Invalidated cache for hired agent {agent_id} after update")
         if agent_response is None:
             return StandardJSONResponse(StandardResponse(
                 success=False,
@@ -266,11 +266,11 @@ async def delete_hired_agent(
         # Use the service to delete the hired agent
         success = await service.delete_hired_agent(agent_id, current_user)
         
-        if success:
-            # Invalidate both the specific agent cache and the user's list cache
-            await cache_delete(f"hired_agents:id:{agent_id}")
-            await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
-            logger.info(f"Invalidated cache for hired agent {agent_id} after deletion")
+        # if success:
+        #     # Invalidate both the specific agent cache and the user's list cache
+        #     await cache_delete(f"hired_agents:id:{agent_id}")
+        #     await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
+        #     logger.info(f"Invalidated cache for hired agent {agent_id} after deletion")
         if not success:
             return StandardJSONResponse(StandardResponse(
                 success=False,

@@ -58,6 +58,7 @@ class AgentTemplateBase(BaseModel):
     name: str
     category: str
     description: Optional[str] = None
+    can_hire_unhire: Optional[bool] = False
 
 
 class AgentTemplateCreate(AgentTemplateBase):
@@ -88,6 +89,7 @@ class HiredAgentBase(BaseModel):
     tone: Optional[str] = "professional"
     response_length: Optional[str] = "medium"
     expertise: Optional[str] = "general"
+    can_hire_unhire: Optional[bool] = False
 
 
 class HiredAgentCreate(HiredAgentBase):
@@ -100,12 +102,13 @@ class HiredAgentUpdate(BaseModel):
     tone: Optional[str] = None
     response_length: Optional[str] = None
     expertise: Optional[str] = None
-
+    can_hire_unhire: Optional[bool] = False
 
 class HiredAgentResponse(HiredAgentBase):
     id: UUID
     hired_at: datetime
     updated_at: datetime
+    can_hire_unhire: Optional[bool] = False
 
     class Config:
         from_attributes = True
