@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import posthog from 'posthog-js';
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import posthog from "posthog-js";
 
 /**
  * Hook to track page views in PostHog
@@ -8,22 +8,22 @@ import posthog from 'posthog-js';
  */
 export function usePageView() {
   const pathname = usePathname();
-  
+
   useEffect(() => {
     // Track page views when the route changes
-    if (pathname && typeof window !== 'undefined') {
+    if (pathname && typeof window !== "undefined") {
       // Get search params safely on the client side only
       const searchParamsString = window.location.search;
-      
+
       let url = window.origin + pathname;
-      
+
       // Add search parameters to the URL if they exist
       if (searchParamsString) {
         url += searchParamsString;
       }
-      
+
       // Capture page view event
-      posthog.capture('$pageview', {
+      posthog.capture("$pageview", {
         $current_url: url,
         path: pathname,
       });

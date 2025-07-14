@@ -48,15 +48,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
+
       // Identify user in PostHog when they sign in
       if (session?.user) {
         posthog.identify(session.user.id, {
           email: session.user.email,
           name: session.user.user_metadata?.full_name,
-          signUpDate: session.user.created_at
+          signUpDate: session.user.created_at,
         });
-        posthog.capture('user_signed_in');
+        posthog.capture("user_signed_in");
       } else {
         // Reset user identity when signed out
         posthog.reset();
@@ -68,13 +68,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
-      
+
       // Identify user in PostHog on initial load if they're logged in
       if (data.session?.user) {
         posthog.identify(data.session.user.id, {
           email: data.session.user.email,
           name: data.session.user.user_metadata?.full_name,
-          signUpDate: data.session.user.created_at
+          signUpDate: data.session.user.created_at,
         });
       }
     });
@@ -99,8 +99,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     try {
       // Track signup attempt
-      posthog.capture('signup_attempted', { email });
-      
+      posthog.capture("signup_attempted", { email });
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -122,20 +122,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (error.status === 400) {
           if (/email.*(already|exist|used|registered)/i.test(msg)) {
             emailExists = true;
-            posthog.capture('signup_error', { reason: 'email_exists' });
+            posthog.capture("signup_error", { reason: "email_exists" });
           } else if (/password.*(weak|short|min)/i.test(msg)) {
             weakPassword = true;
-            posthog.capture('signup_error', { reason: 'weak_password' });
+            posthog.capture("signup_error", { reason: "weak_password" });
           } else if (/email.*(invalid|format|not valid)/i.test(msg)) {
             invalidEmail = true;
-            posthog.capture('signup_error', { reason: 'invalid_email' });
+            posthog.capture("signup_error", { reason: "invalid_email" });
           }
         }
 
         // Catch more general server-side or unknown issues
         if ((error.status && error.status >= 500) || msg.includes("unexpected")) {
           serverError = true;
-          posthog.capture('signup_error', { reason: 'server_error' });
+          posthog.capture("signup_error", { reason: "server_error" });
         }
 
         return {
@@ -148,11 +148,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       // Track successful signup
-      posthog.capture('signup_successful', { email });
+      posthog.capture("signup_successful", { email });
       return { error: null };
     } catch (error: any) {
       console.error("SignUp Exception:", error.message);
-      posthog.capture('signup_error', { reason: 'exception', message: error.message });
+      posthog.capture("signup_error", { reason: "exception", message: error.message });
       return {
         error: error as AuthError,
         serverError: true,
@@ -163,38 +163,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
     try {
       // Track login attempt
-      posthog.capture('login_attempted', { email });
-      
+      posthog.capture("login_attempted", { email });
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
+
       if (error) {
         if (process.env.NODE_ENV === "development") {
           console.error("SignIn Error:", error.message);
         }
-        posthog.capture('login_error', { reason: error.message });
+        posthog.capture("login_error", { reason: error.message });
       } else {
         // Login successful is tracked in the auth state change handler
       }
-      
+
       return { error };
     } catch (error: any) {
       console.error("SignIn Exception:", error.message);
-      posthog.capture('login_error', { reason: 'exception', message: error.message });
+      posthog.capture("login_error", { reason: "exception", message: error.message });
       return { error };
     }
   };
 
   const signOut = async () => {
     try {
-      posthog.capture('logout_initiated');
+      posthog.capture("logout_initiated");
       await supabase.auth.signOut();
       // The actual reset of user identity happens in the auth state change handler
     } catch (error: any) {
       console.error("SignOut Error:", error.message);
-      posthog.capture('logout_error', { message: error.message });
+      posthog.capture("logout_error", { message: error.message });
     }
   };
 

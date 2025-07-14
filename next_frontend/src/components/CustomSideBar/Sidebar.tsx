@@ -13,6 +13,8 @@ import {
   FiMessageSquare,
   FiShoppingBag,
   FiUsers,
+  FiPlus,
+  FiSettings,
 } from "react-icons/fi";
 import { useEffect, useState } from "react";
 
@@ -50,6 +52,7 @@ const Sidebar = () => {
   const [recentThreads, setRecentThreads] = useState<ChatThread[]>([]);
   const [threadMessages, setThreadMessages] = useState<{ [key: string]: ChatMessage[] }>({});
   const [loadingThreads, setLoadingThreads] = useState(false);
+  const [showNewChat, setShowNewChat] = useState(false);
 
   useEffect(() => {
     const fetchThreads = async () => {
@@ -92,10 +95,9 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { href: "/searchengine", label: "Search", icon: <FiSearch /> },
+    // { href: "/searchengine", label: "Search", icon: <FiSearch /> },
     { href: "/marketplace", label: "Marketplace", icon: <FiShoppingBag /> },
     { href: "/agents", label: "Agents", icon: <FiUsers /> },
-    { href: "/profile", label: "Profile", icon: <FiUser /> },
   ];
 
   const handleSignOut = async () => {
@@ -111,141 +113,174 @@ const Sidebar = () => {
       border-r shadow-lg
       ${
         darkMode
-          ? "bg-gray-900/90 border-gray-800 text-white"
-          : "bg-white/95 border-gray-200 text-gray-900"
+          ? "bg-gray-900 border-gray-800 text-white"
+          : "bg-white border-gray-200 text-gray-900"
       }`}
-      style={{ WebkitBackdropFilter: "blur(16px)", backdropFilter: "blur(16px)" }}
     >
-      <div className="flex items-center justify-between pl-2 py-4 border-b dark:border-gray-800">
-        <Link href="/" className="flex items-center h-8 gap-2 group">
-          <Image
-            src="/icon.png"
-            alt="Logo"
-            width={32}
-            height={32}
-            className="w-8 h-8 object-contain rounded-md min-h-8 min-w-8"
-          />
-          {!collapsed && (
-            <span className="text-lg font-bold tracking-tight group-hover:text-indigo-500">
-              DiscoverMinds.ai
-            </span>
-          )}
-        </Link>
-        <button
-          onClick={() => dispatch(toggleSidebar())}
-          className="text-gray-500 mr-1 hover:text-gray-700 dark:hover:text-gray-300"
-          title={collapsed ? "Expand" : "Collapse"}
-        >
-          {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
-        <ul className="space-y-2">
-          {navItems.map(({ href, label, icon }) => {
-            const active = pathname.startsWith(href);
-            return (
-              <SidebarItem
-                key={href}
-                href={href}
-                label={label}
-                icon={icon}
-                active={active}
-                collapsed={collapsed}
-                darkMode={darkMode}
-              />
-            );
-          })}
-        </ul>
-
-        {user && (
-          <div className="mt-8">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between pl-2 py-4 border-b dark:border-gray-800">
+          <Link href="/" className="flex items-center h-8 gap-2 group">
+            <Image
+              src="/icon.png"
+              alt="Logo"
+              width={32}
+              height={32}
+              className="w-8 h-8 object-contain rounded-md min-h-8 min-w-8"
+            />
             {!collapsed && (
-              <h3 className="text-xs font-semibold px-4 mb-2 uppercase text-gray-500">
-                Recent Chats
-              </h3>
+              <span className="text-lg font-bold tracking-tight group-hover:text-indigo-500">
+                DiscoverMinds.ai
+              </span>
             )}
-            <ul className="space-y-1">
-              {loadingThreads ? (
-                <li className="text-sm px-4 text-gray-400">{!collapsed && "Loading..."}</li>
-              ) : recentThreads.length === 0 ? (
-                <li className="text-sm px-4 text-gray-400">{!collapsed && "No recent chats"}</li>
-              ) : (
-                recentThreads.map(thread => (
-                  <li key={thread.id}>
-                    <Link
-                      href={`/chat/${thread.id}`}
-                      className={`group flex items-center py-2 rounded-lg text-sm transition-colors ${
-                        collapsed ? "justify-center" : "gap-2 px-4"
-                      } ${
-                        darkMode
-                          ? "text-gray-300 hover:text-white hover:bg-gray-800/60"
-                          : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                      }`}
-                      title={collapsed ? "Chat thread" : getThreadPreview(thread.id)}
-                    >
-                      <FiMessageSquare className="text-base" />
-                      {!collapsed && (
-                        <div className="flex-1 truncate">
-                          <div className="truncate">{getThreadPreview(thread.id)}</div>
-                          <div className="text-xs text-gray-400">
-                            {formatDate(thread.last_message_at)}
-                          </div>
-                        </div>
-                      )}
-                    </Link>
-                  </li>
-                ))
+          </Link>
+          <button
+            onClick={() => dispatch(toggleSidebar())}
+            className="text-gray-500 mr-1 hover:text-gray-700 dark:hover:text-gray-300"
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
+          </button>
+        </div>
+        <div className="px-3 py-2">
+          <Button
+            onClick={() => router.push("/chat/new")}
+            className={`w-full flex items-center ${collapsed ? "justify-center p-2" : "justify-between px-3 py-3"} 
+              border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
+            variant="ghost"
+          >
+            {!collapsed && <span className="font-medium">New chat</span>}
+            <FiPlus className={collapsed ? "mx-auto" : ""} />
+          </Button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-2 py-2">
+          <ul className="space-y-1 pb-3">
+            {navItems.map(({ href, label, icon }) => {
+              const active = pathname.startsWith(href);
+              return (
+                <SidebarItem
+                  key={href}
+                  href={href}
+                  label={label}
+                  icon={icon}
+                  active={active}
+                  collapsed={collapsed}
+                  darkMode={darkMode}
+                />
+              );
+            })}
+          </ul>
+          {user && (
+            <div className="mb-4">
+              {!collapsed && (
+                <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
               )}
-            </ul>
-          </div>
-        )}
-      </nav>
+              <ul className="space-y-1">
+                {loadingThreads ? (
+                  <li className="text-sm px-2 text-gray-400">{!collapsed && "Loading..."}</li>
+                ) : recentThreads.length === 0 ? (
+                  <li className="text-sm px-2 text-gray-400">{!collapsed && "No recent chats"}</li>
+                ) : (
+                  recentThreads.map(thread => (
+                    <li key={thread.id}>
+                      <Link
+                        href={`/chat/${thread.id}`}
+                        className={`group flex items-center py-2 rounded-md text-sm transition-colors ${
+                          collapsed ? "justify-center" : "gap-2 px-3"
+                        } ${
+                          pathname === `/chat/${thread.id}`
+                            ? darkMode
+                              ? "bg-gray-800"
+                              : "bg-gray-100"
+                            : darkMode
+                              ? "text-gray-300 hover:text-white hover:bg-gray-800/60"
+                              : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                        }`}
+                        title={collapsed ? "Chat thread" : getThreadPreview(thread.id)}
+                      >
+                        <FiMessageSquare className="text-base flex-shrink-0" />
+                        {!collapsed && (
+                          <div className="flex-1 truncate">
+                            <div className="truncate">{getThreadPreview(thread.id)}</div>
+                            <div className="text-xs text-gray-400">
+                              {formatDate(thread.last_message_at)}
+                            </div>
+                          </div>
+                        )}
+                      </Link>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          )}
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-        {!collapsed && (
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-            <span>Theme</span>
-            <ToggleSystemTheme />
-          </div>
-        )}
+          {!collapsed && user && recentThreads.length > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-800 my-2"></div>
+          )}
+        </nav>
 
-        {user ? (
-          <>
-            {!collapsed && <div className="text-xs text-gray-400 truncate">{user.email}</div>}
-            <Button
-              onClick={handleSignOut}
-              variant="ghost"
-              className={`w-full flex items-center ${
-                collapsed ? "justify-center" : "gap-2"
-              } text-sm`}
-            >
-              <FiLogOut />
-              {!collapsed && "Sign Out"}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              onClick={() => router.push("/login")}
-              variant="ghost"
-              className={`w-full flex items-center ${
-                collapsed ? "justify-center" : "gap-2"
-              } text-sm`}
-            >
-              <FiLogIn />
-              {!collapsed && "Login"}
-            </Button>
+        <div className="mt-auto border-t border-gray-200 dark:border-gray-800">
+          <div className="p-2">
             {!collapsed && (
-              <Button
-                onClick={() => router.push("/signup")}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm"
-              >
-                Sign Up
-              </Button>
+              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                <span>Theme</span>
+                <ToggleSystemTheme />
+              </div>
             )}
-          </>
-        )}
+            {user ? (
+              <div className="flex items-center justify-between">
+                <Link
+                  href="/profile"
+                  className={`flex items-center py-2 rounded-md ${collapsed ? "justify-center w-full" : "gap-2 flex-1"} 
+                  hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
+                  title={collapsed ? user.email : undefined}
+                >
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium flex-shrink-0">
+                    {user.email?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                  {!collapsed && (
+                    <div className="flex-1 truncate">
+                      <div className="text-sm font-medium truncate">
+                        {user.email?.split("@")[0] || "User"}
+                      </div>
+                    </div>
+                  )}
+                </Link>
+
+                <Button
+                  onClick={handleSignOut}
+                  variant="ghost"
+                  size="icon"
+                  className={`${collapsed ? "hidden" : "flex"} h-8 w-8 rounded-full`}
+                  title="Sign Out"
+                >
+                  <FiLogOut size={16} />
+                </Button>
+              </div>
+            ) : (
+              <div className={`flex ${collapsed ? "flex-col" : "items-center"} gap-2`}>
+                <Button
+                  onClick={() => router.push("/login")}
+                  variant="ghost"
+                  className={`${collapsed ? "p-2" : "px-3 py-2"} flex items-center justify-center`}
+                  title="Login"
+                >
+                  <FiLogIn size={18} />
+                  {!collapsed && <span className="ml-2">Login</span>}
+                </Button>
+
+                <Button
+                  onClick={() => router.push("/signup")}
+                  className={`${collapsed ? "p-2" : "px-3 py-2"} flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md`}
+                  title="Sign Up"
+                >
+                  {collapsed ? "+" : "Sign Up"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </aside>
   );

@@ -18,7 +18,6 @@ This document provides instructions on how to set up and use PostHog analytics i
 2. **PostHog is Already Integrated**
 
    The application is already set up with PostHog integration:
-   
    - PostHog Provider is added to the app in `src/app/Providers.tsx`
    - Authentication events are tracked in `src/hooks/useAuth.tsx`
    - Chat and search events are tracked in `src/components/chats/ChatThreadView.tsx`
@@ -30,7 +29,7 @@ This document provides instructions on how to set up and use PostHog analytics i
 When a user signs in, we automatically identify them using:
 
 ```typescript
-import posthog from 'posthog-js';
+import posthog from "posthog-js";
 
 // Identify a user
 posthog.identify(userId, {
@@ -45,13 +44,13 @@ posthog.identify(userId, {
 To track custom events in your components:
 
 ```typescript
-import posthog from 'posthog-js';
+import posthog from "posthog-js";
 
 // Capture a custom event
-posthog.capture('event_name', {
+posthog.capture("event_name", {
   // Add any properties relevant to the event
-  property1: 'value1',
-  property2: 'value2',
+  property1: "value1",
+  property2: "value2",
 });
 ```
 
@@ -60,17 +59,17 @@ posthog.capture('event_name', {
 We've created a custom hook for easier analytics usage:
 
 ```typescript
-import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 function YourComponent() {
   const { capture, identify, reset } = useAnalytics();
-  
+
   // Track an event
-  capture('button_clicked', { buttonName: 'Submit' });
-  
+  capture("button_clicked", { buttonName: "Submit" });
+
   // Identify a user
   identify(userId, { email, name });
-  
+
   // Reset user identity (on logout)
   reset();
 }
@@ -86,7 +85,7 @@ import { usePageView } from '@/hooks/usePageView';
 function YourPageComponent() {
   // This will automatically track page views
   usePageView();
-  
+
   return (
     // Your component JSX
   );
@@ -98,6 +97,7 @@ function YourPageComponent() {
 The application currently tracks the following events:
 
 ### Authentication Events
+
 - `user_signed_in`: When a user successfully signs in
 - `signup_attempted`: When a user attempts to sign up
 - `signup_successful`: When a user successfully signs up
@@ -107,6 +107,7 @@ The application currently tracks the following events:
 - `logout_initiated`: When a user initiates logout
 
 ### Chat/Search Events
+
 - `chat_thread_viewed`: When a user views a chat thread
 - `search_initiated`: When a user starts a search
 - `search_completed`: When a search is completed

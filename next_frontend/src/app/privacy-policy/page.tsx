@@ -58,11 +58,13 @@ const PrivacyPolicyContent = () => {
 
 const PrivacyPolicyPage = () => {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg">Loading...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-lg">Loading...</p>
+        </div>
+      }
+    >
       <PrivacyPolicyContent />
     </Suspense>
   );

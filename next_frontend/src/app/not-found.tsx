@@ -6,7 +6,7 @@ import Link from "next/link";
 
 function NotFoundContent() {
   const pathname = usePathname();
-  
+
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", pathname);
   }, [pathname]);
@@ -24,7 +24,8 @@ function NotFoundContent() {
         Oops! The page you are looking for does not exist or has been moved.
       </p>
       <p className="text-sm text-gray-500 mb-6">
-        Path: {pathname}{typeof window !== 'undefined' ? window.location.search : ""}
+        Path: {pathname}
+        {typeof window !== "undefined" ? window.location.search : ""}
       </p>
 
       <div>
@@ -41,11 +42,13 @@ function NotFoundContent() {
 
 export default function NotFound() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          <p>Loading...</p>
+        </div>
+      }
+    >
       <NotFoundContent />
     </Suspense>
   );
