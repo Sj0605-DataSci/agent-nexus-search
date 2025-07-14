@@ -41,7 +41,7 @@ const LoginContent = () => {
   const router = useRouter();
 
   useEffect(() => {
-    if (user) router.push("/searchengine");
+    if (user) router.push("/chat/new");
   }, [user, router]);
 
   const handleSubmit = useCallback(
