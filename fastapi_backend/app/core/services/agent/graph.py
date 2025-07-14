@@ -18,7 +18,6 @@ from app.core.services.agent.prompts import (
     optimised_query_instructions,
     sql_query_instructions,
     reflection_instructions_sql,
-    answer_instructions_sql,
     answer_instructions_table_format
 )
 from uuid import uuid4
