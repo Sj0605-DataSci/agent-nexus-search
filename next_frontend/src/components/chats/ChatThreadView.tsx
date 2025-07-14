@@ -730,7 +730,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   </Button> */}
             </div>
           </div>
-          {!(messages.length > 0 ) && (
+          {!(messages.length > 0) && (
             <div className="flex flex-col w-full mt-3">
               {[
                 { category: TagCategories.GENERAL, speed: 0.4 },
