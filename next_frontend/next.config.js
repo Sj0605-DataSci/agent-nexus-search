@@ -13,6 +13,11 @@ const API_HOST = "https://discoverminds-ai.up.railway.app";
 const LOCAL_API = "http://localhost:8000";
 
 const nextConfig = {
+  experimental: {
+    swcPlugins: [
+      ["next-superjson-plugin", {}]
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: advancedHeaders }];
   },
