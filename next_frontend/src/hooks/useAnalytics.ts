@@ -1,12 +1,12 @@
-import { useCallback } from 'react';
-import posthog from 'posthog-js';
+import { useCallback } from "react";
+import posthog from "posthog-js";
 
 export function useAnalytics() {
   /**
    * Identify a user with their ID and properties
    */
   const identify = useCallback((userId: string, properties?: Record<string, any>) => {
-    if (typeof window !== 'undefined' && userId) {
+    if (typeof window !== "undefined" && userId) {
       posthog.identify(userId, properties);
     }
   }, []);
@@ -15,7 +15,7 @@ export function useAnalytics() {
    * Capture a custom event with optional properties
    */
   const capture = useCallback((eventName: string, properties?: Record<string, any>) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       posthog.capture(eventName, properties);
     }
   }, []);
@@ -24,7 +24,7 @@ export function useAnalytics() {
    * Reset the current user's identity (use when logging out)
    */
   const reset = useCallback(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       posthog.reset();
     }
   }, []);

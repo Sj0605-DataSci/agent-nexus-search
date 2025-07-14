@@ -15,7 +15,7 @@ const SidebarItem = ({ href, label, icon, active, collapsed, darkMode }: Sidebar
       <Link
         href={href}
         className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors
-          ${collapsed ? "justify-center" : "gap-3 px-4"}
+          ${collapsed ? "justify-center" : "gap-3 pl-2 pr-4"}
           ${
             active
               ? darkMode

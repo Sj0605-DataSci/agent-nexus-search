@@ -578,11 +578,36 @@ const Agents = () => {
                               <SelectValue placeholder="Select tone" />
                             </SelectTrigger>
                             <SelectContent className="bg-white">
-                              <SelectItem value="professional" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>🎯 Professional</SelectItem>
-                              <SelectItem value="friendly" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>😊 Friendly</SelectItem>
-                              <SelectItem value="enthusiastic" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>🚀 Enthusiastic</SelectItem>
-                              <SelectItem value="casual" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>😎 Casual</SelectItem>
-                              <SelectItem value="formal" className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}>🎩 Formal</SelectItem>
+                              <SelectItem
+                                value="professional"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                🎯 Professional
+                              </SelectItem>
+                              <SelectItem
+                                value="friendly"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                😊 Friendly
+                              </SelectItem>
+                              <SelectItem
+                                value="enthusiastic"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                🚀 Enthusiastic
+                              </SelectItem>
+                              <SelectItem
+                                value="casual"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                😎 Casual
+                              </SelectItem>
+                              <SelectItem
+                                value="formal"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                🎩 Formal
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

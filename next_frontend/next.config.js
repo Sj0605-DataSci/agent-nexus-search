@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-import { withSentryConfig } from '@sentry/nextjs';
+import { withSentryConfig } from "@sentry/nextjs";
 
 const advancedHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -14,9 +14,7 @@ const LOCAL_API = "http://localhost:8000";
 
 const nextConfig = {
   experimental: {
-    swcPlugins: [
-      ["next-superjson-plugin", {}]
-    ],
+    swcPlugins: [["next-superjson-plugin", {}]],
   },
   async headers() {
     return [{ source: "/:path*", headers: advancedHeaders }];
@@ -64,25 +62,22 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(
-  nextConfig,
-  {
-    // For all available options, see:
-    // https://github.com/getsentry/sentry-webpack-plugin#options
+export default withSentryConfig(nextConfig, {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
 
-    org: "discoverminds",
-    project: "javascript-nextjs",
+  org: "discoverminds",
+  project: "javascript-nextjs",
 
-    // Only print logs for uploading source maps in CI
-    silent: !process.env.CI,
+  // Only print logs for uploading source maps in CI
+  silent: !process.env.CI,
 
-    // Upload a larger set of source maps for prettier stack traces (increases build time)
-    widenClientFileUpload: true,
+  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  widenClientFileUpload: true,
 
-    // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
-    tunnelRoute: "/monitoring",
+  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
+  tunnelRoute: "/monitoring",
 
-    // Automatically tree-shake Sentry logger statements to reduce bundle size
-    disableLogger: true,
-  }
-);
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+});

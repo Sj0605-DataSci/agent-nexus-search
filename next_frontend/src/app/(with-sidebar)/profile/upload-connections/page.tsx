@@ -55,7 +55,6 @@ function UploadConnectionsContent() {
         throw new Error(`File upload failed: ${uploadError.message}`);
       }
 
-
       console.log("Getting public URL...");
       const { data: urlData } = await supabase.storage
         .from("connection-files")
@@ -238,11 +237,13 @@ function UploadConnectionsContent() {
 
 export default function UploadConnectionsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg">Loading...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-lg">Loading...</p>
+        </div>
+      }
+    >
       <UploadConnectionsContent />
     </Suspense>
   );

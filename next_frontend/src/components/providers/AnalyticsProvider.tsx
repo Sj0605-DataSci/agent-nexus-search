@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { ReactNode, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import posthog from 'posthog-js';
-import { useAuth } from '@/hooks/useAuth';
+import { ReactNode, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import posthog from "posthog-js";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AnalyticsProviderProps {
   children: ReactNode;
@@ -15,19 +15,19 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
 
   // Track page views when the route changes
   useEffect(() => {
-    if (pathname && typeof window !== 'undefined') {
+    if (pathname && typeof window !== "undefined") {
       // Get search params safely on the client side only
       const searchParamsString = window.location.search;
-      
+
       let url = window.origin + pathname;
-      
+
       // Add search parameters to the URL if they exist
       if (searchParamsString) {
         url += searchParamsString;
       }
-      
+
       // Capture page view event
-      posthog.capture('$pageview', {
+      posthog.capture("$pageview", {
         $current_url: url,
         path: pathname,
       });
@@ -38,8 +38,8 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
   useEffect(() => {
     // Set super properties that will be included with all events
     posthog.register({
-      app_version: process.env.NEXT_PUBLIC_APP_VERSION || 'unknown',
-      platform: 'web',
+      app_version: process.env.NEXT_PUBLIC_APP_VERSION || "unknown",
+      platform: "web",
       is_authenticated: !!user,
     });
 
@@ -47,7 +47,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     if (user) {
       posthog.register({
         user_id: user.id,
-        email_domain: user.email ? user.email.split('@')[1] : null,
+        email_domain: user.email ? user.email.split("@")[1] : null,
       });
     }
   }, [user]);

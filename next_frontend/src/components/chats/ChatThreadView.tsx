@@ -11,6 +11,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,28 +23,30 @@ import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
 import SearchModeToggle from "./SearchModeToggle";
 import WorldConnectionsToggle from "./WorldConnectionsToggle";
+import FormatToggle from "./FormatToggle";
+import TagCarousel, { TagCategories } from "./TagCarousel";
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const router = useRouter();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
-  // Parse URL search params safely on the client side
+
   const [query, setQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState("00000000-0000-4000-a000-000000000000");
-  
-  // Initialize from URL params on client side only
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       setQuery(urlParams.get("q") || "");
       setSelectedAgent(urlParams.get("agent") || "00000000-0000-4000-a000-000000000000");
     }
   }, []);
-  
+
   const [format, setFormat] = useState<"chat" | "table">("chat");
   const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">("world");
+  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
+    "world"
+  );
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
@@ -66,11 +69,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
   useEffect(() => {
     if (agentsStatus === "idle") dispatch(loadAgents());
-    
+
     // Track page view when component mounts
-    posthog.capture("chat_thread_viewed", { 
+    posthog.capture("chat_thread_viewed", {
       thread_id: threadId,
-      is_new_thread: threadId === "new"
+      is_new_thread: threadId === "new",
     });
   }, [agentsStatus, dispatch, threadId]);
 
@@ -151,9 +154,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     return () => document.removeEventListener("mousedown", handleClickAway);
   }, [showAgentDropdown]);
 
-  // URL params are already handled in the initial useEffect
-  // This effect is no longer needed since we're not using the searchParams hook
-  // The initialization is done in the useEffect at the top of the component
+  const handleTagClick = (tag: string) => {
+    setQuery(tag);
+  };
 
   const handleAgentSelect = (
     e: React.MouseEvent<HTMLButtonElement>,
@@ -171,11 +174,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     }
 
     // Track agent selection
-    posthog.capture("agent_selected", { 
+    posthog.capture("agent_selected", {
       agent_id: id,
-      thread_id: threadId
+      thread_id: threadId,
     });
-    
+
     setSelectedAgent(id);
     setShowAgentDropdown(false);
   };
@@ -184,7 +187,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const handleSearch = async (incoming?: string) => {
     const q = incoming ?? query;
     if (!q.trim()) return;
-    
+
     // Track search query
     posthog.capture("search_initiated", {
       query: q,
@@ -192,7 +195,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       search_mode: searchMode,
       world_connections_mode: worldConnectionsMode,
       format: format,
-      thread_id: threadId
+      thread_id: threadId,
     });
 
     setMessages(m => [
@@ -243,7 +246,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       let sources: any[] = [];
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
-      
+
       // Track search start time for duration calculation
       const searchStartTime = Date.now();
 
@@ -354,7 +357,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 console.log("Sources gathered:", sources);
                 // You could display sources in the UI here
               }
-              
+
               // Track search completion with duration and result metrics
               posthog.capture("search_completed", {
                 query: q,
@@ -365,7 +368,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 thread_id: threadId,
                 duration_ms: Date.now() - searchStartTime,
                 sources_count: sources.length,
-                search_queries_count: searchQueries.length
+                search_queries_count: searchQueries.length,
               });
               break;
           }
@@ -373,14 +376,14 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       );
     } catch (error) {
       console.error("Error sending chat request:", error);
-      
+
       // Track search error
       posthog.capture("search_error", {
         query: q,
         agent_id: selectedAgent,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       // Replace the loading message with an error
       setMessages(m =>
         m.map(msg =>
@@ -403,7 +406,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
-      
+
       // Track search via Enter key
       posthog.capture("search_input_method", { method: "enter_key" });
     } else if (e.key === "Enter" && e.shiftKey) {
@@ -426,7 +429,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     <div>
       <div
         className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 pt-8  flex flex-col ${
-          messages.length ? "pt-8 pb-1" : "min-h-screen justify-center"
+          messages.length ? "pt-1 pb-1" : "min-h-screen justify-center"
         }`}
       >
         <div
@@ -449,7 +452,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         </div>
 
         <div
-          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-6" : "mb-8"} transition-all duration-500`}
+          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8"} transition-all duration-500`}
         >
           <div className="relative flex justify-center">
             <div
@@ -462,7 +465,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             >
               <div className=" flex flex-row w-full items-center">
                 <Search
-                  className={`h-5 w-5 mr-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                  className={`h-5 w-5 mr-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                 />
                 <Textarea
                   placeholder="Search for people by skills, experience, or interests… (Shift+Enter for new line)"
@@ -479,23 +482,29 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   `}
                 />
               </div>
-              <div className=" flex flex-row justify-between w-full">
+              <div className=" flex flex-row justify-between w-full mt-2">
                 <div className="flex items-center gap-2 mr-2">
                   <div className="flex space-x-2">
-                    <SearchModeToggle 
-                      searchMode={searchMode} 
+                    <SearchModeToggle
+                      searchMode={searchMode}
                       darkMode={darkMode}
                       setSearchMode={(mode: "basic" | "deep") => {
-                        // Track search mode change
                         posthog.capture("search_mode_changed", { mode });
                         setSearchMode(mode);
-                      }} 
+                      }}
+                    />
+                    <FormatToggle
+                      format={format}
+                      darkMode={darkMode}
+                      setFormat={(mode: "chat" | "table") => {
+                        posthog.capture("format_changed", { mode });
+                        setFormat(mode);
+                      }}
                     />
                     <WorldConnectionsToggle
                       worldConnectionsMode={worldConnectionsMode}
                       darkMode={darkMode}
                       setWorldConnectionsMode={(mode: "connections" | "world") => {
-                        // Track world connections mode change
                         posthog.capture("world_connections_mode_changed", { mode });
                         setWorldConnectionsMode(mode);
                       }}
@@ -511,7 +520,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     onClick={() => setShowAgentDropdown(s => !s)}
                     disabled={agentsStatus === "loading"}
                     className={`
-                      flex items-center space-x-2 rounded-full px-4 py-1 border mr-3 transition-colors
+                      flex items-center space-x-1 rounded-full px-3 h-[32px] border mr-3 transition-colors
                       ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
                       ${
                         darkMode
@@ -527,8 +536,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                       </>
                     ) : (
                       <>
-                        <span className="text-lg">{agentData?.avatar}</span>
-                        <span className="text-sm font-medium">{agentData?.name}</span>
+                        <span className="text-[18px]">{agentData?.avatar}</span>
+                        <span className="text-[12px] font-medium">{agentData?.name}</span>
                         <ChevronDown className="h-4 w-4 text-gray-500" />
                       </>
                     )}
@@ -595,24 +604,37 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   )}
                 </div>
               </div>
-
               {/* Search Button */}
               {/* <Button
                 onClick={() => handleSearch()}
                 disabled={!query.trim() || isLoading}
                 className={`rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
                   !query.trim() || isLoading
-                    ? darkMode
-                      ? "bg-gray-800 cursor-not-allowed"
-                      : "bg-gray-300 cursor-not-allowed"
-                    : darkMode
-                      ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
-                      : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
-                }`}
-              >
-                Search
-              </Button> */}
+                  ? darkMode
+                  ? "bg-gray-800 cursor-not-allowed"
+                  : "bg-gray-300 cursor-not-allowed"
+                  : darkMode
+                  ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
+                  : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
+                  }`}
+                  >
+                  Search
+                  </Button> */}
             </div>
+          </div>
+          <div className="flex flex-col mt-3">
+            {[
+              { category: TagCategories.GENERAL, speed: 0.5 },
+              { category: TagCategories.SALES, speed: 0.9 },
+              { category: TagCategories.HR, speed: 0.7 },
+            ].map((item, index) => (
+              <TagCarousel
+                key={index}
+                onTagClick={handleTagClick}
+                category={item.category}
+                scrollSpeed={item.speed}
+              />
+            ))}
           </div>
 
           {chatPairs.length > 1 && (

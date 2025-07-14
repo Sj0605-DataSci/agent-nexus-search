@@ -35,7 +35,7 @@ When a user signs in, we automatically identify them in PostHog. This is handled
 If you need to identify a user manually:
 
 ```typescript
-import posthog from 'posthog-js';
+import posthog from "posthog-js";
 
 // Identify a user
 posthog.identify(userId, {
@@ -48,7 +48,7 @@ posthog.identify(userId, {
 Or use the `useAnalytics` hook:
 
 ```typescript
-import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 const { identify } = useAnalytics();
 identify(userId, { email, name });
@@ -65,11 +65,11 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 
 function YourComponent() {
   const { capture } = useAnalytics();
-  
+
   const handleClick = () => {
     capture('button_clicked', { buttonName: 'Submit' });
   };
-  
+
   return <button onClick={handleClick}>Submit</button>;
 }
 ```
@@ -83,11 +83,11 @@ function YourComponent() {
   const handleButtonClick = () => {
     Analytics.trackButtonClick('submit_button', { page: 'checkout' });
   };
-  
+
   const handleError = (error) => {
     Analytics.trackError('api_error', error.message, { endpoint: '/api/data' });
   };
-  
+
   return <button onClick={handleButtonClick}>Submit</button>;
 }
 ```
@@ -119,7 +119,7 @@ function YourComponent() {
       file_name: 'report.pdf'
     });
   };
-  
+
   return <button onClick={handleAction}>Download</button>;
 }
 ```
@@ -167,18 +167,18 @@ function YourComponent() {
 
 ```typescript
 // Step 1: User starts the process
-Analytics.trackFeatureUsage('onboarding_started', { entry_point: 'homepage' });
+Analytics.trackFeatureUsage("onboarding_started", { entry_point: "homepage" });
 
 // Step 2: User completes a form
-Analytics.trackFormSubmission('onboarding_profile_form', { 
+Analytics.trackFormSubmission("onboarding_profile_form", {
   fields_completed: 5,
-  time_spent_seconds: 120
+  time_spent_seconds: 120,
 });
 
 // Step 3: User completes the process
-Analytics.trackFeatureUsage('onboarding_completed', { 
+Analytics.trackFeatureUsage("onboarding_completed", {
   total_time_seconds: 300,
-  steps_completed: 3
+  steps_completed: 3,
 });
 ```
 
@@ -186,21 +186,21 @@ Analytics.trackFeatureUsage('onboarding_completed', {
 
 ```typescript
 // Track when a user views content
-Analytics.trackContentView('article', articleId, { 
+Analytics.trackContentView("article", articleId, {
   category: article.category,
-  author: article.author
+  author: article.author,
 });
 
 // Track when a user shares content
-Analytics.trackShare('article', articleId, 'twitter', { 
-  title: article.title
+Analytics.trackShare("article", articleId, "twitter", {
+  title: article.title,
 });
 
 // Track when a user interacts with content
-posthog.capture('article_interaction', {
+posthog.capture("article_interaction", {
   article_id: articleId,
-  interaction_type: 'comment',
-  comment_length: commentText.length
+  interaction_type: "comment",
+  comment_length: commentText.length,
 });
 ```
 
@@ -211,18 +211,14 @@ try {
   // Your code here
 } catch (error) {
   // Log the error
-  console.error('Error:', error);
-  
+  console.error("Error:", error);
+
   // Track the error in PostHog
-  Analytics.trackError(
-    'api_error', 
-    error.message, 
-    { 
-      endpoint: '/api/data',
-      status_code: error.status || 500,
-      request_id: requestId
-    }
-  );
+  Analytics.trackError("api_error", error.message, {
+    endpoint: "/api/data",
+    status_code: error.status || 500,
+    request_id: requestId,
+  });
 }
 ```
 

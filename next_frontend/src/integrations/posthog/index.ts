@@ -1,28 +1,28 @@
-import posthog from 'posthog-js';
-import { PostHogProvider } from 'posthog-js/react';
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
 
 // Check if we're in a browser environment
-const isClient = typeof window !== 'undefined';
+const isClient = typeof window !== "undefined";
 
 // Initialize PostHog only on the client side
 if (isClient) {
   const apiKey = process.env.NEXT_PUBLIC_POSTHOG_API_KEY;
-  const apiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
+  const apiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com";
 
   if (apiKey) {
     posthog.init(apiKey, {
       api_host: apiHost,
       capture_pageview: true, // Automatically capture pageviews
-      persistence: 'localStorage',
-      loaded: (posthog) => {
-        if (process.env.NODE_ENV === 'development') {
+      persistence: "localStorage",
+      loaded: posthog => {
+        if (process.env.NODE_ENV === "development") {
           // In development, log events to console instead of sending to PostHog
           posthog.debug();
         }
       },
     });
   } else {
-    console.warn('PostHog API key not found. Analytics will not be tracked.');
+    console.warn("PostHog API key not found. Analytics will not be tracked.");
   }
 }
 

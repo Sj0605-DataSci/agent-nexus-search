@@ -261,7 +261,11 @@ const Marketplace = () => {
                       </svg>
                     </div>
                     <div>
-                      <h3 className={`text-2xl font-bold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}>Your AI Team</h3>
+                      <h3
+                        className={`text-2xl font-bold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        Your AI Team
+                      </h3>
                       <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                         Managing your hired agents
                       </p>
