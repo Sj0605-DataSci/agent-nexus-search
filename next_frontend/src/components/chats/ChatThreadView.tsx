@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import {
   Search,
   User as UserIcon,
@@ -58,7 +59,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
   useEffect(() => {
     if (agentsStatus === "idle") dispatch(loadAgents());
-  }, [agentsStatus, dispatch]);
+    
+    // Track page view when component mounts
+    posthog.capture("chat_thread_viewed", { 
+      thread_id: threadId,
+      is_new_thread: threadId === "new"
+    });
+  }, [agentsStatus, dispatch, threadId]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -157,12 +164,19 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     e.stopPropagation();
 
     if (!hired) {
+      // Track when user clicks on non-hired agent
+      posthog.capture("agent_marketplace_redirect", { agent_id: id });
       router.push(`/marketplace?agent=${id}`);
       return;
     }
 
+    // Track agent selection
+    posthog.capture("agent_selected", { 
+      agent_id: id,
+      thread_id: threadId
+    });
+    
     setSelectedAgent(id);
-
     setShowAgentDropdown(false);
   };
   const agentData = agentCards.find(a => a.id === selectedAgent) || agentCards[0];
@@ -170,6 +184,16 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const handleSearch = async (incoming?: string) => {
     const q = incoming ?? query;
     if (!q.trim()) return;
+    
+    // Track search query
+    posthog.capture("search_initiated", {
+      query: q,
+      agent_id: selectedAgent,
+      search_mode: searchMode,
+      world_connections_mode: worldConnectionsMode,
+      format: format,
+      thread_id: threadId
+    });
 
     setMessages(m => [
       ...m,
@@ -219,6 +243,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       let sources: any[] = [];
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
+      
+      // Track search start time for duration calculation
+      const searchStartTime = Date.now();
 
       await apiClient.sendStreamingChatRequest(
         userId,
@@ -327,12 +354,33 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 console.log("Sources gathered:", sources);
                 // You could display sources in the UI here
               }
+              
+              // Track search completion with duration and result metrics
+              posthog.capture("search_completed", {
+                query: q,
+                agent_id: selectedAgent,
+                search_mode: searchMode,
+                world_connections_mode: worldConnectionsMode,
+                format: format,
+                thread_id: threadId,
+                duration_ms: Date.now() - searchStartTime,
+                sources_count: sources.length,
+                search_queries_count: searchQueries.length
+              });
               break;
           }
         }
       );
     } catch (error) {
       console.error("Error sending chat request:", error);
+      
+      // Track search error
+      posthog.capture("search_error", {
+        query: q,
+        agent_id: selectedAgent,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
       // Replace the loading message with an error
       setMessages(m =>
         m.map(msg =>
@@ -355,6 +403,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
+      
+      // Track search via Enter key
+      posthog.capture("search_input_method", { method: "enter_key" });
     } else if (e.key === "Enter" && e.shiftKey) {
       // Allow new line on Shift+Enter
     }
@@ -372,9 +423,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   }, [query]);
 
   return (
-    <div
-      className={`min-h-screen w-full ${darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gradient-to-br from-blue-50 to-purple-50"}`}
-    >
+    <div>
       <div
         className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 pt-8  flex flex-col ${
           messages.length ? "pt-8 pb-1" : "min-h-screen justify-center"
@@ -432,16 +481,26 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               </div>
               <div className=" flex flex-row justify-between w-full">
                 <div className="flex items-center gap-2 mr-2">
-                  <SearchModeToggle
-                    searchMode={searchMode}
-                    darkMode={darkMode}
-                    setSearchMode={setSearchMode}
-                  />
-                  <WorldConnectionsToggle
-                    worldConnectionsMode={worldConnectionsMode}
-                    setWorldConnectionsMode={setWorldConnectionsMode}
-                    darkMode={darkMode}
-                  />
+                  <div className="flex space-x-2">
+                    <SearchModeToggle 
+                      searchMode={searchMode} 
+                      darkMode={darkMode}
+                      setSearchMode={(mode: "basic" | "deep") => {
+                        // Track search mode change
+                        posthog.capture("search_mode_changed", { mode });
+                        setSearchMode(mode);
+                      }} 
+                    />
+                    <WorldConnectionsToggle
+                      worldConnectionsMode={worldConnectionsMode}
+                      darkMode={darkMode}
+                      setWorldConnectionsMode={(mode: "connections" | "world") => {
+                        // Track world connections mode change
+                        posthog.capture("world_connections_mode_changed", { mode });
+                        setWorldConnectionsMode(mode);
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {/* Agent Selector */}

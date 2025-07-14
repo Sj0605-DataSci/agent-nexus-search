@@ -9,6 +9,8 @@ import { store } from "@/store";
 import "react-toastify/dist/ReactToastify.css";
 import Sidebar from "@/components/CustomSideBar/Sidebar";
 import { usePathname } from "next/navigation";
+import { PostHogProvider } from "@/components/providers/PostHogProvider";
+import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -17,17 +19,21 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ReduxProvider store={store}>
         <AuthProvider>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            closeOnClick
-            pauseOnHover
-            limit={4}
-            draggable
-            theme="light"
-          />
-          <main>{children}</main>
+          <PostHogProvider>
+            <AnalyticsProvider>
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                closeOnClick
+                pauseOnHover
+                limit={4}
+                draggable
+                theme="light"
+              />
+              <main>{children}</main>
+            </AnalyticsProvider>
+          </PostHogProvider>
         </AuthProvider>
       </ReduxProvider>
     </QueryClientProvider>
