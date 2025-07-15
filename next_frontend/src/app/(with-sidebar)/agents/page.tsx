@@ -17,8 +17,10 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastMa
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import Link from "next/link";
+import Image from "next/image";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
+import { capitalizeText } from "@/utils/globalconstant";
 
 const Agents = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>("");
@@ -65,6 +67,7 @@ const Agents = () => {
         id: t.id,
         name: t.name,
         avatar: getAgentAvatar(t.category),
+        agentImageUrl: t.image_urls,
         defaultPersonality: "helpful",
         defaultTone: "professional",
         skills: ["Deep Research"],
@@ -76,6 +79,7 @@ const Agents = () => {
       id: string;
       name: string;
       avatar: string;
+      agentImageUrl?: string;
       defaultPersonality: string;
       defaultTone: string;
       skills: string[];
@@ -341,17 +345,32 @@ const Agents = () => {
                         />
                       )}
                       <div className="relative flex items-center space-x-3">
-                        <div className="text-2xl">{getAgentAvatar(agentData.expertise)}</div>
+                        <div className="flex-shrink-0">
+                          {agentData.image_urls ? (
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                              <Image
+                                src={agentData.image_urls}
+                                alt={`${agentData.name} avatar`}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-2xl flex items-center justify-center w-10 h-10">
+                              {getAgentAvatar(agentData.expertise)}
+                            </div>
+                          )}
+                        </div>
                         <div className="text-left">
                           <div
                             className={`font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}
                           >
-                            {agentData.name}
+                            {capitalizeText(agentData.name || "")}
                           </div>
                           <div
                             className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
                           >
-                            {agentData.expertise}
+                            {capitalizeText(agentData.expertise || "")}
                           </div>
                         </div>
                         {selectedAgent === agentData.template_id && (
@@ -381,7 +400,18 @@ const Agents = () => {
                     }`}
                   >
                     <div className="text-center mb-6">
-                      <div className="text-6xl mb-4 animate">{currentAgent.avatar}</div>
+                      {currentAgent.agentImageUrl ? (
+                        <div className="relative w-24 h-24 rounded-full overflow-hidden mb-4">
+                          <Image
+                            src={currentAgent.agentImageUrl}
+                            alt={`${currentAgent.name} avatar`}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-6xl mb-4 animate">{currentAgent.avatar}</div>
+                      )}
                       <h3
                         className={`text-2xl font-bold mb-2 ${darkMode ? "text-white" : "text-gray-800"}`}
                       >
@@ -495,7 +525,11 @@ const Agents = () => {
                     <div className="space-y-8">
                       <div className="space-y-3">
                         <div className="flex items-center space-x-2">
-                          <Label className="text-base font-semibold">Agent Name</Label>
+                          <Label
+                            className={`text-base font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                          >
+                            Agent Name
+                          </Label>
                           <div
                             className={`px-2 py-1 rounded text-xs ${
                               darkMode
@@ -512,15 +546,19 @@ const Agents = () => {
                           placeholder="Give your agent a unique name"
                           className={`text-lg py-3 ${
                             darkMode
-                              ? "bg-gray-700/30 border-gray-600/50 focus:border-blue-500"
-                              : "bg-white/50 border-gray-300/50 focus:border-blue-500"
+                              ? "bg-gray-700/30 border-gray-600/50 text-gray-200 placeholder:text-gray-400 focus:border-blue-500"
+                              : "bg-white/50 border-gray-300/50 text-gray-800 placeholder:text-gray-500 focus:border-blue-500"
                           }`}
                         />
                       </div>
 
                       <div className="space-y-3">
                         <div className="flex items-center space-x-2">
-                          <Label className="text-base font-semibold">Personality Profile</Label>
+                          <Label
+                            className={`text-base font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                          >
+                            Personality Profile
+                          </Label>
                           <div
                             className={`px-2 py-1 rounded text-xs ${
                               darkMode
@@ -548,7 +586,9 @@ const Agents = () => {
 
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                          <Label className="text-base font-semibold flex items-center">
+                          <Label
+                            className={`text-base font-semibold flex items-center ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                          >
                             <svg
                               className="w-4 h-4 mr-2"
                               fill="none"
@@ -575,9 +615,14 @@ const Agents = () => {
                                   : "bg-white/50 border-gray-300/50"
                               }`}
                             >
-                              <SelectValue placeholder="Select tone" />
+                              <SelectValue
+                                placeholder="Select tone"
+                                className={darkMode ? "text-gray-200" : "text-gray-800"}
+                              />
                             </SelectTrigger>
-                            <SelectContent className="bg-white">
+                            <SelectContent
+                              className={`${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-800"}`}
+                            >
                               <SelectItem
                                 value="professional"
                                 className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
@@ -613,7 +658,9 @@ const Agents = () => {
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-base font-semibold flex items-center">
+                          <Label
+                            className={`text-base font-semibold flex items-center ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                          >
                             <svg
                               className="w-4 h-4 mr-2"
                               fill="none"
@@ -642,16 +689,35 @@ const Agents = () => {
                             >
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-white">
-                              <SelectItem value="short">⚡ Short & Concise</SelectItem>
-                              <SelectItem value="medium">📝 Medium Detail</SelectItem>
-                              <SelectItem value="long">📚 Detailed & Comprehensive</SelectItem>
+                            <SelectContent
+                              className={`${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-800"}`}
+                            >
+                              <SelectItem
+                                value="short"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                ⚡ Short & Concise
+                              </SelectItem>
+                              <SelectItem
+                                value="medium"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                📝 Medium Detail
+                              </SelectItem>
+                              <SelectItem
+                                value="long"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                📚 Detailed & Comprehensive
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-3 md:col-span-2">
-                          <Label className="text-base font-semibold flex items-center">
+                          <Label
+                            className={`text-base font-semibold flex items-center ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                          >
                             <svg
                               className="w-4 h-4 mr-2"
                               fill="none"
@@ -680,10 +746,27 @@ const Agents = () => {
                             >
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-white">
-                              <SelectItem value="beginner">🌱 Beginner-friendly</SelectItem>
-                              <SelectItem value="general">🎯 General Knowledge</SelectItem>
-                              <SelectItem value="expert">🎓 Expert Level</SelectItem>
+                            <SelectContent
+                              className={`${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-800"}`}
+                            >
+                              <SelectItem
+                                value="beginner"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                🌱 Beginner-friendly
+                              </SelectItem>
+                              <SelectItem
+                                value="general"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                🎯 General Knowledge
+                              </SelectItem>
+                              <SelectItem
+                                value="expert"
+                                className={`${darkMode ? "hover:bg-gray-700 focus:bg-gray-700" : "hover:bg-gray-100 focus:bg-gray-100"}`}
+                              >
+                                🎓 Expert Level
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

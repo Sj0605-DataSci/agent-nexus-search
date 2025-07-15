@@ -12,6 +12,7 @@ export interface AgentTemplate {
   description?: string;
   created_at: string;
   updated_at: string;
+  image_urls?: string;
 }
 
 export interface AgentTemplateCreate {
@@ -35,6 +36,7 @@ export interface HiredAgent {
   personality?: string;
   tone?: string;
   response_length?: string;
+  image_urls?: string;
   expertise?: string;
   hired_at: string;
   updated_at: string;

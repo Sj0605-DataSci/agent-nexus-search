@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Users } from "lucide-react";
+import Image from "next/image";
 
 interface Agent {
   id: string;
@@ -11,6 +12,7 @@ interface Agent {
   rating: number;
   users: number;
   avatar: string;
+  agentImageUrl?: string;
 }
 
 interface AgentCardProps {
@@ -22,7 +24,18 @@ const AgentCard = ({ agent, onSelect }: AgentCardProps) => {
   return (
     <Card className="bg-white/10 backdrop-blur-md border-white/20 p-6 hover:bg-white/15 transition-all duration-200 hover:scale-105">
       <div className="flex items-center space-x-4 mb-4">
-        <div className="text-3xl">{agent.avatar}</div>
+        {agent.agentImageUrl ? (
+          <div className="relative w-12 h-12 rounded-full overflow-hidden">
+            <Image
+              src={agent.agentImageUrl}
+              alt={`${agent.name} avatar`}
+              fill
+              className="object-cover"
+            />
+          </div>
+        ) : (
+          <div className="text-3xl">{agent.avatar}</div>
+        )}
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-white mb-1">{agent.name}</h3>
           <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">

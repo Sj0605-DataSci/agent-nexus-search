@@ -28,22 +28,60 @@ const Marketplace = () => {
 
   const darkMode = useAppSelector(s => s.theme.dark);
   const templates = useAppSelector(selectTemplates);
-  const marketplaceAgents = templates.map(t => ({
-    id: t.id,
-    name: t.name,
-    description: t.description ?? "—",
-    category: t.category,
-    avatar: getAgentAvatar(t.category),
-    price: "$29/month",
-    rating: 4.8,
-    users: 1_200,
-    features: [
-      "Advanced AI capabilities",
-      "24/7 availability",
-      "Custom configuration",
-      "Multi-language support",
-    ],
-  }));
+  // Helper function to get features and description based on category
+  const getAgentDetails = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "hr":
+        return {
+          features: [
+            "Talent sourcing & candidate matching",
+            "Resume screening & analysis",
+            "Interview scheduling & coordination",
+            "Employee onboarding assistance",
+          ],
+          description:
+            "Streamline recruitment with our HR Agent. Source candidates, analyze resumes, coordinate interviews, and manage onboarding while maintaining personalized communication.",
+        };
+      case "sales":
+        return {
+          features: [
+            "Lead qualification & prioritization",
+            "Personalized outreach campaigns",
+            "Meeting scheduling & follow-ups",
+            "Sales pipeline management",
+          ],
+          description:
+            "Supercharge sales with our Sales Agent. Identify prospects, create personalized outreach, automate follow-ups, and provide insights to close deals faster.",
+        };
+      default: // General agent
+        return {
+          features: [
+            "Multi-source people search",
+            "Contact information verification",
+            "Professional background analysis",
+            "Network visualization & mapping",
+          ],
+          description:
+            "Discover the right people with our General Agent. Search data sources, verify contacts, analyze backgrounds, and visualize networks efficiently.",
+        };
+    }
+  };
+
+  const marketplaceAgents = templates.map(t => {
+    const details = getAgentDetails(t.category);
+    return {
+      id: t.id,
+      name: t.name,
+      agentImageUrl: t.image_urls,
+      description: t.description ?? details.description,
+      category: t.category,
+      avatar: getAgentAvatar(t.category),
+      price: "$29/month",
+      rating: 4.8,
+      users: 1_200,
+      features: details.features,
+    };
+  });
 
   const { user } = useAuth();
   const router = useRouter();

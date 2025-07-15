@@ -1,7 +1,9 @@
 import type { SpringOptions } from "framer-motion";
 import { useRef, useState } from "react";
+import { capitalizeText } from "@/utils/globalconstant";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Star, Users, CheckCircle, Sparkles, Zap, Crown } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,6 +22,7 @@ interface MarketplaceAgent {
   description: string;
   category: Category;
   avatar: string;
+  agentImageUrl?: string;
   price: string;
   rating: number;
   users: number;
@@ -118,7 +121,6 @@ export default function AgentMarketplaceCard({
   });
   const [lastY, setLastY] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
-
   const CategoryIcon = getCategoryIcon(agent.category);
   const gradientClass = getCategoryGradient(agent.category, darkMode);
 
@@ -242,17 +244,18 @@ export default function AgentMarketplaceCard({
             }}
           >
             <div className="relative">
-              <div className="text-5xl mb-2">{agent.avatar}</div>
-              <motion.div
-                className="absolute -inset-2 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-sm"
-                animate={{
-                  scale: isHovering ? [1, 1.2, 1] : 1,
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: isHovering ? Infinity : 0,
-                }}
-              />
+              {agent.agentImageUrl ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden mb-2">
+                  <Image
+                    src={agent.agentImageUrl}
+                    alt={`${agent.name} avatar`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="text-5xl mb-2">{agent.avatar}</div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h3
@@ -268,12 +271,29 @@ export default function AgentMarketplaceCard({
                   darkMode
                     ? "bg-gray-800/80 text-gray-200 border-gray-600/50"
                     : "bg-gray-100/80 text-gray-700 border-gray-300/50"
-                } backdrop-blur-sm flex items-center max-w-14 gap-1`}
+                } backdrop-blur-sm flex items-center max-w-[90px] gap-1 justify-center `}
               >
                 <CategoryIcon className="h-3 w-3" />
-                {agent.category}
+                {capitalizeText(agent.category)}
               </Badge>
             </div>
+            <motion.div
+              className="flex items-center justify-between mb-6"
+              style={{
+                transform: "translateZ(25px)",
+              }}
+            >
+              {isHired && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="flex items-center gap-1 text-green-500"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="text-xs font-medium">Active</span>
+                </motion.div>
+              )}
+            </motion.div>
             {/* <div className="text-right">
               <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                 {agent.price}
@@ -283,7 +303,7 @@ export default function AgentMarketplaceCard({
           </motion.div>
 
           <motion.div
-            className="mb-4 flex-1"
+            className="mb-4 flex-1 min-h-[84px] "
             style={{
               transform: "translateZ(25px)",
             }}
@@ -332,45 +352,7 @@ export default function AgentMarketplaceCard({
           )}
 
           <motion.div
-            className="flex items-center justify-between mb-6"
-            style={{
-              transform: "translateZ(25px)",
-            }}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1">
-                <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                <span
-                  className={`font-semibold text-sm ${
-                    darkMode ? "text-gray-200" : "text-gray-800"
-                  }`}
-                >
-                  {agent.rating}
-                </span>
-              </div>
-              <div
-                className={`flex items-center space-x-1 text-xs ${
-                  darkMode ? "text-gray-400" : "text-gray-500"
-                }`}
-              >
-                <Users className="h-3 w-3" />
-                <span>{agent.users.toLocaleString()}</span>
-              </div>
-            </div>
-            {isHired && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="flex items-center gap-1 text-green-500"
-              >
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-xs font-medium">Active</span>
-              </motion.div>
-            )}
-          </motion.div>
-
-          <motion.div
-            className="mt-auto"
+            className="mt-6"
             style={{
               transform: "translateZ(35px)",
             }}
@@ -394,7 +376,11 @@ export default function AgentMarketplaceCard({
                           variant="secondary"
                           size="sm"
                           disabled
-                          className="shadow-lg cursor-not-allowed"
+                          className={`shadow-lg cursor-not-allowed transition-colors duration-300 ${
+                            darkMode
+                              ? "bg-gray-800/80 text-gray-400 border border-gray-700/50 hover:bg-gray-700/80"
+                              : "bg-gray-100/80 text-gray-500 border border-gray-300/50 hover:bg-gray-200/80"
+                          }`}
                         >
                           Default
                         </Button>
@@ -412,13 +398,21 @@ export default function AgentMarketplaceCard({
                     size="sm"
                     onClick={handleUnhire}
                     disabled={loading === `unhire-${agent.id}`}
-                    className={`shadow-lg hover:shadow-xl transition-all ${darkMode ? "bg-red-900/50 text-red-400/40 border border-red-500/30 hover:bg-red-900/80 hover:text-red-300" : "bg-red-400/70 text-white hover:bg-red-600"}`}
+                    className={`shadow-lg hover:shadow-xl transition-all duration-300 ${
+                      darkMode
+                        ? "bg-red-900/60 text-red-300 border border-red-700/40 hover:bg-red-800/70 hover:text-red-200"
+                        : "bg-red-500/60 text-white border border-red-400/30 hover:bg-red-600"
+                    } ${loading === `unhire-${agent.id}` ? "opacity-80" : ""}`}
                   >
                     {loading === `unhire-${agent.id}` ? (
                       <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                        className={`w-4 h-4 border-2 rounded-full ${
+                          darkMode
+                            ? "border-red-300 border-t-transparent"
+                            : "border-white border-t-transparent"
+                        }`}
                       />
                     ) : (
                       "Remove"
@@ -428,7 +422,7 @@ export default function AgentMarketplaceCard({
               </div>
             ) : (
               <Button
-                className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
+                className="w-full bg-gradient-to-r h-[40px] from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
                 onClick={handleHire}
                 disabled={loading === agent.id}
                 size="sm"
@@ -472,9 +466,6 @@ export default function AgentMarketplaceCard({
           }}
         >
           <div className="font-semibold">{agent.name}</div>
-          <div className="opacity-70">
-            {agent.category} • {agent.rating}★
-          </div>
         </motion.div>
       )}
     </figure>
