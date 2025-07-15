@@ -6,7 +6,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Confetti from "react-confetti";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { FiLock, FiUser, FiMail } from "react-icons/fi";
+import { FiLock, FiUser, FiMail, FiEye, FiEyeOff } from "react-icons/fi";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +37,7 @@ const Signup = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { width, height } = useWindowSize();
   const { signUp } = useAuth();
 
@@ -259,7 +260,7 @@ const Signup = () => {
                 >
                   <div className="relative">
                     <input
-                      type={field === "password" ? "password" : "text"}
+                      type={field === "password" ? (showPassword ? "text" : "password") : "text"}
                       placeholder={
                         field === "name"
                           ? "Full Name"
@@ -268,7 +269,7 @@ const Signup = () => {
                             : "Password"
                       }
                       {...register(field as keyof FormData)}
-                      className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
+                      className={`w-full pl-10 ${field === "password" ? "pr-10" : "pr-4"} py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
                         darkMode
                           ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
                           : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
@@ -283,6 +284,16 @@ const Signup = () => {
                         <FiLock size={18} />
                       )}
                     </span>
+                    {field === "password" && (
+                      <button
+                        type="button"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      >
+                        {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      </button>
+                    )}
                   </div>
 
                   {errors[field as keyof FormData] && (
