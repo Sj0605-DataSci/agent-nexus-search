@@ -413,7 +413,8 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     
     # Initialize Exa API client
     tavily_api_key = settings.TAVILY_API_KEY
-    tavilly_search = TavilyClient(api_key=tavily_api_key)    
+    tavilly_search = TavilyClient(api_key=tavily_api_key) 
+    print(tavily_api_key)   
     # Extract the query from the state
     search_query = state.get("search_query") if isinstance(state, dict) else state.search_query
     

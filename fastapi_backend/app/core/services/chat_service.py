@@ -162,6 +162,9 @@ class ChatService:
             
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)
+
+            if thread_id == "new":
+                thread_id = ""
             
             # Convert string messages to HumanMessage objects if needed
             formatted_messages = []
@@ -417,6 +420,11 @@ class ChatService:
         """
         try:
             logger.info(f"Fetching messages for chat_thread_id={chat_thread_id} and user_id={user_id}")
+            
+            # Convert "new" to empty string to avoid UUID syntax error
+            if chat_thread_id == "new":
+                # If this is a new thread, there are no messages to fetch yet
+                return []
             
             # Query Supabase for messages in the specified chat thread
             response = await self.client.table("chat_messages") \
