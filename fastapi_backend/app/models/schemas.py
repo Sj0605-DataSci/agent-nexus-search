@@ -59,6 +59,7 @@ class AgentTemplateBase(BaseModel):
     category: str
     description: Optional[str] = None
     can_hire_unhire: Optional[bool] = False
+    image_urls: Optional[str] = None
 
 
 class AgentTemplateCreate(AgentTemplateBase):
@@ -69,7 +70,7 @@ class AgentTemplateUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
-
+    image_urls: Optional[str] = None
 
 class AgentTemplateResponse(AgentTemplateBase):
     id: UUID
@@ -90,6 +91,7 @@ class HiredAgentBase(BaseModel):
     response_length: Optional[str] = "medium"
     expertise: Optional[str] = "general"
     can_hire_unhire: Optional[bool] = False
+    image_urls: Optional[str] = None
 
 
 class HiredAgentCreate(HiredAgentBase):
@@ -103,12 +105,14 @@ class HiredAgentUpdate(BaseModel):
     response_length: Optional[str] = None
     expertise: Optional[str] = None
     can_hire_unhire: Optional[bool] = False
+    image_urls: Optional[str] = None
 
 class HiredAgentResponse(HiredAgentBase):
     id: UUID
     hired_at: datetime
     updated_at: datetime
     can_hire_unhire: Optional[bool] = False
+    image_urls: Optional[str] = None
 
     class Config:
         from_attributes = True
