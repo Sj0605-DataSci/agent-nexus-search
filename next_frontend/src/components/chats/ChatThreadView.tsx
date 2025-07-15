@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import posthog from "posthog-js";
 import {
   Search,
@@ -26,93 +27,98 @@ import SearchModeToggle from "./SearchModeToggle";
 import WorldConnectionsToggle from "./WorldConnectionsToggle";
 import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
+import Link from "next/link";
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
   // Helper function to parse structured data for multiple people
   const parseStructuredData = (text: string) => {
-    const lines = text.split('\n').filter(line => line.trim());
-    
+    const lines = text.split("\n").filter(line => line.trim());
+
     // Check if we have structured data with colons
-    if (lines.length === 0 || !lines.some(line => line.includes(':'))) {
+    if (lines.length === 0 || !lines.some(line => line.includes(":"))) {
       return { isStructured: false, people: [], columns: [] };
     }
 
     const people: any[] = [];
-    const columns = ['FName', 'LName', 'Social Links', 'Email', 'Phone No'];
+    const columns = ["FName", "LName", "Social Links", "Email", "Phone No"];
     let currentPerson: any = {};
-    
+
     for (const line of lines) {
-      if (line.includes(':')) {
-        const colonIndex = line.indexOf(':');
+      if (line.includes(":")) {
+        const colonIndex = line.indexOf(":");
         const key = line.substring(0, colonIndex).trim();
         const value = line.substring(colonIndex + 1).trim();
-        
+
         // Normalize key names to match our columns
-        let normalizedKey = '';
-        if (key.toLowerCase().includes('fname') || key.toLowerCase().includes('first')) {
-          normalizedKey = 'FName';
-        } else if (key.toLowerCase().includes('lname') || key.toLowerCase().includes('last')) {
-          normalizedKey = 'LName';
-        } else if (key.toLowerCase().includes('social') || key.toLowerCase().includes('link')) {
-          normalizedKey = 'Social Links';
-        } else if (key.toLowerCase().includes('email')) {
-          normalizedKey = 'Email';
-        } else if (key.toLowerCase().includes('phone')) {
-          normalizedKey = 'Phone No';
+        let normalizedKey = "";
+        if (key.toLowerCase().includes("fname") || key.toLowerCase().includes("first")) {
+          normalizedKey = "FName";
+        } else if (key.toLowerCase().includes("lname") || key.toLowerCase().includes("last")) {
+          normalizedKey = "LName";
+        } else if (key.toLowerCase().includes("social") || key.toLowerCase().includes("link")) {
+          normalizedKey = "Social Links";
+        } else if (key.toLowerCase().includes("email")) {
+          normalizedKey = "Email";
+        } else if (key.toLowerCase().includes("phone")) {
+          normalizedKey = "Phone No";
         }
-        
+
         if (normalizedKey) {
           // If we're starting a new person (FName is usually first)
-          if (normalizedKey === 'FName' && Object.keys(currentPerson).length > 0) {
+          if (normalizedKey === "FName" && Object.keys(currentPerson).length > 0) {
             people.push(currentPerson);
             currentPerson = {};
           }
-          
+
           currentPerson[normalizedKey] = value;
         }
       }
     }
-    
+
     // Add the last person
     if (Object.keys(currentPerson).length > 0) {
       people.push(currentPerson);
     }
-    
-    return { 
-      isStructured: people.length > 0, 
-      people, 
-      columns 
+
+    return {
+      isStructured: people.length > 0,
+      people,
+      columns,
     };
   };
 
   // Helper function to convert table data to CSV and download
   const downloadAsCSV = (people: any[], columns: string[]) => {
     if (people.length === 0) return;
-    
+
     // Create CSV content
     const csvContent = [
       // Header row
-      columns.join(','),
+      columns.join(","),
       // Data rows
-      ...people.map(person => 
-        columns.map(column => {
-          const value = person[column] || 'N/A';
-          // Escape quotes and wrap in quotes if contains comma or quote
-          const escapedValue = value.toString().replace(/"/g, '""');
-          return escapedValue.includes(',') || escapedValue.includes('"') || escapedValue.includes('\n') 
-            ? `"${escapedValue}"` 
-            : escapedValue;
-        }).join(',')
-      )
-    ].join('\n');
-    
+      ...people.map(person =>
+        columns
+          .map(column => {
+            const value = person[column] || "N/A";
+            // Escape quotes and wrap in quotes if contains comma or quote
+            const escapedValue = value.toString().replace(/"/g, '""');
+            return escapedValue.includes(",") ||
+              escapedValue.includes('"') ||
+              escapedValue.includes("\n")
+              ? `"${escapedValue}"`
+              : escapedValue;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
     // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute("href", url);
+    link.setAttribute("download", `contacts_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -121,11 +127,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   // Helper function to render structured data as Excel-style table
   const renderAsTable = (content: string) => {
     const { people, columns } = parseStructuredData(content);
-    
+
     if (people.length === 0) {
       return <div className="whitespace-pre-wrap">{content}</div>;
     }
-    
+
     return (
       <div>
         {/* Download button */}
@@ -135,8 +141,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             variant="outline"
             size="sm"
             className={`flex items-center gap-2 ${
-              darkMode 
-                ? "border-gray-600 text-gray-300 hover:bg-gray-800" 
+              darkMode
+                ? "border-gray-600 text-gray-300 hover:bg-gray-800"
                 : "border-gray-300 text-gray-700 hover:bg-gray-50"
             }`}
           >
@@ -144,47 +150,71 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             Download CSV
           </Button>
         </div>
-        
+
         <div className="overflow-x-auto">
-          <table className={`min-w-full divide-y divide-gray-200 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-          <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
-            <tr>
-              {columns.map((column, index) => (
-                <th key={index} scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-            {people.map((person, personIndex) => (
-              <tr key={personIndex} className={personIndex % 2 === 0 ? (darkMode ? "bg-gray-900" : "bg-white") : (darkMode ? "bg-gray-800" : "bg-gray-50")}>
-                {columns.map((column, columnIndex) => (
-                  <td key={columnIndex} className="px-4 py-4 whitespace-normal text-sm break-words">
-                    {person[column] ? (
-                      person[column] === "null" || person[column] === "N/A" ? (
-                        <span className="text-gray-400">N/A</span>
-                      ) : column === "Social Links" ? (
-                        person[column].split(',').map((link: string, i: number) => (
-                          <div key={i} className="mb-1">
-                            <a href={link.trim()} target="_blank" rel="noopener noreferrer" 
-                               className="text-blue-500 hover:underline text-xs">
-                              {link.trim()}
-                            </a>
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-sm">{person[column]}</span>
-                      )
-                    ) : (
-                      <span className="text-gray-400">N/A</span>
-                    )}
-                  </td>
+          <table
+            className={`min-w-full divide-y divide-gray-200 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+          >
+            <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
+              <tr>
+                {columns.map((column, index) => (
+                  <th
+                    key={index}
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  >
+                    {column}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
+              {people.map((person, personIndex) => (
+                <tr
+                  key={personIndex}
+                  className={
+                    personIndex % 2 === 0
+                      ? darkMode
+                        ? "bg-gray-900"
+                        : "bg-white"
+                      : darkMode
+                        ? "bg-gray-800"
+                        : "bg-gray-50"
+                  }
+                >
+                  {columns.map((column, columnIndex) => (
+                    <td
+                      key={columnIndex}
+                      className="px-4 py-4 whitespace-normal text-sm break-words"
+                    >
+                      {person[column] ? (
+                        person[column] === "null" || person[column] === "N/A" ? (
+                          <span className="text-gray-400">N/A</span>
+                        ) : column === "Social Links" ? (
+                          person[column].split(",").map((link: string, i: number) => (
+                            <div key={i} className="mb-1">
+                              <a
+                                href={link.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:underline text-xs"
+                              >
+                                {link.trim()}
+                              </a>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-sm">{person[column]}</span>
+                        )
+                      ) : (
+                        <span className="text-gray-400">N/A</span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -228,7 +258,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const dispatch = useAppDispatch();
   const agentsStatus = useAppSelector(selectAgentsStatus);
   const agentCards = useAppSelector(selectAgentCards);
-
+  console.log("agentCards", agentCards);
   // const templates = useAppSelector(selectTemplates);
   // const hiredAgents = useAppSelector(selectHired);
 
@@ -697,7 +727,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
   }, [query]);
-  console.log("messages?.length", messages?.length);
 
   return (
     <div>
@@ -794,11 +823,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     onClick={() => setShowAgentDropdown(s => !s)}
                     disabled={agentsStatus === "loading"}
                     className={`
-                      flex items-center space-x-1 rounded-full px-3 h-[32px] border mr-3 transition-colors
+                      flex items-center gap-2 rounded-full px-4 py-1 border mr-3 
+                      transition-all duration-200 shadow-sm hover:shadow h-[26px]
                       ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
                       ${
                         darkMode
-                          ? "border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700"
+                          ? "border-gray-700/60 bg-gray-800/80 text-gray-200 hover:bg-gray-700/90"
                           : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                       }
                     `}
@@ -806,13 +836,28 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     {agentsStatus === "loading" ? (
                       <>
                         <span className="block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                        <span className="text-sm">Loading...</span>
+                        <span className="text-sm font-medium">Loading...</span>
                       </>
                     ) : (
                       <>
-                        <span className="text-[18px]">{agentData?.avatar}</span>
+                        {agentData?.agentImageUrl ? (
+                          <div className="relative w-4 h-4 rounded-full overflow-hidden">
+                            <Image
+                              src={agentData.agentImageUrl}
+                              alt={`${agentData.name} avatar`}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <span className="flex items-center justify-center w-4 h-4 text-md">
+                            {agentData?.avatar}
+                          </span>
+                        )}
                         <span className="text-[12px] font-medium">{agentData?.name}</span>
-                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                        <ChevronDown
+                          className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showAgentDropdown ? "rotate-180" : ""}`}
+                        />
                       </>
                     )}
                   </Button>
@@ -820,58 +865,167 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   {showAgentDropdown && (
                     <div
                       ref={dropdownRef}
-                      className={`absolute right-0 top-full mt-2 w-64 rounded-xl shadow-lg z-[500] overflow-hidden ${
-                        darkMode
-                          ? "bg-gray-900 border border-gray-700"
-                          : "bg-white border border-gray-200"
-                      }`}
+                      className={`absolute right-0 top-full mt-2 w-[240px] rounded-xl shadow-xl z-[500] overflow-hidden
+                    transform transition-all duration-200 origin-top-right
+                    animate-in fade-in slide-in-from-top-5 zoom-in-95
+                    ${
+                      darkMode
+                        ? "bg-gray-900 border border-gray-700/70"
+                        : "bg-white border border-gray-200"
+                    }`}
                     >
-                      <div className="px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
-                        <p
-                          className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}
-                        >
-                          Select Agent
-                        </p>
+                      <div
+                        className={`px-4 py-3 border-b ${darkMode ? "border-gray-700/70" : "border-gray-200"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p
+                            className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}
+                          >
+                            Select Agent
+                          </p>
+                          <div
+                            className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-600"}`}
+                          >
+                            {agentCards.length} agents
+                          </div>
+                        </div>
                       </div>
-                      <div className="py-2">
+
+                      <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
                         {agentsStatus === "loading" ? (
-                          <div className="p-4 text-center text-sm text-gray-500">
-                            Loading your agents…
+                          <div className="p-6 flex flex-col items-center justify-center gap-2">
+                            <span className="block h-6 w-6 rounded-full border-2 border-current border-t-transparent animate-spin text-blue-500" />
+                            <p className="text-sm text-gray-500">Loading your agents...</p>
+                          </div>
+                        ) : agentCards.length === 0 ? (
+                          <div className="p-6 text-center">
+                            <p
+                              className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
+                            >
+                              No agents available
+                            </p>
+                            <Link
+                              href="/marketplace"
+                              className={`mt-2 inline-block text-sm font-medium ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                            >
+                              Visit marketplace
+                            </Link>
                           </div>
                         ) : (
-                          agentCards.map(a => (
-                            <button
-                              type="button"
-                              key={a.id}
-                              onClick={e => handleAgentSelect(e, a.id, a.hired)}
-                              className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors text-sm ${
-                                darkMode
-                                  ? "hover:bg-gray-800 text-gray-300"
-                                  : "hover:bg-gray-100 text-gray-900"
-                              }`}
-                            >
-                              <span className="flex items-center space-x-3">
-                                <span className="text-xl">{a?.avatar}</span>
-                                <span>{a?.name}</span>
-                              </span>
-                              <div className="flex items-center space-x-3">
-                                {!a.hired && (
-                                  <span
-                                    className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                      darkMode
-                                        ? "bg-blue-600/20 text-blue-300"
-                                        : "bg-blue-100 text-blue-600"
-                                    }`}
+                          <>
+                            <div className="pt-1">
+                              {agentCards.filter(a => a.hired).length > 0 && (
+                                <div
+                                  className={`px-4 py-1.5 text-xs font-medium ${darkMode ? "text-gray-500" : "text-gray-400"}`}
+                                >
+                                  Your agents
+                                </div>
+                              )}
+                              {agentCards
+                                .filter(a => a.hired)
+                                .map(a => (
+                                  <button
+                                    type="button"
+                                    key={a.id}
+                                    onClick={e => handleAgentSelect(e, a.id, a.hired)}
+                                    className={`w-full flex items-center justify-between px-4 py-1 text-left transition-colors text-sm
+                                      ${
+                                        agentData?.id === a.id
+                                          ? darkMode
+                                            ? "bg-gray-800/80"
+                                            : "bg-gray-100/80"
+                                          : darkMode
+                                            ? "hover:bg-gray-800/40"
+                                            : "hover:bg-gray-50"
+                                      }
+                                      ${darkMode ? "text-gray-300" : "text-gray-900"}
+                                    `}
                                   >
-                                    Hire
-                                  </span>
-                                )}
-                                {agentData?.id === a.id && (
-                                  <Check className="h-5 w-5 text-blue-500" />
-                                )}
-                              </div>
-                            </button>
-                          ))
+                                    <span className="flex items-center gap-3">
+                                      {a?.agentImageUrl ? (
+                                        <div className="relative w-7 h-7 rounded-full overflow-hidden">
+                                          <Image
+                                            src={a.agentImageUrl}
+                                            alt={`${a.name} avatar`}
+                                            fill
+                                            className="object-cover"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <span
+                                          className={`flex items-center justify-center w-7 h-7 text-xl rounded-full
+                                          ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}
+                                        >
+                                          {a?.avatar}
+                                        </span>
+                                      )}
+                                      <span className="font-medium ">{a?.name}</span>
+                                    </span>
+                                    {agentData?.id === a.id && (
+                                      <Check className="h-5 w-5 text-blue-500" />
+                                    )}
+                                  </button>
+                                ))}
+                            </div>
+
+                            {agentCards.filter(a => !a.hired).length > 0 && (
+                              <>
+                                <div
+                                  className={`pt-1 pb-2 border-t ${darkMode ? "border-gray-800" : "border-gray-100"}`}
+                                >
+                                  <div
+                                    className={`px-4 py-1.5 text-xs font-medium ${darkMode ? "text-gray-500" : "text-gray-400"}`}
+                                  >
+                                    Available to hire
+                                  </div>
+                                  {agentCards
+                                    .filter(a => !a.hired)
+                                    .map(a => (
+                                      <button
+                                        type="button"
+                                        key={a.id}
+                                        onClick={e => handleAgentSelect(e, a.id, a.hired)}
+                                        className={`w-full flex items-center justify-between px-4 py-1 text-left transition-colors text-sm
+                                          ${darkMode ? "hover:bg-gray-800/40 text-gray-400" : "hover:bg-gray-50 text-gray-600"}
+                                        `}
+                                      >
+                                        <span className="flex items-center gap-3">
+                                          {a?.agentImageUrl ? (
+                                            <div className="relative w-7 h-7 rounded-full overflow-hidden">
+                                              <Image
+                                                src={a.agentImageUrl}
+                                                alt={`${a.name} avatar`}
+                                                fill
+                                                className="object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <span
+                                              className={`flex items-center justify-center w-7 h-7 text-xl rounded-full
+                                              ${darkMode ? "bg-gray-800/50" : "bg-gray-100"}`}
+                                            >
+                                              {a?.avatar}
+                                            </span>
+                                          )}
+                                          <span>{a?.name}</span>
+                                        </span>
+                                        <span
+                                          className={`text-xs px-2.5 py-1 rounded-full font-medium
+                                            ${
+                                              darkMode
+                                                ? "bg-blue-900/30 text-blue-300 border border-blue-800/30"
+                                                : "bg-blue-50 text-blue-600 border border-blue-100"
+                                            }
+                                          `}
+                                        >
+                                          Hire
+                                        </span>
+                                      </button>
+                                    ))}
+                                </div>
+                              </>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -897,8 +1051,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   </Button> */}
             </div>
           </div>
-          {/* {!(messages.length > 0) && (
-            <div className="flex relative flex-col w-full z-[5] mt-3">
+          {!(messages.length > 0) && (
+            <div className="flex  flex-col w-full z-[5] mt-3">
               {[
                 { category: TagCategories.GENERAL, speed: 0.4 },
                 { category: TagCategories.SALES, speed: 0.8 },
@@ -912,7 +1066,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 />
               ))}
             </div>
-          )} */}
+          )}
           {chatPairs.length > 1 && (
             <div className="flex justify-center items-center gap-3 mt-6">
               <Button
@@ -985,15 +1139,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                         />
                       </div>
                       <div className="flex-1">
-                        <div
-                          className={`${
-                            darkMode ? "text-gray-300" : "text-gray-700"
-                          }`}
-                        >
-                          {format === "table" && parseStructuredData(m.content).isStructured 
-                            ? renderAsTable(m.content)
-                            : <div className="whitespace-pre-wrap">{m.content}</div>
-                          }
+                        <div className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                          {format === "table" && parseStructuredData(m.content).isStructured ? (
+                            renderAsTable(m.content)
+                          ) : (
+                            <div className="whitespace-pre-wrap">{m.content}</div>
+                          )}
                         </div>
                         <div className="mt-4 flex justify-between items-center">
                           <span

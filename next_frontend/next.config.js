@@ -18,6 +18,9 @@ const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
   },
+  images: {
+    domains: ["wznveojncixcptajnjom.supabase.co"],
+  },
   pwa: {
     dest: "public",
     register: true,

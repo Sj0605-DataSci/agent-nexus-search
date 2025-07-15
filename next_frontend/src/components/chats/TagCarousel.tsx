@@ -146,7 +146,7 @@ function TagCarousel({ onTagClick, category, scrollSpeed = 1 }: TagCarouselProps
   }, [handleScroll]);
 
   return (
-    <div className={`relative w-full -mb-1.5`}>
+    <div className={` w-full -mb-1.5`}>
       <div
         ref={scrollRef}
         className={`flex overflow-x-auto gap-3 py-2 px-2 scrollbar-hide `}

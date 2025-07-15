@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppSelector } from "@/store";
+import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 
 interface UserProfile {
   id: string;
@@ -119,7 +120,41 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-4">
-              <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+              <h2
+                className={`text-xl font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}
+              >
+                Appearance
+              </h2>
+              <div
+                className={`p-4 rounded-lg border flex items-center justify-between ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={`h-6 w-6 ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                  <span className={`font-medium ${darkMode ? "text-gray-100" : "text-gray-800"}`}>
+                    Theme
+                  </span>
+                </div>
+                <ToggleSystemTheme size={18} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h2
+                className={`text-xl font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}
+              >
                 Connection Status
               </h2>
               <div
@@ -128,21 +163,25 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-blue-600"
+                    className={`h-6 w-6 ${darkMode ? "text-blue-400" : "text-blue-600"}`}
                     viewBox="0 0 24 24"
                     fill="currentColor"
                   >
                     <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
                   </svg>
-                  <span className="font-medium">LinkedIn Connections</span>
+                  <span className={`font-medium ${darkMode ? "text-gray-100" : "text-gray-800"}`}>
+                    LinkedIn Connections
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {profile.has_connections ? (
                     <>
-                      <span className="text-green-600 dark:text-green-400">Connected</span>
+                      <span className={`${darkMode ? "text-green-400" : "text-green-600"}`}>
+                        Connected
+                      </span>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-green-600 dark:text-green-400"
+                        className={`h-5 w-5 ${darkMode ? "text-green-400" : "text-green-600"}`}
                         viewBox="0 0 20 20"
                         fill="currentColor"
                       >
@@ -155,10 +194,12 @@ export default function ProfilePage() {
                     </>
                   ) : (
                     <>
-                      <span className="text-red-600 dark:text-red-400">Not Connected</span>
+                      <span className={`${darkMode ? "text-red-400" : "text-red-600"}`}>
+                        Not Connected
+                      </span>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-red-600 dark:text-red-400"
+                        className={`h-5 w-5 ${darkMode ? "text-red-400" : "text-red-600"}`}
                         viewBox="0 0 20 20"
                         fill="currentColor"
                       >
@@ -171,7 +212,7 @@ export default function ProfilePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="ml-2 text-sm bg-transparent dark:bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className={`ml-2 text-sm bg-transparent border-${darkMode ? "gray-600" : "gray-300"} hover:bg-${darkMode ? "gray-700" : "gray-100"}`}
                         onClick={handleConnectionsClick}
                       >
                         Import
@@ -233,18 +274,19 @@ export default function ProfilePage() {
                     "_blank"
                   )
                 }
-                className="w-full flex items-center justify-center gap-2 py-6"
+                className={`w-full flex items-center justify-center gap-2 py-6 ${darkMode ? "border-gray-600 hover:bg-gray-700 text-white" : "border-gray-300 hover:bg-gray-100 text-gray-900"}`}
                 variant="outline"
               >
-                <Download className="h-5 w-5" />
+                <Download className={`h-5 w-5 ${darkMode ? "text-gray-300" : "text-gray-700"}`} />
                 Install Browser Extension
               </Button>
 
               <Button
                 onClick={() => router.push("/profile/upload-connections")}
                 className="w-full flex items-center justify-center gap-2 py-6"
+                variant={darkMode ? "default" : "default"}
               >
-                <Upload className="h-5 w-5" />
+                <Upload className={`h-5 w-5 ${darkMode ? "text-gray-100" : "text-white"}`} />
                 Upload CSV File
               </Button>
             </div>

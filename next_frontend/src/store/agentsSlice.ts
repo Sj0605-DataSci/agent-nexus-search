@@ -56,7 +56,6 @@ export const selectAgentsStatus = (s: RootState) => s.agents.status;
 export const selectAgentCards = (s: RootState) => {
   const { templates, hired } = s.agents;
   const tplById = new Map(templates.map(t => [t.id, t]));
-
   return [
     ...hired.map(h => {
       const t = tplById.get(h.template_id);
@@ -65,6 +64,7 @@ export const selectAgentCards = (s: RootState) => {
         name: h.name ?? t?.name ?? "Unnamed",
         avatar: getAgentAvatar(t?.category),
         hired: true,
+        agentImageUrl: h.image_urls,
       };
     }),
     ...templates
@@ -74,6 +74,7 @@ export const selectAgentCards = (s: RootState) => {
         name: t.name,
         avatar: getAgentAvatar(t.category),
         hired: false,
+        agentImageUrl: t.image_urls,
       })),
   ];
 };
