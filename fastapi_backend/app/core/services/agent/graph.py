@@ -412,7 +412,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
         num_results = state["number_of_results_returned"]
     
     # Initialize Exa API client
-    tavily_api_key = settings.TAVILY_API_KEY
+    tavily_api_key = "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"
     tavilly_search = TavilyClient(api_key=tavily_api_key) 
     print(tavily_api_key)   
     # Extract the query from the state
@@ -971,6 +971,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     if state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "chat":
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
+            links=state["sources_gathered"],
             agent_config=state["agent_config"],
             research_topic=get_research_topic(state["messages"]),
             summaries=str(state["web_research_result"]),
@@ -979,6 +980,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "chat":
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
+            links=state["sources_gathered"],
             agent_config=state["agent_config"],
             research_topic=get_research_topic(state["messages"]),
             summaries=str(state["web_research_result"]),
@@ -1005,6 +1007,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     else:
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
+            links=state["sources_gathered"],
             agent_config=state["agent_config"],
             research_topic=state.get("messages", []),
             summaries="",

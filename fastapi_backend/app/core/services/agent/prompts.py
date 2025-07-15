@@ -85,7 +85,7 @@ Instructions:
 - You have access to all the information gathered from the previous steps.
 - You have access to the user's question.
 - Go in depth and provide a detailed answer.
-- Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
+- Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](link from below links)). THIS IS A MUST.
 
 User Context:
 - {research_topic}
@@ -98,7 +98,8 @@ Write in plain text as if you're having a conversation with the user.
 Include relevant information from the sources and cite them properly.
 Be natural in your response.
 
-If you have a list of people, render them in a list way, or render a table.
+Use these links:
+{links}
 
 """
 
@@ -193,7 +194,11 @@ Instructions:
 - You have access to all the information gathered from the previous steps.
 - You have access to the user's question.
 - Go in depth and provide a detailed answer.
-- Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [apnews](https://vertexaisearch.cloud.google.com/id/1-0)). THIS IS A MUST.
+- Include the sources you used from the Summaries in the answer correctly, use markdown format 
+- EXAMPLE: ([apnews](link from below links)
+
+Use these links:
+{links}
 
 User Context:
 - {research_topic}
@@ -228,8 +233,5 @@ Phone No : 1234567890
 if any field has empty value, type null in front of that field
 
 Always give correct links and do not give any fake links
-
-Sources:
-{links}
 
 """
