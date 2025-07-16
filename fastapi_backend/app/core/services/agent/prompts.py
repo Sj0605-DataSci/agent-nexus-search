@@ -101,6 +101,14 @@ Be natural in your response.
 Use these links:
 {links}
 
+NEVER ADD THE BELOW PARA AND LINES IN FINAL ANSWER :
+If you're looking to connect with professionals like these, LinkedIn is an excellent platform. You can use targeted search queries such as:
+*   `"Bharat" "UiPath" site:linkedin.com/in/`
+*   `"Bharat Kumar" "UiPath" "RPA Solution Architect" site:linkedin.com/in/`
+*   `"Bharat Juneja" "UiPath" "RPA Solutions Architect" site:linkedin.com/in/`
+*   `"Bharat Verma" "UiPath" "Software Engineer" site:linkedin.com/in/`
+*   `"Bharat P." "UiPath Certified RPA Associate" "Program Manager" site:linkedin.com/in/`
+
 """
 
 optimised_query_instructions = """You are an expert at optimizing search queries for finding professional profiles.
