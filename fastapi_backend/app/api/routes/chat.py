@@ -8,8 +8,9 @@ import logging
 from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
 
-# Set up logging
-logger = logging.getLogger(__name__)
+# Set up structured logging
+from app.core.structured_logger import get_structured_logger
+logger = get_structured_logger(__name__)
 
 # Create router
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -44,7 +45,12 @@ async def process_chat(
         ))
     except HTTPException as e:
         # Log the error
-        logger.error(f"HTTP Exception in process_chat: {e.detail}")
+        logger.error("HTTP exception in chat processing",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    user_id=request.user_id,
+                    agent_id=request.agent_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -53,8 +59,11 @@ async def process_chat(
         ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
-        logger.error(f"Unexpected error in process_chat: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in chat processing",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=request.user_id,
+                        agent_id=request.agent_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -90,7 +99,11 @@ async def stream_chat(
             thread_id=request.thread_id
         )
         
-        logger.info(f"Chat request queued with ID: {request_id}")
+        logger.log_chat_event("chat_request_queued",
+                              user_id=request.user_id,
+                              agent_id=request.agent_id,
+                              chat_thread_id=request.thread_id,
+                              request_id=request_id)
         
         # Return a streaming response that subscribes to the Redis Pub/Sub channel
         return StreamingResponse(
@@ -100,8 +113,12 @@ async def stream_chat(
         
     except Exception as e:
         # Log the error
-        logger.error(f"Error queueing chat request: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Error queueing chat request",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=request.user_id,
+                        agent_id=request.agent_id,
+                        chat_thread_id=request.thread_id)
         
         # Return an error response
         async def error_generator():
@@ -133,6 +150,10 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
         # Get chat threads for the user
         threads = await chat_service.get_chat_threads(user_id)
         
+        logger.info("Chat threads retrieved successfully",
+                   user_id=user_id,
+                   thread_count=len(threads) if threads else 0)
+        
         return StandardJSONResponse(StandardResponse(
             success=True,
             status_code=status.HTTP_200_OK,
@@ -140,7 +161,11 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
             data=threads
         ))
     except HTTPException as e:
-        logger.error(f"HTTP Exception in get_chat_threads: {e.detail}")
+        logger.error("HTTP exception in get_chat_threads",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    user_id=user_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -148,8 +173,10 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
             data=None
         ))
     except Exception as e:
-        logger.error(f"Unexpected error in get_chat_threads: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in get_chat_threads",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=user_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -178,6 +205,11 @@ async def get_messages_for_thread(
         # Get messages for the chat thread
         messages = await chat_service.get_messages_for_thread(user_id, chat_thread_id)
         
+        logger.info("Chat messages retrieved successfully",
+                   user_id=user_id,
+                   chat_thread_id=chat_thread_id,
+                   message_count=len(messages) if messages else 0)
+        
         return StandardJSONResponse(StandardResponse(
             success=True,
             status_code=status.HTTP_200_OK,
@@ -185,7 +217,12 @@ async def get_messages_for_thread(
             data=messages
         ))
     except HTTPException as e:
-        logger.error(f"HTTP Exception in get_messages_for_thread: {e.detail}")
+        logger.error("HTTP exception in get_messages_for_thread",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    user_id=user_id,
+                    chat_thread_id=chat_thread_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -193,8 +230,11 @@ async def get_messages_for_thread(
             data=None
         ))
     except Exception as e:
-        logger.error(f"Unexpected error in get_messages_for_thread: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in get_messages_for_thread",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=user_id,
+                        chat_thread_id=chat_thread_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

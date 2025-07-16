@@ -13,8 +13,9 @@ from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.services.agent_template_service import AgentTemplateService
 from app.db.redis_client import cache_get, cache_set, cache_delete, cache_invalidate_pattern
 
-# Set up logging
-logger = logging.getLogger(__name__)
+# Set up structured logging
+from app.core.structured_logger import get_structured_logger
+logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/agent_templates", tags=["agent_templates"])
 
@@ -33,7 +34,9 @@ async def create_agent_template(
         
         # Invalidate the agent templates list cache
         # await cache_invalidate_pattern("agent_templates:list:*")
-        logger.info("Invalidated agent templates cache after creation")
+        logger.info("Agent template created successfully",
+                   template_name=template.name,
+                   template_category=template.category)
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -49,8 +52,10 @@ async def create_agent_template(
             data=None
         ))
     except Exception as e:
-        logger.error(f"Error in create_agent_template: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Error creating agent template",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        template_name=template.name if hasattr(template, 'name') else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -84,6 +89,11 @@ async def get_agent_templates(
         service = AgentTemplateService(client=await get_async_supabase_client())
         template_responses = await service.get_templates(skip, limit)
         
+        logger.info("Agent templates retrieved successfully",
+                   count=len(template_responses) if template_responses else 0,
+                   skip=skip,
+                   limit=limit)
+        
         # Store in cache for future requests (expire in 5 minutes)
         # await cache_set(cache_key, template_responses, expire=300)
         
@@ -101,8 +111,11 @@ async def get_agent_templates(
             data=None
         ))
     except Exception as e:
-        logger.error(f"Error in get_agent_templates: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Error retrieving agent templates",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        skip=skip,
+                        limit=limit)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -161,8 +174,10 @@ async def get_agent_template(
             data=None
         ))
     except Exception as e:
-        logger.error(f"Error in get_agent_template: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Error retrieving agent template",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        template_id=str(template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -211,8 +226,10 @@ async def update_agent_template(
             data=None
         ))
     except Exception as e:
-        logger.error(f"Error in update_agent_template: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Error updating agent template",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        template_id=str(template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -260,8 +277,10 @@ async def delete_agent_template(
             data=None
         ))
     except Exception as e:
-        logger.error(f"Error in delete_agent_template: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Error deleting agent template",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        template_id=str(template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -10,22 +10,27 @@ GOOGLE_API_KEY = settings.GOOGLE_API_KEY
 
 # LangChain Gemini Chat Model wrapper
 class GeminiChatModel:
-    def __init__(self, model="gemini-2.5-flash", temperature=0, thinking_budget=0):
+    def __init__(self, model="gemini-2.5-flash", temperature=0, thinking_budget=0, system_instruction=None):
+        # Prepare model_kwargs for system_instruction if provided
+        model_kwargs = {}
+        if system_instruction:
+            model_kwargs["system_instruction"] = system_instruction
+            
         if model == "gemini-2.5-flash":
             self.model = ChatGoogleGenerativeAI(
-            model=model,
-            temperature=temperature,
-            google_api_key=GOOGLE_API_KEY,
-            convert_system_message_to_human=True,
-            thinking_budget=thinking_budget
-        )
+                model=model,
+                temperature=temperature,
+                google_api_key=GOOGLE_API_KEY,
+                thinking_budget=thinking_budget,
+                model_kwargs=model_kwargs
+            )
         elif model == "gemini-2.5-pro":
             self.model = ChatGoogleGenerativeAI(
-            model=model,
-            temperature=temperature,
-            google_api_key=GOOGLE_API_KEY,
-            convert_system_message_to_human=True
-        )
+                model=model,
+                temperature=temperature,
+                google_api_key=GOOGLE_API_KEY,
+                model_kwargs=model_kwargs
+            )
     
     @weave.op
     def invoke(self, prompt):

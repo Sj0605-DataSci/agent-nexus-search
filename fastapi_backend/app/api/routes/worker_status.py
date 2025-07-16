@@ -13,8 +13,9 @@ from app.db.redis_client import redis_client
 from app.core.worker import CHAT_QUEUE, CHAT_PROCESSING
 from app.core.memory import get_memory_usage
 
-# Configure logging
-logger = logging.getLogger(__name__)
+# Set up structured logging
+from app.core.structured_logger import get_structured_logger
+logger = get_structured_logger(__name__)
 
 # Create router
 router = APIRouter(prefix="/worker", tags=["worker"])
@@ -50,6 +51,12 @@ async def check_redis_health():
             except:
                 pass
         
+        logger.info("Redis health check completed",
+                   ping_success=ping_success,
+                   ping_latency_ms=ping_latency if ping_success else None,
+                   error_message=error_message,
+                   redis_status="connected" if ping_success else "disconnected")
+        
         return JSONResponse(
             status_code=status.HTTP_200_OK if ping_success else status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -65,7 +72,9 @@ async def check_redis_health():
             }
         )
     except Exception as e:
-        logger.error(f"Redis health check failed: {str(e)}")
+        logger.exception("Redis health check failed",
+                        exception_type=type(e).__name__,
+                        error_message=str(e))
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -115,10 +124,21 @@ async def get_worker_status():
         # Get worker manager monitoring status
         manager_monitoring = hasattr(worker_manager, '_monitor_task') and worker_manager._monitor_task is not None
         
+        overall_status = "healthy" if redis_health and worker_status["initialized"] else "unhealthy"
+        
+        logger.info("Worker status retrieved",
+                   overall_status=overall_status,
+                   worker_count=worker_status["worker_count"],
+                   queue_pending=queue_length,
+                   queue_processing=processing_length,
+                   redis_connected=redis_health,
+                   manager_initialized=worker_status["initialized"],
+                   cpu_percent=cpu_percent)
+        
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
-                "status": "healthy" if redis_health and worker_status["initialized"] else "unhealthy",
+                "status": overall_status,
                 "manager": {
                     "initialized": worker_status["initialized"],
                     "monitoring_active": manager_monitoring,
@@ -151,7 +171,9 @@ async def get_worker_status():
             }
         )
     except Exception as e:
-        logger.error(f"Error getting worker status: {str(e)}")
+        logger.exception("Error getting worker status",
+                        exception_type=type(e).__name__,
+                        error_message=str(e))
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = os.getenv("REDISPASSWORD", "password")
     REDIS_URL: str = os.getenv("REDIS_URL", "")
     WANDB_API_KEY: str = os.getenv("WANDB_API_KEY", "")
+    
+    # Logging settings
+    ENABLE_STRUCTURED_LOGGING: bool = os.getenv("ENABLE_STRUCTURED_LOGGING", "true").lower() == "true"
 
     class Config:
         case_sensitive = True

@@ -11,9 +11,10 @@ import psutil
 from app.core.worker import ChatWorker
 from app.core.connection_worker import ConnectionWorker
 from app.core.config import settings
+from app.core.structured_logger import get_structured_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_structured_logger(__name__)
 
 class WorkerManager:
     """Manager for background worker processes"""
@@ -45,7 +46,10 @@ class WorkerManager:
         self.num_chat_workers = min(cpu_count, 1)  # Limit to 1 chat worker for resource constraints
         self.num_connection_workers = 1  # Only need 1 connection worker
         
-        logger.info(f"Initializing worker manager with {self.num_chat_workers} chat workers and {self.num_connection_workers} connection workers")
+        logger.info("Initializing worker manager",
+                   num_chat_workers=self.num_chat_workers,
+                   num_connection_workers=self.num_connection_workers,
+                   cpu_count=cpu_count)
         
         # Create and start chat workers
         for _ in range(self.num_chat_workers):
@@ -59,7 +63,9 @@ class WorkerManager:
         self._monitor_task = asyncio.create_task(self._monitor_workers())
             
         self._initialized = True
-        logger.info("Worker manager initialized")
+        logger.info("Worker manager initialized successfully",
+                   chat_workers_started=len(self.chat_workers),
+                   connection_workers_started=len(self.connection_workers))
     
     async def _start_chat_worker(self):
         """Start a new chat worker"""
@@ -125,14 +131,17 @@ class WorkerManager:
         """Monitor workers and restart if needed"""
         while True:
             try:
-                # Check chat workers
+                # Check if we need to start more workers
                 if len(self.chat_workers) < self.num_chat_workers:
-                    logger.warning(f"Chat worker count ({len(self.chat_workers)}) below target ({self.num_chat_workers}), starting new worker")
+                    logger.warning("Chat worker count below target, starting new worker",
+                                  current_count=len(self.chat_workers),
+                                  target_count=self.num_chat_workers)
                     await self._start_chat_worker()
-                
-                # Check connection workers
+                    
                 if len(self.connection_workers) < self.num_connection_workers:
-                    logger.warning(f"Connection worker count ({len(self.connection_workers)}) below target ({self.num_connection_workers}), starting new worker")
+                    logger.warning("Connection worker count below target, starting new worker",
+                                  current_count=len(self.connection_workers),
+                                  target_count=self.num_connection_workers)
                     await self._start_connection_worker()
                 
                 # Check each chat worker's health
@@ -142,14 +151,19 @@ class WorkerManager:
                     
                     # Check if task is done or worker is not running
                     if task.done() or not worker.running:
-                        logger.warning(f"Chat worker {worker.worker_id} is not running, restarting...")
+                        logger.warning("Chat worker not running, restarting",
+                                     worker_id=worker.worker_id,
+                                     task_done=task.done(),
+                                     worker_running=worker.running)
                         await self._stop_chat_worker(i)
                         await self._start_chat_worker()
                         break  # Break since we modified the list
                         
                     # Check if worker requested restart due to high memory
                     if hasattr(worker, 'request_restart') and worker.request_restart:
-                        logger.warning(f"Chat worker {worker.worker_id} requested restart, complying...")
+                        logger.warning("Chat worker requested restart, complying",
+                                     worker_id=worker.worker_id,
+                                     restart_reason="high_memory")
                         await self._stop_chat_worker(i)
                         await self._start_chat_worker()
                         break  # Break since we modified the list
@@ -161,12 +175,17 @@ class WorkerManager:
                     
                     # Check if task is done or worker is not running
                     if task.done() or not worker.running:
-                        logger.warning(f"Connection worker {worker.worker_id} is not running, restarting...")
+                        logger.warning("Connection worker not running, restarting",
+                                     worker_id=worker.worker_id,
+                                     task_done=task.done(),
+                                     worker_running=worker.running)
                         await self._stop_connection_worker(i)
                         await self._start_connection_worker()
                         break  # Break since we modified the list
             except Exception as e:
-                logger.error(f"Error in worker monitoring: {str(e)}")
+                logger.exception("Error in worker monitoring",
+                               exception_type=type(e).__name__,
+                               error_message=str(e))
                 
             # Check every 30 seconds
             await asyncio.sleep(30)
@@ -176,7 +195,9 @@ class WorkerManager:
         if not self._initialized:
             return
             
-        logger.info("Shutting down worker manager")
+        logger.info("Shutting down worker manager",
+                   chat_workers_count=len(self.chat_workers),
+                   connection_workers_count=len(self.connection_workers))
         
         # Cancel the monitor task
         if hasattr(self, '_monitor_task') and self._monitor_task:
@@ -197,7 +218,9 @@ class WorkerManager:
         self.chat_workers = []
         self.connection_workers = []
         self._initialized = False
-        logger.info("Worker manager shutdown complete")
+        logger.info("Worker manager shutdown complete",
+                   final_chat_workers_count=len(self.chat_workers),
+                   final_connection_workers_count=len(self.connection_workers))
     
     def get_status(self) -> Dict[str, Any]:
         """Get status information about workers"""

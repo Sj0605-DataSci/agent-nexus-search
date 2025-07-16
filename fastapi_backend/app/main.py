@@ -22,9 +22,16 @@ from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, 
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Set up structured logging
+from app.core.structured_logger import setup_structured_logging, get_structured_logger
+from app.core.config import settings
+
+# Setup structured logging based on environment
+setup_structured_logging(
+    level="INFO",
+    enable_structured=getattr(settings, 'ENABLE_STRUCTURED_LOGGING', True)
+)
+logger = get_structured_logger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -50,9 +57,11 @@ async def cors_debug_middleware(request: Request, call_next):
     origin = request.headers.get("origin", "No Origin")
     
     if is_options:
-        logger.info(f"CORS Preflight Request: {request.method} {request.url}")
-        logger.info(f"CORS Origin: {origin}")
-        logger.info(f"CORS Headers: {dict(request.headers)}")
+        logger.info("CORS preflight request received",
+                   request_method=request.method,
+                   request_url=str(request.url),
+                   origin=origin,
+                   headers=dict(request.headers))
     
     # Process the request
     response = await call_next(request)
@@ -60,19 +69,29 @@ async def cors_debug_middleware(request: Request, call_next):
     # Log response details for debugging
     if is_options or response.status_code >= 400:
         cors_headers = {k: v for k, v in response.headers.items() if k.lower().startswith("access-control")}
-        logger.info(f"CORS Response: {response.status_code} to {request.url}")
-        logger.info(f"CORS Response Headers: {cors_headers}")
+        logger.info("CORS response sent",
+                   response_status=response.status_code,
+                   request_url=str(request.url),
+                   cors_headers=cors_headers)
         
         # Log if origin is not in allowed origins
-        if origin not in ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/"] and origin != "No Origin":
-            logger.warning(f"Potential CORS issue: Origin '{origin}' not in allowed origins list")
+        allowed_origins = ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/"]
+        if origin not in allowed_origins and origin != "No Origin":
+            logger.warning("Potential CORS issue detected",
+                          origin=origin,
+                          allowed_origins=allowed_origins)
     
     return response
 
 # Custom exception handlers to convert exceptions to StandardResponse format
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.error(f"HTTP Exception: {exc.detail}")
+    logger.error("HTTP exception occurred",
+                exception_type="HTTPException",
+                status_code=exc.status_code,
+                detail=str(exc.detail),
+                request_url=str(request.url),
+                request_method=request.method)
     return StandardJSONResponse(StandardResponse(
         success=False,
         status_code=exc.status_code,
@@ -82,7 +101,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.error(f"Validation Error: {exc.errors()}")
+    logger.error("Request validation error occurred",
+                exception_type="RequestValidationError",
+                validation_errors=exc.errors(),
+                request_url=str(request.url),
+                request_method=request.method)
     return StandardJSONResponse(StandardResponse(
         success=False,
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -92,8 +115,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
-    logger.error(f"Database Error: {str(exc)}")
-    logger.error(traceback.format_exc())
+    logger.exception("Database error occurred",
+                    exception_type="SQLAlchemyError",
+                    error_message=str(exc),
+                    request_url=str(request.url),
+                    request_method=request.method)
     return StandardJSONResponse(StandardResponse(
         success=False,
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -103,8 +129,11 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unexpected Error: {str(exc)}")
-    logger.error(traceback.format_exc())
+    logger.exception("Unexpected error occurred",
+                    exception_type=type(exc).__name__,
+                    error_message=str(exc),
+                    request_url=str(request.url),
+                    request_method=request.method)
     return StandardJSONResponse(StandardResponse(
         success=False,
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

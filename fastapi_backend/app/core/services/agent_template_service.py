@@ -5,8 +5,9 @@ from fastapi import HTTPException, status
 
 from app.models.models import AgentTemplate, Profile
 from app.models.schemas import AgentTemplateCreate, AgentTemplateResponse, AgentTemplateUpdate
+from app.core.structured_logger import get_structured_logger
 
-logger = logging.getLogger(__name__)
+logger = get_structured_logger(__name__)
 
 class AgentTemplateService:
     """Service for handling agent template operations"""
@@ -41,7 +42,9 @@ class AgentTemplateService:
             
             # Get the created template
             if not response.data or len(response.data) == 0:
-                logger.error("Error creating agent template: No data returned")
+                logger.error("Error creating agent template: No data returned",
+                           template_name=template.name,
+                           template_category=template.category)
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Error creating agent template: No data returned"
@@ -49,10 +52,19 @@ class AgentTemplateService:
             
             created_template = response.data[0]
             
+            logger.info("Agent template created successfully",
+                       template_id=str(created_template.get('id')),
+                       template_name=template.name,
+                       template_category=template.category)
+            
             # Convert to Pydantic model for JSON serialization
             return AgentTemplateResponse(**created_template)
         except Exception as e:
-            logger.error(f"Error creating agent template: {str(e)}")
+            logger.exception("Error creating agent template",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           template_name=template.name,
+                           template_category=template.category)
             raise
     
     async def get_templates(self, skip: int = 0, limit: int = 100) -> List[AgentTemplateResponse]:
@@ -61,10 +73,19 @@ class AgentTemplateService:
             # Query Supabase with pagination
             response = await self.client.table("agent_templates").select("*").range(skip, skip + limit - 1).execute()
             
+            logger.info("Agent templates retrieved successfully",
+                       skip=skip,
+                       limit=limit,
+                       count=len(response.data))
+            
             # Convert to Pydantic models for JSON serialization
             return [AgentTemplateResponse(**template) for template in response.data]
         except Exception as e:
-            logger.error(f"Error retrieving agent templates: {str(e)}")
+            logger.exception("Error retrieving agent templates",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           skip=skip,
+                           limit=limit)
             raise
     
     async def get_template_by_id(self, template_id: UUID) -> Optional[AgentTemplateResponse]:
@@ -74,12 +95,21 @@ class AgentTemplateService:
             response = await self.client.table("agent_templates").select("*").eq("id", str(template_id)).execute()
             
             if not response.data:
+                logger.warning("Agent template not found",
+                              template_id=str(template_id))
                 return None
+            
+            logger.info("Agent template retrieved successfully",
+                       template_id=str(template_id),
+                       template_name=response.data[0].get('name'))
             
             # Convert to Pydantic model for JSON serialization
             return AgentTemplateResponse(**response.data[0])
         except Exception as e:
-            logger.error(f"Error retrieving agent template {template_id}: {str(e)}")
+            logger.exception("Error retrieving agent template",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           template_id=str(template_id))
             raise
     
     async def update_template(self, template_id: UUID, template_update: AgentTemplateUpdate) -> Optional[AgentTemplateResponse]:
@@ -92,12 +122,24 @@ class AgentTemplateService:
             response = await self.client.table("agent_templates").update(update_data).eq("id", str(template_id)).execute()
             
             if not response.data:
+                logger.warning("Agent template not found for update",
+                              template_id=str(template_id),
+                              update_fields=list(update_data.keys()))
                 return None
+            
+            logger.info("Agent template updated successfully",
+                       template_id=str(template_id),
+                       updated_fields=list(update_data.keys()),
+                       template_name=response.data[0].get('name'))
             
             # Convert to Pydantic model for JSON serialization
             return AgentTemplateResponse(**response.data[0])
         except Exception as e:
-            logger.error(f"Error updating agent template {template_id}: {str(e)}")
+            logger.exception("Error updating agent template",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           template_id=str(template_id),
+                           update_fields=list(template_update.model_dump(exclude_unset=True).keys()))
             raise
     
     async def delete_template(self, template_id: UUID) -> bool:
@@ -107,7 +149,19 @@ class AgentTemplateService:
             response = await self.client.table("agent_templates").delete().eq("id", str(template_id)).execute()
             
             # If no data was returned, the template didn't exist
-            return len(response.data) > 0
+            success = len(response.data) > 0
+            
+            if success:
+                logger.info("Agent template deleted successfully",
+                           template_id=str(template_id))
+            else:
+                logger.warning("Agent template not found for deletion",
+                              template_id=str(template_id))
+            
+            return success
         except Exception as e:
-            logger.error(f"Error deleting agent template {template_id}: {str(e)}")
+            logger.exception("Error deleting agent template",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           template_id=str(template_id))
             raise

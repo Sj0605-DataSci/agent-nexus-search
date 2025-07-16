@@ -11,9 +11,9 @@ from app.models.schemas import HiredAgentCreate, HiredAgentResponse, HiredAgentU
 from app.core.services.hired_agent_service import HiredAgentService
 # from app.db.redis_client import cache_get, cache_set, cache_delete, cache_invalidate_pattern
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Set up structured logging
+from app.core.structured_logger import get_structured_logger
+logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/hired_agents", tags=["hired_agents"])
 
@@ -27,11 +27,10 @@ async def hire_agent(
 ):
     """Hire a new agent for the user"""
     try:
-        logger.info(f"Hire agent request received: {agent.model_dump()}")
-        logger.info(f"Current user: {current_user.id if current_user else 'None'}")
-        
-        # Log request headers for debugging
-        logger.info(f"Request headers: {request.headers}")
+        logger.info("Hire agent request received",
+                   agent_template_id=str(agent.agent_template_id),
+                   user_id=str(current_user.id) if current_user else None,
+                   agent_name=agent.name if hasattr(agent, 'name') else None)
         
         # Initialize the service
         service = HiredAgentService(client=await get_async_supabase_client())
@@ -41,7 +40,10 @@ async def hire_agent(
         
         # Invalidate any cached hired agents lists for this user
         # await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
-        logger.info(f"Invalidated hired agents cache for user {current_user.id} after hiring new agent")
+        logger.info("Agent hired successfully",
+                   user_id=str(current_user.id),
+                   agent_id=str(agent_response.id) if hasattr(agent_response, 'id') else None,
+                   agent_template_id=str(agent.agent_template_id))
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -51,7 +53,12 @@ async def hire_agent(
         ))
     except HTTPException as e:
         # Convert HTTP exceptions to StandardResponse format
-        logger.error(f"HTTP Exception in hire_agent: {e.detail}")
+        logger.error("HTTP exception in hire_agent",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    user_id=str(current_user.id) if current_user else None,
+                    agent_template_id=str(agent.agent_template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -60,8 +67,11 @@ async def hire_agent(
         ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
-        logger.error(f"Unexpected error in hire_agent: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in hire_agent",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=str(current_user.id) if current_user else None,
+                        agent_template_id=str(agent.agent_template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -77,10 +87,9 @@ async def get_hired_agents(
 ):
     """Get all hired agents for a user"""
     try:
-        logger.info(f"Get hired agents request received")
-        logger.info(f"Request headers: {request.headers}")
-        logger.info(f"Query params: user_id={user_id}")
-        logger.info(f"Current user: {current_user.id if current_user else 'None'}")
+        logger.info("Get hired agents request received",
+                   query_user_id=str(user_id) if user_id else None,
+                   current_user_id=str(current_user.id) if current_user else None)
         
         # Initialize the service
         service = HiredAgentService(client=await get_async_supabase_client())
@@ -104,6 +113,11 @@ async def get_hired_agents(
         # logger.info(f"Cache miss for {cache_key}, fetching from database")
         agent_responses = await service.get_hired_agents(user_id, current_user)
         
+        logger.info("Hired agents retrieved successfully",
+                   target_user_id=str(user_id) if user_id else str(current_user.id),
+                   agent_count=len(agent_responses) if agent_responses else 0,
+                   current_user_id=str(current_user.id) if current_user else None)
+        
         # # Store in cache for future requests (expire in 5 minutes)
         # await cache_set(cache_key, agent_responses, expire=300)
         # logger.info(f"Stored hired agents in cache: {cache_key}")
@@ -116,7 +130,12 @@ async def get_hired_agents(
         ))
     except HTTPException as e:
         # Convert HTTP exceptions to StandardResponse format
-        logger.error(f"HTTP Exception in get_hired_agents: {e.detail}")
+        logger.error("HTTP exception in get_hired_agents",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    query_user_id=str(user_id) if user_id else None,
+                    current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -125,8 +144,11 @@ async def get_hired_agents(
         ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
-        logger.error(f"Unexpected error in get_hired_agents: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in get_hired_agents",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        query_user_id=str(user_id) if user_id else None,
+                        current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -182,7 +204,12 @@ async def get_hired_agent(
         ))
     except HTTPException as e:
         # Convert HTTP exceptions to StandardResponse format
-        logger.error(f"HTTP Exception in get_hired_agent: {e.detail}")
+        logger.error("HTTP exception in get_hired_agent",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    agent_id=str(agent_id),
+                    current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -191,8 +218,11 @@ async def get_hired_agent(
         ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
-        logger.error(f"Unexpected error in get_hired_agent: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in get_hired_agent",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        agent_id=str(agent_id),
+                        current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -220,12 +250,20 @@ async def update_hired_agent(
         #     # await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
         #     # logger.info(f"Invalidated cache for hired agent {agent_id} after update")
         if agent_response is None:
+            logger.warning("Hired agent not found for update",
+                          agent_id=str(agent_id),
+                          current_user_id=str(current_user.id))
             return StandardJSONResponse(StandardResponse(
                 success=False,
                 status_code=status.HTTP_404_NOT_FOUND,
                 message="Hired agent not found",
                 data=None
             ))
+        
+        logger.info("Hired agent updated successfully",
+                   agent_id=str(agent_id),
+                   current_user_id=str(current_user.id),
+                   updated_fields=list(agent_update.model_dump(exclude_unset=True).keys()))
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -235,7 +273,12 @@ async def update_hired_agent(
         ))
     except HTTPException as e:
         # Convert HTTP exceptions to StandardResponse format
-        logger.error(f"HTTP Exception in update_hired_agent: {e.detail}")
+        logger.error("HTTP exception in update_hired_agent",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    agent_id=str(agent_id),
+                    current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -244,8 +287,11 @@ async def update_hired_agent(
         ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
-        logger.error(f"Unexpected error in update_hired_agent: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in update_hired_agent",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        agent_id=str(agent_id),
+                        current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -265,6 +311,8 @@ async def delete_hired_agent(
         
         # Use the service to delete the hired agent
         success = await service.delete_hired_agent(agent_id, current_user)
+
+        
         
         # if success:
         #     # Invalidate both the specific agent cache and the user's list cache
@@ -272,6 +320,9 @@ async def delete_hired_agent(
         #     await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
         #     logger.info(f"Invalidated cache for hired agent {agent_id} after deletion")
         if not success:
+            logger.warning("Hired agent deleted",
+                          agent_id=str(agent_id),
+                          current_user_id=str(current_user.id))
             return StandardJSONResponse(StandardResponse(
                 success=False,
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -279,6 +330,9 @@ async def delete_hired_agent(
                 data=None
             ))
         
+        logger.info("Hired agent deleted successfully",
+                   agent_id=str(agent_id),
+                   current_user_id=str(current_user.id))
         return StandardJSONResponse(StandardResponse(
             success=True,
             status_code=status.HTTP_200_OK,
@@ -287,7 +341,12 @@ async def delete_hired_agent(
         ))
     except HTTPException as e:
         # Convert HTTP exceptions to StandardResponse format
-        logger.error(f"HTTP Exception in delete_hired_agent: {e.detail}")
+        logger.error("HTTP exception in delete_hired_agent",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    agent_id=str(agent_id),
+                    current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -296,8 +355,11 @@ async def delete_hired_agent(
         ))
     except Exception as e:
         # Log the full stack trace for unexpected errors
-        logger.error(f"Unexpected error in delete_hired_agent: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.exception("Unexpected error in delete_hired_agent",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        agent_id=str(agent_id),
+                        current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

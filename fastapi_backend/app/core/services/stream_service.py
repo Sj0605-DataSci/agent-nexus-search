@@ -9,9 +9,10 @@ import redis.asyncio as redis
 
 from app.db.redis_client import redis_client
 from app.core.worker import CHAT_CHANNEL_PREFIX
+from app.core.structured_logger import get_structured_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_structured_logger(__name__)
 
 class StreamService:
     """Service for handling streaming operations using Redis Pub/Sub"""
@@ -36,20 +37,31 @@ class StreamService:
             try:
                 exists = await asyncio.wait_for(client.exists(f"channel:{channel_name}"), timeout=2.0)
                 if not exists:
-                    logger.warning(f"Channel {channel_name} does not exist")
+                    logger.warning("Channel does not exist",
+                                  channel_name=channel_name,
+                                  request_id=request_id)
                     yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Stream not found or expired'}})}\n\n"
                     return
             except asyncio.TimeoutError:
-                logger.error(f"Timeout checking if channel {channel_name} exists")
+                logger.error("Timeout checking if channel exists",
+                           channel_name=channel_name,
+                           request_id=request_id,
+                           timeout_seconds=2.0)
                 yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Redis connection timeout - please try again later'}})}\n\n"
                 return
             except Exception as e:
                 if "circuit breaker open" in str(e).lower():
-                    logger.error(f"Redis circuit breaker open when checking channel {channel_name}")
+                    logger.error("Redis circuit breaker open when checking channel",
+                               channel_name=channel_name,
+                               request_id=request_id,
+                               error_message=str(e))
                     yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': 'Redis service temporarily unavailable - please try again in 30 seconds'}})}\n\n"
                     return
                 else:
-                    logger.error(f"Error checking if channel {channel_name} exists: {str(e)}")
+                    logger.error("Error checking if channel exists",
+                               channel_name=channel_name,
+                               request_id=request_id,
+                               error_message=str(e))
                     yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': f'Error connecting to stream: {str(e)}'}})}\n\n"
                     return
                 
@@ -58,7 +70,9 @@ class StreamService:
             
             # Subscribe to the channel
             await pubsub.subscribe(channel_name)
-            logger.info(f"Subscribed to channel {channel_name}")
+            logger.info("Subscribed to channel",
+                       channel_name=channel_name,
+                       request_id=request_id)
             
             # Send initial connection message
             yield f"event: update\ndata: {json.dumps({'type': 'connected', 'content': {'message': 'Connected to stream'}})}\n\n"
@@ -77,17 +91,26 @@ class StreamService:
                     try:
                         parsed = json.loads(data)
                         if parsed.get("type") == "done" or parsed.get("type") == "error":
-                            logger.info(f"Stream {request_id} completed")
+                            logger.info("Stream completed",
+                                       request_id=request_id,
+                                       channel_name=channel_name,
+                                       completion_type=parsed.get("type"))
                             break
                     except:
                         pass
                         
         except asyncio.CancelledError:
-            logger.info(f"Stream {request_id} subscription cancelled")
+            logger.info("Stream subscription cancelled",
+                       request_id=request_id,
+                       channel_name=channel_name)
             raise
             
         except Exception as e:
-            logger.error(f"Error in stream subscription {request_id}: {str(e)}")
+            logger.exception("Error in stream subscription",
+                           request_id=request_id,
+                           channel_name=channel_name,
+                           exception_type=type(e).__name__,
+                           error_message=str(e))
             yield f"event: error\ndata: {json.dumps({'type': 'error', 'content': {'message': f'Stream error: {str(e)}'}})}\n\n"
             
         finally:
@@ -95,17 +118,30 @@ class StreamService:
             try:
                 if pubsub:
                     await pubsub.unsubscribe(channel_name)
-                    logger.info(f"Unsubscribed from channel {channel_name}")
+                    logger.info("Unsubscribed from channel",
+                               channel_name=channel_name,
+                               request_id=request_id)
             except Exception as e:
-                logger.error(f"Error unsubscribing from channel {channel_name}: {str(e)}")
+                logger.exception("Error unsubscribing from channel",
+                               channel_name=channel_name,
+                               request_id=request_id,
+                               exception_type=type(e).__name__,
+                               error_message=str(e))
                 
             # Clean up channel metadata with TTL
             try:
                 # Set a shorter TTL for completed channels
                 await client.expire(f"channel:{channel_name}", 300)  # 5 minute TTL after completion
-                logger.debug(f"Set cleanup TTL for channel {channel_name}")
+                logger.debug("Set cleanup TTL for channel",
+                           channel_name=channel_name,
+                           request_id=request_id,
+                           ttl_seconds=300)
             except Exception as e:
-                logger.error(f"Error setting cleanup TTL for channel {channel_name}: {str(e)}")
+                logger.exception("Error setting cleanup TTL for channel",
+                               channel_name=channel_name,
+                               request_id=request_id,
+                               exception_type=type(e).__name__,
+                               error_message=str(e))
 
 # Create singleton instance
 stream_service = StreamService()

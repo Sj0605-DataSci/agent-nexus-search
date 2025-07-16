@@ -14,8 +14,9 @@ from app.core.services.chat_service import ChatService
 from app.db.clients import get_async_supabase_client
 from app.models.chat import StreamingChatUpdate
 
-# Configure logging
-logger = logging.getLogger(__name__)
+# Configure structured logging
+from app.core.structured_logger import get_structured_logger
+logger = get_structured_logger(__name__)
 
 # Queue names
 CHAT_QUEUE = "chat:queue"
@@ -40,7 +41,7 @@ class ChatWorker:
     async def start(self):
         """Start the worker process"""
         self.running = True
-        logger.info(f"Starting chat worker {self.worker_id}")
+        logger.log_worker_event(self.worker_id, "worker_started")
         
         try:
             while self.running:

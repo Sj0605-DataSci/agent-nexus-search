@@ -11,6 +11,10 @@ from app.core.config import settings
 from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import TokenData, StandardResponse, StandardJSONResponse
+from app.core.structured_logger import get_structured_logger
+
+# Setup structured logging
+logger = get_structured_logger(__name__)
 
 # Use HTTPBearer instead of OAuth2PasswordBearer since we're validating Supabase JWTs
 # and not generating tokens ourselves
@@ -32,7 +36,9 @@ async def verify_supabase_token(token: str, credentials_exception):
     try:
         # First, check if the token is empty or malformed
         if not token or len(token) < 10:  # Basic sanity check
-            logging.error("Token is empty or too short")
+            logger.log_auth_event("token_validation_failed", 
+                                 success=False, 
+                                 reason="token_empty_or_malformed")
             return StandardJSONResponse(credentials_exception)
             
         # Decode the Supabase JWT using the project's JWT secret
@@ -54,26 +60,44 @@ async def verify_supabase_token(token: str, credentials_exception):
         # Ensure the token is for the correct Supabase project
         expected_issuer = f"https://{settings.SUPABASE_PROJECT_ID}.supabase.co/auth/v1"
         if payload.get("iss") != expected_issuer:
-            logging.error(f"Invalid issuer: {payload.get('iss')} != {expected_issuer}")
+            logger.log_auth_event("token_validation_failed",
+                                 success=False,
+                                 reason="invalid_issuer",
+                                 expected_issuer=expected_issuer,
+                                 actual_issuer=payload.get('iss'))
             return StandardJSONResponse(credentials_exception)
             
         token_data = TokenData(user_id=UUID(user_id))
         return token_data
     except jwt.exceptions.ExpiredSignatureError as e:
-        logging.error(f"JWT Error: Token expired - {str(e)}")
+        logger.log_auth_event("token_validation_failed",
+                             success=False,
+                             reason="token_expired",
+                             error_message=str(e))
         return StandardJSONResponse(credentials_exception)
     except jwt.exceptions.InvalidSignatureError as e:
-        logging.error(f"JWT Error: Invalid signature - {str(e)}")
+        logger.log_auth_event("token_validation_failed",
+                             success=False,
+                             reason="invalid_signature",
+                             error_message=str(e))
         return StandardJSONResponse(credentials_exception)
     except jwt.exceptions.DecodeError as e:
-        logging.error(f"JWT Error: Could not decode token - {str(e)}")
+        logger.log_auth_event("token_validation_failed",
+                             success=False,
+                             reason="decode_error",
+                             error_message=str(e))
         return StandardJSONResponse(credentials_exception)
     except JWTError as e:
-        logging.error(f"JWT Error: Generic JWT error - {str(e)}")
+        logger.log_auth_event("token_validation_failed",
+                             success=False,
+                             reason="jwt_error",
+                             error_message=str(e))
         return StandardJSONResponse(credentials_exception)
     except Exception as e:
         # Log the error for debugging
-        logging.error(f"Unexpected error in token verification: {str(e)}")
+        logger.exception("Unexpected error in token verification",
+                        exception_type=type(e).__name__,
+                        error_message=str(e))
         # Return our standardized response
         return StandardJSONResponse(credentials_exception)
 

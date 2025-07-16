@@ -5,8 +5,9 @@ from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
 from app.core.config import settings
 
-# Configure logging
-logger = logging.getLogger(__name__)
+# Configure structured logging
+from app.core.structured_logger import get_structured_logger
+logger = get_structured_logger(__name__)
 wandb.login(key=settings.WANDB_API_KEY)
 weave.init("Deep-Search")
 
@@ -38,14 +39,18 @@ class ChatService:
         """
         try:
             # Query Supabase for agent configuration
-            logger.info(f"Querying Supabase for agent_id={agent_id} and user_id={user_id}")
+            logger.log_database_operation("select", "hired_agents",
+                                         user_id=user_id,
+                                         agent_id=agent_id)
             
             # Try with the regular query first
             response = await self.client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
             
             # Log the raw response for debugging
-            logger.info(f"Supabase response: {response}")
-            logger.info(f"Response data: {response.data}")
+            logger.debug("Supabase query response received",
+                        response_count=len(response.data) if response.data else 0,
+                        user_id=user_id,
+                        agent_id=agent_id)
             
             # If no results, try with simpler queries to debug
             if not response.data:
@@ -67,7 +72,10 @@ class ChatService:
             
             
             if not response.data:
-                logger.warning(f"No agent found for agent_id={agent_id} and user_id={user_id}")
+                logger.warning("No agent found for user",
+                              user_id=user_id,
+                              agent_id=agent_id,
+                              table="hired_agents")
                 # Return a default config instead of empty dict to avoid errors
                 return {
                     "id": agent_id,
@@ -313,9 +321,9 @@ class ChatService:
             }
             
         except Exception as e:
-            logger.error(f"Error in stream_chat: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
+            logger.exception("Error in stream_chat",
+                            exception_type=type(e).__name__,
+                            error_message=str(e))
             
             # Send error message
             yield {
@@ -376,7 +384,8 @@ class ChatService:
             List of chat thread objects with their IDs and metadata
         """
         try:
-            logger.info(f"Fetching chat threads for user_id={user_id}")
+            logger.info("Fetching chat threads for user_id={user_id}",
+                       user_id=user_id)
             
             # Query Supabase for chat threads where the user is a participant
             response = await self.client.table("chat_messages") \
@@ -404,7 +413,9 @@ class ChatService:
             return threads
         
         except Exception as e:
-            logger.error(f"Error fetching chat threads: {str(e)}")
+            logger.exception("Error fetching chat threads",
+                            exception_type=type(e).__name__,
+                            error_message=str(e))
             raise
     
     async def get_messages_for_thread(self, user_id: str, chat_thread_id: str) -> List[Dict[str, Any]]:
@@ -419,7 +430,9 @@ class ChatService:
             List of message objects with their content and metadata
         """
         try:
-            logger.info(f"Fetching messages for chat_thread_id={chat_thread_id} and user_id={user_id}")
+            logger.info("Fetching messages for chat_thread_id={chat_thread_id} and user_id={user_id}",
+                       chat_thread_id=chat_thread_id,
+                       user_id=user_id)
             
             # Convert "new" to empty string to avoid UUID syntax error
             if chat_thread_id == "new":
@@ -437,5 +450,9 @@ class ChatService:
             return response.data
         
         except Exception as e:
-            logger.error(f"Error fetching messages for thread: {str(e)}")
+            logger.exception("Error fetching messages for thread",
+                            exception_type=type(e).__name__,
+                            error_message=str(e),
+                            chat_thread_id=chat_thread_id,
+                            user_id=user_id)
             raise
