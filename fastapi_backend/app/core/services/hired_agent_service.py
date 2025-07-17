@@ -36,7 +36,7 @@ class HiredAgentService:
         """Hire a new agent for the user"""
         try:
             logger.info("Hire agent request received",
-                       agent_template_id=str(agent.agent_template_id) if agent.agent_template_id else None,
+                       template_id=str(agent.template_id) if agent.template_id else None,
                        user_id=str(current_user.id),
                        agent_name=agent.name if hasattr(agent, 'name') else None)
             
