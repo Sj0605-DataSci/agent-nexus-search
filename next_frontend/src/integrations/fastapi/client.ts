@@ -180,23 +180,27 @@ export const apiClient = {
   },
 
   // Chat Threads and Messages
-  async getChatThreads(userId: string): Promise<any[]> {
+  async getChatThreads(userId: string, limit: number = 10, offset: number = 0): Promise<{ total: number, threads: any[] }> {
     try {
-      const res = await axiosInstance.get(`/chat/threads/${userId}`);
-      return res.data?.data || [];
+      const res = await axiosInstance.get(`/chat/threads/${userId}`, {
+        params: { limit, offset }
+      });
+      return res.data?.data || { total: 0, threads: [] };
     } catch (error) {
       console.error("Error fetching chat threads:", error);
-      return [];
+      return { total: 0, threads: [] };
     }
   },
 
-  async getChatMessages(userId: string, chatThreadId: string): Promise<any[]> {
+  async getChatMessages(userId: string, chatThreadId: string, limit: number = 10, offset: number = 0): Promise<{ total: number, messages: any[] }> {
     try {
-      const res = await axiosInstance.get(`/chat/messages/${userId}/${chatThreadId}`);
-      return res.data?.data || [];
+      const res = await axiosInstance.get(`/chat/messages/${userId}/${chatThreadId}`, {
+        params: { limit, offset }
+      });
+      return res.data?.data || { total: 0, messages: [] };
     } catch (error) {
       console.error("Error fetching chat messages:", error);
-      return [];
+      return { total: 0, messages: [] };
     }
   },
 

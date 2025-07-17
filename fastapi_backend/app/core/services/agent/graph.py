@@ -17,7 +17,8 @@ from app.core.services.agent.prompts import (
     optimised_query_instructions,
     sql_query_instructions,
     reflection_instructions_sql,
-    answer_instructions_table_format
+    answer_instructions_table_format,
+    query_title_generation
 )
 from uuid import uuid4
 import weave
@@ -37,6 +38,10 @@ class PersonDetails(BaseModel):
 class PersonDetailsResponse(BaseModel):
     """Pydantic model for response containing one or more person details."""
     content: List[PersonDetails] = Field(description="List of person details")
+
+class TitleGeneratorOutput(BaseModel):
+    """Pydantic model for title generator output."""
+    title: str = Field(description="Title of the chat thread")
 
 
 if settings.GOOGLE_API_KEY is None:
@@ -127,9 +132,13 @@ async def intent_classifier(state: OverallState, config: RunnableConfig) -> Over
     else:
        try: 
         chat_thread_id = str(uuid4())
+        title_gen_prompt = query_title_generation.format(latest_message=latest_message)
+        response_title, usage_metadata = llm.with_structured_output(schema_type=TitleGeneratorOutput, prompt=title_gen_prompt)
+        title = response_title.title
         response_chat_thread = await supabase_client.table("chat_threads").insert({
             "user_id": user_id, 
             "id": chat_thread_id,
+            "title": title,
             "weave_url": state["weave_url"]
         }).execute() 
        except Exception as e:

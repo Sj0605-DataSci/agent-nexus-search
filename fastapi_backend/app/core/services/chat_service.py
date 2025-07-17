@@ -385,44 +385,66 @@ class ChatService:
             web_research_result=result.get("web_research_result", [])
         )
     
-    async def get_chat_threads(self, user_id: str) -> List[Dict[str, Any]]:
+    async def get_chat_threads(self, user_id: str, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
         """
-        Get all chat threads for a specific user
+        Get chat threads for a specific user with pagination
         
         Args:
             user_id: User ID
+            limit: Maximum number of threads to return
+            offset: Number of threads to skip
             
         Returns:
-            List of chat thread objects with their IDs and metadata
+            Dictionary containing total count and paginated list of chat thread objects
         """
         try:
-            logger.info("Fetching chat threads for user_id={user_id}",
-                       user_id=user_id)
+            logger.info("Fetching chat threads with pagination",
+                       user_id=user_id,
+                       limit=limit,
+                       offset=offset)
+            
+            # First get the total count of threads
+            count_response = await self.client.table("chat_threads") \
+                .select("id", count="exact") \
+                .eq("user_id", user_id) \
+                .execute()
+            
+            total_count = count_response.count if hasattr(count_response, 'count') else 0
             
             # Query Supabase for chat threads where the user is a participant
-            response = await self.client.table("chat_messages") \
-                .select("chat_thread_id, created_at") \
+            response = await self.client.table("chat_threads") \
+                .select("id, created_at, updated_at, weave_url, title") \
                 .eq("user_id", user_id) \
-                .order("created_at", desc=True) \
+                .order("updated_at", desc=True) \
+                .range(offset, offset + limit - 1) \
                 .execute()
             
             # Extract unique chat thread IDs with their latest timestamps
             thread_map = {}
             for item in response.data:
-                thread_id = item.get("chat_thread_id")
+                thread_id = item.get("id")
                 created_at = item.get("created_at")
+                updated_at = item.get("updated_at")
+                weave_url = item.get("weave_url")
+                title = item.get("title")
                 
-                if thread_id not in thread_map or created_at > thread_map[thread_id]["last_message_at"]:
+                if thread_id not in thread_map or updated_at > thread_map[thread_id]["last_message_at"]:
                     thread_map[thread_id] = {
                         "id": thread_id,
-                        "last_message_at": created_at
+                        "title":title,
+                        "created_at": created_at,
+                        "last_message_at": updated_at,
+                        "weave_url": weave_url
                     }
             
             # Convert to list and sort by most recent activity
             threads = list(thread_map.values())
             threads.sort(key=lambda x: x["last_message_at"], reverse=True)
             
-            return threads
+            return {
+                "total": total_count,
+                "threads": threads
+            }
         
         except Exception as e:
             logger.exception("Error fetching chat threads",
@@ -430,36 +452,53 @@ class ChatService:
                             error_message=str(e))
             raise
     
-    async def get_messages_for_thread(self, user_id: str, chat_thread_id: str) -> List[Dict[str, Any]]:
+    async def get_messages_for_thread(self, user_id: str, chat_thread_id: str, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
         """
-        Get all messages for a specific chat thread and user
+        Get messages for a specific chat thread and user with pagination
         
         Args:
             user_id: User ID
             chat_thread_id: Chat thread ID
+            limit: Maximum number of messages to return
+            offset: Number of messages to skip
             
         Returns:
-            List of message objects with their content and metadata
+            Dictionary containing total count and paginated list of message objects
         """
         try:
-            logger.info("Fetching messages for chat_thread_id={chat_thread_id} and user_id={user_id}",
+            logger.info("Fetching messages for chat_thread_id={chat_thread_id} and user_id={user_id} with pagination",
                        chat_thread_id=chat_thread_id,
-                       user_id=user_id)
+                       user_id=user_id,
+                       limit=limit,
+                       offset=offset)
             
             # Convert "new" to empty string to avoid UUID syntax error
             if chat_thread_id == "new":
                 # If this is a new thread, there are no messages to fetch yet
-                return []
+                return {"total": 0, "messages": []}
             
-            # Query Supabase for messages in the specified chat thread
+            # First get the total count of messages
+            count_response = await self.client.table("chat_messages") \
+                .select("id", count="exact") \
+                .eq("chat_thread_id", chat_thread_id) \
+                .eq("user_id", user_id) \
+                .execute()
+            
+            total_count = count_response.count if hasattr(count_response, 'count') else 0
+            
+            # Query Supabase for messages in the specified chat thread with pagination
             response = await self.client.table("chat_messages") \
-                .select("id, user_id, agent_id, main_query, message, created_at, updated_at") \
+                .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at") \
                 .eq("chat_thread_id", chat_thread_id) \
                 .eq("user_id", user_id) \
                 .order("created_at", desc=False) \
+                .range(offset, offset + limit - 1) \
                 .execute()
             
-            return response.data
+            return {
+                "total": total_count,
+                "messages": response.data
+            }
         
         except Exception as e:
             logger.exception("Error fetching messages for thread",

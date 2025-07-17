@@ -16,7 +16,7 @@ import {
   FiPlus,
   FiSettings,
 } from "react-icons/fi";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
@@ -30,6 +30,7 @@ import SidebarItem from "./SidebarItem";
 interface ChatThread {
   id: string;
   last_message_at: string;
+  title: string;
 }
 
 interface ChatMessage {
@@ -49,47 +50,113 @@ const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [recentThreads, setRecentThreads] = useState<ChatThread[]>([]);
-  const [threadMessages, setThreadMessages] = useState<{ [key: string]: ChatMessage[] }>({});
+  const [recentThreads, setRecentThreads] = useState<any[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
+  const [loadingThreadPreview, setLoadingThreadPreview] = useState(false);
   const threadsFetchedRef = useRef(false);
+  const [threadsOffset, setThreadsOffset] = useState(0);
+  const [hasMoreThreads, setHasMoreThreads] = useState(false);
+  const THREADS_PER_PAGE = 5;
+
+  const fetchThreads = async () => {
+    if (!user?.id) return;
+    if (threadsFetchedRef.current) return; // Skip if already fetched
+
+    setLoadingThreads(true);
+
+    try {
+      // Get first batch of threads using pagination
+      const threadsResponse = await apiClient.getChatThreads(user.id, THREADS_PER_PAGE, 0);
+      setRecentThreads(threadsResponse.threads);
+      setThreadsOffset(THREADS_PER_PAGE);
+      setHasMoreThreads(threadsResponse.total > THREADS_PER_PAGE);
+      
+      // Mark as fetched immediately so we don't fetch again
+      threadsFetchedRef.current = true;
+    } catch (error) {
+      console.error("Failed fetching threads", error);
+    } finally {
+      setLoadingThreads(false);
+    }
+  };
+  
+  // Track if we're currently loading more threads to prevent duplicate calls
+  const isLoadingRef = useRef(false);
+
+  const loadMoreThreads = async () => {
+    // Prevent duplicate calls while loading
+    if (!user?.id || !hasMoreThreads || loadingThreads || isLoadingRef.current) return;
+
+    isLoadingRef.current = true;
+    setLoadingThreads(true);
+
+    try {
+      const threadsResponse = await apiClient.getChatThreads(user.id, THREADS_PER_PAGE, threadsOffset);
+
+      if (threadsResponse.threads.length > 0) {
+        // Check for duplicates by creating a Set of thread IDs we already have
+        const existingThreadIds = new Set(recentThreads.map(thread => thread.id));
+        
+        // Filter out any threads we already have
+        const newThreads = threadsResponse.threads.filter(thread => !existingThreadIds.has(thread.id));
+        
+        if (newThreads.length > 0) {
+          setRecentThreads(prev => [...prev, ...newThreads]);
+          setThreadsOffset(prev => prev + THREADS_PER_PAGE);
+          setHasMoreThreads(threadsOffset + THREADS_PER_PAGE < threadsResponse.total);
+        } else {
+          // If we got no new threads, we might be at the end
+          setHasMoreThreads(false);
+        }
+      } else {
+        setHasMoreThreads(false);
+      }
+    } catch (error) {
+      console.error("Failed loading more threads", error);
+    } finally {
+      setLoadingThreads(false);
+      isLoadingRef.current = false;
+    }
+  };
 
   useEffect(() => {
-    const fetchThreads = async () => {
-      if (!user?.id) return;
-      if (threadsFetchedRef.current) return; // Skip if already fetched
-
-      setLoadingThreads(true);
-
-      try {
-        const threads = await apiClient.getChatThreads(user.id);
-        const recent = threads.slice(0, 5);
-        setRecentThreads(recent);
-
-        const messagesMap: { [key: string]: ChatMessage[] } = {};
-        for (const thread of recent) {
-          const messages = await apiClient.getChatMessages(user.id, thread.id);
-          messagesMap[thread.id] = messages;
-        }
-        setThreadMessages(messagesMap);
-        threadsFetchedRef.current = true; // Mark as fetched
-      } catch (error) {
-        console.error("Failed fetching threads", error);
-      } finally {
-        setLoadingThreads(false);
-      }
-    };
-
     fetchThreads();
   }, [user?.id]);
 
-  const getThreadPreview = (threadId: string) => {
-    const messages = threadMessages[threadId];
-    if (!messages || messages.length === 0) return "Loading...";
-    for (const msg of messages) {
-      if (msg.main_query) return msg.main_query;
+  // Function to get thread preview text - uses title if available, falls back to query or thread ID
+  const getThreadPreview = (thread: any) => {
+    // If thread has a title, use it as first priority
+    if (thread.title) return thread.title;
+    
+    // If we have a query in the thread data, use that as second priority
+    if (thread.query) return thread.query;
+    
+    // If we need to fetch the message to get the query
+    if (!loadingThreadPreview && user?.id) {
+      // Set a flag to avoid duplicate fetches
+      setLoadingThreadPreview(true);
+      
+      // Fetch just one message to get the query
+      apiClient.getChatMessages(user.id, thread.id, 1, 0)
+        .then(response => {
+          if (response.messages && response.messages.length > 0) {
+            const message = response.messages[0];
+            if (message.main_query) {
+              // Update thread with query information
+              setRecentThreads(prev => 
+                prev.map(t => 
+                  t.id === thread.id ? {...t, query: message.main_query} : t
+                )
+              );
+            }
+          }
+        })
+        .catch(error => console.error("Error fetching message query:", error))
+        .finally(() => setLoadingThreadPreview(false));
     }
-    return "No messages";
+    
+    // Fallback to thread ID if no title or query is available
+    return `Chat ${thread.id.substring(0, 8)}`;
   };
 
   const navItems = [
@@ -230,47 +297,75 @@ const Sidebar = () => {
                     {collapsed && <FiMessageSquare className="text-xl opacity-60" />}
                   </div>
                 ) : (
-                  <ul className="space-y-0.5 py-1">
-                    {recentThreads.map(thread => {
-                      const isActive = pathname === `/chat/${thread.id}`;
-                      return (
-                        <li key={thread.id} className="px-1  h-[34px]">
-                          <Link
-                            href={`/chat/${thread.id}`}
-                            className={`group flex items-center py-2 rounded-md text-sm transition-colors ${
-                              collapsed ? "justify-center" : "gap-2 px-2"
-                            } ${
-                              isActive
-                                ? darkMode
-                                  ? "bg-indigo-600/20 text-indigo-200 border-l-2 border-indigo-500"
-                                  : "bg-indigo-50 text-indigo-800 border-l-2 border-indigo-500"
-                                : darkMode
-                                  ? "text-gray-300 hover:text-white hover:bg-gray-800/60"
-                                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                            }`}
-                            title={collapsed ? getThreadPreview(thread.id) : undefined}
-                          >
-                            <div
-                              className={`flex-shrink-0 ${isActive ? (darkMode ? "text-indigo-300" : "text-indigo-600") : ""}`}
+                  <div className="flex flex-col space-y-1">
+                    <ul className="space-y-0.5 py-1">
+                      {recentThreads.map(thread => {
+                        const isActive = pathname === `/chat/${thread.id}`;
+                        return (
+                          <li key={thread.id} className="px-1 h-[34px]">
+                            <Link
+                              href={`/chat/${thread.id}`}
+                              className={`group flex items-center py-2 rounded-md text-sm transition-colors ${
+                                collapsed ? "justify-center" : "gap-2 px-2"
+                              } ${
+                                isActive
+                                  ? darkMode
+                                    ? "bg-indigo-600/20 text-indigo-200 border-l-2 border-indigo-500"
+                                    : "bg-indigo-50 text-indigo-800 border-l-2 border-indigo-500"
+                                  : darkMode
+                                    ? "text-gray-300 hover:text-white hover:bg-gray-800/60"
+                                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                              }`}
+                              title={collapsed ? getThreadPreview(thread) : undefined}
                             >
-                              <FiMessageSquare size={collapsed ? 18 : 16} />
-                            </div>
-                            {!collapsed && (
-                              <div className="flex-1 truncate">
-                                <div className="flex justify-between items-center">
-                                  <div
-                                    className={`truncate font-medium ${isActive ? (darkMode ? "text-indigo-200" : "text-indigo-700") : ""}`}
-                                  >
-                                    {getThreadPreview(thread.id)}
+                              <div
+                                className={`flex-shrink-0 ${isActive ? (darkMode ? "text-indigo-300" : "text-indigo-600") : ""}`}
+                              >
+                                <FiMessageSquare size={collapsed ? 18 : 16} />
+                              </div>
+                              {!collapsed && (
+                                <div className="flex-1 truncate">
+                                  <div className="flex justify-between items-center">
+                                    <div
+                                      className={`truncate font-medium ${isActive ? (darkMode ? "text-indigo-200" : "text-indigo-700") : ""}`}
+                                    >
+                                      {getThreadPreview(thread)}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                              )}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    
+                    {/* Infinite scroll sentinel */}
+                    {hasMoreThreads && (
+                      <div 
+                        ref={(el) => {
+                          if (!el || loadingThreads) return;
+                          const observer = new IntersectionObserver(
+                            (entries) => {
+                              if (entries[0].isIntersecting) {
+                                loadMoreThreads();
+                              }
+                            },
+                            { threshold: 0.5 }
+                          );
+                          observer.observe(el);
+                          return () => observer.disconnect();
+                        }}
+                        className="h-10 flex items-center justify-center"
+                      >
+                        {loadingThreads && (
+                          <div className="py-2 text-sm text-center w-full">
+                            <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -151,70 +151,82 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table
-            className={`min-w-full divide-y divide-gray-200 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
-          >
-            <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
-              <tr>
-                {columns.map((column, index) => (
-                  <th
-                    key={index}
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  >
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-              {people.map((person, personIndex) => (
-                <tr
-                  key={personIndex}
-                  className={
-                    personIndex % 2 === 0
-                      ? darkMode
-                        ? "bg-gray-900"
-                        : "bg-white"
-                      : darkMode
-                        ? "bg-gray-800"
-                        : "bg-gray-50"
-                  }
-                >
-                  {columns.map((column, columnIndex) => (
-                    <td
-                      key={columnIndex}
-                      className="px-4 py-4 whitespace-normal text-sm break-words"
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesContainerRef}>
+          {hasMoreMessages && (
+            <div className="flex justify-center mb-4">
+              <button 
+                onClick={loadMoreMessages}
+                className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Load Older Messages
+              </button>
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table
+              className={`min-w-full divide-y divide-gray-200 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+            >
+              <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
+                <tr>
+                  {columns.map((column, index) => (
+                    <th
+                      key={index}
+                      scope="col"
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
                     >
-                      {person[column] ? (
-                        person[column] === "null" || person[column] === "N/A" ? (
-                          <span className="text-gray-400">N/A</span>
-                        ) : column === "Social Links" ? (
-                          person[column].split(",").map((link: string, i: number) => (
-                            <div key={i} className="mb-1">
-                              <a
-                                href={link.trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:underline text-xs"
-                              >
-                                {link.trim()}
-                              </a>
-                            </div>
-                          ))
-                        ) : (
-                          <span className="text-sm">{person[column]}</span>
-                        )
-                      ) : (
-                        <span className="text-gray-400">N/A</span>
-                      )}
-                    </td>
+                      {column}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
+                {people.map((person, personIndex) => (
+                  <tr
+                    key={personIndex}
+                    className={
+                      personIndex % 2 === 0
+                        ? darkMode
+                          ? "bg-gray-900"
+                          : "bg-white"
+                        : darkMode
+                          ? "bg-gray-800"
+                          : "bg-gray-50"
+                    }
+                  >
+                    {columns.map((column, columnIndex) => (
+                      <td
+                        key={columnIndex}
+                        className="px-4 py-4 whitespace-normal text-sm break-words"
+                      >
+                        {person[column] ? (
+                          person[column] === "null" || person[column] === "N/A" ? (
+                            <span className="text-gray-400">N/A</span>
+                          ) : column === "Social Links" ? (
+                            person[column].split(",").map((link: string, i: number) => (
+                              <div key={i} className="mb-1">
+                                <a
+                                  href={link.trim()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:underline text-xs"
+                                >
+                                  {link.trim()}
+                                </a>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-sm">{person[column]}</span>
+                          )
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
@@ -225,6 +237,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const router = useRouter();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const [query, setQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState("00000000-0000-4000-a000-000000000000");
@@ -246,9 +259,43 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
   const [chatPairs, setChatPairs] = useState<any[]>([]);
+  const [messagesOffset, setMessagesOffset] = useState<number>(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
+  const [totalMessages, setTotalMessages] = useState<number>(0);
+  const MESSAGES_PER_PAGE = 50;
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  
+  // Function to load more messages (older messages)
+  const loadMoreMessages = async () => {
+    if (!threadId || !hasMoreMessages) return;
+    
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        console.error("User not authenticated.");
+        return;
+      }
+      
+      const messagesResponse = await apiClient.getChatMessages(userId, threadId, MESSAGES_PER_PAGE, messagesOffset);
+      
+      if (messagesResponse.messages && messagesResponse.messages.length > 0) {
+        // Add messages to the beginning since we're loading older messages
+        setChatPairs(prev => [...messagesResponse.messages, ...prev]);
+        setMessagesOffset(prev => prev + MESSAGES_PER_PAGE);
+        setHasMoreMessages(messagesOffset + MESSAGES_PER_PAGE < messagesResponse.total);
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    }
+  };
 
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
 
@@ -341,16 +388,23 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           return;
         }
 
-        const chatMessages = await apiClient.getChatMessages(userId, threadId);
+        // Get messages with pagination - initially fetch first batch
+        const messagesResponse = await apiClient.getChatMessages(userId, threadId, MESSAGES_PER_PAGE, 0);
+        
+        setTotalMessages(messagesResponse.total);
+        setMessagesOffset(MESSAGES_PER_PAGE);
+        setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
 
-        if (chatMessages && chatMessages.length > 0) {
-          setChatPairs(chatMessages);
-          setCurrentMessageIndex(chatMessages.length - 1);
+        if (messagesResponse.messages && messagesResponse.messages.length > 0) {
+          setChatPairs(messagesResponse.messages);
+          setCurrentMessageIndex(messagesResponse.messages.length - 1);
         }
       } catch (error) {
         console.error("Error fetching chat messages:", error);
       }
     };
+    
+    // fetchMessages implementation
 
     fetchMessages();
   }, [threadId]);

@@ -6,39 +6,97 @@ def get_current_date():
     return datetime.now().strftime("%B %d, %Y")
 
 
-query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for an advanced automated web research tool capable of analyzing complex results, following links, and synthesizing information.
+query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for searching poeple all over the internet, based on the configuration below whether HR, Sales, General
 
-You are {agent_config}
+**Enhanced Prompt Template**
+
+You are {agent\_config}
+
+Based on the above agent config, think like that, and write relevant queries to find people always.
 
 Instructions:
-- Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
-- Each query should focus on the original question.
-- Queries will be always regarding finding people, if you got HR config, then you are hiring for a position, if sales then you are looking for leads to sell to.
-- Produce {number_queries} queries always.
-- Don't generate multiple similar queries.
-- Query should ensure that the most current and relevant public data about people is gathered. The current date is {current_date}.
-- Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
-- Don't include your own explanation outside the JSON object.
 
-Format: 
-- Format your response as a JSON object with ALL two of these exact keys:
-   - "rationale": Brief explanation of why these queries are relevant
-   - "query": A list of search queries
+* Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
+* Each query should focus on the original question.
+* Queries will always be regarding finding people; if you got an HR config, then you are hiring for a position; if sales, then you are looking for leads to sell to.
+* Produce {number\_queries} queries always.
+* Don't generate multiple similar queries.
+* Query should ensure that the most current and relevant public data about people is gathered. The current date is {current\_date}.
+* Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
+* Don't include your own explanation outside the JSON object.
 
-Context: {research_topic}
+Format:
 
-Example:
-lets say given, produce 3 queries then:
+* Format your response as a JSON object with ALL two of these exact keys:
 
-"rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
-"query": ["site:github.com \"React developer\" Berlin",  "intitle:portfolio \"React developer\" Berlin -jobs -job", "\"React developer\" Berlin site:linkedin.com/in" , "\"Frontend developer\" React Tailwind site:about.me OR site:behance.net"]
+  * "rationale": Brief explanation of why these queries are relevant
+  * "query": A list of search queries
 
-lets say given, produce 1 query then:
+Context: {research\_topic}
+
+Examples:
+
+1. **HR Agent Example**
+
+   * Use platforms where professionals list their experience and skills:
+
+     * site\:linkedin.com/in
+     * site\:indeed.com/r
+     * site\:naukri.com
+     * site\:monster.com
+   * Example output for "Product Manager" role:
+
+
+"rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
+"query": [
+    "site:linkedin.com/in \"Product Manager\" \"San Francisco Bay Area\" -jobs -company",
+    "site:indeed.com/r \"Product Manager\" \"San Francisco Bay Area\""
+  ]
+
+2. **Sales Agent Example**
+
+   * Use platforms where decision-makers and company contacts appear:
+
+     * site\:linkedin.com/in
+     * site\:crunchbase.com/organization
+     * site\:zoominfo.com/profile
+     * site\:apollo.io/people
+     * site\:cognism.com/profiles
+     * site\:hubspot.com/contacts
+     * site\:saleshandy.com/prospects
+     * site\:hunter.io
+     * site\:drift.com/chat
+     * site\:leadsforge.com
+     * site\:lusha.com
+   * Example output for "CRM software" leads:
+
+"rationale": "To find potential CRM software buyers, we search for technology and sales leaders across leading B2B intelligence, networking, and outreach platforms, ensuring a diverse pool of decision-makers from verified sources.",
+"query": [
+    "site:linkedin.com/in \"CTO\" \"CRM software\"",
+    "site:crunchbase.com/organization \"CRM\" investors",
+    "site:angel.co/company \"CRM\" funding",
+    "site:zoominfo.com/profile \"VP Sales\" \"CRM\"",
+    "site:apollo.io/people \"Head of Sales\" \"CRM software\"",
+    "site:cognism.com/profiles \"Sales Director\" \"CRM\"",
+    "site:hubspot.com/contacts \"Customer Success Manager\" \"CRM\"",
+    "site:saleshandy.com/prospects \"Sales Enablement\" \"CRM\"",
+    "site:hunter.io \"email finder\" CRM",
+    "site:drift.com/chat \"conversational marketing\" CRM",
+    "site:leadsforge.com \"ideal customer profile\" CRM",
+    "site:lusha.com \"contact enrichment\" CRM"
+  ]
+
+Example shorthand when only 1 query is needed:
 
 "rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
 "query": ["site:github.com \"React developer\" Berlin"]
 
+Now apply this template to generate the required queries.
+
+When its general agent use both sales and HR agent instructions.
+
 """
+
 
 reflection_instructions = """You are an expert research assistant analyzing summaries about "{research_topic}".
 
@@ -243,3 +301,16 @@ if any field has empty value, type null in front of that field
 Always give correct links and do not give any fake links
 
 """
+
+query_title_generation = """
+        Generate a title for the chat thread based on the user's message.
+        
+        User message:  {latest_message}.
+
+        Return only the title.
+
+        Title: title suitable for the message
+
+        Example:
+        Title: React Developers Berlin
+        """
