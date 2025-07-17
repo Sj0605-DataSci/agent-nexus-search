@@ -84,7 +84,11 @@ class ChatService:
                     "personality": "helpful",
                     "tone": "professional",
                     "response_length": "medium",
-                    "expertise": "research"
+                    "expertise": "research",
+                    "number_of_results_returned": 5,
+                    "max_research_loops": 3,
+                    "initial_search_query_count": 3,
+                    "can_hire_unhire": True
                 }
             
             return response.data[0]
@@ -170,6 +174,14 @@ class ChatService:
             
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)
+            
+            # Log agent config for debugging
+            logger.info("Agent config retrieved",
+                       user_id=user_id,
+                       agent_id=agent_id,
+                       agent_name=agent_config.get('name', 'Unknown'),
+                       has_number_of_results=('number_of_results_returned' in agent_config),
+                       number_of_results_returned=agent_config.get('number_of_results_returned', 'Missing'))
 
             if thread_id == "new":
                 thread_id = ""

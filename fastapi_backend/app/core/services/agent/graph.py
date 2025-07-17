@@ -237,9 +237,13 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         agent_config = state["agent_config"]
         agent_id = agent_config["id"]
         user_id = agent_config["user_id"]
-        num_results = agent_config["number_of_results_returned"]
+        num_results = agent_config.get("number_of_results_returned", 5)  # Default to 5 if missing
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
+        
+        # Log agent config for debugging
+        print(f"Agent config in generate_query: {agent_config}")
+        print(f"Number of results returned: {num_results}")
 
     # check for custom initial search query count
         initial_search_query_count = state["initial_search_query_count"]
