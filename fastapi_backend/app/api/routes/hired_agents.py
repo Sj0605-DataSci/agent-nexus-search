@@ -43,7 +43,7 @@ async def hire_agent(
         logger.info("Agent hired successfully",
                    user_id=str(current_user.id),
                    agent_id=str(agent_response.id) if hasattr(agent_response, 'id') else None,
-                   agent_template_id=str(agent.agent_template_id))
+                   agent_template_id=str(agent.template_id))
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -58,7 +58,7 @@ async def hire_agent(
                     status_code=e.status_code,
                     detail=str(e.detail),
                     user_id=str(current_user.id) if current_user else None,
-                    agent_template_id=str(agent.agent_template_id))
+                    agent_template_id=str(agent.template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -71,7 +71,7 @@ async def hire_agent(
                         exception_type=type(e).__name__,
                         error_message=str(e),
                         user_id=str(current_user.id) if current_user else None,
-                        agent_template_id=str(agent.agent_template_id))
+                        agent_template_id=str(agent.template_id))
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
