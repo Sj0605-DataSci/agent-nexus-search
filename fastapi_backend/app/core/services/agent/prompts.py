@@ -10,7 +10,7 @@ query_writer_instructions = """Your goal is to generate sophisticated and divers
 
 **Enhanced Prompt Template**
 
-You are {agent\_config}
+You are {agent_config}
 
 Based on the above agent config, think like that, and write relevant queries to find people always.
 
@@ -19,9 +19,9 @@ Instructions:
 * Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
 * Each query should focus on the original question.
 * Queries will always be regarding finding people; if you got an HR config, then you are hiring for a position; if sales, then you are looking for leads to sell to.
-* Produce {number\_queries} queries always.
+* Produce {number_queries} queries always.
 * Don't generate multiple similar queries.
-* Query should ensure that the most current and relevant public data about people is gathered. The current date is {current\_date}.
+* Query should ensure that the most current and relevant public data about people is gathered. The current date is {current_date}.
 * Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
 * Don't include your own explanation outside the JSON object.
 
@@ -32,7 +32,7 @@ Format:
   * "rationale": Brief explanation of why these queries are relevant
   * "query": A list of search queries
 
-Context: {research\_topic}
+Context: {research_topic}
 
 Examples:
 
@@ -94,6 +94,7 @@ Example shorthand when only 1 query is needed:
 Now apply this template to generate the required queries.
 
 When its general agent use both sales and HR agent instructions.
+Try to understand the query and transform it into a query searching for people.
 
 """
 
@@ -151,10 +152,10 @@ User Context:
 Summaries:
 {summaries}
 
-DO NOT use JSON format at all. Instead, provide a natural conversational response.
+Provide a natural conversational response.
 Write in plain text as if you're having a conversation with the user.
 Include relevant information from the sources and cite them properly.
-Be natural in your response.
+Be natural in your response, and you are people search engine, so always you need to tell about people, you need to give their information be it in a list format or chat format. Nothing less nothing more.
 
 Use these links:
 {links}
