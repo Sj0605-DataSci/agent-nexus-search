@@ -14,6 +14,7 @@ import { generateToken } from "@/utils/globalconstant";
 import Aurora from "./Aurora";
 import ToggleSystemTheme from "./ToggleSystemTheme";
 import { useAppSelector } from "@/store";
+import Link from "next/link";
 
 const schema = yup.object().shape({
   name: yup.string().required("Full name is required").min(2),
@@ -124,7 +125,7 @@ const NewAnimatedWaitlist: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen flex items-center  justify-center transition-colors duration-500 ${
+      className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
         darkMode
           ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
           : "bg-gradient-to-br from-blue-50 to-purple-50"
@@ -202,6 +203,20 @@ const NewAnimatedWaitlist: React.FC = () => {
         </svg>
       </motion.div>
 
+      {/* Navigation links positioned at the top */}
+      <div className="absolute top-6 right-6 z-20 flex items-center space-x-6">
+        <Link href="/login">
+          <span className={`text-sm font-medium cursor-pointer hover:underline hover:opacity-80 transition-opacity ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
+            Login
+          </span>
+        </Link>
+        <Link href="/signup">
+          <span className={`px-4 py-2 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-all ${darkMode ? "bg-blue-600 text-white" : "bg-blue-500 text-white"} shadow-md`}>
+            Sign up
+          </span>
+        </Link>
+      </div>
+
       <motion.main
         className={`relative mx-2 z-10 w-full max-w-md rounded-3xl shadow-2xl border transition-colors duration-500 ${
           darkMode ? "bg-black/80 border-gray-800" : "bg-white/90 border-gray-200"
@@ -239,6 +254,7 @@ const NewAnimatedWaitlist: React.FC = () => {
             <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
               Thank you for joining our waitlist. We'll be in touch soon!
             </p>
+
           </div>
         ) : (
           <>
@@ -259,6 +275,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                 Reimagine how you find the perfect hire or your perfect lead smarter, faster, more
                 personal.
               </p>
+
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <div>
