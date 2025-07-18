@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Path, Query, Body
 from fastapi.responses import StreamingResponse
 from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate
+from app.models.models import Profile
 from app.core.services.chat_service import ChatService
 from typing import Annotated, AsyncGenerator, List, Dict, Any, Optional
 import traceback
 import logging
+from app.core.auth import get_current_user
 from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from pydantic import BaseModel
@@ -81,6 +83,7 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
+    current_user: Profile = Depends(get_current_user)
 ) -> StreamingResponse:
     """
     Stream chat response as Server-Sent Events (SSE) using Redis-based background workers
@@ -140,8 +143,8 @@ async def stream_chat(
         )
 
 
-@router.get("/threads/{user_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
-async def get_chat_threads(user_id: str = Path(..., description="ID of the user")):
+@router.get("/threads", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+async def get_chat_threads(current_user: Profile = Depends(get_current_user)):
     """
     Get all chat threads for a specific user
     
@@ -154,10 +157,10 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
         chat_service = ChatService(client=await get_async_supabase_client())
         
         # Get chat threads for the user
-        threads = await chat_service.get_chat_threads(user_id)
+        threads = await chat_service.get_chat_threads(current_user.id)
         
         logger.info("Chat threads retrieved successfully",
-                   user_id=user_id,
+                   user_id=current_user.id,
                    thread_count=len(threads) if threads else 0)
         
         return StandardJSONResponse(StandardResponse(
@@ -171,7 +174,7 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
-                    user_id=user_id)
+                    user_id=current_user.id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -182,7 +185,7 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
         logger.exception("Unexpected error in get_chat_threads",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        user_id=user_id)
+                        user_id=current_user.id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -191,10 +194,10 @@ async def get_chat_threads(user_id: str = Path(..., description="ID of the user"
         ))
 
 
-@router.get("/messages/{user_id}/{chat_thread_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+@router.get("/messages/{chat_thread_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
 async def get_messages_for_thread(
-    user_id: str = Path(..., description="ID of the user"),
-    chat_thread_id: str = Path(..., description="ID of the chat thread")
+    chat_thread_id: str = Path(..., description="ID of the chat thread"),
+    current_user: Profile = Depends(get_current_user)
 ):
     """
     Get all messages for a specific chat thread and user
@@ -209,10 +212,10 @@ async def get_messages_for_thread(
         chat_service = ChatService(client=await get_async_supabase_client())
         
         # Get messages for the chat thread
-        messages = await chat_service.get_messages_for_thread(user_id, chat_thread_id)
+        messages = await chat_service.get_messages_for_thread(current_user.id, chat_thread_id)
         
         logger.info("Chat messages retrieved successfully",
-                   user_id=user_id,
+                   user_id=current_user.id,
                    chat_thread_id=chat_thread_id,
                    message_count=len(messages) if messages else 0)
         
@@ -227,7 +230,7 @@ async def get_messages_for_thread(
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
-                    user_id=user_id,
+                    user_id=current_user.id,
                     chat_thread_id=chat_thread_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
@@ -239,7 +242,7 @@ async def get_messages_for_thread(
         logger.exception("Unexpected error in get_messages_for_thread",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        user_id=user_id,
+                        user_id=current_user.id,
                         chat_thread_id=chat_thread_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
@@ -248,18 +251,17 @@ async def get_messages_for_thread(
             data=None
         ))
         
-@router.get("/feedback/{user_id}/{chat_thread_id}/{message_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
-async def get_feedback_for_thread(user_id: str, chat_thread_id: str, message_id: str):
+@router.get("/feedback/{message_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+async def get_feedback_for_thread_message(message_id: str, current_user: Profile = Depends(get_current_user)):
     try:
         # Initialize chat service
         chat_service = ChatService(client=await get_async_supabase_client())
         
         # Get feedback for the chat thread
-        feedback = await chat_service.get_feedback_for_thread_message(user_id, chat_thread_id, message_id)
+        feedback = await chat_service.get_feedback_for_thread_message(current_user.id, message_id)
         
         logger.info("Feedback retrieved successfully",
-                   user_id=user_id,
-                   chat_thread_id=chat_thread_id,
+                   user_id=current_user.id,
                    message_id=message_id,
                    feedback_count=len(feedback) if feedback else 0)
         
@@ -274,8 +276,8 @@ async def get_feedback_for_thread(user_id: str, chat_thread_id: str, message_id:
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
-                    user_id=user_id,
-                    chat_thread_id=chat_thread_id)
+                    user_id=current_user.id,
+                    message_id=message_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -286,8 +288,8 @@ async def get_feedback_for_thread(user_id: str, chat_thread_id: str, message_id:
         logger.exception("Unexpected error in get_feedback_for_thread",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        user_id=user_id,
-                        chat_thread_id=chat_thread_id)
+                        user_id=current_user.id,
+                        message_id=message_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -295,51 +297,47 @@ async def get_feedback_for_thread(user_id: str, chat_thread_id: str, message_id:
             data=None
         ))
 
-@router.post("/feedback/{user_id}/{chat_thread_id}/{message_id}", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+@router.post("/feedback/{message_id}", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
 async def post_feedback_for_thread_message(
-    user_id: str, 
-    chat_thread_id: str, 
     message_id: str, 
-    feedback_data: FeedbackData = Body(...)):
+    feedback_data: FeedbackData = Body(...),
+    current_user: Profile = Depends(get_current_user)):
     try:
         # Initialize chat service
         chat_service = ChatService(client=await get_async_supabase_client())
         
         # Log the received feedback data
         logger.info("Received feedback data",
-                   user_id=user_id,
-                   chat_thread_id=chat_thread_id,
+                   user_id=current_user.id,
                    message_id=message_id,
                    is_positive=feedback_data.is_positive,
                    has_comment=bool(feedback_data.comment))
         
         # Submit feedback to the chat service
         feedback = await chat_service.post_feedback_for_thread_message(
-            user_id, 
-            chat_thread_id, 
+            current_user.id, 
             message_id, 
             feedback_data.is_positive,
             feedback_data.comment or "")
         
         logger.info("Feedback submitted successfully",
-                   user_id=user_id,
-                   chat_thread_id=chat_thread_id,
+                   user_id=current_user.id,
                    message_id=message_id,
                    is_positive=feedback_data.is_positive)
         
         return StandardJSONResponse(StandardResponse(
             success=True,
             status_code=status.HTTP_200_OK,
-            message="Feedback retrieved successfully",
-            data=feedback
+            message="Feedback submitted successfully",
+            data=None
         ))
     except HTTPException as e:
-        logger.error("HTTP exception in get_feedback_for_thread",
+        logger.error("HTTP exception in post_feedback_for_thread_message",
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
-                    user_id=user_id,
-                    chat_thread_id=chat_thread_id)
+                    user_id=current_user.id,
+                    message_id=message_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=e.status_code,
@@ -347,14 +345,14 @@ async def post_feedback_for_thread_message(
             data=None
         ))
     except Exception as e:
-        logger.exception("Unexpected error in get_feedback_for_thread",
+        logger.exception("Unexpected error in post_feedback_for_thread_message",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        user_id=user_id,
-                        chat_thread_id=chat_thread_id)
+                        user_id=current_user.id,
+                        message_id=message_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Error retrieving feedback: {str(e)}",
+            message=f"Error submitting feedback: {str(e)}",
             data=None
         ))

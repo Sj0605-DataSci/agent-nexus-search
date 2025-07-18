@@ -125,7 +125,7 @@ class OptionalAuthDependency:
         credentials_exception = StandardResponse(
             success=False,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Could not validate credentials",
+            message="Could not validate credentials, please login again for fresh token",
             data=None
         )
         
@@ -135,7 +135,7 @@ class OptionalAuthDependency:
         if isinstance(token_data, StandardJSONResponse):
             # This will cause FastAPI to use this response directly
             # Instead of continuing with the dependency chain
-            raise HTTPException(status_code=401, detail="Could not validate credentials")
+            raise HTTPException(status_code=401, detail="Could not validate credentials, please login again for fresh token")
         
         # Get Supabase client
         client = await get_async_supabase_client()

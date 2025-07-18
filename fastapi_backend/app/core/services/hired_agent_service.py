@@ -115,21 +115,9 @@ class HiredAgentService:
                            template_id=str(agent.template_id) if agent.template_id else None)
             raise
     
-    async def get_hired_agents(self, user_id: UUID, current_user: Profile) -> List[HiredAgentResponse]:
+    async def get_hired_agents(self, user_id: str) -> List[HiredAgentResponse]:
         """Get all hired agents for a user"""
         try:
-            # If user_id is provided, ensure it's the current user or raise 403
-            if user_id and user_id != current_user.id:
-                logger.warning("Authorization failed: User tried to view agents for different user",
-                              current_user_id=str(current_user.id),
-                              requested_user_id=str(user_id))
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only view your own hired agents"
-                )
-            
-            # Use the current user's ID if no user_id is provided
-            user_id = user_id or current_user.id
             logger.info("Fetching hired agents for user",
                        user_id=str(user_id))
 
@@ -148,33 +136,20 @@ class HiredAgentService:
                            user_id=str(user_id) if user_id else None)
             raise
     
-    async def get_hired_agent_by_id(self, agent_id: UUID, current_user: Profile) -> Optional[HiredAgentResponse]:
+    async def get_hired_agent_by_id(self, agent_id: UUID) -> Optional[HiredAgentResponse]:
         """Get a specific hired agent by ID"""
         try:
             response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).execute()
             
             if not response.data or len(response.data) == 0:
                 logger.warning("Hired agent not found",
-                              agent_id=str(agent_id),
-                              current_user_id=str(current_user.id))
+                              agent_id=str(agent_id))
                 return None
             
             agent = response.data[0]
             
-            # Ensure the user can only view their own hired agents
-            if agent["user_id"] != str(current_user.id):
-                logger.warning("Authorization failed: User tried to view agent owned by different user",
-                              agent_id=str(agent_id),
-                              current_user_id=str(current_user.id),
-                              agent_owner_id=agent["user_id"])
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only view your own hired agents"
-                )
-            
             logger.info("Hired agent retrieved successfully",
-                       agent_id=str(agent_id),
-                       user_id=str(current_user.id))
+                       agent_id=str(agent_id))
             
             # Convert to Pydantic model for JSON serialization
             return HiredAgentResponse(**agent)
@@ -182,11 +157,10 @@ class HiredAgentService:
             logger.exception("Error in get_hired_agent_by_id",
                            exception_type=type(e).__name__,
                            error_message=str(e),
-                           agent_id=str(agent_id),
-                           current_user_id=str(current_user.id))
+                           agent_id=str(agent_id))
             raise
     
-    async def update_hired_agent(self, agent_id: UUID, agent_update: HiredAgentUpdate, current_user: Profile) -> Optional[HiredAgentResponse]:
+    async def update_hired_agent(self, agent_id: UUID, agent_update: HiredAgentUpdate) -> Optional[HiredAgentResponse]:
         """Update a hired agent"""
         try:
             # First get the agent to check permissions
@@ -194,22 +168,10 @@ class HiredAgentService:
             
             if not response.data or len(response.data) == 0:
                 logger.warning("Hired agent not found for update",
-                              agent_id=str(agent_id),
-                              current_user_id=str(current_user.id))
+                              agent_id=str(agent_id))
                 return None
             
             agent = response.data[0]
-            
-            # Ensure the user can only update their own hired agents
-            if agent["user_id"] != str(current_user.id):
-                logger.warning("Authorization failed: User tried to update agent owned by different user",
-                              agent_id=str(agent_id),
-                              current_user_id=str(current_user.id),
-                              agent_owner_id=agent["user_id"])
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only update your own hired agents"
-                )
             
             # Prepare update data
             update_data = agent_update.model_dump(exclude_unset=True)
@@ -221,7 +183,6 @@ class HiredAgentService:
             
             logger.info("Updating hired agent",
                        agent_id=str(agent_id),
-                       user_id=str(current_user.id),
                        update_fields=list(update_data.keys()))
             
             # Update in Supabase
@@ -230,7 +191,6 @@ class HiredAgentService:
             if not update_response.data or len(update_response.data) == 0:
                 logger.error("Failed to update hired agent: No data returned",
                            agent_id=str(agent_id),
-                           user_id=str(current_user.id),
                            update_fields=list(update_data.keys()))
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -239,7 +199,6 @@ class HiredAgentService:
             
             logger.info("Hired agent updated successfully",
                        agent_id=str(agent_id),
-                       user_id=str(current_user.id),
                        updated_fields=list(update_data.keys()))
             
             # Convert to Pydantic model for JSON serialization
@@ -248,11 +207,10 @@ class HiredAgentService:
             logger.exception("Error in update_hired_agent",
                            exception_type=type(e).__name__,
                            error_message=str(e),
-                           agent_id=str(agent_id),
-                           current_user_id=str(current_user.id))
+                           agent_id=str(agent_id))
             raise
     
-    async def delete_hired_agent(self, agent_id: UUID, current_user: Profile) -> bool:
+    async def delete_hired_agent(self, agent_id: UUID) -> bool:
         """Delete a hired agent"""
         try:
             # First get the agent to check permissions
@@ -260,26 +218,13 @@ class HiredAgentService:
             
             if not response.data or len(response.data) == 0:
                 logger.warning("Hired agent not found for deletion or cannot be unhired",
-                              agent_id=str(agent_id),
-                              current_user_id=str(current_user.id))
+                              agent_id=str(agent_id))
                 return False
             
             agent = response.data[0]
             
-            # Ensure the user can only delete their own hired agents
-            if agent["user_id"] != str(current_user.id):
-                logger.warning("Authorization failed: User tried to delete agent owned by different user",
-                              agent_id=str(agent_id),
-                              current_user_id=str(current_user.id),
-                              agent_owner_id=agent["user_id"])
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only delete your own hired agents"
-                )
-            
             logger.info("Deleting hired agent",
-                       agent_id=str(agent_id),
-                       user_id=str(current_user.id))
+                       agent_id=str(agent_id))
             
             # Delete from Supabase
             delete_response = await self.client.table("hired_agents").delete().eq("id", str(agent_id)).execute()
@@ -288,18 +233,15 @@ class HiredAgentService:
             
             if success:
                 logger.info("Hired agent deleted successfully",
-                           agent_id=str(agent_id),
-                           user_id=str(current_user.id))
+                           agent_id=str(agent_id))
             else:
                 logger.warning("Failed to delete hired agent",
-                              agent_id=str(agent_id),
-                              user_id=str(current_user.id))
+                              agent_id=str(agent_id))
             
             return success
         except Exception as e:
             logger.exception("Error in delete_hired_agent",
                            exception_type=type(e).__name__,
                            error_message=str(e),
-                           agent_id=str(agent_id),
-                           current_user_id=str(current_user.id))
+                           agent_id=str(agent_id))
             raise

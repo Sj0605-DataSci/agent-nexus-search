@@ -82,13 +82,11 @@ async def hire_agent(
 @router.get("", response_model=StandardResponse[List[HiredAgentResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def get_hired_agents(
     request: Request,
-    user_id: UUID = Query(None),
     current_user: Profile = Depends(get_current_user)
 ):
     """Get all hired agents for a user"""
     try:
         logger.info("Get hired agents request received",
-                   query_user_id=str(user_id) if user_id else None,
                    current_user_id=str(current_user.id) if current_user else None)
         
         # Initialize the service
@@ -111,12 +109,12 @@ async def get_hired_agents(
         
         # # If not in cache, get from database
         # logger.info(f"Cache miss for {cache_key}, fetching from database")
-        agent_responses = await service.get_hired_agents(user_id, current_user)
+        agent_responses = await service.get_hired_agents(str(current_user.id))
         
         logger.info("Hired agents retrieved successfully",
-                   target_user_id=str(user_id) if user_id else str(current_user.id),
+                   target_user_id=str(current_user.id),
                    agent_count=len(agent_responses) if agent_responses else 0,
-                   current_user_id=str(current_user.id) if current_user else None)
+                   current_user_id=str(current_user.id))
         
         # # Store in cache for future requests (expire in 5 minutes)
         # await cache_set(cache_key, agent_responses, expire=300)
@@ -134,7 +132,6 @@ async def get_hired_agents(
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
-                    query_user_id=str(user_id) if user_id else None,
                     current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
@@ -147,7 +144,6 @@ async def get_hired_agents(
         logger.exception("Unexpected error in get_hired_agents",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        query_user_id=str(user_id) if user_id else None,
                         current_user_id=str(current_user.id) if current_user else None)
         return StandardJSONResponse(StandardResponse(
             success=False,
@@ -182,7 +178,7 @@ async def get_hired_agent(
         
         # If not in cache, get from database
         # logger.info(f"Cache miss for hired agent {agent_id}, fetching from database")
-        agent_response = await service.get_hired_agent_by_id(agent_id, current_user)
+        agent_response = await service.get_hired_agent_by_id(agent_id)
         
         # if agent_response is not None:
             # Store in cache for future requests (expire in 10 minutes)
@@ -242,7 +238,7 @@ async def update_hired_agent(
         service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to update the hired agent
-        agent_response = await service.update_hired_agent(agent_id, agent_update, current_user)
+        agent_response = await service.update_hired_agent(agent_id, agent_update)
         
         # if agent_response is not None:
         #     # # Invalidate both the specific agent cache and the user's list cache

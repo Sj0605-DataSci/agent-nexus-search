@@ -508,19 +508,17 @@ class ChatService:
                             user_id=user_id)
             raise
 
-    async def get_feedback_for_thread_message(self, user_id: str, chat_thread_id: str, message_id: str) -> List[Dict[str, Any]]:
+    async def get_feedback_for_thread_message(self, user_id: str, message_id: str) -> List[Dict[str, Any]]:
         try:
             logger.info("Fetching feedback for thread message",
                        user_id=user_id,
-                       chat_thread_id=chat_thread_id,
                        message_id=message_id)
             
             # Query Supabase for feedback in the specified chat thread message
             response = await self.client.table("chat_messages") \
-                .select("id, user_id, chat_thread_id, message_id, is_positive, comment, created_at, updated_at") \
-                .eq("chat_thread_id", chat_thread_id) \
+                .select("id, user_id, chat_thread_id,is_positive, comment, created_at, updated_at") \
                 .eq("user_id", user_id) \
-                .eq("message_id", message_id) \
+                .eq("id", message_id) \
                 .execute()
             
             return response.data
@@ -529,17 +527,15 @@ class ChatService:
             logger.exception("Error fetching feedback for thread message",
                             exception_type=type(e).__name__,
                             error_message=str(e),
-                            chat_thread_id=chat_thread_id,
                             user_id=user_id,
                             message_id=message_id)
             raise 
 
 
-    async def post_feedback_for_thread_message(self, user_id: str, chat_thread_id: str, message_id: str, is_positive: bool, comment: str) -> Dict[str, Any]:
+    async def post_feedback_for_thread_message(self, user_id: str, message_id: str, is_positive: bool, comment: str) -> Dict[str, Any]:
         try:
             logger.info("Posting feedback for thread message",
                        user_id=user_id,
-                       chat_thread_id=chat_thread_id,
                        message_id=message_id,
                        is_positive=is_positive,
                        comment=comment)
@@ -550,7 +546,6 @@ class ChatService:
                     "is_positive": is_positive,
                     "comment": comment
                 }) \
-                .eq("chat_thread_id", chat_thread_id) \
                 .eq("user_id", user_id) \
                 .eq("id", message_id) \
                 .execute()
@@ -561,7 +556,6 @@ class ChatService:
             logger.exception("Error posting feedback for thread message",
                             exception_type=type(e).__name__,
                             error_message=str(e),
-                            chat_thread_id=chat_thread_id,
                             user_id=user_id,
                             message_id=message_id,
                             is_positive=is_positive,
