@@ -169,6 +169,12 @@ If you're looking to connect with professionals like these, LinkedIn is an excel
 *   `"Bharat P." "UiPath Certified RPA Associate" "Program Manager" site:linkedin.com/in/`
 
 Never give job listings or whatever you got in data in summaries, you should always result a list of people, so format your answer accordingly.
+Also provide a score with each person, the score should be based on the following criteria:
+
+- Relevance of the person to the user's question
+- How many times the person has been mentioned in the summaries
+- In summaries relevancy of information, created, updated, when information was published
+- Provide a score out of 10 and reason for the score
 
 """
 
@@ -286,6 +292,8 @@ LName : Doe
 Social links : https://linkedin.com/in/johndoe, https://github.com/johndoe
 Email : johndoe@gmail.com
 Phone No : 1234567890
+Score : 10
+Reason : 
 
 if format is table and you get detail of more than 1 person then:
 
@@ -294,16 +302,26 @@ LName : Doe
 Social links : https://linkedin.com/in/johndoe, https://github.com/johndoe
 Email : johndoe@gmail.com
 Phone No : 1234567890
+Score : 10
+Reason : 
 
 FName : John
 LName : Sinha
 Social links : https://linkedin.com/in/johnsinha, https://github.com/johnsinha
 Email : johnsinha@gmail.com
 Phone No : 1234567890
+Score : 10
+Reason : 
 
 if any field has empty value, type null in front of that field
 
 Always give correct links and do not give any fake links
+Score should be out of 10 and based on following criteria:
+- Relevance of the person to the user's question
+- How many times the person has been mentioned in the summaries
+- In summaries relevancy of information, created, updated, when information was published
+
+Always give a reason for the score
 
 """
 

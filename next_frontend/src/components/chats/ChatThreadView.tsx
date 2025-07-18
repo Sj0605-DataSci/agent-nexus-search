@@ -40,7 +40,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     }
 
     const people: any[] = [];
-    const columns = ["FName", "LName", "Social Links", "Email", "Phone No"];
+    const columns = ["FName", "LName", "Social Links", "Email", "Phone No", "Score", "Reason"];
     let currentPerson: any = {};
 
     for (const line of lines) {
@@ -61,6 +61,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           normalizedKey = "Email";
         } else if (key.toLowerCase().includes("phone")) {
           normalizedKey = "Phone No";
+        } else if (key.toLowerCase().includes("score")) {
+          normalizedKey = "Score";
+        } else if (key.toLowerCase().includes("reason")) {
+          normalizedKey = "Reason";
         }
 
         if (normalizedKey) {

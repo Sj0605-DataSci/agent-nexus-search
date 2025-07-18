@@ -1135,7 +1135,9 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             formatted_content += f"LName : {person.lname}\n"
             formatted_content += f"Social links : {', '.join(person.social_links)}\n"
             formatted_content += f"Email : {person.email}\n"
-            formatted_content += f"Phone No : {person.phone_no}\n\n"
+            formatted_content += f"Phone No : {person.phone_no}\n"
+            formatted_content += f"Score : {person.score}\n"
+            formatted_content += f"Reason : {person.reason}\n"
         
         final_message = AIMessage(content=formatted_content.strip())
     else:
