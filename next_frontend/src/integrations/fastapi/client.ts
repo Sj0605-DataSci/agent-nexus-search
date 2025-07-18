@@ -204,6 +204,32 @@ export const apiClient = {
     }
   },
 
+  // Feedback
+  async sendFeedback(data: {
+    message_id: string;
+    thread_id: string;
+    is_positive: boolean;
+    comment?: string;
+    user_id?: string;
+  }): Promise<any> {
+    try {
+      // Get user ID from profile if not provided
+      const userId = data.user_id;
+      
+      const res = await axiosInstance.post(
+        `/chat/feedback/${userId}/${data.thread_id}/${data.message_id}`,
+        {
+          is_positive: data.is_positive,
+          comment: data.comment || ""
+        }
+      );
+      return res.data?.data;
+    } catch (error) {
+      console.error("Error sending feedback:", error);
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async sendStreamingChatRequest(
     userId: string,
     agentId: string,

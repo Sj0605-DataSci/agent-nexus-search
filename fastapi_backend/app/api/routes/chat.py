@@ -1,12 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Query, Body
 from fastapi.responses import StreamingResponse
 from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate
 from app.core.services.chat_service import ChatService
-from typing import Annotated, AsyncGenerator, List, Dict, Any
+from typing import Annotated, AsyncGenerator, List, Dict, Any, Optional
 import traceback
 import logging
 from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
+from pydantic import BaseModel
+
+# Define feedback model
+class FeedbackData(BaseModel):
+    is_positive: bool
+    comment: Optional[str] = ""
 
 # Set up structured logging
 from app.core.structured_logger import get_structured_logger
@@ -239,5 +245,116 @@ async def get_messages_for_thread(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Error retrieving chat messages: {str(e)}",
+            data=None
+        ))
+        
+@router.get("/feedback/{user_id}/{chat_thread_id}/{message_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+async def get_feedback_for_thread(user_id: str, chat_thread_id: str, message_id: str):
+    try:
+        # Initialize chat service
+        chat_service = ChatService(client=await get_async_supabase_client())
+        
+        # Get feedback for the chat thread
+        feedback = await chat_service.get_feedback_for_thread_message(user_id, chat_thread_id, message_id)
+        
+        logger.info("Feedback retrieved successfully",
+                   user_id=user_id,
+                   chat_thread_id=chat_thread_id,
+                   message_id=message_id,
+                   feedback_count=len(feedback) if feedback else 0)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Feedback retrieved successfully",
+            data=feedback
+        ))
+    except HTTPException as e:
+        logger.error("HTTP exception in get_feedback_for_thread",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    user_id=user_id,
+                    chat_thread_id=chat_thread_id)
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.exception("Unexpected error in get_feedback_for_thread",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=user_id,
+                        chat_thread_id=chat_thread_id)
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error retrieving feedback: {str(e)}",
+            data=None
+        ))
+
+@router.post("/feedback/{user_id}/{chat_thread_id}/{message_id}", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+async def post_feedback_for_thread_message(
+    user_id: str, 
+    chat_thread_id: str, 
+    message_id: str, 
+    feedback_data: FeedbackData = Body(...)):
+    try:
+        # Initialize chat service
+        chat_service = ChatService(client=await get_async_supabase_client())
+        
+        # Log the received feedback data
+        logger.info("Received feedback data",
+                   user_id=user_id,
+                   chat_thread_id=chat_thread_id,
+                   message_id=message_id,
+                   is_positive=feedback_data.is_positive,
+                   has_comment=bool(feedback_data.comment))
+        
+        # Submit feedback to the chat service
+        feedback = await chat_service.post_feedback_for_thread_message(
+            user_id, 
+            chat_thread_id, 
+            message_id, 
+            feedback_data.is_positive,
+            feedback_data.comment or "")
+        
+        logger.info("Feedback submitted successfully",
+                   user_id=user_id,
+                   chat_thread_id=chat_thread_id,
+                   message_id=message_id,
+                   is_positive=feedback_data.is_positive)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Feedback retrieved successfully",
+            data=feedback
+        ))
+    except HTTPException as e:
+        logger.error("HTTP exception in get_feedback_for_thread",
+                    exception_type="HTTPException",
+                    status_code=e.status_code,
+                    detail=str(e.detail),
+                    user_id=user_id,
+                    chat_thread_id=chat_thread_id)
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=e.status_code,
+            message=str(e.detail),
+            data=None
+        ))
+    except Exception as e:
+        logger.exception("Unexpected error in get_feedback_for_thread",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=user_id,
+                        chat_thread_id=chat_thread_id)
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error retrieving feedback: {str(e)}",
             data=None
         ))

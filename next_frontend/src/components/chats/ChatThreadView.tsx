@@ -14,9 +14,19 @@ import {
   ChevronRight,
   Table,
   Download,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
@@ -28,6 +38,13 @@ import WorldConnectionsToggle from "./WorldConnectionsToggle";
 import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
 import Link from "next/link";
+
+// Define feedback type for type safety
+type FeedbackType = {
+  messageId: string;
+  isPositive: boolean;
+  comment?: string;
+};
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
   // Helper function to parse structured data for multiple people
@@ -262,6 +279,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
+  
+  // Feedback state
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
   const [chatPairs, setChatPairs] = useState<any[]>([]);
   const [messagesOffset, setMessagesOffset] = useState<number>(0);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
@@ -786,6 +807,96 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     }
   }, [query]);
 
+  // Function to handle feedback button clicks
+  const handleFeedback = (messageId: string, isPositive: boolean) => {
+    // Track feedback click
+    posthog.capture("feedback_given", {
+      message_id: messageId,
+      thread_id: threadId,
+      feedback: isPositive ? "positive" : "negative",
+    });
+
+    if (isPositive) {
+      // Submit positive feedback directly
+      handleFeedbackSubmit({
+        messageId,
+        isPositive,
+        comment: "",
+      });
+    } else {
+      // Open feedback modal for negative feedback
+      setCurrentFeedback({
+        messageId,
+        isPositive,
+        comment: "",
+      });
+      setFeedbackModalOpen(true);
+    }
+  };
+
+  // Function to handle feedback submission
+  const handleFeedbackSubmit = async (feedback: FeedbackType) => {
+    try {
+      // For debugging - log the threadId to make sure it's not undefined
+      console.log("Thread ID:", threadId);
+      console.log("Message ID:", feedback.messageId);
+      
+      // Get user ID from Supabase auth session
+      console.log("Getting Supabase auth session...");
+      const authResponse = await supabase.auth.getSession();
+      console.log("Auth response:", authResponse);
+      
+      const session = authResponse.data.session;
+      console.log("Session:", session ? "Found" : "Not found");
+      
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        console.error("No user ID found. User might not be authenticated.");
+        // Fallback to a hardcoded ID for testing if needed
+        // const fallbackId = "06f7e3ea-162c-46a4-a494-4459dd4bea10";
+        // console.log("Using fallback user ID:", fallbackId);
+        return;
+      }
+      
+      console.log("Using user ID from session:", userId);
+      
+      // Send feedback to backend API
+      console.log("Sending feedback to API...");
+      await apiClient.sendFeedback({
+        message_id: feedback.messageId,
+        thread_id: threadId,
+        is_positive: feedback.isPositive,
+        comment: feedback.comment || "",
+        user_id: userId,
+      });
+      console.log("Feedback sent successfully");
+      
+      // Track successful feedback submission with structured logging pattern
+      posthog.capture("feedback_submitted", {
+        message_id: feedback.messageId,
+        thread_id: threadId,
+        is_positive: feedback.isPositive,
+        has_comment: !!feedback.comment,
+      });
+      
+      console.log("Feedback submitted successfully");
+      
+      // You could add a toast notification here to confirm submission
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      
+      // Track failed feedback submission with structured error logging
+      posthog.capture("feedback_submission_failed", {
+        message_id: feedback.messageId,
+        thread_id: threadId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      
+      // You could add an error toast notification here
+    }
+  };
+
   return (
     <div>
       <div
@@ -1210,6 +1321,24 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                           >
                             {m.timestamp.toLocaleString()}
                           </span>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+                              onClick={() => handleFeedback(m.id, true)}
+                            >
+                              <ThumbsUp className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-green-500`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+                              onClick={() => handleFeedback(m.id, false)}
+                            >
+                              <ThumbsDown className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-red-500`} />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1219,6 +1348,57 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </div>
         </div>
       )}
+      
+      {/* Feedback Modal */}
+      <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
+        <DialogContent className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}>
+          <DialogHeader>
+            <DialogTitle className={darkMode ? "text-white" : "text-gray-900"}>
+              {currentFeedback?.isPositive ? "What was helpful?" : "What went wrong?"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder={currentFeedback?.isPositive 
+                ? "Tell us what was helpful about this response..." 
+                : "Tell us what went wrong with this response..."}
+              value={currentFeedback?.comment || ""}
+              onChange={(e) => setCurrentFeedback(prev => 
+                prev ? { ...prev, comment: e.target.value } : null
+              )}
+              className={`min-h-[100px] ${darkMode 
+                ? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500" 
+                : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-500"}`}
+            />
+          </div>
+          <DialogFooter className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button 
+                variant="outline" 
+                className={darkMode 
+                  ? "border-gray-700 text-gray-300 hover:bg-gray-800" 
+                  : "border-gray-200 text-gray-700 hover:bg-gray-50"}
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button 
+              onClick={() => {
+                if (currentFeedback) {
+                  handleFeedbackSubmit(currentFeedback);
+                  setFeedbackModalOpen(false);
+                  setCurrentFeedback(null);
+                }
+              }}
+              className={darkMode 
+                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                : "bg-blue-500 hover:bg-blue-600 text-white"}
+            >
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
