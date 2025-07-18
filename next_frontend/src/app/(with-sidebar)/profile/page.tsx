@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { User, Settings, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { useAppSelector } from "@/store";
+import { useAppSelector, useAppDispatch } from "@/store";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 
 interface UserProfile {
@@ -22,57 +21,11 @@ interface UserProfile {
 export default function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
   const darkMode = useAppSelector(s => s.theme.dark);
+  const { profile, loading, error } = useAppSelector(s => s.profile);
 
-  useEffect(() => {
-    async function fetchProfile() {
-      try {
-        setLoading(true);
-
-        if (!user) return;
-
-        // Fetch profile data from Supabase
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (error) throw error;
-
-        // Check if user has connections
-        // Check if user has connections from the existing connections table
-        let hasConnections = false;
-        try {
-          const { count } = await supabase
-            .from("connections" as any)
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id);
-
-          hasConnections = count ? count > 0 : false;
-        } catch (connError) {
-          console.error("Error checking connections:", connError);
-          // Continue with hasConnections = false
-        }
-
-        if (data) {
-          setProfile({
-            ...data,
-            has_connections: hasConnections,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchProfile();
-  }, [user, router]);
 
   const handleConnectionsClick = () => {
     if (profile && !profile.has_connections) {
@@ -81,6 +34,18 @@ export default function ProfilePage() {
       router.push("/chat/new");
     }
   };
+  
+  // // Function to check if user is at root and redirect based on profile
+  // useEffect(() => {
+  //   const path = window.location.pathname;
+  //   if (path === '/' && !loading && profile) {
+  //     if (profile.has_connections) {
+  //       router.push('/chat');
+  //     } else {
+  //       router.push('/profile');
+  //     }
+  //   }
+  // }, [profile, loading, router]);
 
   return (
     <div>

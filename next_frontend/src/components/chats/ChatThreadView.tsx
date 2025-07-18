@@ -1,22 +1,23 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import posthog from "posthog-js";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import {
   Search,
-  User as UserIcon,
-  MessageSquare,
-  Globe,
-  ChevronDown,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Table,
   Download,
   ThumbsUp,
   ThumbsDown,
+  Clock as ClockIcon,
+  User as UserIcon,
 } from "lucide-react";
+import { getTimeBasedGreeting } from "../../utils/timeUtils";
+import Image from "next/image";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -37,7 +38,9 @@ import SearchModeToggle from "./SearchModeToggle";
 import WorldConnectionsToggle from "./WorldConnectionsToggle";
 import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
+import StructuredContentRenderer, { isStructuredResearchResult } from "./StructuredContentRenderer";
 import Link from "next/link";
+import OrbAura from "../OrbAura";
 
 // Define feedback type for type safety
 type FeedbackType = {
@@ -47,6 +50,7 @@ type FeedbackType = {
 };
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
+
   // Helper function to parse structured data for multiple people
   const parseStructuredData = (text: string) => {
     const lines = text.split("\n").filter(line => line.trim());
@@ -175,7 +179,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesContainerRef}>
           {hasMoreMessages && (
             <div className="flex justify-center mb-4">
-              <button 
+              <button
                 onClick={loadMoreMessages}
                 className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
               >
@@ -279,7 +283,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const [messages, setMessages] = useState<
     { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
   >([]);
-  
+
   // Feedback state
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
@@ -291,11 +295,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
-  
+
   // Function to load more messages (older messages)
   const loadMoreMessages = async () => {
     if (!threadId || !hasMoreMessages) return;
-    
+
     try {
       const {
         data: { session },
@@ -306,9 +310,14 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         console.error("User not authenticated.");
         return;
       }
-      
-      const messagesResponse = await apiClient.getChatMessages(userId, threadId, MESSAGES_PER_PAGE, messagesOffset);
-      
+
+      const messagesResponse = await apiClient.getChatMessages(
+        userId,
+        threadId,
+        MESSAGES_PER_PAGE,
+        messagesOffset
+      );
+
       if (messagesResponse.messages && messagesResponse.messages.length > 0) {
         // Add messages to the beginning since we're loading older messages
         setChatPairs(prev => [...messagesResponse.messages, ...prev]);
@@ -330,7 +339,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const dispatch = useAppDispatch();
   const agentsStatus = useAppSelector(selectAgentsStatus);
   const agentCards = useAppSelector(selectAgentCards);
-  console.log("agentCards", agentCards);
   // const templates = useAppSelector(selectTemplates);
   // const hiredAgents = useAppSelector(selectHired);
 
@@ -414,8 +422,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         }
 
         // Get messages with pagination - initially fetch first batch
-        const messagesResponse = await apiClient.getChatMessages(userId, threadId, MESSAGES_PER_PAGE, 0);
-        
+        const messagesResponse = await apiClient.getChatMessages(
+          userId,
+          threadId,
+          MESSAGES_PER_PAGE,
+          0
+        );
+
         setTotalMessages(messagesResponse.total);
         setMessagesOffset(MESSAGES_PER_PAGE);
         setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
@@ -428,7 +441,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         console.error("Error fetching chat messages:", error);
       }
     };
-    
+
     // fetchMessages implementation
 
     fetchMessages();
@@ -798,6 +811,17 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const { profile } = useAppSelector(state => state.profile);
+  // Create personalized greeting with user's name if available
+  const getPersonalizedGreeting = () => {
+    const baseGreeting = getTimeBasedGreeting();
+    if (profile?.full_name) {
+      const firstName = profile.full_name.split(" ")[0];
+      return `${baseGreeting}, ${firstName}`;
+    }
+    return baseGreeting;
+  };
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -840,17 +864,17 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       // For debugging - log the threadId to make sure it's not undefined
       console.log("Thread ID:", threadId);
       console.log("Message ID:", feedback.messageId);
-      
+
       // Get user ID from Supabase auth session
       console.log("Getting Supabase auth session...");
       const authResponse = await supabase.auth.getSession();
       console.log("Auth response:", authResponse);
-      
+
       const session = authResponse.data.session;
       console.log("Session:", session ? "Found" : "Not found");
-      
+
       const userId = session?.user?.id;
-      
+
       if (!userId) {
         console.error("No user ID found. User might not be authenticated.");
         // Fallback to a hardcoded ID for testing if needed
@@ -858,9 +882,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         // console.log("Using fallback user ID:", fallbackId);
         return;
       }
-      
+
       console.log("Using user ID from session:", userId);
-      
+
       // Send feedback to backend API
       console.log("Sending feedback to API...");
       await apiClient.sendFeedback({
@@ -871,7 +895,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         user_id: userId,
       });
       console.log("Feedback sent successfully");
-      
+
       // Track successful feedback submission with structured logging pattern
       posthog.capture("feedback_submitted", {
         message_id: feedback.messageId,
@@ -879,20 +903,20 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         is_positive: feedback.isPositive,
         has_comment: !!feedback.comment,
       });
-      
+
       console.log("Feedback submitted successfully");
-      
+
       // You could add a toast notification here to confirm submission
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      
+
       // Track failed feedback submission with structured error logging
       posthog.capture("feedback_submission_failed", {
         message_id: feedback.messageId,
         thread_id: threadId,
         error: error instanceof Error ? error.message : String(error),
       });
-      
+
       // You could add an error toast notification here
     }
   };
@@ -901,26 +925,32 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     <div>
       <div
         className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 pt-8  flex flex-col ${
-          messages.length ? "pt-1 pb-1" : "min-h-screen justify-center"
+          messages.length ? "pt-1 pb-1" : "min-h-screen justify-start"
         }`}
       >
         <div
           className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
         >
+          {!(messages?.length && messages.length > 0) && <OrbAura />}
           <h1
-            className={`text-4xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"} ${
+            className={`font-bold -mt-3 mb-2 ${darkMode ? "text-white" : "text-gray-900"} ${
               messages.length ? "text-2xl" : "text-4xl"
             }`}
           >
-            Who can I help you find?
+            {getPersonalizedGreeting()}
+            <div className="mt-2">
+              <span>What's on </span>
+              <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-bold">
+                your mind?
+              </span>
+            </div>
           </h1>
-          <p
-            className={`max-w-xl mx-auto text-lg ${darkMode ? "text-gray-300" : "text-gray-600"} ${
-              messages.length ? "text-sm hidden sm:block" : "text-lg"
-            }`}
-          >
-            Our AI filters through millions of profiles to surface genuinely relevant people.
-          </p>
+          {!messages.length && (
+            <p className="text-gray-600 text-base sm:text-lg mt-6">
+              Our AI filters through millions of profiles to surface truly relevant people, faster
+              and more precisely than traditional platforms.
+            </p>
+          )}
         </div>
 
         <div
@@ -1299,27 +1329,29 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   >
                     <div className="flex items-start">
                       <div
-                        className={`rounded-full p-3 mr-4 ${
-                          darkMode ? "bg-blue-900/30" : "bg-blue-50"
-                        }`}
+                        className={`rounded-full  mr-4 justify-center items-center h-12 w-12 bg-blue-50`}
                       >
-                        <UserIcon
-                          className={`h-6 w-6 ${darkMode ? "text-blue-400" : "text-blue-600"}`}
-                        />
+                        <div className={`h-12 w-12 text-blue-600`}>
+                          <OrbAura />
+                        </div>
                       </div>
                       <div className="flex-1">
                         <div className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                           {format === "table" && parseStructuredData(m.content).isStructured ? (
                             renderAsTable(m.content)
+                          ) : isStructuredResearchResult(m.content) ? (
+                            <StructuredContentRenderer content={m.content} darkMode={darkMode} />
                           ) : (
                             <div className="whitespace-pre-wrap">{m.content}</div>
                           )}
                         </div>
                         <div className="mt-4 flex justify-between items-center">
                           <span
-                            className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}
+                            title={getFullTimestamp(m.timestamp)}
+                            className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} hover:${darkMode ? "text-gray-300" : "text-gray-600"} transition-colors cursor-default flex items-center`}
                           >
-                            {m.timestamp.toLocaleString()}
+                            <ClockIcon className="h-3.5 w-3.5 mr-1.5 inline-block" />
+                            {formatTimestamp(m.timestamp)}
                           </span>
                           <div className="flex items-center gap-2">
                             <Button
@@ -1328,7 +1360,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                               className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
                               onClick={() => handleFeedback(m.id, true)}
                             >
-                              <ThumbsUp className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-green-500`} />
+                              <ThumbsUp
+                                className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-green-500`}
+                              />
                             </Button>
                             <Button
                               variant="ghost"
@@ -1336,7 +1370,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                               className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
                               onClick={() => handleFeedback(m.id, false)}
                             >
-                              <ThumbsDown className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-red-500`} />
+                              <ThumbsDown
+                                className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-red-500`}
+                              />
                             </Button>
                           </div>
                         </div>
@@ -1348,10 +1384,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </div>
         </div>
       )}
-      
+
       {/* Feedback Modal */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        <DialogContent className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}>
+        <DialogContent
+          className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}
+        >
           <DialogHeader>
             <DialogTitle className={darkMode ? "text-white" : "text-gray-900"}>
               {currentFeedback?.isPositive ? "What was helpful?" : "What went wrong?"}
@@ -1359,30 +1397,36 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </DialogHeader>
           <div className="py-4">
             <Textarea
-              placeholder={currentFeedback?.isPositive 
-                ? "Tell us what was helpful about this response..." 
-                : "Tell us what went wrong with this response..."}
+              placeholder={
+                currentFeedback?.isPositive
+                  ? "Tell us what was helpful about this response..."
+                  : "Tell us what went wrong with this response..."
+              }
               value={currentFeedback?.comment || ""}
-              onChange={(e) => setCurrentFeedback(prev => 
-                prev ? { ...prev, comment: e.target.value } : null
-              )}
-              className={`min-h-[100px] ${darkMode 
-                ? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500" 
-                : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-500"}`}
+              onChange={e =>
+                setCurrentFeedback(prev => (prev ? { ...prev, comment: e.target.value } : null))
+              }
+              className={`min-h-[100px] ${
+                darkMode
+                  ? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+                  : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-500"
+              }`}
             />
           </div>
           <DialogFooter className="flex justify-end gap-2">
             <DialogClose asChild>
-              <Button 
-                variant="outline" 
-                className={darkMode 
-                  ? "border-gray-700 text-gray-300 hover:bg-gray-800" 
-                  : "border-gray-200 text-gray-700 hover:bg-gray-50"}
+              <Button
+                variant="outline"
+                className={
+                  darkMode
+                    ? "border-gray-700 text-gray-300 hover:bg-gray-800"
+                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                }
               >
                 Cancel
               </Button>
             </DialogClose>
-            <Button 
+            <Button
               onClick={() => {
                 if (currentFeedback) {
                   handleFeedbackSubmit(currentFeedback);
@@ -1390,9 +1434,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   setCurrentFeedback(null);
                 }
               }}
-              className={darkMode 
-                ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                : "bg-blue-500 hover:bg-blue-600 text-white"}
+              className={
+                darkMode
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }
             >
               Submit Feedback
             </Button>

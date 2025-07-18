@@ -2,15 +2,26 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimationControls } from "framer-motion";
-import { useAppSelector } from "@/store";
+import { useAppSelector, useAppDispatch } from "@/store";
+import { fetchUserProfile } from "@/store/profileSlice";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RedirectSplash() {
   const dark = useAppSelector(s => s.theme.dark);
   const router = useRouter();
   const ctrls = useAnimationControls();
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { profile, loading } = useAppSelector(s => s.profile);
 
   const RING_TIME = 1;
   const FADE_TIME = 0.35;
+
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchUserProfile(user.id));
+    }
+  }, [user, dispatch]);
 
   useEffect(() => {
     ctrls.start({
@@ -37,7 +48,13 @@ export default function RedirectSplash() {
         initial="enter"
         animate="exit"
         variants={shellVariants}
-        onAnimationComplete={() => router.replace("/join-waitlist")}
+        onAnimationComplete={() => {
+          if (user) {
+            router.replace("/chat");
+          } else {
+            router.replace("/join-waitlist");
+          }
+        }}
         className="flex flex-col items-center space-y-6"
       >
         <svg width="96" height="96" viewBox="0 0 120 120">
