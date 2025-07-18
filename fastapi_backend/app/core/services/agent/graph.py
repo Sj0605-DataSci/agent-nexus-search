@@ -34,6 +34,8 @@ class PersonDetails(BaseModel):
     social_links: List[str] = Field(description="List of social media links (LinkedIn, GitHub, etc.)")
     email: str = Field(description="Email address of the person")
     phone_no: str = Field(description="Phone number of the person")
+    score: int = Field(description="Score of the person")
+    reason: str = Field(description="Reason for the score")
 
 class PersonDetailsResponse(BaseModel):
     """Pydantic model for response containing one or more person details."""

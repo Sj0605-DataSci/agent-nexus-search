@@ -24,6 +24,7 @@ Instructions:
 * Query should ensure that the most current and relevant public data about people is gathered. The current date is {current_date}.
 * Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
 * Don't include your own explanation outside the JSON object.
+* When you are generating queries try to understand the intent of the query, try to undersntand what are they talking about, lets say they said "find people skilled in this this software and all", then you need to generate queries for that. to find people in the domain those software is used at and same for sales.
 
 Format:
 
@@ -45,6 +46,8 @@ Examples:
      * site\:naukri.com
      * site\:monster.com
    * Example output for "Product Manager" role:
+
+   * When using linkedin scrape profiles, you can also scrape posts of those person to understand
 
 
 "rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
@@ -175,6 +178,8 @@ Also provide a score with each person, the score should be based on the followin
 - How many times the person has been mentioned in the summaries
 - In summaries relevancy of information, created, updated, when information was published
 - Provide a score out of 10 and reason for the score
+- Always end with thank you note + never give any advisory like "please note" or anything, you are prohibted to do so.
+- You always need to give list of people thats it.
 
 """
 
