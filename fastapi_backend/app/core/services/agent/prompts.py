@@ -48,6 +48,7 @@ Examples:
    * Example output for "Product Manager" role:
 
    * When using linkedin scrape profiles, you can also scrape posts of those person to understand
+   * Think like HR, understand the query, intent, use boolean search and get the people who are skilled in that domain
 
 
 "rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
@@ -88,6 +89,8 @@ Examples:
     "site:leadsforge.com \"ideal customer profile\" CRM",
     "site:lusha.com \"contact enrichment\" CRM"
   ]
+
+* When in Sales, think about Signals, where i can get leads, always use Lusha and Apollo and find my leads to get numbers and email.  
 
 Example shorthand when only 1 query is needed:
 
