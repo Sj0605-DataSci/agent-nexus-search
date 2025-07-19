@@ -20,19 +20,19 @@ class Settings(BaseSettings):
     # Supabase settings - dynamically select based on environment
     @property
     def SUPABASE_URL(self) -> str:
-        return os.getenv("STAGING_SUPABASE_URL", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_URL", "")
+        return os.getenv("STAGING_SUPABASE_URL", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_URL", "")
     
     @property
     def SUPABASE_PROJECT_ID(self) -> str:
-        return os.getenv("STAGING_SUPABASE_PROJECT_ID", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_PROJECT_ID", "")
+        return os.getenv("STAGING_SUPABASE_PROJECT_ID", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_PROJECT_ID", "")
     
     @property
     def SUPABASE_JWT_SECRET(self) -> str:
-        return os.getenv("STAGING_SUPABASE_JWT_SECRET", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_JWT_SECRET", "")
+        return os.getenv("STAGING_SUPABASE_JWT_SECRET", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_JWT_SECRET", "")
     
     @property
     def SUPABASE_ANON_KEY(self) -> str:
-        return os.getenv("STAGING_SUPABASE_ANON_KEY", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_ANON_KEY", "")
+        return os.getenv("STAGING_SUPABASE_ANON_KEY", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_ANON_KEY", "")
     
     # OpenRouter settings
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
@@ -40,23 +40,23 @@ class Settings(BaseSettings):
     # Supabase database connection settings
     @property
     def SUPABASE_USER(self) -> str:
-        return os.getenv("STAGING_SUPABASE_USER", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_USER", "")
+        return os.getenv("STAGING_SUPABASE_USER", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_USER", "")
     
     @property
     def SUPABASE_PASSWORD(self) -> str:
-        return os.getenv("STAGING_SUPABASE_PASSWORD", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_PASSWORD", "")
+        return os.getenv("STAGING_SUPABASE_PASSWORD", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_PASSWORD", "")
     
     @property
     def SUPABASE_HOST(self) -> str:
-        return os.getenv("STAGING_SUPABASE_HOST", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_HOST", "")
+        return os.getenv("STAGING_SUPABASE_HOST", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_HOST", "")
     
     @property
     def SUPABASE_PORT(self) -> str:
-        return os.getenv("STAGING_SUPABASE_PORT", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_PORT", "")
+        return os.getenv("STAGING_SUPABASE_PORT", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_PORT", "")
     
     @property
     def SUPABASE_DBNAME(self) -> str:
-        return os.getenv("STAGING_SUPABASE_DBNAME", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_DBNAME", "")
+        return os.getenv("STAGING_SUPABASE_DBNAME", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_DBNAME", "")
 
     # JWT settings
     ALGORITHM: str = "HS256"
