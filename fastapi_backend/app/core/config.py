@@ -1,35 +1,62 @@
-from typing import List
 from pydantic_settings import BaseSettings
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Determine environment
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Agent Search API"
     API_V1_STR: str = "/api"
     
+    # Environment
+    ENVIRONMENT: str = ENVIRONMENT
+    
     # Database settings
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
-    # Supabase settings
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_PROJECT_ID: str = os.getenv("SUPABASE_PROJECT_ID", "")
-    SUPABASE_JWT_SECRET: str = os.getenv(
-        "SUPABASE_JWT_SECRET", 
-        ""
-    )
-    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
-
+    # Supabase settings - dynamically select based on environment
+    @property
+    def SUPABASE_URL(self) -> str:
+        return os.getenv("STAGING_SUPABASE_URL", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_URL", "")
+    
+    @property
+    def SUPABASE_PROJECT_ID(self) -> str:
+        return os.getenv("STAGING_SUPABASE_PROJECT_ID", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_PROJECT_ID", "")
+    
+    @property
+    def SUPABASE_JWT_SECRET(self) -> str:
+        return os.getenv("STAGING_SUPABASE_JWT_SECRET", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_JWT_SECRET", "")
+    
+    @property
+    def SUPABASE_ANON_KEY(self) -> str:
+        return os.getenv("STAGING_SUPABASE_ANON_KEY", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_ANON_KEY", "")
+    
     # OpenRouter settings
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
 
-    # Supabase settings
-    SUPABASE_USER: str = os.getenv("SUPABASE_USER", "")
-    SUPABASE_PASSWORD: str = os.getenv("SUPABASE_PASSWORD", "")
-    SUPABASE_HOST: str = os.getenv("SUPABASE_HOST", "")
-    SUPABASE_PORT: str = os.getenv("SUPABASE_PORT", "")
-    SUPABASE_DBNAME: str = os.getenv("SUPABASE_DBNAME", "")
+    # Supabase database connection settings
+    @property
+    def SUPABASE_USER(self) -> str:
+        return os.getenv("STAGING_SUPABASE_USER", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_USER", "")
+    
+    @property
+    def SUPABASE_PASSWORD(self) -> str:
+        return os.getenv("STAGING_SUPABASE_PASSWORD", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_PASSWORD", "")
+    
+    @property
+    def SUPABASE_HOST(self) -> str:
+        return os.getenv("STAGING_SUPABASE_HOST", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_HOST", "")
+    
+    @property
+    def SUPABASE_PORT(self) -> str:
+        return os.getenv("STAGING_SUPABASE_PORT", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_PORT", "")
+    
+    @property
+    def SUPABASE_DBNAME(self) -> str:
+        return os.getenv("STAGING_SUPABASE_DBNAME", "") if ENVIRONMENT == "staging" else os.getenv("SUPABASE_DBNAME", "")
 
     # JWT settings
     ALGORITHM: str = "HS256"

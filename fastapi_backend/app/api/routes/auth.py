@@ -1,12 +1,9 @@
-from fastapi import APIRouter, Depends, status, Request, HTTPException
-from fastapi.responses import JSONResponse
-from app.core.auth import get_current_user, create_access_token
+from fastapi import APIRouter, Depends, status, Request
+from app.core.auth import get_current_user
 from app.models.models import Profile
-from app.models.schemas import ProfileResponse, LoginRequest, Token, StandardResponse, StandardJSONResponse
+from app.models.schemas import ProfileResponse, LoginRequest, StandardResponse, StandardJSONResponse
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
-from datetime import timedelta
-from app.core.config import settings
 
 # Setup structured logging
 logger = get_structured_logger(__name__)
