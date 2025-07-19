@@ -51,11 +51,27 @@ async def login(login_request: LoginRequest):
         # Log login attempt (without password)
         logger.info("Login attempt", email=login_request.email)
         
-        # Authenticate with Supabase
-        auth_response = await client.auth.sign_in_with_password({
-            "email": login_request.email,
-            "password": login_request.password
-        })
+        try:
+            # Authenticate with Supabase
+            auth_response = await client.auth.sign_in_with_password({
+                "email": login_request.email,
+                "password": login_request.password
+            })
+        except Exception as auth_error:
+            # Handle authentication errors (wrong password, etc.)
+            logger.warning("Login failed", 
+                          email=login_request.email,
+                          error=str(auth_error))
+            
+            return StandardJSONResponse(
+                StandardResponse(
+                    success=False,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    message="Invalid email or password",
+                    data=None
+                ),
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
         
         # Check if authentication was successful
         # The AuthResponse object doesn't have an error attribute directly
