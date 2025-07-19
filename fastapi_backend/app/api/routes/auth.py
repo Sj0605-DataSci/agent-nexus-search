@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status, Request, HTTPException
+from fastapi.responses import JSONResponse
 from app.core.auth import get_current_user, create_access_token
 from app.models.models import Profile
-from app.models.schemas import ProfileResponse, LoginRequest, Token, StandardResponse
+from app.models.schemas import ProfileResponse, LoginRequest, Token, StandardResponse, StandardJSONResponse
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
 from datetime import timedelta
@@ -35,7 +36,7 @@ async def verify_token(request: Request):
     # If we reach this point, the token is valid
     return {"valid": True}
 
-@router.post("/login", response_model=StandardResponse)
+@router.post("/login")
 async def login(login_request: LoginRequest):
     """
     Authenticates a user with email and password and returns profile details + access token.
@@ -66,11 +67,14 @@ async def login(login_request: LoginRequest):
             logger.warning("Login failed", 
                           email=login_request.email)
             
-            return StandardResponse(
-                success=False,
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                message="Invalid email or password",
-                data=None
+            return StandardJSONResponse(
+                StandardResponse(
+                    success=False,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    message="Invalid email or password",
+                    data=None
+                ),
+                status_code=status.HTTP_401_UNAUTHORIZED
             )
         
         # Query the profiles table to get the full profile
@@ -82,11 +86,14 @@ async def login(login_request: LoginRequest):
                           user_id=user.id, 
                           email=login_request.email)
             
-            return StandardResponse(
-                success=False,
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="User profile not found",
-                data=None
+            return StandardJSONResponse(
+                StandardResponse(
+                    success=False,
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    message="User profile not found",
+                    data=None
+                ),
+                status_code=status.HTTP_404_NOT_FOUND
             )
         
         # Create profile object and convert to ProfileResponse for serialization
@@ -95,8 +102,6 @@ async def login(login_request: LoginRequest):
             id=profile_data["id"],
             email=profile_data["email"],
             full_name=profile_data["full_name"],
-            created_at=profile_data["created_at"],
-            updated_at=profile_data["updated_at"],
             has_connections=profile_data["has_connections"]
         )
         
@@ -105,8 +110,7 @@ async def login(login_request: LoginRequest):
             "profile": profile_response_model.model_dump(),
             "token": {
                 "access_token": session.access_token,
-                "token_type": "bearer",
-                "expires_at": session.expires_at
+                "refresh_token": session.refresh_token,
             }
         }
         
@@ -114,11 +118,14 @@ async def login(login_request: LoginRequest):
                    user_id=str(profile_response_model.id), 
                    email=profile_response_model.email)
         
-        return StandardResponse(
-            success=True,
-            status_code=status.HTTP_200_OK,
-            message="Login successful",
-            data=response_data
+        return StandardJSONResponse(
+            StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Login successful",
+                data=response_data
+            ),
+            status_code=status.HTTP_200_OK
         )
         
     except Exception as e:
@@ -127,9 +134,12 @@ async def login(login_request: LoginRequest):
                         error_message=str(e),
                         email=login_request.email)
         
-        return StandardResponse(
-            success=False,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Login failed: {str(e)}",
-            data=None
+        return StandardJSONResponse(
+            StandardResponse(
+                success=False,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=f"Login failed: {str(e)}",
+                data=None
+            ),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

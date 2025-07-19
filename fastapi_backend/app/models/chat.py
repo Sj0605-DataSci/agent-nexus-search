@@ -275,7 +275,6 @@ class Source(BaseModel):
 
 class ChatRequest(BaseModel):
     """Model for chat request from client"""
-    user_id: Annotated[str, lambda x, y: y or x] = Field(description="ID of the user")
     agent_id: Annotated[str, lambda x, y: y or x] = Field(description="ID of the agent being used")
     messages: Annotated[Union[str, List[Dict[str, Any]]], lambda x, y: y or x] = Field(description="Message content or list of messages in the conversation")
     format: Annotated[str, lambda x, y: y or x] = Field(description="The format of the response.", default="table")

@@ -135,8 +135,6 @@ class ProfileUpdate(BaseModel):
 
 class ProfileResponse(ProfileBase):
     id: UUID
-    created_at: datetime
-    updated_at: datetime
     has_connections: Optional[bool] = False
 
     class Config:
@@ -146,7 +144,7 @@ class ProfileResponse(ProfileBase):
 # Token Schemas
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str
 
 
 class TokenData(BaseModel):
