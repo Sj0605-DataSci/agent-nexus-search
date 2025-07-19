@@ -137,6 +137,7 @@ class ProfileResponse(ProfileBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    has_connections: Optional[bool] = False
 
     class Config:
         from_attributes = True
@@ -150,3 +151,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: Optional[UUID] = None
+
+
+# Login Schema
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str

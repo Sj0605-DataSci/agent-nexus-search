@@ -1,7 +1,14 @@
-from fastapi import APIRouter, Depends, status, Request
-from app.core.auth import get_current_user
+from fastapi import APIRouter, Depends, status, Request, HTTPException
+from app.core.auth import get_current_user, create_access_token
 from app.models.models import Profile
-from app.models.schemas import ProfileResponse
+from app.models.schemas import ProfileResponse, LoginRequest, Token, StandardResponse
+from app.db.clients import get_async_supabase_client
+from app.core.structured_logger import get_structured_logger
+from datetime import timedelta
+from app.core.config import settings
+
+# Setup structured logging
+logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -27,3 +34,102 @@ async def verify_token(request: Request):
     # The token validation happens in the get_current_user dependency
     # If we reach this point, the token is valid
     return {"valid": True}
+
+@router.post("/login", response_model=StandardResponse)
+async def login(login_request: LoginRequest):
+    """
+    Authenticates a user with email and password and returns profile details + access token.
+    
+    This endpoint uses Supabase authentication to validate credentials and returns
+    both the user profile information and a JWT access token for subsequent API calls.
+    """
+    try:
+        # Get Supabase client
+        client = await get_async_supabase_client()
+        
+        # Log login attempt (without password)
+        logger.info("Login attempt", email=login_request.email)
+        
+        # Authenticate with Supabase
+        auth_response = await client.auth.sign_in_with_password({
+            "email": login_request.email,
+            "password": login_request.password
+        })
+        
+        # Check if authentication was successful
+        # The AuthResponse object doesn't have an error attribute directly
+        # Instead, we check if user and session are present
+        user = auth_response.user
+        session = auth_response.session
+        
+        if not user or not session:
+            logger.warning("Login failed", 
+                          email=login_request.email)
+            
+            return StandardResponse(
+                success=False,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                message="Invalid email or password",
+                data=None
+            )
+        
+        # Query the profiles table to get the full profile
+        profile_response = await client.table("profiles").select("*").eq("id", user.id).execute()
+        
+        # Check if profile exists
+        if not profile_response.data or len(profile_response.data) == 0:
+            logger.warning("User authenticated but profile not found", 
+                          user_id=user.id, 
+                          email=login_request.email)
+            
+            return StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="User profile not found",
+                data=None
+            )
+        
+        # Create profile object and convert to ProfileResponse for serialization
+        profile_data = profile_response.data[0]
+        profile_response_model = ProfileResponse(
+            id=profile_data["id"],
+            email=profile_data["email"],
+            full_name=profile_data["full_name"],
+            created_at=profile_data["created_at"],
+            updated_at=profile_data["updated_at"],
+            has_connections=profile_data["has_connections"]
+        )
+        
+        # Prepare response with token and profile
+        response_data = {
+            "profile": profile_response_model.model_dump(),
+            "token": {
+                "access_token": session.access_token,
+                "token_type": "bearer",
+                "expires_at": session.expires_at
+            }
+        }
+        
+        logger.info("Login successful", 
+                   user_id=str(profile_response_model.id), 
+                   email=profile_response_model.email)
+        
+        return StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Login successful",
+            data=response_data
+        )
+        
+    except Exception as e:
+        logger.exception("Unexpected error during login",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        email=login_request.email)
+        
+        return StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Login failed: {str(e)}",
+            data=None
+        )

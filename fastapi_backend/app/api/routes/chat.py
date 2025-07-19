@@ -27,6 +27,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def process_chat(
     request: ChatRequest,
+    current_user: Profile = Depends(get_current_user)
 ):
     """
     Process a chat request and return search results
@@ -40,7 +41,7 @@ async def process_chat(
         chat_service = ChatService(client=await get_async_supabase_client())
         
         # Process the chat request
-        result = await chat_service.chat(request.user_id, request.agent_id, request.messages, request.format, request.search_mode, request.world_connections)
+        result = await chat_service.chat(current_user.id, request.agent_id, request.messages, request.format, request.search_mode, request.world_connections)
         
         # The result is already a ChatResponse object, so we can use it directly
         response = result
@@ -57,7 +58,7 @@ async def process_chat(
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
-                    user_id=request.user_id,
+                    user_id=current_user.id,
                     agent_id=request.agent_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
@@ -70,7 +71,7 @@ async def process_chat(
         logger.exception("Unexpected error in chat processing",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        user_id=request.user_id,
+                        user_id=current_user.id,
                         agent_id=request.agent_id)
         return StandardJSONResponse(StandardResponse(
             success=False,
@@ -99,7 +100,7 @@ async def stream_chat(
         # Queue the chat request to be processed by a background worker
         # This returns immediately without blocking
         request_id = await enqueue_chat_task(
-            user_id=request.user_id,
+            user_id=current_user.id,
             agent_id=request.agent_id,
             messages=request.messages,
             format=request.format,
@@ -109,7 +110,7 @@ async def stream_chat(
         )
         
         logger.log_chat_event("chat_request_queued",
-                              user_id=request.user_id,
+                              user_id=current_user.id,
                               agent_id=request.agent_id,
                               chat_thread_id=request.thread_id,
                               request_id=request_id)
@@ -125,7 +126,7 @@ async def stream_chat(
         logger.exception("Error queueing chat request",
                         exception_type=type(e).__name__,
                         error_message=str(e),
-                        user_id=request.user_id,
+                        user_id=current_user.id,
                         agent_id=request.agent_id,
                         chat_thread_id=request.thread_id)
         
