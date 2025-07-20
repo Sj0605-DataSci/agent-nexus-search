@@ -19,11 +19,20 @@ router = APIRouter(prefix="/hired_agents", tags=["hired_agents"])
 
 # Using StandardJSONResponse from schemas.py
 
+async def get_hired_agent_service():
+    """
+    Dependency to get a HiredAgentService instance.
+    This helps reduce the overhead of creating a new service for each request.
+    """
+    client = await get_async_supabase_client()
+    return HiredAgentService(client=client)
+
 @router.post("", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
 async def hire_agent(
     request: Request,
     agent: HiredAgentCreate,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
 ):
     """Hire a new agent for the user"""
     try:
@@ -32,11 +41,8 @@ async def hire_agent(
                    user_id=str(current_user.id) if current_user else None,
                    agent_name=agent.name if hasattr(agent, 'name') else None)
         
-        # Initialize the service
-        service = HiredAgentService(client=await get_async_supabase_client())
-        
         # Use the service to hire the agent
-        agent_response = await service.hire_agent(agent, current_user)
+        agent_response = await hired_agent_service.hire_agent(agent, current_user)
         
         # Invalidate any cached hired agents lists for this user
         # await cache_invalidate_pattern(f"hired_agents:user:{current_user.id}")
@@ -82,15 +88,13 @@ async def hire_agent(
 @router.get("", response_model=StandardResponse[List[HiredAgentResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def get_hired_agents(
     request: Request,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
 ):
     """Get all hired agents for a user"""
     try:
         logger.info("Get hired agents request received",
                    current_user_id=str(current_user.id) if current_user else None)
-        
-        # Initialize the service
-        service = HiredAgentService(client=await get_async_supabase_client())
         
         # # Create a cache key based on the query parameters and user
         # target_user_id = user_id if user_id else current_user.id
@@ -109,7 +113,7 @@ async def get_hired_agents(
         
         # # If not in cache, get from database
         # logger.info(f"Cache miss for {cache_key}, fetching from database")
-        agent_responses = await service.get_hired_agents(str(current_user.id))
+        agent_responses = await hired_agent_service.get_hired_agents(str(current_user.id))
         
         logger.info("Hired agents retrieved successfully",
                    target_user_id=str(current_user.id),
@@ -155,12 +159,11 @@ async def get_hired_agents(
 @router.get("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def get_hired_agent(
     agent_id: UUID,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
 ):
     """Get a specific hired agent by ID"""
     try:
-        # Initialize the service
-        service = HiredAgentService(client=await get_async_supabase_client())
         
         # # Create a cache key for this specific agent
         # cache_key = f"hired_agents:id:{agent_id}"
@@ -178,7 +181,7 @@ async def get_hired_agent(
         
         # If not in cache, get from database
         # logger.info(f"Cache miss for hired agent {agent_id}, fetching from database")
-        agent_response = await service.get_hired_agent_by_id(agent_id)
+        agent_response = await hired_agent_service.get_hired_agent_by_id(agent_id)
         
         # if agent_response is not None:
             # Store in cache for future requests (expire in 10 minutes)
@@ -230,15 +233,14 @@ async def get_hired_agent(
 async def update_hired_agent(
     agent_id: UUID,
     agent_update: HiredAgentUpdate,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
 ):
     """Update a hired agent"""
     try:
-        # Initialize the service
-        service = HiredAgentService(client=await get_async_supabase_client())
         
         # Use the service to update the hired agent
-        agent_response = await service.update_hired_agent(agent_id, agent_update)
+        agent_response = await hired_agent_service.update_hired_agent(agent_id, agent_update)
         
         # if agent_response is not None:
         #     # # Invalidate both the specific agent cache and the user's list cache
@@ -298,15 +300,13 @@ async def update_hired_agent(
 @router.delete("/{agent_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def delete_hired_agent(
     agent_id: UUID,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
 ):
     """Delete a hired agent"""
     try:
-        # Initialize the service
-        service = HiredAgentService(client=await get_async_supabase_client())
-        
         # Use the service to delete the hired agent
-        success = await service.delete_hired_agent(agent_id, current_user)
+        success = await hired_agent_service.delete_hired_agent(agent_id)
 
         
         

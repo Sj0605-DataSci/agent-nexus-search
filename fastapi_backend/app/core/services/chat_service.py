@@ -319,11 +319,9 @@ class ChatService:
                                 }
                     
                     if "sources_gathered" in node_data:
-                        # Stream sources
-                        for source in node_data["sources_gathered"]:
-                            yield {
+                        yield {
                                 "type": "source",
-                                "content": source
+                                "content": node_data["sources_gathered"]
                             }
             
             # Send completion signal
@@ -532,7 +530,7 @@ class ChatService:
             raise 
 
 
-    async def post_feedback_for_thread_message(self, user_id: str, message_id: str, is_positive: bool, comment: str) -> Dict[str, Any]:
+    async def patch_feedback_for_thread_message(self, user_id: str, message_id: str, is_positive: bool, comment: str) -> Dict[str, Any]:
         try:
             logger.info("Posting feedback for thread message",
                        user_id=user_id,

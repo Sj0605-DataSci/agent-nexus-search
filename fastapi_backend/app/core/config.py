@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Determine environment
-ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+ENVIRONMENT = os.getenv("ENVIRONMENT")
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Agent Search API"

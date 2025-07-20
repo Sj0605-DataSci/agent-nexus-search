@@ -23,11 +23,20 @@ logger = get_structured_logger(__name__)
 # Create router
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+# Create a dependency for the ChatService
+async def get_chat_service():
+    """
+    Dependency to get a ChatService instance.
+    This helps reduce the overhead of creating a new service for each request.
+    """
+    client = await get_async_supabase_client()
+    return ChatService(client=client)
 
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def process_chat(
     request: ChatRequest,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Process a chat request and return search results
@@ -37,9 +46,6 @@ async def process_chat(
     - **agent_id**: The ID of the agent being used
     """
     try:
-        # Initialize chat service
-        chat_service = ChatService(client=await get_async_supabase_client())
-        
         # Process the chat request
         result = await chat_service.chat(current_user.id, request.agent_id, request.messages, request.format, request.search_mode, request.world_connections)
         
@@ -84,7 +90,8 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ) -> StreamingResponse:
     """
     Stream chat response as Server-Sent Events (SSE) using Redis-based background workers
@@ -148,7 +155,8 @@ async def stream_chat(
 async def get_chat_threads(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Get chat threads for a specific user with pagination
@@ -162,9 +170,6 @@ async def get_chat_threads(
     try:
         # Calculate offset from page and page_size
         offset = (page - 1) * page_size
-        
-        # Initialize chat service
-        chat_service = ChatService(client=await get_async_supabase_client())
         
         # Get chat threads for the user with pagination
         result = await chat_service.get_chat_threads(current_user.id, limit=page_size, offset=offset)
@@ -228,7 +233,8 @@ async def get_chat_threads(
 @router.get("/messages/{chat_thread_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
 async def get_messages_for_thread(
     chat_thread_id: str = Path(..., description="ID of the chat thread"),
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Get all messages for a specific chat thread and user
@@ -239,9 +245,6 @@ async def get_messages_for_thread(
     Returns a list of message objects with their content and metadata
     """
     try:
-        # Initialize chat service
-        chat_service = ChatService(client=await get_async_supabase_client())
-        
         # Get messages for the chat thread
         messages = await chat_service.get_messages_for_thread(current_user.id, chat_thread_id)
         
@@ -283,11 +286,12 @@ async def get_messages_for_thread(
         ))
         
 @router.get("/feedback/{message_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
-async def get_feedback_for_thread_message(message_id: str, current_user: Profile = Depends(get_current_user)):
+async def get_feedback_for_thread_message(
+    message_id: str, 
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
     try:
-        # Initialize chat service
-        chat_service = ChatService(client=await get_async_supabase_client())
-        
         # Get feedback for the chat thread
         feedback = await chat_service.get_feedback_for_thread_message(current_user.id, message_id)
         
@@ -328,15 +332,14 @@ async def get_feedback_for_thread_message(message_id: str, current_user: Profile
             data=None
         ))
 
-@router.post("/feedback/{message_id}", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
-async def post_feedback_for_thread_message(
+@router.patch("/feedback/{message_id}", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+async def patch_feedback_for_thread_message(
     message_id: str, 
     feedback_data: FeedbackData = Body(...),
-    current_user: Profile = Depends(get_current_user)):
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
     try:
-        # Initialize chat service
-        chat_service = ChatService(client=await get_async_supabase_client())
-        
         # Log the received feedback data
         logger.info("Received feedback data",
                    user_id=current_user.id,
@@ -345,7 +348,7 @@ async def post_feedback_for_thread_message(
                    has_comment=bool(feedback_data.comment))
         
         # Submit feedback to the chat service
-        feedback = await chat_service.post_feedback_for_thread_message(
+        feedback = await chat_service.patch_feedback_for_thread_message(
             current_user.id, 
             message_id, 
             feedback_data.is_positive,
@@ -363,7 +366,7 @@ async def post_feedback_for_thread_message(
             data=None
         ))
     except HTTPException as e:
-        logger.error("HTTP exception in post_feedback_for_thread_message",
+        logger.error("HTTP exception in patch_feedback_for_thread_message",
                     exception_type="HTTPException",
                     status_code=e.status_code,
                     detail=str(e.detail),
@@ -376,7 +379,7 @@ async def post_feedback_for_thread_message(
             data=None
         ))
     except Exception as e:
-        logger.exception("Unexpected error in post_feedback_for_thread_message",
+        logger.exception("Unexpected error in patch_feedback_for_thread_message",
                         exception_type=type(e).__name__,
                         error_message=str(e),
                         user_id=current_user.id,
