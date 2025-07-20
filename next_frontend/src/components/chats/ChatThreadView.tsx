@@ -1,20 +1,22 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
+import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
 import {
-  Search,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Table,
-  Download,
-  ThumbsUp,
-  ThumbsDown,
-  Clock as ClockIcon,
-  User as UserIcon,
-} from "lucide-react";
+  FiSearch,
+  FiCheck,
+  FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
+  FiThumbsUp,
+  FiThumbsDown,
+  FiClock,
+  FiLink,
+  FiExternalLink,
+  FiInfo,
+} from "react-icons/fi";
+import { BsTextParagraph } from "react-icons/bs";
 import { getTimeBasedGreeting } from "../../utils/timeUtils";
 import Image from "next/image";
 import posthog from "posthog-js";
@@ -23,15 +25,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
-import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
 import SearchModeToggle from "./SearchModeToggle";
@@ -39,10 +39,11 @@ import WorldConnectionsToggle from "./WorldConnectionsToggle";
 import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
 import StructuredContentRenderer, { isStructuredResearchResult } from "./StructuredContentRenderer";
+import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
 import Link from "next/link";
 import OrbAura from "../OrbAura";
+import { ProcessCitationReferences, SourceType } from "../common/Citation";
 
-// Define feedback type for type safety
 type FeedbackType = {
   messageId: string;
   isPositive: boolean;
@@ -50,214 +51,6 @@ type FeedbackType = {
 };
 
 const ChatThreadView = ({ threadId }: { threadId: string }) => {
-
-  // Helper function to parse structured data for multiple people
-  const parseStructuredData = (text: string) => {
-    const lines = text.split("\n").filter(line => line.trim());
-
-    // Check if we have structured data with colons
-    if (lines.length === 0 || !lines.some(line => line.includes(":"))) {
-      return { isStructured: false, people: [], columns: [] };
-    }
-
-    const people: any[] = [];
-    const columns = ["FName", "LName", "Social Links", "Email", "Phone No", "Score", "Reason"];
-    let currentPerson: any = {};
-
-    for (const line of lines) {
-      if (line.includes(":")) {
-        const colonIndex = line.indexOf(":");
-        const key = line.substring(0, colonIndex).trim();
-        const value = line.substring(colonIndex + 1).trim();
-
-        // Normalize key names to match our columns
-        let normalizedKey = "";
-        if (key.toLowerCase().includes("fname") || key.toLowerCase().includes("first")) {
-          normalizedKey = "FName";
-        } else if (key.toLowerCase().includes("lname") || key.toLowerCase().includes("last")) {
-          normalizedKey = "LName";
-        } else if (key.toLowerCase().includes("social") || key.toLowerCase().includes("link")) {
-          normalizedKey = "Social Links";
-        } else if (key.toLowerCase().includes("email")) {
-          normalizedKey = "Email";
-        } else if (key.toLowerCase().includes("phone")) {
-          normalizedKey = "Phone No";
-        } else if (key.toLowerCase().includes("score")) {
-          normalizedKey = "Score";
-        } else if (key.toLowerCase().includes("reason")) {
-          normalizedKey = "Reason";
-        }
-
-        if (normalizedKey) {
-          // If we're starting a new person (FName is usually first)
-          if (normalizedKey === "FName" && Object.keys(currentPerson).length > 0) {
-            people.push(currentPerson);
-            currentPerson = {};
-          }
-
-          currentPerson[normalizedKey] = value;
-        }
-      }
-    }
-
-    // Add the last person
-    if (Object.keys(currentPerson).length > 0) {
-      people.push(currentPerson);
-    }
-
-    return {
-      isStructured: people.length > 0,
-      people,
-      columns,
-    };
-  };
-
-  // Helper function to convert table data to CSV and download
-  const downloadAsCSV = (people: any[], columns: string[]) => {
-    if (people.length === 0) return;
-
-    // Create CSV content
-    const csvContent = [
-      // Header row
-      columns.join(","),
-      // Data rows
-      ...people.map(person =>
-        columns
-          .map(column => {
-            const value = person[column] || "N/A";
-            // Escape quotes and wrap in quotes if contains comma or quote
-            const escapedValue = value.toString().replace(/"/g, '""');
-            return escapedValue.includes(",") ||
-              escapedValue.includes('"') ||
-              escapedValue.includes("\n")
-              ? `"${escapedValue}"`
-              : escapedValue;
-          })
-          .join(",")
-      ),
-    ].join("\n");
-
-    // Create and download file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `contacts_${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Helper function to render structured data as Excel-style table
-  const renderAsTable = (content: string) => {
-    const { people, columns } = parseStructuredData(content);
-
-    if (people.length === 0) {
-      return <div className="whitespace-pre-wrap">{content}</div>;
-    }
-
-    return (
-      <div>
-        {/* Download button */}
-        <div className="mb-4 flex justify-end">
-          <Button
-            onClick={() => downloadAsCSV(people, columns)}
-            variant="outline"
-            size="sm"
-            className={`flex items-center gap-2 ${
-              darkMode
-                ? "border-gray-600 text-gray-300 hover:bg-gray-800"
-                : "border-gray-300 text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Download className="h-4 w-4" />
-            Download CSV
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesContainerRef}>
-          {hasMoreMessages && (
-            <div className="flex justify-center mb-4">
-              <button
-                onClick={loadMoreMessages}
-                className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                Load Older Messages
-              </button>
-            </div>
-          )}
-          <div className="overflow-x-auto">
-            <table
-              className={`min-w-full divide-y divide-gray-200 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
-            >
-              <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
-                <tr>
-                  {columns.map((column, index) => (
-                    <th
-                      key={index}
-                      scope="col"
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                    >
-                      {column}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-                {people.map((person, personIndex) => (
-                  <tr
-                    key={personIndex}
-                    className={
-                      personIndex % 2 === 0
-                        ? darkMode
-                          ? "bg-gray-900"
-                          : "bg-white"
-                        : darkMode
-                          ? "bg-gray-800"
-                          : "bg-gray-50"
-                    }
-                  >
-                    {columns.map((column, columnIndex) => (
-                      <td
-                        key={columnIndex}
-                        className="px-4 py-4 whitespace-normal text-sm break-words"
-                      >
-                        {person[column] ? (
-                          person[column] === "null" || person[column] === "N/A" ? (
-                            <span className="text-gray-400">N/A</span>
-                          ) : column === "Social Links" ? (
-                            person[column].split(",").map((link: string, i: number) => (
-                              <div key={i} className="mb-1">
-                                <a
-                                  href={link.trim()}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:underline text-xs"
-                                >
-                                  {link.trim()}
-                                </a>
-                              </div>
-                            ))
-                          ) : (
-                            <span className="text-sm">{person[column]}</span>
-                          )
-                        ) : (
-                          <span className="text-gray-400">N/A</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Web Worker for chat processing
   const chatWorkerRef = useRef<Worker | null>(null);
   const router = useRouter();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
@@ -281,45 +74,39 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     "world"
   );
   const [messages, setMessages] = useState<
-    { id: string; type: "user" | "agent"; content: string; timestamp: Date }[]
+    {
+      id: string;
+      type: "user" | "agent";
+      content: string;
+      timestamp: Date;
+      sources?: SourceType[];
+    }[]
   >([]);
 
-  // Feedback state
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
+  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
   const [chatPairs, setChatPairs] = useState<any[]>([]);
   const [messagesOffset, setMessagesOffset] = useState<number>(0);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
-  const [totalMessages, setTotalMessages] = useState<number>(0);
   const MESSAGES_PER_PAGE = 50;
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
+  const { profile } = useAppSelector(state => state.profile);
 
-  // Function to load more messages (older messages)
+  const userId = profile?.id;
+
   const loadMoreMessages = async () => {
     if (!threadId || !hasMoreMessages) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-
-      if (!userId) {
-        console.error("User not authenticated.");
-        return;
-      }
-
       const messagesResponse = await apiClient.getChatMessages(
-        userId,
         threadId,
         MESSAGES_PER_PAGE,
         messagesOffset
       );
 
       if (messagesResponse.messages && messagesResponse.messages.length > 0) {
-        // Add messages to the beginning since we're loading older messages
         setChatPairs(prev => [...messagesResponse.messages, ...prev]);
         setMessagesOffset(prev => prev + MESSAGES_PER_PAGE);
         setHasMoreMessages(messagesOffset + MESSAGES_PER_PAGE < messagesResponse.total);
@@ -339,21 +126,16 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const dispatch = useAppDispatch();
   const agentsStatus = useAppSelector(selectAgentsStatus);
   const agentCards = useAppSelector(selectAgentCards);
-  // const templates = useAppSelector(selectTemplates);
-  // const hiredAgents = useAppSelector(selectHired);
 
   useEffect(() => {
     if (agentsStatus === "idle") dispatch(loadAgents());
 
-    // Track page view when component mounts
     posthog.capture("chat_thread_viewed", {
       thread_id: threadId,
       is_new_thread: threadId === "new",
     });
 
-    // Initialize web worker
     if (typeof window !== "undefined") {
-      // Check if the browser supports service workers
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
           .register("/sw.js")
@@ -365,17 +147,14 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           });
       }
 
-      // Initialize chat worker
       if (window.Worker) {
         chatWorkerRef.current = new Worker("/chatWorker.js");
 
-        // Set up message handler for the worker
         chatWorkerRef.current.onmessage = event => {
           const { type, data } = event.data;
 
           switch (type) {
             case "processed_message":
-              // Update message content with processed data
               setMessages(prevMessages =>
                 prevMessages.map(msg =>
                   msg.id === data.id ? { ...msg, content: data.content } : msg
@@ -384,21 +163,17 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               break;
 
             case "processed_search_results":
-              // Handle processed search results
               console.log("Processed search results:", data.sources);
               break;
 
             case "query_analysis":
-              // Handle query analysis results
               console.log("Query analysis:", data);
-              // Could use this data to suggest related searches
               break;
           }
         };
       }
     }
 
-    // Cleanup worker on component unmount
     return () => {
       if (chatWorkerRef.current) {
         chatWorkerRef.current.terminate();
@@ -411,25 +186,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       if (!threadId) return;
 
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
-
         if (!userId) {
           console.error("User not authenticated.");
           return;
         }
 
-        // Get messages with pagination - initially fetch first batch
-        const messagesResponse = await apiClient.getChatMessages(
-          userId,
-          threadId,
-          MESSAGES_PER_PAGE,
-          0
-        );
+        const messagesResponse = await apiClient.getChatMessages(threadId, MESSAGES_PER_PAGE, 0);
 
-        setTotalMessages(messagesResponse.total);
         setMessagesOffset(MESSAGES_PER_PAGE);
         setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
 
@@ -441,8 +204,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         console.error("Error fetching chat messages:", error);
       }
     };
-
-    // fetchMessages implementation
 
     fetchMessages();
   }, [threadId]);
@@ -460,20 +221,19 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       };
 
       let messageContent = currentPair.message;
+      const sourcesData = currentPair.sources_gathered || [];
+      console.log("Sources data from API:", sourcesData);
 
-      // Use web worker to process message content if available
       if (chatWorkerRef.current && typeof messageContent === "object" && messageContent !== null) {
-        // Create a temporary message with loading state
         const agentMessage = {
           id: currentPair.id,
           type: "agent" as const,
           content: "Processing message...",
           timestamp: new Date(currentPair.updated_at),
+          sources: sourcesData,
         };
 
         setMessages([userMessage, agentMessage]);
-
-        // Send message to worker for processing
         chatWorkerRef.current.postMessage({
           type: "process_message",
           data: {
@@ -482,7 +242,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           },
         });
       } else {
-        // Fallback to synchronous processing if worker is not available
         if (typeof messageContent === "object" && messageContent !== null) {
           messageContent = JSON.stringify(messageContent, null, 2);
         }
@@ -492,6 +251,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           type: "agent" as const,
           content: messageContent,
           timestamp: new Date(currentPair.updated_at),
+          sources: sourcesData,
         };
 
         setMessages([userMessage, agentMessage]);
@@ -527,17 +287,14 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     id: string,
     hired: boolean
   ) => {
-    console.log("id", id);
     e.stopPropagation();
 
     if (!hired) {
-      // Track when user clicks on non-hired agent
       posthog.capture("agent_marketplace_redirect", { agent_id: id });
       router.push(`/marketplace?agent=${id}`);
       return;
     }
 
-    // Track agent selection
     posthog.capture("agent_selected", {
       agent_id: id,
       thread_id: threadId,
@@ -552,7 +309,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     const q = incoming ?? query;
     if (!q.trim()) return;
 
-    // Use web worker to analyze query if available
     if (chatWorkerRef.current) {
       chatWorkerRef.current.postMessage({
         type: "analyze_query",
@@ -560,7 +316,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       });
     }
 
-    // Track search query
     posthog.capture("search_initiated", {
       query: q,
       agent_id: selectedAgent,
@@ -570,10 +325,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       thread_id: threadId,
     });
 
+    const userMessageId = Date.now().toString();
     setMessages(m => [
       ...m,
       {
-        id: Date.now().toString(),
+        id: userMessageId,
         type: "user",
         content: q,
         timestamp: new Date(),
@@ -582,11 +338,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
     setIsLoading(true);
 
-    const loadingMessageId = (Date.now() + 1).toString();
+    const newLoadingMessageId = (Date.now() + 1).toString();
     setMessages(m => [
       ...m,
       {
-        id: loadingMessageId,
+        id: newLoadingMessageId,
         type: "agent",
         content: "⏳ Searching for information...",
         timestamp: new Date(),
@@ -594,16 +350,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     ]);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-
       if (!userId) {
         console.error("No user ID found. User might not be authenticated.");
         setMessages(m =>
           m.map(msg =>
-            msg.id === loadingMessageId
+            msg.id === newLoadingMessageId
               ? {
                   ...msg,
                   content: "Error: You need to be logged in to use this feature.",
@@ -615,15 +366,26 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       }
 
       let currentContent = "⏳ Searching for information...";
+      let fullContent = "";
       let sources: any[] = [];
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
+      let lastUpdateTime = Date.now();
+      let updateDebounceMs = 100;
 
-      // Track search start time for duration calculation
       const searchStartTime = Date.now();
 
+      const updateMessageContent = (content: string) => {
+        const now = Date.now();
+        if (now - lastUpdateTime > updateDebounceMs) {
+          setMessages(m =>
+            m.map(msg => (msg.id === newLoadingMessageId ? { ...msg, content } : msg))
+          );
+          lastUpdateTime = now;
+        }
+      };
+
       await apiClient.sendStreamingChatRequest(
-        userId,
         agentData.id,
         q,
         format,
@@ -635,17 +397,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
           switch (update.type) {
             case "thinking":
-              // Update the loading message with thinking indicator
               currentContent = "🧠 Thinking...";
-              setMessages(m =>
-                m.map(msg =>
-                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                )
-              );
+              updateMessageContent(currentContent);
               break;
 
             case "token":
-              // Handle token updates from LLM streaming - show complete content directly
               const tokenContent =
                 typeof update.content === "string"
                   ? update.content
@@ -654,82 +410,60 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     : "";
 
               if (tokenContent) {
-                console.log("Token content:", tokenContent); // Debug log full content
-
-                // Process content based on format
-                if (format === "chat") {
-                  currentContent = tokenContent;
-                } else if (format === "table") {
-                  // For table format, also use the token content directly
-                  // The table rendering will be handled in the UI layer
-                  currentContent = tokenContent;
+                if (update.content && update.content.text) {
+                  fullContent = tokenContent;
+                  currentContent = fullContent;
+                  hasExtractedFinalAnswer = true;
                 }
 
-                hasExtractedFinalAnswer = true;
-
-                // If web worker is available, use it to process the content
-                if (chatWorkerRef.current) {
-                  chatWorkerRef.current.postMessage({
-                    type: "process_message",
-                    data: {
-                      id: loadingMessageId,
-                      content: currentContent,
-                    },
-                  });
-                } else {
-                  // Fallback to synchronous update if worker is not available
-                  setMessages(m =>
-                    m.map(msg =>
-                      msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                    )
-                  );
+                if (format === "chat" || format === "table") {
+                  if (chatWorkerRef.current) {
+                    chatWorkerRef.current.postMessage({
+                      type: "process_message",
+                      data: {
+                        id: newLoadingMessageId,
+                        content: currentContent,
+                      },
+                    });
+                  } else {
+                    updateMessageContent(currentContent);
+                  }
                 }
               }
               break;
 
             case "search_query":
-              // Show search queries being used
-              searchQueries.push(update.content.query);
-              currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
-              setMessages(m =>
-                m.map(msg =>
-                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                )
-              );
+              if (update.content && update.content.query) {
+                searchQueries.push(update.content.query);
+                if (!hasExtractedFinalAnswer) {
+                  currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
+                  updateMessageContent(currentContent);
+                }
+              }
               break;
 
             case "source":
-              // Collect sources
-              sources.push(update.content);
+              if (update.content) {
+                sources.push(update.content);
 
-              // Only update the message with source count if we haven't extracted a final answer yet
-              if (!hasExtractedFinalAnswer) {
-                currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
-                setMessages(m =>
-                  m.map(msg =>
-                    msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                  )
-                );
-              }
+                if (!hasExtractedFinalAnswer) {
+                  currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
+                  updateMessageContent(currentContent);
+                }
 
-              // If we have enough sources, process them in the worker
-              if (sources.length > 0 && sources.length % 5 === 0 && chatWorkerRef.current) {
-                chatWorkerRef.current.postMessage({
-                  type: "process_search_results",
-                  data: { sources },
-                });
+                if (sources.length > 0 && sources.length % 5 === 0 && chatWorkerRef.current) {
+                  chatWorkerRef.current.postMessage({
+                    type: "process_search_results",
+                    data: { sources },
+                  });
+                }
               }
               break;
 
             case "message":
-              // Final message
               if (update.content && update.content.content) {
                 currentContent = update.content.content;
-                setMessages(m =>
-                  m.map(msg =>
-                    msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                  )
-                );
+                updateMessageContent(currentContent);
               }
               if (update.thread_id && threadId === "new") {
                 router.replace(`/chat/${update.thread_id}`);
@@ -737,23 +471,36 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               break;
 
             case "error":
-              // Handle error
-              currentContent = `Something went wrong`;
-              setMessages(m =>
-                m.map(msg =>
-                  msg.id === loadingMessageId ? { ...msg, content: currentContent } : msg
-                )
-              );
+              const errorMessage =
+                update.content && update.content.message
+                  ? update.content.message
+                  : "Something went wrong. Please try again.";
+
+              currentContent = `❌ Error: ${errorMessage}`;
+              updateMessageContent(currentContent);
+
+              console.error("Stream error:", update.content);
+
+              posthog.capture("stream_error", {
+                query: q,
+                agent_id: selectedAgent,
+                error: errorMessage,
+              });
               break;
 
             case "done":
-              // All done
-              if (sources.length > 0) {
-                console.log("Sources gathered:", sources);
-                // You could display sources in the UI here
+              if (fullContent) {
+                updateMessageContent(fullContent);
               }
 
-              // Track search completion with duration and result metrics
+              if (sources.length > 0) {
+                console.log("Sources gathered:", sources);
+
+                setMessages(m =>
+                  m.map(msg => (msg.id === newLoadingMessageId ? { ...msg, sources } : msg))
+                );
+              }
+
               posthog.capture("search_completed", {
                 query: q,
                 agent_id: selectedAgent,
@@ -764,7 +511,16 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 duration_ms: Date.now() - searchStartTime,
                 sources_count: sources.length,
                 search_queries_count: searchQueries.length,
+                has_answer: hasExtractedFinalAnswer,
               });
+              break;
+
+            case "connected":
+              console.log("Stream connected");
+              break;
+
+            default:
+              console.warn("Unknown update type:", update.type);
               break;
           }
         }
@@ -772,17 +528,15 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     } catch (error) {
       console.error("Error sending chat request:", error);
 
-      // Track search error
       posthog.capture("search_error", {
         query: q,
         agent_id: selectedAgent,
         error: error instanceof Error ? error.message : String(error),
       });
 
-      // Replace the loading message with an error
       setMessages(m =>
         m.map(msg =>
-          msg.id === loadingMessageId
+          msg.id === newLoadingMessageId
             ? {
                 ...msg,
                 content:
@@ -802,17 +556,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       e.preventDefault();
       handleSearch();
 
-      // Track search via Enter key
       posthog.capture("search_input_method", { method: "enter_key" });
     } else if (e.key === "Enter" && e.shiftKey) {
-      // Allow new line on Shift+Enter
     }
   };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { profile } = useAppSelector(state => state.profile);
-  // Create personalized greeting with user's name if available
   const getPersonalizedGreeting = () => {
     const baseGreeting = getTimeBasedGreeting();
     if (profile?.full_name) {
@@ -826,14 +576,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 120; // Corresponds to max-h-[120px]
+      const maxHeight = 120;
       textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
   }, [query]);
 
-  // Function to handle feedback button clicks
   const handleFeedback = (messageId: string, isPositive: boolean) => {
-    // Track feedback click
     posthog.capture("feedback_given", {
       message_id: messageId,
       thread_id: threadId,
@@ -841,14 +589,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     });
 
     if (isPositive) {
-      // Submit positive feedback directly
       handleFeedbackSubmit({
         messageId,
         isPositive,
         comment: "",
       });
     } else {
-      // Open feedback modal for negative feedback
       setCurrentFeedback({
         messageId,
         isPositive,
@@ -858,66 +604,39 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     }
   };
 
-  // Function to handle feedback submission
   const handleFeedbackSubmit = async (feedback: FeedbackType) => {
     try {
-      // For debugging - log the threadId to make sure it's not undefined
-      console.log("Thread ID:", threadId);
-      console.log("Message ID:", feedback.messageId);
-
-      // Get user ID from Supabase auth session
-      console.log("Getting Supabase auth session...");
-      const authResponse = await supabase.auth.getSession();
-      console.log("Auth response:", authResponse);
-
-      const session = authResponse.data.session;
-      console.log("Session:", session ? "Found" : "Not found");
-
-      const userId = session?.user?.id;
-
       if (!userId) {
-        console.error("No user ID found. User might not be authenticated.");
-        // Fallback to a hardcoded ID for testing if needed
-        // const fallbackId = "06f7e3ea-162c-46a4-a494-4459dd4bea10";
-        // console.log("Using fallback user ID:", fallbackId);
         return;
       }
 
-      console.log("Using user ID from session:", userId);
-
-      // Send feedback to backend API
-      console.log("Sending feedback to API...");
-      await apiClient.sendFeedback({
+      const response = await apiClient.sendFeedback({
         message_id: feedback.messageId,
-        thread_id: threadId,
         is_positive: feedback.isPositive,
         comment: feedback.comment || "",
-        user_id: userId,
       });
-      console.log("Feedback sent successfully");
 
-      // Track successful feedback submission with structured logging pattern
+      if (response && response.success) {
+        showSuccessToast("Feedback submitted successfully");
+      }
+
       posthog.capture("feedback_submitted", {
         message_id: feedback.messageId,
         thread_id: threadId,
         is_positive: feedback.isPositive,
         has_comment: !!feedback.comment,
       });
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || "Failed to submit feedback";
+      const statusCode = error?.response?.status || 500;
 
-      console.log("Feedback submitted successfully");
+      showErrorToast("Failed to submit feedback", `Status: ${statusCode}`);
 
-      // You could add a toast notification here to confirm submission
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
-
-      // Track failed feedback submission with structured error logging
       posthog.capture("feedback_submission_failed", {
         message_id: feedback.messageId,
         thread_id: threadId,
         error: error instanceof Error ? error.message : String(error),
       });
-
-      // You could add an error toast notification here
     }
   };
 
@@ -966,7 +685,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               style={{ backdropFilter: "blur(10px)" }}
             >
               <div className=" flex flex-row w-full items-center">
-                <Search
+                <FiSearch
                   className={`h-5 w-5 mr-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                 />
                 <Textarea
@@ -1014,7 +733,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   </div>
                 </div>
 
-                {/* Agent Selector */}
                 <div className="relative z-[100]">
                   <Button
                     variant="ghost"
@@ -1054,7 +772,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                           </span>
                         )}
                         <span className="text-[12px] font-medium">{agentData?.name}</span>
-                        <ChevronDown
+                        <FiChevronDown
                           className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showAgentDropdown ? "rotate-180" : ""}`}
                         />
                       </>
@@ -1161,7 +879,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                                       <span className="font-medium ">{a?.name}</span>
                                     </span>
                                     {agentData?.id === a.id && (
-                                      <Check className="h-5 w-5 text-blue-500" />
+                                      <FiCheck className="h-5 w-5 text-blue-500" />
                                     )}
                                   </button>
                                 ))}
@@ -1279,7 +997,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
-                <ChevronLeft className="h-5 w-5" />
+                <FiChevronLeft className="h-5 w-5" />
               </Button>
               <span
                 className={`text-sm font-medium tabular-nums ${
@@ -1301,7 +1019,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
-                <ChevronRight className="h-5 w-5" />
+                <FiChevronRight className="h-5 w-5" />
               </Button>
             </div>
           )}
@@ -1316,8 +1034,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           </div>
 
           <div className="space-y-6">
-            {messages.map(
-              m =>
+            {messages.map(m => {
+              // Debug log to check sources
+              if (m.type === "agent" && m.sources) {
+                console.log(`Message ${m.id} has ${m.sources.length} sources:`, m.sources);
+              }
+
+              return (
                 m.type === "agent" && (
                   <div
                     key={m.id}
@@ -1336,56 +1059,167 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                         </div>
                       </div>
                       <div className="flex-1">
-                        <div className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                          {format === "table" && parseStructuredData(m.content).isStructured ? (
-                            renderAsTable(m.content)
-                          ) : isStructuredResearchResult(m.content) ? (
-                            <StructuredContentRenderer content={m.content} darkMode={darkMode} />
-                          ) : (
-                            <div className="whitespace-pre-wrap">{m.content}</div>
-                          )}
-                        </div>
+                        {m.sources && m.sources.length > 0 ? (
+                          <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+                            <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+                              <li className="mr-2">
+                                <button
+                                  onClick={() => setActiveTab("content")}
+                                  className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
+                                    activeTab === "content"
+                                      ? `${darkMode ? "text-blue-500 border-blue-500 font-semibold" : "text-blue-600 border-blue-600 font-semibold"}`
+                                      : `${darkMode ? "text-gray-400 border-transparent hover:text-gray-300" : "text-gray-500 border-transparent hover:text-gray-600"}`
+                                  } transition-all duration-200`}
+                                >
+                                  <BsTextParagraph className="w-4 h-4 mr-2" />
+                                  Content
+                                </button>
+                              </li>
+                              <li className="mr-2">
+                                <button
+                                  onClick={() => setActiveTab("sources")}
+                                  className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
+                                    activeTab === "sources"
+                                      ? `${darkMode ? "text-blue-500 border-blue-500 font-semibold" : "text-blue-600 border-blue-600 font-semibold"}`
+                                      : `${darkMode ? "text-gray-400 border-transparent hover:text-gray-300" : "text-gray-500 border-transparent hover:text-gray-600"}`
+                                  } transition-all duration-200`}
+                                >
+                                  <FiLink className="w-4 h-4 mr-2" />
+                                  Sources
+                                  <span
+                                    className={`ml-2 px-2 py-0.5 text-xs rounded-full ${darkMode ? "bg-blue-900/50 text-blue-300" : "bg-blue-100 text-blue-700"}`}
+                                  >
+                                    {m.sources.length}
+                                  </span>
+                                </button>
+                              </li>
+                            </ul>
+                          </div>
+                        ) : null}
+
+                        {(!m.sources || m.sources.length === 0 || activeTab === "content") && (
+                          <div className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                            {format === "table" && parseStructuredData(m.content).isStructured ? (
+                              renderAsTable(
+                                m.content,
+                                darkMode,
+                                messagesContainerRef,
+                                hasMoreMessages,
+                                loadMoreMessages
+                              )
+                            ) : isStructuredResearchResult(m.content) ? (
+                              <StructuredContentRenderer content={m.content} darkMode={darkMode} />
+                            ) : (
+                              ProcessCitationReferences(m.content, m.sources || [])
+                            )}
+                          </div>
+                        )}
+
+                        {m.sources && m.sources.length > 0 && activeTab === "sources" && (
+                          <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} mt-2`}>
+                            <div className="mb-3 flex items-center">
+                              <FiInfo className="w-4 h-4 mr-2 text-blue-500" />
+                              <span className="text-sm text-opacity-80">
+                                {m.sources.length} {m.sources.length === 1 ? "source" : "sources"}{" "}
+                                used to generate this response
+                              </span>
+                            </div>
+                            <ul className="space-y-3">
+                              {m.sources.map((source: any, index: number) => (
+                                <li
+                                  key={index}
+                                  className={`p-4 rounded-lg ${darkMode ? "bg-gray-800/50 hover:bg-gray-800/70" : "bg-gray-100/70 hover:bg-gray-100"} transition-colors duration-150 border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+                                >
+                                  <div className="flex items-start">
+                                    <div
+                                      className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mr-3 ${darkMode ? "bg-blue-900/50 text-blue-300" : "bg-blue-100 text-blue-700"}`}
+                                    >
+                                      <span className="text-xs font-medium">
+                                        {source.short_url || index + 1}
+                                      </span>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h4
+                                        className={`text-sm font-medium ${darkMode ? "text-gray-200" : "text-gray-800"} line-clamp-2`}
+                                      >
+                                        {source.title || "Untitled Source"}
+                                      </h4>
+                                      <div className="flex items-center justify-between mt-2">
+                                        <a
+                                          href={source.value}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`text-xs flex items-center ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-500"} hover:underline`}
+                                        >
+                                          {source.value.length > 80
+                                            ? `${source.value.substring(0, 80)}...`
+                                            : source.value}
+                                          <FiExternalLink className="ml-1 w-3 h-3" />
+                                        </a>
+                                        <a
+                                          href={source.value}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`ml-2 px-2 py-1 text-xs rounded ${darkMode ? "bg-blue-900/30 text-blue-300 hover:bg-blue-900/50" : "bg-blue-50 text-blue-600 hover:bg-blue-100"} transition-colors duration-150 flex items-center`}
+                                        >
+                                          <FiExternalLink className="mr-1 w-3 h-3" />
+                                          Visit
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
                         <div className="mt-4 flex justify-between items-center">
                           <span
                             title={getFullTimestamp(m.timestamp)}
                             className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} hover:${darkMode ? "text-gray-300" : "text-gray-600"} transition-colors cursor-default flex items-center`}
                           >
-                            <ClockIcon className="h-3.5 w-3.5 mr-1.5 inline-block" />
+                            <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
                             {formatTimestamp(m.timestamp)}
                           </span>
                           <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
-                              onClick={() => handleFeedback(m.id, true)}
-                            >
-                              <ThumbsUp
-                                className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-green-500`}
-                              />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
-                              onClick={() => handleFeedback(m.id, false)}
-                            >
-                              <ThumbsDown
-                                className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-red-500`}
-                              />
-                            </Button>
+                            {/* Only show feedback buttons when not loading (streaming is complete) and for agent messages */}
+                            {!isLoading && m.type === "agent" && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+                                  onClick={() => handleFeedback(m.id, true)}
+                                >
+                                  <FiThumbsUp
+                                    className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-green-500`}
+                                  />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+                                  onClick={() => handleFeedback(m.id, false)}
+                                >
+                                  <FiThumbsDown
+                                    className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-red-500`}
+                                  />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 )
-            )}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Feedback Modal */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
         <DialogContent
           className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}

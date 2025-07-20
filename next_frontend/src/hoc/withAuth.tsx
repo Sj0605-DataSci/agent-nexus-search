@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import FullScreenLoader from "@/components/common/FullScreenLoader";
-import { useAuth } from "@/hooks/useAuth";
+import { useAppSelector } from "@/store";
 
 /**
  * Wrap *any* client component with `withAuth(...)`
@@ -14,19 +14,31 @@ import { useAuth } from "@/hooks/useAuth";
 function withAuth<P extends object>(Wrapped: ComponentType<P>) {
   const Guard = (props: P) => {
     const router = useRouter();
-    const { user, loading } = useAuth();
+    const profile = useAppSelector(state => state.profile.profile);
+    const loading = useAppSelector(state => state.profile.loading);
 
     useEffect(() => {
-      if (!loading && !user) {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("discover_minds_access_token") : null;
+      if (!loading && !token && !profile) {
         router.replace("/login");
       }
-    }, [loading, user, router]);
+    }, [loading, profile, router]);
 
-    if (loading || (!user && typeof window !== "undefined")) {
+    if (
+      loading ||
+      (!profile &&
+        typeof window !== "undefined" &&
+        localStorage.getItem("discover_minds_access_token"))
+    ) {
       return <FullScreenLoader isLoading />;
     }
 
-    return <Wrapped {...props} />;
+    if (profile) {
+      return <Wrapped {...props} />;
+    }
+
+    return <FullScreenLoader isLoading />;
   };
 
   Guard.displayName = `withAuth(${Wrapped.displayName || Wrapped.name || "Component"})`;

@@ -11,12 +11,14 @@ import { apiClient } from "@/integrations/fastapi/client";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 
 import { useAppDispatch, useAppSelector } from "@/store";
-import withAuth from "@/hoc/withAuth";
 import Link from "next/link";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import AgentMarketplaceCard from "@/components/AgentMarketplace/AgentMarketplaceCard";
 import AgentMarketPlaceLoading from "@/components/AgentMarketplace/AgentMarketPlaceLoading";
+
+import React, { Suspense } from "react";
+import LoadingSkeleton from "@/components/LoadingSkeleton";
 
 const Marketplace = () => {
   const [loading, setLoading] = useState<string | null>(null);
@@ -86,9 +88,9 @@ const Marketplace = () => {
   const { user } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (agentsStatus === "idle") dispatch(loadAgents());
-  }, [user, agentsStatus, dispatch, router]);
+  // useEffect(() => {
+  //   if (agentsStatus === "idle") dispatch(loadAgents());
+  // }, [user, agentsStatus, dispatch, router]);
 
   const isAgentHired = (id: string) => hiredTemplateId.includes(id);
 
@@ -465,4 +467,10 @@ const Marketplace = () => {
   );
 };
 
-export default Marketplace;
+const MarketplacePage = () => (
+  <Suspense fallback={<LoadingSkeleton />}>
+    <Marketplace />
+  </Suspense>
+);
+
+export default MarketplacePage;

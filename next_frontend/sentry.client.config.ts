@@ -4,7 +4,13 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+// Disable Sentry in development mode or on localhost
+const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 Sentry.init({
+  // Disable Sentry in development mode or on localhost
+  enabled: !(isLocalhost || isDevelopment),
   dsn: "https://b067ae5434d79345cb88f1aa7d0121b9@o4509668223287296.ingest.us.sentry.io/4509668224335872",
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.

@@ -4,8 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  FiSearch,
-  FiUser,
   FiLogOut,
   FiLogIn,
   FiChevronLeft,
@@ -14,24 +12,19 @@ import {
   FiShoppingBag,
   FiUsers,
   FiPlus,
-  FiSettings,
 } from "react-icons/fi";
 import { useEffect, useState, useRef, useCallback } from "react";
+import posthog from "posthog-js";
 
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
-import { useAuth } from "@/hooks/useAuth";
-import ToggleSystemTheme from "../ToggleSystemTheme";
-import { apiClient } from "@/integrations/fastapi/client";
+import { fetchChatThreads, loadMoreChatThreads, setLoading } from "@/store/chatThreadsSlice";
+import { clearProfile } from "@/store/profileSlice";
+import { setTheme } from "@/store/themeSlice";
 import { Button } from "@/components/ui/button";
 import SidebarItem from "./SidebarItem";
-
-// Types
-interface ChatThread {
-  id: string;
-  last_message_at: string;
-  title: string;
-}
+import ShimmerLoader from "./ShimmerLoader";
+import { ChatThread } from "@/integrations/fastapi/types";
 
 interface ChatMessage {
   id: string;
@@ -46,116 +39,71 @@ const Sidebar = () => {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const darkMode = useAppSelector(state => state.theme.dark);
   const dispatch = useAppDispatch();
-  const { user, signOut } = useAuth();
+  const profile = useAppSelector(state => state.profile.profile);
   const router = useRouter();
   const pathname = usePathname();
 
-  const [recentThreads, setRecentThreads] = useState<any[]>([]);
-  const [loadingThreads, setLoadingThreads] = useState(false);
-  const [loadingThreadPreview, setLoadingThreadPreview] = useState(false);
-  const threadsFetchedRef = useRef(false);
-  const [threadsOffset, setThreadsOffset] = useState(0);
-  const [hasMoreThreads, setHasMoreThreads] = useState(false);
-  const THREADS_PER_PAGE = 5;
+  useEffect(() => {
+    if (!collapsed && darkMode) {
+      dispatch(setTheme("light"));
+    }
+  }, [collapsed, darkMode, dispatch]);
 
-  const fetchThreads = async () => {
-    if (!user?.id) return;
+  const {
+    threads: recentThreads,
+    loading: loadingThreads,
+    hasMore: hasMoreThreads,
+  } = useAppSelector(state => state.chatThreads);
+  const [loadingMoreThreads, setLoadingMoreThreads] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const threadsFetchedRef = useRef(false);
+
+  const fetchThreads = () => {
+    if (!profile?.id) return;
     if (threadsFetchedRef.current) return; // Skip if already fetched
 
-    setLoadingThreads(true);
-
-    try {
-      // Get first batch of threads using pagination
-      const threadsResponse = await apiClient.getChatThreads(user.id, THREADS_PER_PAGE, 0);
-      setRecentThreads(threadsResponse.threads);
-      setThreadsOffset(THREADS_PER_PAGE);
-      setHasMoreThreads(threadsResponse.total > THREADS_PER_PAGE);
-      
-      // Mark as fetched immediately so we don't fetch again
-      threadsFetchedRef.current = true;
-    } catch (error) {
-      console.error("Failed fetching threads", error);
-    } finally {
-      setLoadingThreads(false);
-    }
+    setInitialLoading(true);
+    dispatch(fetchChatThreads()).finally(() => {
+      setInitialLoading(false);
+    });
+    threadsFetchedRef.current = true;
   };
-  
-  // Track if we're currently loading more threads to prevent duplicate calls
-  const isLoadingRef = useRef(false);
 
-  const loadMoreThreads = async () => {
-    // Prevent duplicate calls while loading
-    if (!user?.id || !hasMoreThreads || loadingThreads || isLoadingRef.current) return;
+  const loadMoreThreads = useCallback(() => {
+    if (!profile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
 
-    isLoadingRef.current = true;
-    setLoadingThreads(true);
+    setLoadingMoreThreads(true);
+    // Ensure Redux loading state is not active during pagination
+    dispatch(setLoading(false));
 
-    try {
-      const threadsResponse = await apiClient.getChatThreads(user.id, THREADS_PER_PAGE, threadsOffset);
-
-      if (threadsResponse.threads.length > 0) {
-        // Check for duplicates by creating a Set of thread IDs we already have
-        const existingThreadIds = new Set(recentThreads.map(thread => thread.id));
-        
-        // Filter out any threads we already have
-        const newThreads = threadsResponse.threads.filter(thread => !existingThreadIds.has(thread.id));
-        
-        if (newThreads.length > 0) {
-          setRecentThreads(prev => [...prev, ...newThreads]);
-          setThreadsOffset(prev => prev + THREADS_PER_PAGE);
-          setHasMoreThreads(threadsOffset + THREADS_PER_PAGE < threadsResponse.total);
-        } else {
-          // If we got no new threads, we might be at the end
-          setHasMoreThreads(false);
-        }
-      } else {
-        setHasMoreThreads(false);
-      }
-    } catch (error) {
-      console.error("Failed loading more threads", error);
-    } finally {
-      setLoadingThreads(false);
-      isLoadingRef.current = false;
-    }
-  };
+    dispatch(loadMoreChatThreads())
+      .then(() => {
+        console.log("Successfully loaded more threads");
+      })
+      .catch(error => {
+        console.error("Error loading more threads:", error);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          setLoadingMoreThreads(false);
+        }, 300); // Small delay to ensure UI updates properly
+      });
+  }, [profile?.id, hasMoreThreads, loadingMoreThreads, loadingThreads, dispatch]);
 
   useEffect(() => {
-    fetchThreads();
-  }, [user?.id]);
+    // Reset the ref when profile changes
+    if (profile?.id) {
+      threadsFetchedRef.current = false;
+      fetchThreads();
+    }
+  }, [profile?.id]);
 
-  // Function to get thread preview text - uses title if available, falls back to query or thread ID
-  const getThreadPreview = (thread: any) => {
+  // Function to get thread preview text - uses title if available, falls back to thread ID
+  const getThreadPreview = (thread: ChatThread) => {
     // If thread has a title, use it as first priority
     if (thread.title) return thread.title;
-    
-    // If we have a query in the thread data, use that as second priority
-    if (thread.query) return thread.query;
-    
-    // If we need to fetch the message to get the query
-    if (!loadingThreadPreview && user?.id) {
-      // Set a flag to avoid duplicate fetches
-      setLoadingThreadPreview(true);
-      
-      // Fetch just one message to get the query
-      apiClient.getChatMessages(user.id, thread.id, 1, 0)
-        .then(response => {
-          if (response.messages && response.messages.length > 0) {
-            const message = response.messages[0];
-            if (message.main_query) {
-              // Update thread with query information
-              setRecentThreads(prev => 
-                prev.map(t => 
-                  t.id === thread.id ? {...t, query: message.main_query} : t
-                )
-              );
-            }
-          }
-        })
-        .catch(error => console.error("Error fetching message query:", error))
-        .finally(() => setLoadingThreadPreview(false));
-    }
-    
-    // Fallback to thread ID if no title or query is available
+
+    // Fallback to thread ID if no title is available
     return `Chat ${thread.id.substring(0, 8)}`;
   };
 
@@ -164,8 +112,18 @@ const Sidebar = () => {
     { href: "/agents", label: "Agents", icon: <FiUsers /> },
   ];
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
+    // Clear tokens from localStorage
+    localStorage.removeItem("discover_minds_access_token");
+    localStorage.removeItem("discover_minds_refresh_token");
+
+    // Clear profile from Redux store
+    dispatch(clearProfile());
+
+    // Reset PostHog identity
+    posthog.reset();
+
+    // Redirect to home page
     router.push("/");
   };
 
@@ -185,7 +143,7 @@ const Sidebar = () => {
         <div
           className={`flex items-center justify-between pl-2 py-4 border-b ${darkMode ? "border-gray-700/80" : "border-gray-200/80"}`}
         >
-          <Link href="/chat/new" className="flex items-center h-8 gap-2 group">
+          <Link prefetch={true} href="/chat/new" className="flex items-center h-8 gap-2 group">
             <Image
               src="/icon.png"
               alt="Logo"
@@ -210,7 +168,7 @@ const Sidebar = () => {
         <div className="px-3 py-2">
           <Link
             href="/chat/new"
-            prefetch={false}
+            prefetch={true}
             onClick={e => {
               e.preventDefault();
               router.push("/chat/new");
@@ -247,37 +205,14 @@ const Sidebar = () => {
               );
             })}
           </ul>
-          {user && (
+          {profile && (
             <div className="mb-4">
               {!collapsed && (
                 <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
               )}
               <div className={` rounded-md mb-1`}>
-                {loadingThreads ? (
-                  <ul className="space-y-1 py-1 px-1">
-                    {/* Generate 4 shimmer placeholders that look like chat items */}
-                    {[...Array(4)].map((_, index) => (
-                      <li key={`shimmer-${index}`} className="animate-pulse h-[34px]">
-                        <div
-                          className={`flex items-center py-2 rounded-md ${collapsed ? "justify-center" : "gap-2 px-2"} ${darkMode ? "bg-gray-800/30" : "bg-gray-100/70"}`}
-                        >
-                          <div
-                            className={`flex-shrink-0 ${darkMode ? "bg-gray-700" : "bg-gray-300"} rounded-full h-4 w-4`}
-                          ></div>
-
-                          {!collapsed && (
-                            <div className="flex-1">
-                              <div className="flex justify-between items-center">
-                                <div
-                                  className={`h-4 ${darkMode ? "bg-gray-700" : "bg-gray-300"} rounded ${index % 2 === 0 ? "w-3/4" : "w-2/3"}`}
-                                ></div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                {initialLoading ? (
+                  <ShimmerLoader collapsed={collapsed} darkMode={darkMode} count={10} />
                 ) : recentThreads.length === 0 ? (
                   <div
                     className={`flex flex-col items-center justify-center py-4 px-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
@@ -287,6 +222,7 @@ const Sidebar = () => {
                         <FiMessageSquare className="text-xl mb-1 opacity-60" />
                         <p className="text-xs text-center">No recent conversations</p>
                         <Link
+                          prefetch={true}
                           href="/chat/new"
                           className={`mt-2 text-xs px-3 py-1 rounded-full ${darkMode ? "bg-gray-800 hover:bg-gray-700 text-gray-300" : "bg-gray-200 hover:bg-gray-300 text-gray-700"} transition-colors`}
                         >
@@ -300,11 +236,12 @@ const Sidebar = () => {
                   <div className="flex flex-col space-y-1">
                     <ul className="space-y-0.5 py-1">
                       {recentThreads.map(thread => {
-                        const isActive = pathname === `/chat/${thread.id}`;
+                        const isActive = pathname === `/chat/${thread?.id}`;
                         return (
                           <li key={thread.id} className="px-1 h-[34px]">
                             <Link
                               href={`/chat/${thread.id}`}
+                              prefetch={true}
                               className={`group flex items-center py-2 rounded-md text-sm transition-colors ${
                                 collapsed ? "justify-center" : "gap-2 px-2"
                               } ${
@@ -339,28 +276,35 @@ const Sidebar = () => {
                         );
                       })}
                     </ul>
-                    
+
                     {/* Infinite scroll sentinel */}
                     {hasMoreThreads && (
-                      <div 
-                        ref={(el) => {
-                          if (!el || loadingThreads) return;
+                      <div
+                        ref={el => {
+                          if (!el) return;
+
                           const observer = new IntersectionObserver(
-                            (entries) => {
-                              if (entries[0].isIntersecting) {
+                            entries => {
+                              if (
+                                entries[0].isIntersecting &&
+                                !loadingMoreThreads &&
+                                !loadingThreads
+                              ) {
+                                console.log("Intersection observed, loading more threads");
                                 loadMoreThreads();
                               }
                             },
-                            { threshold: 0.5 }
+                            { threshold: 0.1, rootMargin: "100px" }
                           );
+
                           observer.observe(el);
                           return () => observer.disconnect();
                         }}
-                        className="h-10 flex items-center justify-center"
+                        className="h-10 flex items-center justify-center mt-2"
                       >
-                        {loadingThreads && (
-                          <div className="py-2 text-sm text-center w-full">
-                            <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+                        {loadingMoreThreads && (
+                          <div className="py-2 text-center w-full">
+                            <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
                           </div>
                         )}
                       </div>
@@ -376,10 +320,11 @@ const Sidebar = () => {
           className={`mt-auto border-t ${darkMode ? "border-gray-700/80" : "border-gray-200/80"}`}
         >
           <div className="p-2">
-            {user ? (
+            {profile ? (
               <div className="flex items-center justify-between">
                 <Link
                   href="/profile"
+                  prefetch={true}
                   className={`flex items-center py-1 rounded-md ${collapsed ? "justify-center w-full" : "gap-2 flex-1"} 
                   ${
                     darkMode
@@ -387,21 +332,21 @@ const Sidebar = () => {
                       : "hover:bg-gray-100/80 text-gray-700"
                   } 
                   transition-colors`}
-                  title={collapsed ? user.email : undefined}
+                  title={collapsed ? profile.email : undefined}
                 >
                   <div
                     className={`w-8 h-8 rounded-full ${darkMode ? "bg-indigo-700" : "bg-indigo-600"} 
                     flex items-center justify-center text-white font-medium flex-shrink-0 
                     ${darkMode ? "shadow-md shadow-indigo-900/20" : ""}`}
                   >
-                    {user.email?.charAt(0).toUpperCase() || "U"}
+                    {profile.email?.charAt(0).toUpperCase() || "U"}
                   </div>
                   {!collapsed && (
                     <div className="flex-1 truncate">
                       <div
                         className={`text-sm font-medium truncate ${darkMode ? "text-gray-200" : "text-gray-700"}`}
                       >
-                        {user.email?.split("@")[0] || "User"}
+                        {profile.email?.split("@")[0] || "User"}
                       </div>
                     </div>
                   )}

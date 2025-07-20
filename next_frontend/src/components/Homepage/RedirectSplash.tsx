@@ -1,27 +1,60 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimationControls } from "framer-motion";
-import { useAppSelector, useAppDispatch } from "@/store";
-import { fetchUserProfile } from "@/store/profileSlice";
+import { useAppSelector } from "@/store";
 import { useAuth } from "@/hooks/useAuth";
+import { apiClient } from "@/integrations/fastapi/client";
+import { UserProfile } from "@/integrations/fastapi/types";
+import posthog from "posthog-js";
 
 export default function RedirectSplash() {
   const dark = useAppSelector(s => s.theme.dark);
   const router = useRouter();
   const ctrls = useAnimationControls();
-  const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { profile, loading } = useAppSelector(s => s.profile);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const RING_TIME = 1;
   const FADE_TIME = 0.35;
 
   useEffect(() => {
-    if (user) {
-      dispatch(fetchUserProfile(user.id));
-    }
-  }, [user, dispatch]);
+    const fetchProfileData = async () => {
+      const token = localStorage.getItem("discover_minds_access_token");
+      
+      if (token && !profile) {
+        setLoading(true);
+        try {
+          posthog.capture("profile_fetch_attempted", {
+            source: "RedirectSplash",
+            hasToken: true,
+          });
+
+          const profileData = await apiClient.fetchProfileFromAPI();
+          setProfile(profileData);
+
+          posthog.capture("profile_fetch_successful", {
+            hasProfile: !!profileData,
+          });
+        } catch (error) {
+          console.error("Error fetching profile data:", error);
+
+          posthog.capture("profile_fetch_error", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+
+          // Token is invalid, clear and redirect to login
+          localStorage.removeItem("discover_minds_access_token");
+          localStorage.removeItem("discover_minds_refresh_token");
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProfileData();
+  }, [profile]);
 
   useEffect(() => {
     ctrls.start({
@@ -49,7 +82,8 @@ export default function RedirectSplash() {
         animate="exit"
         variants={shellVariants}
         onAnimationComplete={() => {
-          if (user) {
+          const token = localStorage.getItem("discover_minds_access_token");
+          if (token && profile) {
             router.replace("/chat");
           } else {
             router.replace("/join-waitlist");

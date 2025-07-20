@@ -3,6 +3,7 @@ import themeReducer from "./themeSlice";
 import agentsReducer from "./agentsSlice";
 import uiReducer from "./uiSlice";
 import profileReducer from "./profileSlice";
+import chatThreadsReducer from "./chatThreadsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     agents: agentsReducer,
     ui: uiReducer,
     profile: profileReducer,
+    chatThreads: chatThreadsReducer,
   },
 });
 

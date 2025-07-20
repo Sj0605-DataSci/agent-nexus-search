@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import posthog from "posthog-js";
+import { useAppSelector, useAppDispatch } from "@/store";
+import { clearProfile } from "@/store/profileSlice";
 
 interface AuthContextType {
   user: User | null;
@@ -39,9 +41,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const profile = useAppSelector(state => state.profile.profile);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
-    // Subscribe to auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -49,7 +52,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Identify user in PostHog when they sign in
       if (session?.user) {
         posthog.identify(session.user.id, {
           email: session.user.email,
@@ -57,27 +59,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           signUpDate: session.user.created_at,
         });
         posthog.capture("user_signed_in");
-      } else {
-        // Reset user identity when signed out
+      } else if (!profile) {
         posthog.reset();
       }
     });
 
-    // Initial load
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
+    const checkAuth = async () => {
+      const token = localStorage.getItem("discover_minds_access_token");
 
-      // Identify user in PostHog on initial load if they're logged in
-      if (data.session?.user) {
-        posthog.identify(data.session.user.id, {
-          email: data.session.user.email,
-          name: data.session.user.user_metadata?.full_name,
-          signUpDate: data.session.user.created_at,
-        });
+      if (token && profile) {
+        setLoading(false);
+
+        if (profile.id) {
+          posthog.identify(profile.id, {
+            email: profile.email,
+            name: profile.full_name,
+          });
+        }
+      } else {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        setLoading(false);
+
+        if (data.session?.user) {
+          posthog.identify(data.session.user.id, {
+            email: data.session.user.email,
+            name: data.session.user.user_metadata?.full_name,
+            signUpDate: data.session.user.created_at,
+          });
+        }
       }
-    });
+    };
+
+    checkAuth();
 
     return () => {
       subscription?.unsubscribe();
@@ -190,24 +205,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signOut = async () => {
     try {
       posthog.capture("logout_initiated");
+
+      localStorage.removeItem("discover_minds_access_token");
+      localStorage.removeItem("discover_minds_refresh_token");
+
+      dispatch(clearProfile());
+
       await supabase.auth.signOut();
-      // The actual reset of user identity happens in the auth state change handler
+
+      posthog.reset();
     } catch (error: any) {
       console.error("SignOut Error:", error.message);
       posthog.capture("logout_error", { message: error.message });
     }
   };
 
+  const effectiveUser = profile ? ({ id: profile.id, email: profile.email } as User) : user;
+
   const value = useMemo(
     () => ({
-      user,
+      user: effectiveUser,
       session,
       loading,
       signUp,
       signIn,
       signOut,
     }),
-    [user, session, loading]
+    [effectiveUser, session, loading, profile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
