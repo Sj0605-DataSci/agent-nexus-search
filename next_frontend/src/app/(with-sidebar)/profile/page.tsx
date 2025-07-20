@@ -18,14 +18,16 @@ interface UserProfile {
   has_connections: boolean;
 }
 
-export default function ProfilePage() {
+import React, { Suspense } from "react";
+import LoadingSkeleton from "@/components/LoadingSkeleton";
+
+function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
   const darkMode = useAppSelector(s => s.theme.dark);
   const { profile, loading, error } = useAppSelector(s => s.profile);
-
 
   const handleConnectionsClick = () => {
     if (profile && !profile.has_connections) {
@@ -34,18 +36,6 @@ export default function ProfilePage() {
       router.push("/chat/new");
     }
   };
-  
-  // // Function to check if user is at root and redirect based on profile
-  // useEffect(() => {
-  //   const path = window.location.pathname;
-  //   if (path === '/' && !loading && profile) {
-  //     if (profile.has_connections) {
-  //       router.push('/chat');
-  //     } else {
-  //       router.push('/profile');
-  //     }
-  //   }
-  // }, [profile, loading, router]);
 
   return (
     <div>
@@ -77,14 +67,14 @@ export default function ProfilePage() {
                     {profile.email}
                   </p>
                   <p className={`text-sm mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                    Member since{" "}
+                    Member since:{" "}
                     {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h2
                 className={`text-xl font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}
               >
@@ -114,7 +104,7 @@ export default function ProfilePage() {
                 </div>
                 <ToggleSystemTheme size={18} />
               </div>
-            </div>
+            </div> */}
 
             <div className="space-y-4">
               <h2
@@ -265,3 +255,10 @@ export default function ProfilePage() {
     </div>
   );
 }
+const ProfilePageWrapper = () => (
+  <Suspense fallback={<LoadingSkeleton />}>
+    <ProfilePage />
+  </Suspense>
+);
+
+export default ProfilePageWrapper;

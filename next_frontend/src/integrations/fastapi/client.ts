@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/api/axiosInstance";
+import axios from "axios";
 import { handleAxiosError } from "@/lib/api/handleAxiosError";
 import {
   AgentTemplate,
@@ -13,6 +14,7 @@ import {
   ChatResponse,
   StreamingChatRequest,
   StreamingChatUpdate,
+  UserProfile,
 } from "./types";
 
 export const apiClient = {
@@ -132,6 +134,15 @@ export const apiClient = {
     }
   },
 
+  async fetchProfileFromAPI(): Promise<UserProfile> {
+    try {
+      const res = await axiosInstance.get("/profiles");
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async updateProfile(data: ProfileUpdate): Promise<Profile> {
     try {
       const res = await axiosInstance.put("/profiles/me", data);
@@ -151,11 +162,45 @@ export const apiClient = {
     }
   },
 
+  async login(email: string, password: string) {
+    try {
+      const res = await axiosInstance.post("/auth/login", {
+        email,
+        password,
+      });
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async handleLoginWithStorage(email: string, password: string) {
+    try {
+      const res = await axiosInstance.post("/auth/login", {
+        email,
+        password,
+      });
+
+      const responseData = res.data;
+
+      if (responseData.success && responseData.status_code === 200) {
+        localStorage.setItem("discover_minds_access_token", responseData.data.token.access_token);
+        localStorage.setItem("discover_minds_refresh_token", responseData.data.token.refresh_token);
+
+        axiosInstance.defaults.headers.common["Authorization"] =
+          `Bearer ${responseData.data.token.access_token}`;
+      }
+
+      return responseData;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   // Chat
-  async sendChatRequest(userId: string, agentId: string, message: string): Promise<ChatResponse> {
+  async sendChatRequest(agentId: string, message: string): Promise<ChatResponse> {
     try {
       const chatRequest: ChatRequest = {
-        user_id: userId,
         agent_id: agentId,
         messages: message,
       };
@@ -180,22 +225,63 @@ export const apiClient = {
   },
 
   // Chat Threads and Messages
-  async getChatThreads(userId: string, limit: number = 10, offset: number = 0): Promise<{ total: number, threads: any[] }> {
+  async getChatThreads(
+    page_size: number = 20,
+    page: number = 1
+  ): Promise<{
+    threads: any[];
+    pagination: {
+      total: number;
+      page: number;
+      page_size: number;
+      total_pages: number;
+      has_next: boolean;
+      has_previous: boolean;
+    };
+  }> {
     try {
-      const res = await axiosInstance.get(`/chat/threads/${userId}`, {
-        params: { limit, offset }
+      const res = await axiosInstance.get(`/chat/threads`, {
+        params: { page_size, page },
       });
-      return res.data?.data || { total: 0, threads: [] };
+
+      if (res.data?.success && res.data?.data) {
+        return res.data.data;
+      }
+      return {
+        threads: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          page_size: page_size,
+          total_pages: 0,
+          has_next: false,
+          has_previous: false,
+        },
+      };
     } catch (error) {
       console.error("Error fetching chat threads:", error);
-      return { total: 0, threads: [] };
+      return {
+        threads: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          page_size: page_size,
+          total_pages: 0,
+          has_next: false,
+          has_previous: false,
+        },
+      };
     }
   },
 
-  async getChatMessages(userId: string, chatThreadId: string, limit: number = 10, offset: number = 0): Promise<{ total: number, messages: any[] }> {
+  async getChatMessages(
+    chatThreadId: string,
+    limit: number = 10,
+    offset: number = 0
+  ): Promise<{ total: number; messages: any[] }> {
     try {
-      const res = await axiosInstance.get(`/chat/messages/${userId}/${chatThreadId}`, {
-        params: { limit, offset }
+      const res = await axiosInstance.get(`/chat/messages/${chatThreadId}`, {
+        params: { limit, offset },
       });
       return res.data?.data || { total: 0, messages: [] };
     } catch (error) {
@@ -204,25 +290,16 @@ export const apiClient = {
     }
   },
 
-  // Feedback
   async sendFeedback(data: {
     message_id: string;
-    thread_id: string;
     is_positive: boolean;
     comment?: string;
-    user_id?: string;
   }): Promise<any> {
     try {
-      // Get user ID from profile if not provided
-      const userId = data.user_id;
-      
-      const res = await axiosInstance.post(
-        `/chat/feedback/${userId}/${data.thread_id}/${data.message_id}`,
-        {
-          is_positive: data.is_positive,
-          comment: data.comment || ""
-        }
-      );
+      const res = await axiosInstance.post(`/chat/feedback/${data.message_id}`, {
+        is_positive: data.is_positive,
+        comment: data.comment || "",
+      });
       return res.data?.data;
     } catch (error) {
       console.error("Error sending feedback:", error);
@@ -231,7 +308,6 @@ export const apiClient = {
   },
 
   async sendStreamingChatRequest(
-    userId: string,
     agentId: string,
     message: string,
     format: string = "table",
@@ -241,7 +317,6 @@ export const apiClient = {
     onUpdate: (update: StreamingChatUpdate) => void
   ): Promise<void> {
     const payload: StreamingChatRequest = {
-      user_id: userId,
       agent_id: agentId,
       messages: message,
       stream: true,
@@ -256,6 +331,7 @@ export const apiClient = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": axiosInstance.defaults.headers.common['Authorization'] as string || `Bearer ${localStorage.getItem("discover_minds_access_token")}`
       },
       body: JSON.stringify(payload),
     });

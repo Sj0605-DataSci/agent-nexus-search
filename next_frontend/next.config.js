@@ -11,7 +11,8 @@ const advancedHeaders = [
   { key: "Service-Worker-Allowed", value: "/" },
 ];
 
-const API_HOST = "https://discoverminds-ai.up.railway.app";
+const PRODUCTION_API = "https://discoverminds-ai.up.railway.app";
+const STAGING_API = "https://staging-apis.discoverminds.ai";
 const LOCAL_API = "http://localhost:8000";
 
 const nextConfig = {
@@ -36,11 +37,15 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${API_HOST}/api/:path*`,
+        destination: `${PRODUCTION_API}/api/:path*`,
       },
       {
         source: "/api/:path*",
         destination: `${LOCAL_API}/api/:path*`,
+      },
+      {
+        source: "/api/:path*",
+        destination: `${STAGING_API}/api/:path*`,
       },
       {
         source: "/ingest/static/:path*",
@@ -54,7 +59,6 @@ const nextConfig = {
         source: "/ingest/decide",
         destination: "https://us.i.posthog.com/decide",
       },
-      // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
       {
         source: "/monitoring",
         destination: "https://browser.sentry-cdn.com",

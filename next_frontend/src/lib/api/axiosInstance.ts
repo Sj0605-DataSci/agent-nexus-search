@@ -2,8 +2,13 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { supabase } from "@/integrations/supabase/client";
 
 // Create Axios instance
+const baseURL =
+  process.env.NODE_ENV === "production"
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : process.env.NEXT_PUBLIC_STAGING_BASE_URL;
+
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
+  baseURL,
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });
@@ -27,10 +32,16 @@ const processQueue = (error: any, token: string | null = null) => {
 axiosInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (token) {
-        config.headers["Authorization"] = `Bearer ${token}`;
+      const storedToken = localStorage.getItem('discover_minds_access_token');
+      
+      if (storedToken) {
+        config.headers["Authorization"] = `Bearer ${storedToken}`;
+      } else {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token) {
+          config.headers["Authorization"] = `Bearer ${token}`;
+        }
       }
     }
     if (process.env.NODE_ENV === "development") {
@@ -68,13 +79,15 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/auth/refresh-token`,
-          {}
-        );
+        const { data } = await axios.post(`${baseURL}/auth/refresh-token`, {});
 
         const newAccessToken = data.access_token;
         const newRefreshToken = data.refresh_token;
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem('discover_minds_access_token', newAccessToken);
+          localStorage.setItem('discover_minds_refresh_token', newRefreshToken);
+        }
 
         await supabase.auth.setSession({
           access_token: newAccessToken,

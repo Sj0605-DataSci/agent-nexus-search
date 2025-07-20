@@ -13,7 +13,9 @@ import { Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 import Aurora from "@/components/Aurora";
-import { useAppSelector } from "@/store";
+import { useAppSelector, useAppDispatch } from "@/store";
+import { apiClient } from "@/integrations/fastapi/client";
+import { setProfileFromLogin } from "@/store/profileSlice";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import Image from "next/image";
 
@@ -31,18 +33,13 @@ const backdropVariants: Variants = {
 };
 
 const LoginContent = () => {
+  const dispatch = useAppDispatch();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const darkMode = useAppSelector(s => s.theme.dark);
-
-  const { signIn, user } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (user) router.push("/chat/new");
-  }, [user, router]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -50,22 +47,44 @@ const LoginContent = () => {
       setLoading(true);
 
       try {
-        const { error } = await signIn(email, password);
-        if (error) {
-          showErrorToast("Error signing in", error.message);
-        } else {
-          posthog.identify();
+        posthog.capture("login_attempted", { email });
+
+        const response = await apiClient.handleLoginWithStorage(email, password);
+        console.log("response", response);
+        if (response.success && response.status_code === 200) {
+          dispatch(setProfileFromLogin(response.data));
+
+          posthog.identify(response.data.profile.id, {
+            email: response.data.profile.email,
+            name: response.data.profile.full_name,
+          });
+
+          posthog.capture("login_successful", {
+            userId: response.data.profile.id,
+            hasConnections: response.data.profile.has_connections,
+          });
+
           showSuccessToast("Welcome back!", "You have successfully signed in.");
-          router.push("/");
+          router.push("/chat/new");
+        } else {
+          showErrorToast(
+            "Login failed",
+            response.message || "Please check your credentials and try again."
+          );
+          posthog.capture("login_error", { reason: response.message || "Unknown error" });
         }
       } catch (err: any) {
-        showErrorToast("Unexpected error", "Please try again.");
+        showErrorToast(
+          "Login failed",
+          err.message || "Please check your credentials and try again."
+        );
+        posthog.capture("login_error", { reason: err.message || "Unknown error" });
         console.error(err);
       } finally {
         setLoading(false);
       }
     },
-    [email, password, signIn, router]
+    [email, password, dispatch, router]
   );
 
   return (

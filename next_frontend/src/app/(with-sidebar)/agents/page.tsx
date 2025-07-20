@@ -22,6 +22,9 @@ import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
 import { capitalizeText } from "@/utils/globalconstant";
 
+import React, { Suspense } from "react";
+import LoadingSkeleton from "@/components/LoadingSkeleton";
+
 const Agents = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [agentConfigs, setAgentConfigs] = useState<Record<string, any>>({});
@@ -37,8 +40,10 @@ const Agents = () => {
   const darkMode = useAppSelector(s => s.theme.dark);
 
   useEffect(() => {
-    if (agentsStatus === "idle") dispatch(loadAgents());
-  }, [user, agentsStatus, dispatch, router]);
+    if (agentsStatus === "idle" && user) {
+      dispatch(loadAgents());
+    }
+  }, [user, agentsStatus, dispatch]);
 
   useEffect(() => {
     if (agentsStatus !== "succeeded") return;
@@ -105,8 +110,7 @@ const Agents = () => {
     setSaving(true);
 
     try {
-      const hiredAgents = await apiClient.getHiredAgents();
-      const hiredAgent = hiredAgents.find(agent => agent.template_id === selectedAgent);
+      const hiredAgent = hiredRaw.find(agent => agent.template_id === selectedAgent);
 
       if (!hiredAgent) {
         throw new Error("Could not find the hired agent to update");
@@ -119,6 +123,8 @@ const Agents = () => {
         response_length: currentConfig.response_length,
         expertise: currentConfig.expertise,
       });
+
+      dispatch(loadAgents());
 
       showSuccessToast("Configuration saved", "Your agent configuration has been updated.");
 
@@ -844,4 +850,10 @@ const Agents = () => {
   );
 };
 
-export default Agents;
+const AgentsPage = () => (
+  <Suspense fallback={<LoadingSkeleton />}>
+    <Agents />
+  </Suspense>
+);
+
+export default AgentsPage;

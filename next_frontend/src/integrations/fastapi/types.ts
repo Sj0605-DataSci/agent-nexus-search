@@ -69,6 +69,14 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface UserProfile {
+  created_at: any;
+  id: string;
+  email: string;
+  full_name: string;
+  has_connections: boolean;
+}
+
 export interface ProfileUpdate {
   email?: string;
   full_name?: string;
@@ -84,7 +92,6 @@ export interface Source {
 }
 
 export interface ChatRequest {
-  user_id: string;
   agent_id: string;
   messages: string | Array<{ content: string; type: string }>;
   format?: string;
@@ -105,6 +112,15 @@ export interface ChatResponse {
 }
 
 export interface StreamingChatUpdate {
-  type: "thinking" | "search_query" | "source" | "message" | "done" | "error" | "token";
+  type: "thinking" | "search_query" | "source" | "message" | "done" | "error" | "token" | "connected";
   content: any;
+}
+
+// Chat Thread types
+export interface ChatThread {
+  id: string;
+  title: string;
+  created_at: string;
+  last_message_at: string;
+  weave_url?: string;
 }
