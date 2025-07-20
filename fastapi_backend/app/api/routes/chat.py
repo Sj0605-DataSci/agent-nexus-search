@@ -146,38 +146,59 @@ async def stream_chat(
 
 @router.get("/threads", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
 async def get_chat_threads(
-    limit: int = Query(10, ge=1, le=100, description="Maximum number of threads to return"),
-    offset: int = Query(0, ge=0, description="Number of threads to skip"),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     current_user: Profile = Depends(get_current_user)
 ):
     """
     Get chat threads for a specific user with pagination
     
     - **user_id**: The ID of the user (from authentication)
-    - **limit**: Maximum number of threads to return (default: 10, max: 100)
-    - **offset**: Number of threads to skip (default: 0)
+    - **page**: Page number, starting from 1 (default: 1)
+    - **page_size**: Number of items per page (default: 10, max: 100)
     
     Returns paginated chat thread objects with their IDs and metadata, plus total count
     """
     try:
+        # Calculate offset from page and page_size
+        offset = (page - 1) * page_size
+        
         # Initialize chat service
         chat_service = ChatService(client=await get_async_supabase_client())
         
         # Get chat threads for the user with pagination
-        result = await chat_service.get_chat_threads(current_user.id, limit=limit, offset=offset)
+        result = await chat_service.get_chat_threads(current_user.id, limit=page_size, offset=offset)
+        
+        # Calculate pagination metadata
+        total_count = result.get("total", 0)
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        
+        # Add pagination metadata to the result
+        pagination_data = {
+            "threads": result.get("threads", []),
+            "pagination": {
+                "total": total_count,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1
+            }
+        }
         
         logger.info("Chat threads retrieved successfully",
                    user_id=current_user.id,
-                   thread_count=len(result["threads"]) if result and "threads" in result else 0,
-                   total_count=result.get("total", 0),
-                   limit=limit,
-                   offset=offset)
+                   thread_count=len(result.get("threads", [])),
+                   total_count=total_count,
+                   page=page,
+                   page_size=page_size,
+                   total_pages=total_pages)
         
         return StandardJSONResponse(StandardResponse(
             success=True,
             status_code=status.HTTP_200_OK,
             message="Chat threads retrieved successfully",
-            data=result
+            data=pagination_data
         ))
     except HTTPException as e:
         logger.error("HTTP exception in get_chat_threads",
