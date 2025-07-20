@@ -122,6 +122,9 @@ class HiredAgentResponse(HiredAgentBase):
 class ProfileBase(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    hired_agents: Optional[List[str]] = None
+    created_at: datetime
+
 
 
 class ProfileCreate(ProfileBase):
@@ -135,8 +138,7 @@ class ProfileUpdate(BaseModel):
 
 class ProfileResponse(ProfileBase):
     id: UUID
-    created_at: datetime
-    updated_at: datetime
+    has_connections: Optional[bool] = False
 
     class Config:
         from_attributes = True
@@ -145,8 +147,31 @@ class ProfileResponse(ProfileBase):
 # Token Schemas
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str
 
 
 class TokenData(BaseModel):
     user_id: Optional[UUID] = None
+
+
+# Login Schema
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+# Signup Schema
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: Optional[str] = None
+
+# Refresh Token Schema
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+# Waitlist Schema
+class WaitlistRequest(BaseModel):
+    name: str
+    email: EmailStr
+    phone_number: str
+    beta_tester: Optional[bool] = False

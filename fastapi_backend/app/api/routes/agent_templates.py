@@ -19,18 +19,28 @@ logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/agent_templates", tags=["agent_templates"])
 
+async def get_agent_template_service():
+    """
+    Dependency to get a AgentTemplateService instance.
+    This helps reduce the overhead of creating a new service for each request.
+    """
+    client = await get_async_supabase_client()
+    return AgentTemplateService(client=client)
+
+
+
 @router.post("", response_model=StandardResponse[AgentTemplateResponse], status_code=status.HTTP_201_CREATED, response_class=StandardJSONResponse)
 async def create_agent_template(
     template: AgentTemplateCreate,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user),
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
 ):
     """Create a new agent template"""
     try:
         # Initialize the service with the Supabase client
-        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to create the template
-        template_response = await service.create_template(template)
+        template_response = await agent_template_service.create_template(template)
         
         # Invalidate the agent templates list cache
         # await cache_invalidate_pattern("agent_templates:list:*")
@@ -67,13 +77,14 @@ async def create_agent_template(
 async def get_agent_templates(
     skip: int = 0,
     limit: int = 100,
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
 ):
     """Get all agent templates with Redis caching"""
     try:
         # # Create a cache key based on the query parameters
         # cache_key = f"agent_templates:list:skip{skip}:limit{limit}"
         
-        # # Try to get data from cache first
+            # # Try to get data from cache first
         # cached_data = await cache_get(cache_key)
         # if cached_data is not None:
         #     logger.info(f"Returning agent templates from cache: {cache_key}")
@@ -86,8 +97,7 @@ async def get_agent_templates(
         
         # # If not in cache, get from database
         # logger.info(f"Cache miss for {cache_key}, fetching from database")
-        service = AgentTemplateService(client=await get_async_supabase_client())
-        template_responses = await service.get_templates(skip, limit)
+        template_responses = await agent_template_service.get_templates(skip, limit)
         
         logger.info("Agent templates retrieved successfully",
                    count=len(template_responses) if template_responses else 0,
@@ -126,6 +136,7 @@ async def get_agent_templates(
 @router.get("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def get_agent_template(
     template_id: UUID,
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
 ):
     """Get a specific agent template by ID with Redis caching"""
     try:
@@ -145,8 +156,7 @@ async def get_agent_template(
         
         # # If not in cache, get from database
         # logger.info(f"Cache miss for template {template_id}, fetching from database")
-        service = AgentTemplateService(client=await get_async_supabase_client())
-        template_response = await service.get_template_by_id(template_id)
+        template_response = await agent_template_service.get_template_by_id(template_id)
         
         # if template_response is not None:
         #     # Store in cache for future requests (expire in 10 minutes)
@@ -189,15 +199,13 @@ async def get_agent_template(
 async def update_agent_template(
     template_id: UUID,
     template_update: AgentTemplateUpdate,
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service),
     current_user: Profile = Depends(get_current_user)
 ):
     """Update an agent template"""
     try:
-        # Initialize the service with the Supabase client
-        service = AgentTemplateService(client=await get_async_supabase_client())
-        
         # Use the service to update the template
-        template_response = await service.update_template(template_id, template_update)
+        template_response = await agent_template_service.update_template(template_id, template_update)
         
         # Invalidate both the specific template cache and the list cache
         # await cache_delete(f"agent_templates:id:{template_id}")
@@ -240,15 +248,14 @@ async def update_agent_template(
 @router.delete("/{template_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def delete_agent_template(
     template_id: UUID,
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service),
     current_user: Profile = Depends(get_current_user)
 ):
     """Delete an agent template"""
     try:
-        # Initialize the service with the Supabase client
-        service = AgentTemplateService(client=await get_async_supabase_client())
         
         # Use the service to delete the template
-        success = await service.delete_template(template_id)
+        success = await agent_template_service.delete_template(template_id)
         
         # Invalidate both the specific template cache and the list cache
         # await cache_delete(f"agent_templates:id:{template_id}")

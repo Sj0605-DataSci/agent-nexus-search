@@ -40,6 +40,10 @@ async def process_connection_file(
             raise HTTPException(status_code=401, detail="User ID not found")
             
         response = await supabase.table("connection_files").select("*").eq("id", request.file_id).eq("user_id", user_id).execute()
+        logger.info(f"Connection file response: {response}")
+        
+        response_connections = await supabase.table("profiles").update({"has_connections": True}).eq("id", user_id).execute()
+        logger.info(f"Connection update response: {response_connections}")
         
         if not response.data:
             raise HTTPException(status_code=404, detail="Connection file not found or does not belong to user")

@@ -53,6 +53,7 @@ class Profile(Base):
     full_name = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now)
     updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
+    has_connections = Column(Boolean, default=False)
     
     # Relationships
     hired_agents = relationship("HiredAgent", back_populates="user", cascade="all, delete")
