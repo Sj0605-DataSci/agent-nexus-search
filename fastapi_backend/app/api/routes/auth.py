@@ -142,6 +142,7 @@ async def login(login_request: LoginRequest):
             email=profile_data["email"],
             full_name=profile_data["full_name"],
             has_connections=profile_data["has_connections"],
+            created_at=profile_data["created_at"],
             hired_agents=hired_agent_ids
         )
         

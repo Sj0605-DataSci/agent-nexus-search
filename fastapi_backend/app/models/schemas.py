@@ -123,6 +123,7 @@ class ProfileBase(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     hired_agents: Optional[List[str]] = None
+    created_at: datetime
 
 
 
@@ -138,7 +139,6 @@ class ProfileUpdate(BaseModel):
 class ProfileResponse(ProfileBase):
     id: UUID
     has_connections: Optional[bool] = False
-    created_at: datetime
 
     class Config:
         from_attributes = True
