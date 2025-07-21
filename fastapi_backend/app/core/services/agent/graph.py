@@ -20,30 +20,13 @@ from app.core.services.agent.prompts import (
     answer_instructions_table_format,
     query_title_generation
 )
+from app.models.schemas import TitleGeneratorOutput,PersonDetailsResponse
 from uuid import uuid4
 import weave
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-
-class PersonDetails(BaseModel):
-    """Pydantic model for person details in table format."""
-    fname: str = Field(description="First name of the person")
-    lname: str = Field(description="Last name of the person")
-    social_links: List[str] = Field(description="List of social media links (LinkedIn, GitHub, etc.)")
-    email: str = Field(description="Email address of the person")
-    phone_no: str = Field(description="Phone number of the person")
-    score: int = Field(description="Score of the person")
-    reason: str = Field(description="Reason for the score")
-
-class PersonDetailsResponse(BaseModel):
-    """Pydantic model for response containing one or more person details."""
-    content: List[PersonDetails] = Field(description="List of person details")
-
-class TitleGeneratorOutput(BaseModel):
-    """Pydantic model for title generator output."""
-    title: str = Field(description="Title of the chat thread")
 
 
 if settings.GOOGLE_API_KEY is None:
@@ -80,137 +63,6 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
             elif isinstance(message, AIMessage):
                 research_topic += f"Assistant: {message.content}\n"
     return research_topic
-
-
-# Nodes
-@weave.op
-async def intent_classifier(state: OverallState, config: RunnableConfig) -> OverallState:
-    """LangGraph node that classifies the User's intent.
-    
-    Determines if the user's message requires web search or can be answered directly.
-    """
-    supabase_client = await get_async_supabase_client()
-
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    
-    # Get the latest user message
-    latest_message = ""
-    if state["messages"]:
-        last_message = state["messages"][-1]
-        if isinstance(last_message, dict):
-            latest_message = last_message.get("content", "")
-        else:
-            latest_message = last_message.content if hasattr(last_message, "content") else ""
-    
-    # Use LLM to classify the intent
-    llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
-    
-    # Create a prompt for intent classification
-    prompt_content = f"""
-        Classify the user's message intent. Is this a greeting, general question, or search query?
-        
-        User message: "{latest_message}"
-        
-        If this is a greeting (like hello, hi) or a simple question that doesn't require web search,
-        respond with "direct_answer".
-        
-        If this is a search query or requires looking up information, respond with "search".
-        
-        Just respond with either "direct_answer" or "search" - nothing else.
-        """
-    
-    # Get the classification
-    response, usage_metadata = llm.with_structured_output(schema_type=IntentClassification, prompt=prompt_content)
-    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
-    
-    agent_config = state["agent_config"]
-    agent_id = agent_config["id"]
-    user_id = agent_config["user_id"]
-    message_id = state.get("current_message_id", "")
-    if state["chat_thread_id"]:
-        chat_thread_id = state["chat_thread_id"]
-    else:
-       try: 
-        chat_thread_id = str(uuid4())
-        title_gen_prompt = query_title_generation.format(latest_message=latest_message)
-        response_title, usage_metadata = llm.with_structured_output(schema_type=TitleGeneratorOutput, prompt=title_gen_prompt)
-        title = response_title.title
-        response_chat_thread = await supabase_client.table("chat_threads").insert({
-            "user_id": user_id, 
-            "id": chat_thread_id,
-            "title": title,
-            "weave_url": state["weave_url"]
-        }).execute() 
-       except Exception as e:
-        print(f"Error inserting data into Supabase: {e}")
-
-    intent = response.answer
-
-    if intent == "direct_answer":  
-        # Insert the message and capture the response to get the message ID
-        response = await supabase_client.table("chat_messages").insert({
-                "user_id": user_id, 
-                "agent_id": agent_id, 
-                "chat_thread_id": chat_thread_id, 
-                "sub_queries": "", 
-                "main_query": latest_message,
-                "weave_url": state["weave_url"],
-            }).execute()   
-        
-        # Extract the message ID from the response and store it in state
-        if response and response.data and len(response.data) > 0:
-            message_id = response.data[0].get("id")
-            state["current_message_id"] = message_id
-            
-            cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
-            cost_rupees = cost_dollar * 85.86
-            await supabase_client.table("chat_costs").insert({
-                "user_id": user_id, 
-                "agent_id": agent_id, 
-                "chat_thread_id": chat_thread_id,
-                "message_id": message_id,
-                "model": "gemini-2.5-flash",
-                "node": "intent_classifier",
-                "model_input_tokens": float(input_tokens), 
-                "model_output_tokens": float(output_tokens), 
-                "model_cost_dollar": float(cost_dollar),
-                "model_cost_rupees": float(cost_rupees),
-                "weave_url": state["weave_url"],
-            }).execute()    
-    
-    # Update the state with the classified intent
-    return OverallState(
-        intent=intent,
-        messages=state.get("messages", []),
-        current_message_id=message_id,
-        search_query=state.get("search_query", []),
-        web_research_result=state.get("web_research_result", []),
-        user_id=state.get("user_id", ""),
-        agent_id=state.get("agent_config", {}).get("id", ""),
-        chat_thread_id=chat_thread_id,
-        weave_url=state["weave_url"],
-        number_of_results_returned=state.get("number_of_results_returned", 1),
-        format=state.get("format", "table"),
-        sources_gathered=state.get("sources_gathered", []),
-        initial_search_query_count=state.get("initial_search_query_count", 0),
-        research_loop_count=state.get("research_loop_count", 0),
-        max_research_loops=state.get("max_research_loops", 3),
-        agent_config=state.get("agent_config", {}),
-        world_connections=state.get("world_connections", "world"),
-        sql_queries=state.get("sql_queries", []),
-    )
-
-@weave.op
-def continue_to_query_generation(state: OverallState):
-    """Router function that decides whether to proceed with search or direct answer."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    if state["intent"] == "search":
-        return "generate_query"
-    else:
-        return "finalize_answer"
 
 
 @weave.op
@@ -885,7 +737,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         )
     # Use Gemini client
     llm = GeminiChatModel(
-        model="gemini-2.5-pro",
+        model="gemini-2.5-flash",
         temperature=0
     )
     response, usage_metadata = llm.with_structured_output(prompt=formatted_prompt, schema_type=ReflectionOutput) 
@@ -909,7 +761,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id,
                 "message_id": current_message_id,
-                "model": "gemini-2.5-pro",
+                "model": "gemini-2.5-flash",
                 "node": "reflection",
                 "weave_url": state["weave_url"],
                 "model_input_tokens": float(input_tokens), 
@@ -1093,15 +945,6 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries=str(state["web_research_result"]),
             format=state.get("format", "table")
         )
-    else:
-        formatted_prompt = answer_instructions.format(
-            current_date=current_date,
-            links=state["sources_gathered"],
-            agent_config=state["agent_config"],
-            research_topic=state.get("messages", []),
-            summaries="",
-            format=state.get("format", "table")
-        )
 
     supabase_client = await get_async_supabase_client()    
     agent_config = state.get("agent_config", {})
@@ -1191,7 +1034,6 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
 builder = StateGraph(OverallState, config_schema=Configuration)
 
 # Define the nodes we will cycle between
-builder.add_node("intent_classifier", intent_classifier)
 builder.add_node("generate_query", generate_query)
 builder.add_node("sql_query_generation", sql_query_generation)
 builder.add_node("sql_query_execution", sql_query_execution)
@@ -1199,17 +1041,14 @@ builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 builder.add_node("web_research", web_research)
 
-# Set the entrypoint as `intent_classifier`
+# Set the entrypoint as `generate_query`
 # This means that this node is the first one called
-builder.add_edge(START, "intent_classifier")
+builder.add_edge(START, "generate_query")
 # Add conditional edge to continue with search queries in a parallel branch
 builder.add_conditional_edges(
     "generate_query", continue_to_web_research, ["sql_query_generation", "web_research"]
 )
 
-builder.add_conditional_edges(
-    "intent_classifier", continue_to_query_generation, ["generate_query", "finalize_answer"]
-)
 # Reflect on the web research
 # builder.add_edge("web_research", "reflection")
 builder.add_edge("sql_query_generation", "sql_query_execution")
