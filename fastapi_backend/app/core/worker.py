@@ -132,6 +132,18 @@ class ChatWorker:
             search_mode = task.get("search_mode", "basic")
             world_connections = task.get("world_connections", "world")
             thread_id = task.get("thread_id", "")
+
+            # Send thread_id
+            if thread_id == "new":
+                thread_id = str(uuid.uuid4())
+            else:
+                thread_id = thread_id 
+   
+            thread_id_update = StreamingChatUpdate(
+                type="thread_id",
+                content={"thread_id": thread_id}
+            )
+            await client.publish(channel, thread_id_update.model_dump_json())
             
             # Send initial thinking state
             thinking_update = StreamingChatUpdate(

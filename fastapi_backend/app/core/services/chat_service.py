@@ -1,13 +1,16 @@
 from typing import Dict, Any, List, Union
-import logging
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
 from app.core.config import settings
-
-# Configure structured logging
+from app.db.clients import get_async_supabase_client
+from app.core.utils.llm_utils import GeminiChatModel
+from app.models.chat import IntentClassification
+from app.core.services.agent.prompts import query_title_generation
+from app.models.schemas import TitleGeneratorOutput
 from app.core.structured_logger import get_structured_logger
 logger = get_structured_logger(__name__)
+
 wandb.login(key=settings.WANDB_API_KEY)
 weave.init("Deep-Search")
 
@@ -182,9 +185,116 @@ class ChatService:
                        agent_name=agent_config.get('name', 'Unknown'),
                        has_number_of_results=('number_of_results_returned' in agent_config),
                        number_of_results_returned=agent_config.get('number_of_results_returned', 'Missing'))
+                
+            # Generate a new thread_id if one doesn't exist
+            supabase_client = await get_async_supabase_client()
+            
+            # Get the latest user message for intent classification and title generation
+            latest_message = ""
+            if isinstance(messages, str):
+                latest_message = messages
+            elif isinstance(messages, list) and messages:
+                last_message = messages[-1]
+                if isinstance(last_message, dict):
+                    latest_message = last_message.get("content", "")
+                else:
+                    latest_message = last_message.content if hasattr(last_message, "content") else ""
+                
+            # Generate a title for the thread
+            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
+            title_gen_prompt = query_title_generation.format(latest_message=latest_message)
+            response_title, _ = llm.with_structured_output(schema_type=TitleGeneratorOutput, prompt=title_gen_prompt)
+            title = response_title.title
+                
+            # Create the thread in the database
+            try:
+                await supabase_client.table("chat_threads").insert({
+                    "user_id": user_id, 
+                    "id": thread_id,
+                    "title": title,
+                    "weave_url": weave_url
+                }).execute()
+                
+                logger.info("Created new chat thread",
+                           user_id=user_id,
+                           agent_id=agent_id,
+                           chat_thread_id=thread_id,
+                           title=title)
+            except Exception as e:
+                logger.error(f"Error creating chat thread: {e}",
+                            user_id=user_id,
+                            agent_id=agent_id)
+            
+            # Perform intent classification
+            intent = "search"  # Default to search
+            if latest_message:
+                llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
+                
+                # Create a prompt for intent classification
+                prompt_content = f"""
+                    Classify the user's message intent. Is this a greeting, general question, or search query?
+                    
+                    User message: "{latest_message}"
+                    
+                    If this is a greeting (like hello, hi) or a simple question that doesn't require web search,
+                    respond with "direct_answer".
+                    
+                    If this is a search query or requires looking up information, respond with "search".
+                    
+                    Just respond with either "direct_answer" or "search" - nothing else.
+                    """
+                
+                # Get the classification
+                response, usage_metadata = llm.with_structured_output(schema_type=IntentClassification, prompt=prompt_content)
+                intent = response.answer
 
-            if thread_id == "new":
-                thread_id = ""
+                # Log the intent classification
+                logger.info("Intent classified",
+                           user_id=user_id,
+                           agent_id=agent_id,
+                           intent=intent,
+                           chat_thread_id=thread_id)
+                
+                # Record the message in the database
+                try:
+                    response = await supabase_client.table("chat_messages").insert({
+                        "user_id": user_id, 
+                        "agent_id": agent_id, 
+                        "chat_thread_id": thread_id, 
+                        "sub_queries": "", 
+                        "main_query": latest_message,
+                        "weave_url": weave_url,
+                    }).execute()
+                    
+                    # Extract the message ID from the response
+                    message_id = ""
+                    if response and response.data and len(response.data) > 0:
+                        message_id = response.data[0].get("id")
+                        
+                        # Log token usage
+                        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+                        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+                        
+                        cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+                        cost_rupees = cost_dollar * 85.86
+                        await supabase_client.table("chat_costs").insert({
+                            "user_id": user_id, 
+                            "agent_id": agent_id, 
+                            "chat_thread_id": thread_id,
+                            "message_id": message_id,
+                            "model": "gemini-2.5-flash",
+                            "node": "intent_classifier",
+                            "model_input_tokens": float(input_tokens), 
+                            "model_output_tokens": float(output_tokens), 
+                            "model_cost_dollar": float(cost_dollar),
+                            "model_cost_rupees": float(cost_rupees),
+                            "weave_url": weave_url,
+                        }).execute()
+                except Exception as e:
+                    logger.error(f"Error recording message: {e}",
+                                user_id=user_id,
+                                agent_id=agent_id,
+                                chat_thread_id=thread_id)
             
             # Convert string messages to HumanMessage objects if needed
             formatted_messages = []
@@ -204,131 +314,197 @@ class ChatService:
                             else:
                                 formatted_messages.append(HumanMessage(content=msg['content']))
             
-            if search_mode == "basic" and world_connections == "world":
-                initial_state = {
-                "messages": formatted_messages,
-                "agent_config": agent_config,
-                "user_id": user_id,
-                "weave_url": weave_url,
-                "initial_search_query_count": 3,
-                "research_loop_count": 0,
-                "max_research_loops": 0,
-                "chat_thread_id": thread_id,
-                "web_research_result": [],
-                "sources_gathered": [],
-                "search_query": [],
-                "number_of_results_returned":6,
-                "format": format,
-                "world_connections": world_connections,
-                "sql_queries": []
-            }
-            elif search_mode == "basic" and world_connections == "connections":
-                initial_state = {
-                "messages": formatted_messages,
-                "agent_config": agent_config,
-                "user_id": user_id,
-                "weave_url": weave_url,
-                "initial_search_query_count": 3,
-                "research_loop_count": 0,
-                "max_research_loops": 0,
-                "chat_thread_id": thread_id,
-                "web_research_result": [],
-                "sources_gathered": [],
-                "search_query": [],
-                "number_of_results_returned":6,
-                "format": format,
-                "world_connections": world_connections,
-                "sql_queries": []
-            }
-            elif search_mode == "deep" and world_connections == "world":
-                initial_state = {
-                "messages": formatted_messages,
-                "agent_config": agent_config,
-                "user_id": user_id,
-                "weave_url": weave_url,
-                "initial_search_query_count": agent_config["initial_search_query_count"],
-                "research_loop_count": 0,
-                "max_research_loops": agent_config["max_research_loops"],
-                "chat_thread_id": thread_id,
-                "web_research_result": [],
-                "sources_gathered": [],
-                "search_query": [],
-                "number_of_results_returned":agent_config["number_of_results_returned"],
-                "format": format,
-                "world_connections": world_connections,
-                "sql_queries": []
-            }
-            elif search_mode == "deep" and world_connections == "connections":
-                initial_state = {
-                "messages": formatted_messages,
-                "agent_config": agent_config,
-                "user_id": user_id,
-                "weave_url": weave_url,
-                "initial_search_query_count": agent_config["initial_search_query_count"],
-                "research_loop_count": 0,
-                "max_research_loops": agent_config["max_research_loops"],
-                "chat_thread_id": thread_id,
-                "web_research_result": [],
-                "sources_gathered": [],
-                "search_query": [],
-                "number_of_results_returned":agent_config["number_of_results_returned"],
-                "format": format,
-                "world_connections": world_connections,
-                "sql_queries": []
-            }
-            else:
-                raise ValueError(f"Invalid search mode: {search_mode}")
+            # If intent is direct_answer, generate a direct response without search
+            if intent == "direct_answer":
+                # Create a prompt for direct answer based on agent config and latest message
+                llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0.2)
+                
+                # Build a prompt based on agent config and the latest message
+                direct_answer_prompt = f"""
+                You are a helpful assistant with the following configuration:
+                {agent_config}
+                
+                Please respond directly to the following user message:
+                "{latest_message}"
+                
+                Provide a concise and helpful response without conducting any web searches.
+                """
+                
+                # Generate the direct answer
+                response_message = llm.invoke(direct_answer_prompt)
+                direct_answer = response_message.content
+                usage_metadata = response_message.usage_metadata
+                
+                # Record the response in the database
+                try:
+                    await supabase_client.table("chat_messages").update({
+                        "message": direct_answer,
+                    }).eq("id", message_id).execute()
+                    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+                    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+                        
+                    cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+                    cost_rupees = cost_dollar * 85.86
+                    await supabase_client.table("chat_costs").insert({
+                        "user_id": user_id, 
+                        "agent_id": agent_id, 
+                        "chat_thread_id": thread_id,
+                        "message_id": message_id,
+                        "model": "gemini-2.5-flash",
+                        "node": "direct_answer",
+                        "model_input_tokens": float(input_tokens), 
+                        "model_output_tokens": float(output_tokens), 
+                        "model_cost_dollar": float(cost_dollar),
+                        "model_cost_rupees": float(cost_rupees),
+                        "weave_url": weave_url,
+                        }).execute()
+                except Exception as e:
+                    logger.error(f"Error recording direct answer: {e}",
+                                user_id=user_id,
+                                agent_id=agent_id,
+                                chat_thread_id=thread_id)
+                
+                # Stream the direct answer to the client
+                yield {
+                    "type": "token",
+                    "content": direct_answer,
+                    "node": "direct_answer",
+                    "tags": []
+                    }
+                
+                # Send completion signal
+                yield {
+                    "type": "done",
+                    "content": {"message": "Chat response complete"}
+                }
+            elif intent == "search":
+                # Create initial state based on search mode and world connections
+                if search_mode == "basic" and world_connections == "world":
+                    initial_state = {
+                        "messages": formatted_messages,
+                        "agent_config": agent_config,
+                        "user_id": user_id,
+                        "weave_url": weave_url,
+                        "initial_search_query_count": 3,
+                        "research_loop_count": 0,
+                        "max_research_loops": 0,
+                        "chat_thread_id": thread_id,
+                        "web_research_result": [],
+                        "sources_gathered": [],
+                        "search_query": [],
+                        "number_of_results_returned":6,
+                        "format": format,
+                        "world_connections": world_connections,
+                        "sql_queries": [],
+                        "intent": intent  # Add the classified intent to the initial state
+                    }
+                elif search_mode == "basic" and world_connections == "connections":
+                    initial_state = {
+                        "messages": formatted_messages,
+                        "agent_config": agent_config,
+                        "user_id": user_id,
+                        "weave_url": weave_url,
+                        "initial_search_query_count": 3,
+                        "research_loop_count": 0,
+                        "max_research_loops": 0,
+                        "chat_thread_id": thread_id,
+                        "web_research_result": [],
+                        "sources_gathered": [],
+                        "search_query": [],
+                        "number_of_results_returned":6,
+                        "format": format,
+                        "world_connections": world_connections,
+                        "sql_queries": [],
+                        "intent": intent  # Add the classified intent to the initial state
+                    }
+                elif search_mode == "deep" and world_connections == "world":
+                    initial_state = {
+                        "messages": formatted_messages,
+                        "agent_config": agent_config,
+                        "user_id": user_id,
+                        "weave_url": weave_url,
+                        "initial_search_query_count": agent_config["initial_search_query_count"],
+                        "research_loop_count": 0,
+                        "max_research_loops": agent_config["max_research_loops"],
+                        "chat_thread_id": thread_id,
+                        "web_research_result": [],
+                        "sources_gathered": [],
+                        "search_query": [],
+                        "number_of_results_returned":agent_config["number_of_results_returned"],
+                        "format": format,
+                        "world_connections": world_connections,
+                        "sql_queries": [],
+                        "intent": intent  # Add the classified intent to the initial state
+                    }
+                elif search_mode == "deep" and world_connections == "connections":
+                    initial_state = {
+                        "messages": formatted_messages,
+                        "agent_config": agent_config,
+                        "user_id": user_id,
+                        "weave_url": weave_url,
+                        "initial_search_query_count": agent_config["initial_search_query_count"],
+                        "research_loop_count": 0,
+                        "max_research_loops": agent_config["max_research_loops"],
+                        "chat_thread_id": thread_id,
+                        "web_research_result": [],
+                        "sources_gathered": [],
+                        "search_query": [],
+                        "number_of_results_returned":agent_config["number_of_results_returned"],
+                        "format": format,
+                        "world_connections": world_connections,
+                        "sql_queries": [],
+                        "intent": intent  # Add the classified intent to the initial state
+                    }
+                else:
+                    raise ValueError(f"Invalid search mode: {search_mode}")
             
-            # Use LangGraph's astream method to stream results
-            # Stream both messages (LLM tokens) and updates (state changes)
-            async for chunk_type, chunk_data in graph.astream(
-                initial_state, 
-                stream_mode=["messages", "updates"]
-            ):
+                async for chunk_type, chunk_data in graph.astream(
+                    initial_state, 
+                    stream_mode=["messages", "updates"]
+                ):
                 # Handle different types of streaming chunks
-                if chunk_type == "messages":
-                    # This is a token from an LLM
-                    message_chunk, metadata = chunk_data
-                    if message_chunk.content:
-                        # Stream the token with metadata about which node it came from
-                        yield {
+                    if chunk_type == "messages":
+                        # This is a token from an LLM
+                        message_chunk, metadata = chunk_data
+                        if message_chunk.content:
+                            # Stream the token with metadata about which node it came from
+                            yield {
                             "type": "token",
                             "content": message_chunk.content,
                             "node": metadata.get("node_name", "unknown"),
                             "tags": metadata.get("tags", [])
                         }
-                        
-                elif chunk_type == "updates":
-                    # This is a state update from a node
-                    node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
-                    node_data = chunk_data.get(node_name, {})
                     
-                    # Handle different types of updates based on the node
-                    if "search_query" in node_data:
-                        # Stream search queries
-                        for query in node_data["search_query"]:
-                            if isinstance(query, dict) and "query" in query:
-                                yield {
-                                    "type": "search_query",
+                    elif chunk_type == "updates":
+                        # This is a state update from a node
+                        node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
+                        node_data = chunk_data.get(node_name, {})
+                        
+                        # Handle different types of updates based on the node
+                        if "search_query" in node_data:
+                            # Stream search queries
+                            for query in node_data["search_query"]:
+                                if isinstance(query, dict) and "query" in query:
+                                    yield {
+                                        "type": "search_query",
                                     "content": {"query": query["query"]}
                                 }
-                            elif isinstance(query, str):
-                                yield {
-                                    "type": "search_query",
-                                    "content": {"query": query}
-                                }
+                                elif isinstance(query, str):
+                                    yield {
+                                        "type": "search_query",
+                                        "content": {"query": query}
+                                    }
                     
-                    if "sources_gathered" in node_data:
-                        yield {
+                        if "sources_gathered" in node_data:
+                            yield {
                                 "type": "source",
                                 "content": {"sources": node_data["sources_gathered"]}
                             }
             
-            # Send completion signal
-            yield {
-                "type": "done",
-                "content": {"message": "Chat response complete"}
-            }
+                yield {
+                        "type": "done",
+                        "content": {"message": "Chat response complete"}
+                    }
             
         except Exception as e:
             logger.exception("Error in stream_chat",

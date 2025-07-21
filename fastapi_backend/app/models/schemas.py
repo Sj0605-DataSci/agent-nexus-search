@@ -175,3 +175,22 @@ class WaitlistRequest(BaseModel):
     email: EmailStr
     phone_number: str
     beta_tester: Optional[bool] = False
+
+
+class PersonDetails(BaseModel):
+    """Pydantic model for person details in table format."""
+    fname: str = Field(description="First name of the person")
+    lname: str = Field(description="Last name of the person")
+    social_links: List[str] = Field(description="List of social media links (LinkedIn, GitHub, etc.)")
+    email: str = Field(description="Email address of the person")
+    phone_no: str = Field(description="Phone number of the person")
+    score: int = Field(description="Score of the person")
+    reason: str = Field(description="Reason for the score")
+
+class PersonDetailsResponse(BaseModel):
+    """Pydantic model for response containing one or more person details."""
+    content: List[PersonDetails] = Field(description="List of person details")
+
+class TitleGeneratorOutput(BaseModel):
+    """Pydantic model for title generator output."""
+    title: str = Field(description="Title of the chat thread")
