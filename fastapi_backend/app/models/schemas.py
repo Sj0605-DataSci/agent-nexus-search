@@ -122,7 +122,6 @@ class HiredAgentResponse(HiredAgentBase):
 class ProfileBase(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    hired_agents: Optional[List[str]] = None
     created_at: datetime
 
 

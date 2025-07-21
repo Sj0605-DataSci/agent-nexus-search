@@ -69,15 +69,9 @@ async def create_profile(
 
 @router.get("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse)
 async def get_my_profile(
-    current_user: Profile = Depends(get_current_user),
-    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
-):
+    current_user: Profile = Depends(get_current_user)):
     """Get the current user's profile"""
     try:
-        # Get hired agents for the user
-        hired_agents = await hired_agent_service.get_hired_agents(str(current_user.id))
-        
-        # Convert Profile model to ProfileResponse for proper serialization
         profile_data = {
             "id": str(current_user.id),
             "full_name": current_user.full_name,
@@ -85,10 +79,6 @@ async def get_my_profile(
             "created_at": current_user.created_at,
             "updated_at": current_user.updated_at
         }
-        
-        # Extract hired agent IDs
-        hired_agent_ids = [str(agent.id) for agent in hired_agents] if hired_agents else []
-        profile_data["hired_agents"] = hired_agent_ids
         
         profile_response = ProfileResponse(**profile_data)
         
@@ -120,7 +110,6 @@ async def update_my_profile(
 ):
     """Update the current user's profile"""
     try:
-        # Log the update request with fields being updated
         update_fields = {k: v for k, v in profile_update.model_dump().items() if v is not None}
         logger.info("Profile update requested", 
                    user_id=str(current_user.id),
@@ -128,7 +117,6 @@ async def update_my_profile(
         
         client = await get_async_supabase_client()
         
-        # Only include fields that are not None in the update
         update_data = {}
         if profile_update.full_name is not None:
             update_data["full_name"] = profile_update.full_name
