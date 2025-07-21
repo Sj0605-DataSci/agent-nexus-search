@@ -321,7 +321,7 @@ class ChatService:
                     if "sources_gathered" in node_data:
                         yield {
                                 "type": "source",
-                                "content": node_data["sources_gathered"]
+                                "content": {"sources": node_data["sources_gathered"]}
                             }
             
             # Send completion signal
