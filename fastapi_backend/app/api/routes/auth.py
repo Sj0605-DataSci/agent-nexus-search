@@ -5,12 +5,20 @@ from app.models.schemas import ProfileResponse, LoginRequest, StandardResponse, 
 from app.models.schemas import SignupRequest, RefreshTokenRequest
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
-from app.core.services.hired_agent_service import HiredAgentService
+from supabase.client import AsyncClient
 
 # Setup structured logging
 logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+async def get_login_client():
+    """
+    Dependency to get a AsyncClient instance.
+    This helps reduce the overhead of creating a new service for each request.
+    """
+    client = await get_async_supabase_client()
+    return client
 
 @router.get("/me", response_model=ProfileResponse)
 async def get_current_user_info(current_user: Profile = Depends(get_current_user)):
@@ -36,7 +44,7 @@ async def verify_token(request: Request):
     return {"valid": True}
 
 @router.post("/login")
-async def login(login_request: LoginRequest):
+async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Authenticates a user with email and password and returns profile details + access token.
     
@@ -44,9 +52,6 @@ async def login(login_request: LoginRequest):
     both the user profile information and a JWT access token for subsequent API calls.
     """
     try:
-        # Get Supabase client
-        client = await get_async_supabase_client()
-        
         # Log login attempt (without password)
         logger.info("Login attempt", email=login_request.email)
         
@@ -54,10 +59,12 @@ async def login(login_request: LoginRequest):
             # Authenticate with Supabase
             logger.info("Attempting authentication with Supabase")
             
-            auth_response = await client.auth.sign_in_with_password({
-                "email": login_request.email,
-                "password": login_request.password
-            })
+            auth_response = await client.auth.sign_in_with_password(
+                {
+                    "email": login_request.email,
+                    "password": login_request.password
+                }
+            )
             
             # Log successful authentication
             if auth_response.user:
@@ -102,62 +109,11 @@ async def login(login_request: LoginRequest):
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
         
-        # Query the profiles table to get the full profile
-        logger.info("Querying profile in login", 
-                   user_id=user.id, 
-                   user_id_type=type(user.id).__name__)
-        
-        profile_response = await client.table("profiles").select("*").eq("id", user.id).execute()
-        
-        # Log the profile response
-        logger.info("Profile query response in login", 
-                   response_data_length=len(profile_response.data) if profile_response.data else 0)
-        
-        # Check if profile exists
-        if not profile_response.data or len(profile_response.data) == 0:
-            logger.warning("User authenticated but profile not found", 
-                          user_id=user.id, 
-                          email=login_request.email)
-            
-            return StandardJSONResponse(
-                StandardResponse(
-                    success=False,
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    message="User profile not found",
-                    data=None
-                ),
-                status_code=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Create profile object and convert to ProfileResponse for serialization
-        profile_data = profile_response.data[0]
-        
-        # Get hired agents for the user
-        hired_agent_service = HiredAgentService(client)
-        hired_agents = await hired_agent_service.get_hired_agents(profile_data["id"])
-        hired_agent_ids = [str(agent.id) for agent in hired_agents] if hired_agents else []
-        
-        profile_response_model = ProfileResponse(
-            id=profile_data["id"],
-            email=profile_data["email"],
-            full_name=profile_data["full_name"],
-            has_connections=profile_data["has_connections"],
-            created_at=profile_data["created_at"],
-            hired_agents=hired_agent_ids
-        )
-        
         # Prepare response with token and profile
         response_data = {
-            "profile": profile_response_model.model_dump(),
-            "token": {
                 "access_token": session.access_token,
                 "refresh_token": session.refresh_token,
             }
-        }
-        
-        logger.info("Login successful", 
-                   user_id=str(profile_response_model.id), 
-                   email=profile_response_model.email)
         
         return StandardJSONResponse(
             StandardResponse(
@@ -186,7 +142,7 @@ async def login(login_request: LoginRequest):
         )
 
 @router.post("/signup", response_model=StandardResponse, response_class=StandardJSONResponse)
-async def signup(signup_request: SignupRequest):
+async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Creates a new user account with email and password.
     
@@ -195,9 +151,6 @@ async def signup(signup_request: SignupRequest):
     the user confirms their email address.
     """
     try:
-        # Get Supabase client
-        client = await get_async_supabase_client()
-        
         # Log signup attempt (without password)
         logger.info("Signup attempt", email=signup_request.email)
         
@@ -245,16 +198,13 @@ async def signup(signup_request: SignupRequest):
         )
 
 @router.post("/logout", response_model=StandardResponse, response_class=StandardJSONResponse)
-async def logout(request: Request, current_user: Profile = Depends(get_current_user)):
+async def logout(request: Request, current_user: Profile = Depends(get_current_user), client: AsyncClient = Depends(get_login_client)):
     """
     Logs out the current user by invalidating their session.
     
     This endpoint uses Supabase authentication to invalidate the user's session.
     """
     try:
-        # Get Supabase client
-        client = await get_async_supabase_client()
-        
         # Get the authorization header
         auth_header = request.headers.get("Authorization")
         
@@ -318,7 +268,7 @@ async def logout(request: Request, current_user: Profile = Depends(get_current_u
         )
 
 @router.post("/refresh_token", response_model=StandardResponse, response_class=StandardJSONResponse)
-async def refresh_token(refresh_request: RefreshTokenRequest):
+async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Refreshes an expired access token using a valid refresh token.
     
@@ -326,9 +276,6 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
     using the provided refresh token.
     """
     try:
-        # Get Supabase client
-        client = await get_async_supabase_client()
-        
         logger.info("Token refresh attempt")
         
         try:
@@ -401,16 +348,13 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
 
 
 @router.post("/join_waitlist", response_model=StandardResponse, response_class=StandardJSONResponse)
-async def join_waitlist(waitlist_request: WaitlistRequest):
+async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Adds a user to the waitlist.
     
     This endpoint stores the user's information in the invitees table.
     """
     try:
-        # Get Supabase client
-        client = await get_async_supabase_client()
-        
         # Log waitlist join attempt
         logger.info("Waitlist join attempt", 
                    email=waitlist_request.email, 
