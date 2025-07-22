@@ -300,10 +300,8 @@ async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClien
             
             # Prepare response with new tokens
             response_data = {
-                "token": {
-                    "access_token": session.access_token,
-                    "refresh_token": session.refresh_token,
-                }
+                "access_token": session.access_token,
+                "refresh_token": session.refresh_token,
             }
             
             logger.info("Token refresh successful")
