@@ -42,7 +42,7 @@ app = FastAPI(
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/"],  # Include localhost development URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/","https://test-web.discoverminds.ai/","https://test-web.discoverminds.ai"],  # Include localhost development URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
