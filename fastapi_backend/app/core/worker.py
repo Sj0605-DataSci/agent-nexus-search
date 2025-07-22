@@ -138,6 +138,11 @@ class ChatWorker:
                 thread_id = str(uuid.uuid4())
             else:
                 thread_id = thread_id 
+
+            logger.info("Publishing thread_id event", 
+                        channel=channel, 
+                        thread_id=thread_id,
+                        request_id=task.get("request_id", "unknown"))    
    
             thread_id_update = StreamingChatUpdate(
                 type="thread_id",
@@ -145,6 +150,11 @@ class ChatWorker:
             )
             await client.publish(channel, thread_id_update.model_dump_json())
             
+            # Send initial thinking state
+            logger.info("Publishing thinking event", 
+                        channel=channel,
+                        request_id=task.get("request_id", "unknown"))    
+
             # Send initial thinking state
             thinking_update = StreamingChatUpdate(
                 type="thinking",
