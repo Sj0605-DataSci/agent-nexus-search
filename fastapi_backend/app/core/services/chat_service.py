@@ -587,7 +587,7 @@ class ChatService:
             
             # Query Supabase for chat threads where the user is a participant
             response = await self.client.table("chat_threads") \
-                .select("id, created_at, updated_at, weave_url, title") \
+                .select("id, created_at, updated_at, title") \
                 .eq("user_id", user_id) \
                 .order("updated_at", desc=True) \
                 .range(offset, offset + limit - 1) \
@@ -599,7 +599,6 @@ class ChatService:
                 thread_id = item.get("id")
                 created_at = item.get("created_at")
                 updated_at = item.get("updated_at")
-                weave_url = item.get("weave_url")
                 title = item.get("title")
                 
                 if thread_id not in thread_map or updated_at > thread_map[thread_id]["last_message_at"]:
@@ -608,7 +607,6 @@ class ChatService:
                         "title":title,
                         "created_at": created_at,
                         "last_message_at": updated_at,
-                        "weave_url": weave_url
                     }
             
             # Convert to list and sort by most recent activity
@@ -662,7 +660,7 @@ class ChatService:
             
             # Query Supabase for messages in the specified chat thread with pagination
             response = await self.client.table("chat_messages") \
-                .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at") \
+                .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at", "is_positive, comment") \
                 .eq("chat_thread_id", chat_thread_id) \
                 .eq("user_id", user_id) \
                 .order("created_at", desc=False) \
