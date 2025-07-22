@@ -207,23 +207,36 @@ class ChatService:
             title = response_title.title
                 
             # Create the thread in the database
-            try:
-                await supabase_client.table("chat_threads").insert({
-                    "user_id": user_id, 
-                    "id": thread_id,
-                    "title": title,
-                    "weave_url": weave_url
-                }).execute()
+            if thread_id != "new":
+                # Check if thread already exists
+                existing_thread = await supabase_client.table("chat_threads").select("id").eq("id", thread_id).execute()
                 
-                logger.info("Created new chat thread",
-                           user_id=user_id,
-                           agent_id=agent_id,
-                           chat_thread_id=thread_id,
-                           title=title)
-            except Exception as e:
-                logger.error(f"Error creating chat thread: {e}",
-                            user_id=user_id,
-                            agent_id=agent_id)
+                if not existing_thread.data:
+                    # Thread doesn't exist, create it
+                    await supabase_client.table("chat_threads").insert({
+                        "user_id": user_id, 
+                        "id": thread_id,
+                        "title": title,
+                        "weave_url": weave_url
+                    }).execute()
+                    
+                    logger.info("Created new chat thread",
+                               user_id=user_id,
+                               agent_id=agent_id,
+                               chat_thread_id=thread_id,
+                               title=title)
+                else:
+                    # Thread exists, update it if needed
+                    await supabase_client.table("chat_threads").update({
+                        "title": title,
+                        "weave_url": weave_url
+                    }).eq("id", thread_id).execute()
+                    
+                    logger.info("Updated existing chat thread",
+                               user_id=user_id,
+                               agent_id=agent_id,
+                               chat_thread_id=thread_id,
+                               title=title)
             
             # Perform intent classification
             intent = "search"  # Default to search
@@ -264,6 +277,9 @@ class ChatService:
                         "sub_queries": "", 
                         "main_query": latest_message,
                         "weave_url": weave_url,
+                        "format": format,
+                        "search_mode":search_mode,
+                        "world_connections":world_connections
                     }).execute()
                     
                     # Extract the message ID from the response
@@ -383,6 +399,7 @@ class ChatService:
                     initial_state = {
                         "messages": formatted_messages,
                         "agent_config": agent_config,
+                        "current_message_id": message_id,
                         "user_id": user_id,
                         "weave_url": weave_url,
                         "initial_search_query_count": 3,
@@ -402,6 +419,7 @@ class ChatService:
                     initial_state = {
                         "messages": formatted_messages,
                         "agent_config": agent_config,
+                        "current_message_id": message_id,
                         "user_id": user_id,
                         "weave_url": weave_url,
                         "initial_search_query_count": 3,
@@ -421,6 +439,7 @@ class ChatService:
                     initial_state = {
                         "messages": formatted_messages,
                         "agent_config": agent_config,
+                        "current_message_id": message_id,
                         "user_id": user_id,
                         "weave_url": weave_url,
                         "initial_search_query_count": agent_config["initial_search_query_count"],
@@ -440,6 +459,7 @@ class ChatService:
                     initial_state = {
                         "messages": formatted_messages,
                         "agent_config": agent_config,
+                        "current_message_id": message_id,
                         "user_id": user_id,
                         "weave_url": weave_url,
                         "initial_search_query_count": agent_config["initial_search_query_count"],
@@ -660,7 +680,7 @@ class ChatService:
             
             # Query Supabase for messages in the specified chat thread with pagination
             response = await self.client.table("chat_messages") \
-                .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at", "is_positive, comment") \
+                .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at, is_positive, comment, format, search_mode, world_connections") \
                 .eq("chat_thread_id", chat_thread_id) \
                 .eq("user_id", user_id) \
                 .order("created_at", desc=False) \

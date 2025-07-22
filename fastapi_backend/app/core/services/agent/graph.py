@@ -3,7 +3,7 @@ from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langgraph.types import Send
 from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
-from app.models.chat import OverallState, ReflectionState, WebSearchState, Reflection, IntentClassification, QueryWriterOutput, ReflectionOutput
+from app.models.chat import OverallState, ReflectionState, WebSearchState, Reflection, QueryWriterOutput, ReflectionOutput
 from app.core.utils.llm_utils import GeminiChatModel
 from app.db.clients import get_async_supabase_client
 from tavily import TavilyClient
@@ -17,14 +17,11 @@ from app.core.services.agent.prompts import (
     optimised_query_instructions,
     sql_query_instructions,
     reflection_instructions_sql,
-    answer_instructions_table_format,
-    query_title_generation
+    answer_instructions_table_format
 )
-from app.models.schemas import TitleGeneratorOutput,PersonDetailsResponse
-from uuid import uuid4
+from app.models.schemas import PersonDetailsResponse
 import weave
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -141,30 +138,22 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         try:
             # Extract just the query strings for logging
             query_strings = [q["query"] for q in search_queries]
-            response = await supabase_client.table("chat_messages").insert({
-                "user_id": user_id, 
-                "agent_id": agent_id, 
-                "chat_thread_id": chat_thread_id, 
+            response = await supabase_client.table("chat_messages").update({
                 "sub_queries": query_strings, 
-                "main_query": main_query,
                 "weave_url": state["weave_url"],
-            }).execute()
+            }).eq("id", current_message_id).execute()
             
-            # Extract the message ID from the response and store it in state
-            if response and response.data and len(response.data) > 0:
-                message_id = response.data[0].get("id")
-                state["current_message_id"] = message_id
                 
-                input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-                output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+            input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+            output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
                 
-                cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
-                cost_rupees = cost_dollar * 85.86
-                await supabase_client.table("chat_costs").insert({
+            cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+            cost_rupees = cost_dollar * 85.86
+            await supabase_client.table("chat_costs").insert({
                     "user_id": user_id, 
                     "agent_id": agent_id, 
                     "chat_thread_id": chat_thread_id,
-                    "message_id": message_id,
+                    "message_id": current_message_id,
                     "model": "gemini-2.5-flash",
                     "node": "generate_query",
                     "model_input_tokens": float(input_tokens), 
