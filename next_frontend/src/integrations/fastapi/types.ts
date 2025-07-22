@@ -13,6 +13,7 @@ export interface AgentTemplate {
   created_at: string;
   updated_at: string;
   image_urls?: string;
+  can_hire_unhire?: boolean;
 }
 
 export interface AgentTemplateCreate {
@@ -40,6 +41,7 @@ export interface HiredAgent {
   expertise?: string;
   hired_at: string;
   updated_at: string;
+  can_hire_unhire?: boolean;
 }
 
 export interface HiredAgentCreate {
@@ -75,6 +77,19 @@ export interface UserProfile {
   email: string;
   full_name: string;
   has_connections: boolean;
+  hired_agents?: string[];
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  status_code: number;
+  message: string;
+  data: T;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  refresh_token: string;
 }
 
 export interface ProfileUpdate {

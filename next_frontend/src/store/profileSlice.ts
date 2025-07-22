@@ -1,32 +1,45 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { UserProfile } from "@/integrations/fastapi/types";
+import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { UserProfile, ApiResponse, AuthResponse } from "@/integrations/fastapi/types";
+import { apiClient } from "@/integrations/fastapi/client";
 
 // Using the imported UserProfile type from types.ts
 interface ProfileState {
   profile: UserProfile | null;
   loading: boolean;
   error: string | null;
-}
-
-interface LoginResponse {
-  profile: {
-    created_at: any;
-    email: string;
-    full_name: string;
-    id: string;
-    has_connections: boolean;
-  };
-  token: {
-    access_token: string;
-    refresh_token: string;
-  };
+  isAuthenticated: boolean;
 }
 
 const initialState: ProfileState = {
   profile: null,
   loading: false,
   error: null,
+  isAuthenticated: false,
 };
+
+export const fetchProfile = createAsyncThunk(
+  'profile/fetchProfile',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.fetchProfile();
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch profile');
+    }
+  }
+);
+
+export const loginUser = createAsyncThunk(
+  'profile/loginUser',
+  async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.handleLoginWithStorage(email, password);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Login failed');
+    }
+  }
+);
 
 
 
@@ -37,32 +50,56 @@ const profileSlice = createSlice({
     clearProfile: state => {
       state.profile = null;
       state.error = null;
+      state.isAuthenticated = false;
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('discover_minds_access_token');
+        localStorage.removeItem('discover_minds_refresh_token');
+      }
     },
-    setProfileFromLogin: (state, action: PayloadAction<LoginResponse>) => {
-      state.profile = {
-        id: action.payload.profile.id,
-        email: action.payload.profile.email,
-        full_name: action.payload.profile.full_name,
-        has_connections: action.payload.profile.has_connections,
-        created_at: action.payload.profile.created_at,
-      };
+    setProfileData: (state, action: PayloadAction<UserProfile>) => {
+      state.profile = action.payload;
       state.loading = false;
       state.error = null;
-    },
-    setProfileFromAPI: (state, action: PayloadAction<UserProfile>) => {
-      state.profile = {
-        id: action.payload.id,
-        email: action.payload.email,
-        full_name: action.payload.full_name,
-        has_connections: action.payload.has_connections,
-        created_at: action.payload.created_at,
-      };
-      state.loading = false;
-      state.error = null;
+      state.isAuthenticated = true;
     },
   },
-
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.success && action.payload.status_code === 200) {
+          state.profile = action.payload.data;
+          state.isAuthenticated = true;
+        } else {
+          state.error = action.payload.message || 'Failed to fetch profile';
+        }
+      })
+      .addCase(fetchProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string || 'Failed to fetch profile';
+      })
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.success && action.payload.status_code === 200) {
+          state.isAuthenticated = true;
+        } else {
+          state.error = action.payload.message || 'Login failed';
+        }
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string || 'Login failed';
+      });
+  }
 });
 
-export const { clearProfile, setProfileFromLogin, setProfileFromAPI } = profileSlice.actions;
+export const { clearProfile, setProfileData } = profileSlice.actions;
 export default profileSlice.reducer;

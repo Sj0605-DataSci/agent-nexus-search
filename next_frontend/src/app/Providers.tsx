@@ -7,16 +7,14 @@ import { ToastContainer } from "react-toastify";
 import { Provider as ReduxProvider } from "react-redux";
 import { store } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { setProfileFromAPI } from "@/store/profileSlice";
-import { loadAgents } from "@/store/agentsSlice";
+import { fetchProfile } from "@/store/profileSlice";
+import { fetchAgentTemplates, fetchHiredAgents } from "@/store/agentsSlice";
 import { useRouter } from "next/navigation";
 import "react-toastify/dist/ReactToastify.css";
-import Sidebar from "@/components/CustomSideBar/Sidebar";
 import { usePathname } from "next/navigation";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
-import { apiClient } from "@/integrations/fastapi/client";
 import posthog from "posthog-js";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
@@ -38,19 +36,27 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
             hasToken: true,
           });
 
-          const profileData = await apiClient.fetchProfileFromAPI();
-          dispatch(setProfileFromAPI(profileData));
+          const profileResult = await dispatch(fetchProfile()).unwrap();
 
-          posthog.capture("profile_fetch_successful", {
-            hasProfile: !!profileData,
-          });
+          if (profileResult.success && profileResult.status_code === 200) {
+            posthog.capture("profile_fetch_successful", {
+              hasProfile: !!profileResult.data,
+            });
 
-          if (agentsStatus === "idle") {
-            dispatch(loadAgents());
-          }
+            try {
+              await Promise.all([
+                dispatch(fetchAgentTemplates()).unwrap(),
+                dispatch(fetchHiredAgents()).unwrap(),
+              ]);
+            } catch (agentError) {
+              console.error("Error fetching agent data:", agentError);
+            }
 
-          if (pathname !== "/chat/new") {
-            router.push("/chat/new");
+            if (pathname !== "/chat/new") {
+              router.push("/chat/new");
+            }
+          } else {
+            throw new Error(profileResult.message || "Failed to fetch profile");
           }
         } catch (error) {
           console.error("Error fetching profile data:", error);
@@ -66,10 +72,20 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
       } else if (!user && !token && !profile) {
         if (
           pathname !== "/login" &&
+          pathname !== "/signup" &&
           pathname !== "/join-waitlist" &&
           !pathname.startsWith("/reset-password")
         ) {
           router.push("/join-waitlist");
+        }
+      } else if (profile && agentsStatus === "idle") {
+        try {
+          await Promise.all([
+            dispatch(fetchAgentTemplates()).unwrap(),
+            dispatch(fetchHiredAgents()).unwrap(),
+          ]);
+        } catch (agentError) {
+          console.error("Error fetching agent data after refresh:", agentError);
         }
       }
     };
