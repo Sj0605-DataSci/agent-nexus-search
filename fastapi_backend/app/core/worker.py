@@ -131,29 +131,7 @@ class ChatWorker:
             format = task.get("format", "table")
             search_mode = task.get("search_mode", "basic")
             world_connections = task.get("world_connections", "world")
-            thread_id = task.get("thread_id", "")
-
-            # Send thread_id
-            if thread_id == "new":
-                thread_id = str(uuid.uuid4())
-            else:
-                thread_id = thread_id 
-
-            logger.info("Publishing thread_id event", 
-                        channel=channel, 
-                        thread_id=thread_id,
-                        request_id=task.get("request_id", "unknown"))    
-   
-            thread_id_update = StreamingChatUpdate(
-                type="thread_id",
-                content={"thread_id": thread_id}
-            )
-            await client.publish(channel, thread_id_update.model_dump_json())
-            
-            # Send initial thinking state
-            logger.info("Publishing thinking event", 
-                        channel=channel,
-                        request_id=task.get("request_id", "unknown"))    
+            thread_id = task.get("thread_id", "") 
 
             # Send initial thinking state
             thinking_update = StreamingChatUpdate(
@@ -161,6 +139,20 @@ class ChatWorker:
                 content={"message": "Thinking..."}
             )
             await client.publish(channel, thinking_update.model_dump_json())
+
+            await asyncio.sleep(0.2)
+            
+            # Send thread_id
+            if thread_id == "new":
+                thread_id = str(uuid.uuid4())
+            else:
+                thread_id = thread_id     
+   
+            thread_id_update = StreamingChatUpdate(
+                type="thread_id",
+                content={"thread_id": thread_id}
+            )
+            await client.publish(channel, thread_id_update.model_dump_json())
             
             # Process the chat request and stream results
             async for update in chat_service.stream_chat(
