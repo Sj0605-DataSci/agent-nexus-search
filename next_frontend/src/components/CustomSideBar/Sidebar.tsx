@@ -60,22 +60,18 @@ const Sidebar = () => {
 
   const fetchThreads = () => {
     if (!profile?.id) return;
-    if (threadsFetchedRef.current) return; // Skip if already fetched
 
     setInitialLoading(true);
     dispatch(fetchChatThreads()).finally(() => {
       setInitialLoading(false);
     });
-    threadsFetchedRef.current = true;
   };
 
   const loadMoreThreads = useCallback(() => {
     if (!profile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
 
-    setLoadingMoreThreads(true);
-    // Ensure Redux loading state is not active during pagination
+    setLoadingMoreThreads(true)
     dispatch(setLoading(false));
-
     dispatch(loadMoreChatThreads())
       .then(() => {
         console.log("Successfully loaded more threads");
@@ -86,24 +82,20 @@ const Sidebar = () => {
       .finally(() => {
         setTimeout(() => {
           setLoadingMoreThreads(false);
-        }, 300); // Small delay to ensure UI updates properly
+        }, 300);
       });
   }, [profile?.id, hasMoreThreads, loadingMoreThreads, loadingThreads, dispatch]);
 
   useEffect(() => {
-    // Reset the ref when profile changes
-    if (profile?.id) {
-      threadsFetchedRef.current = false;
+    if (profile?.id && !threadsFetchedRef.current) {
       fetchThreads();
+      threadsFetchedRef.current = true;
     }
   }, [profile?.id]);
 
-  // Function to get thread preview text - uses title if available, falls back to thread ID
   const getThreadPreview = (thread: ChatThread) => {
-    // If thread has a title, use it as first priority
     if (thread.title) return thread.title;
 
-    // Fallback to thread ID if no title is available
     return `Chat ${thread.id.substring(0, 8)}`;
   };
 
@@ -113,17 +105,13 @@ const Sidebar = () => {
   ];
 
   const handleSignOut = () => {
-    // Clear tokens from localStorage
     localStorage.removeItem("discover_minds_access_token");
     localStorage.removeItem("discover_minds_refresh_token");
 
-    // Clear profile from Redux store
     dispatch(clearProfile());
 
-    // Reset PostHog identity
     posthog.reset();
 
-    // Redirect to home page
     router.push("/");
   };
 

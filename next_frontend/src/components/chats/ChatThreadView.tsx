@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
+import { addChatThread } from "@/store/chatThreadsSlice";
 import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
 import SearchModeToggle from "./SearchModeToggle";
@@ -100,11 +101,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     if (!threadId || !hasMoreMessages) return;
 
     try {
-      const messagesResponse = await apiClient.getChatMessages(
-        threadId,
-        MESSAGES_PER_PAGE,
-        messagesOffset
-      );
+      const messagesResponse = await apiClient.getChatMessages(threadId);
 
       if (messagesResponse.messages && messagesResponse.messages.length > 0) {
         setChatPairs(prev => [...messagesResponse.messages, ...prev]);
@@ -191,7 +188,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           return;
         }
 
-        const messagesResponse = await apiClient.getChatMessages(threadId, MESSAGES_PER_PAGE, 0);
+        const messagesResponse = await apiClient.getChatMessages(threadId);
 
         setMessagesOffset(MESSAGES_PER_PAGE);
         setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
@@ -396,6 +393,18 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           console.log("Streaming update:", update);
 
           switch (update.type) {
+            case "thread_id":
+              if (update.content && update.content.thread_id) {
+                const newUrl = `/chat/${update.content.thread_id}`;
+                window.history.replaceState({ path: newUrl }, '', newUrl);
+                
+                dispatch(addChatThread({
+                  id: update.content.thread_id,
+                  query: q
+                }));
+              }
+              break;
+              
             case "thinking":
               currentContent = "🧠 Thinking...";
               updateMessageContent(currentContent);
@@ -1099,7 +1108,15 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
                         {(!m.sources || m.sources.length === 0 || activeTab === "content") && (
                           <div className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                            {format === "table" && parseStructuredData(m.content).isStructured ? (
+                            {m.content === null ? (
+                              <div className="flex items-center">
+                                <div className=" mr-2">
+                                  <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                                </div>
+                                <p className="italic">Query seems empty, Please Search again.</p>
+                              </div>
+                            ) : format === "table" &&
+                              parseStructuredData(m.content).isStructured ? (
                               renderAsTable(
                                 m.content,
                                 darkMode,
@@ -1120,12 +1137,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                             <div className="mb-3 flex items-center">
                               <FiInfo className="w-4 h-4 mr-2 text-blue-500" />
                               <span className="text-sm text-opacity-80">
-                                {m.sources.length} {m.sources.length === 1 ? "source" : "sources"}{" "}
-                                used to generate this response
+                                {m.sources && m.sources.length ? `${m.sources.length} ${m.sources.length === 1 ? "source" : "sources"} used to generate this response` : "No sources available"}
                               </span>
                             </div>
                             <ul className="space-y-3">
-                              {m.sources.map((source: any, index: number) => (
+                              {m.sources && m.sources.length > 0 ? m.sources.map((source: any, index: number) => (
                                 <li
                                   key={index}
                                   className={`p-4 rounded-lg ${darkMode ? "bg-gray-800/50 hover:bg-gray-800/70" : "bg-gray-100/70 hover:bg-gray-100"} transition-colors duration-150 border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
@@ -1146,18 +1162,18 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                                       </h4>
                                       <div className="flex items-center justify-between mt-2">
                                         <a
-                                          href={source.value}
+                                          href={source.value || '#'}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className={`text-xs flex items-center ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-500"} hover:underline`}
                                         >
-                                          {source.value.length > 80
+                                          {source.value && source.value.length > 80
                                             ? `${source.value.substring(0, 80)}...`
-                                            : source.value}
+                                            : (source.value || 'Unknown source')}
                                           <FiExternalLink className="ml-1 w-3 h-3" />
                                         </a>
                                         <a
-                                          href={source.value}
+                                          href={source.value || '#'}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className={`ml-2 px-2 py-1 text-xs rounded ${darkMode ? "bg-blue-900/30 text-blue-300 hover:bg-blue-900/50" : "bg-blue-50 text-blue-600 hover:bg-blue-100"} transition-colors duration-150 flex items-center`}
@@ -1169,7 +1185,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                                     </div>
                                   </div>
                                 </li>
-                              ))}
+                              )) : <li className="p-4 text-center text-gray-500">No sources available</li>}
                             </ul>
                           </div>
                         )}

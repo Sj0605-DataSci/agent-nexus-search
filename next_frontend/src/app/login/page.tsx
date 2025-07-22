@@ -14,8 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
 import Aurora from "@/components/Aurora";
 import { useAppSelector, useAppDispatch } from "@/store";
-import { apiClient } from "@/integrations/fastapi/client";
-import { setProfileFromLogin } from "@/store/profileSlice";
+import { loginUser, fetchProfile, setProfileData } from "@/store/profileSlice";
+import { fetchAgentTemplates, fetchHiredAgents } from "@/store/agentsSlice";
 import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import Image from "next/image";
 
@@ -49,29 +49,41 @@ const LoginContent = () => {
       try {
         posthog.capture("login_attempted", { email });
 
-        const response = await apiClient.handleLoginWithStorage(email, password);
-        console.log("response", response);
-        if (response.success && response.status_code === 200) {
-          dispatch(setProfileFromLogin(response.data));
+        const loginResult = await dispatch(loginUser({ email, password })).unwrap();
+        
+        if (loginResult.success && loginResult.status_code === 200) {
+          const profileResult = await dispatch(fetchProfile()).unwrap();
+          
+          if (profileResult.success && profileResult.status_code === 200) {
+            posthog.identify(profileResult.data.id, {
+              email: profileResult.data.email,
+              name: profileResult.data.full_name,
+            });
 
-          posthog.identify(response.data.profile.id, {
-            email: response.data.profile.email,
-            name: response.data.profile.full_name,
-          });
+            posthog.capture("login_successful", {
+              userId: profileResult.data.id,
+              hasConnections: profileResult.data.has_connections,
+            });
 
-          posthog.capture("login_successful", {
-            userId: response.data.profile.id,
-            hasConnections: response.data.profile.has_connections,
-          });
+            try {
+              await Promise.all([
+                dispatch(fetchAgentTemplates()),
+                dispatch(fetchHiredAgents())
+              ]);
+              console.log("Agent data fetched successfully");
+            } catch (agentError) {
+              console.error("Error fetching agent data:", agentError);
+            }
 
-          showSuccessToast("Welcome back!", "You have successfully signed in.");
-          router.push("/chat/new");
+            showSuccessToast("Welcome back!", "You have successfully signed in.");
+            router.push("/chat/new");
+          }
         } else {
           showErrorToast(
             "Login failed",
-            response.message || "Please check your credentials and try again."
+            loginResult.message || "Please check your credentials and try again."
           );
-          posthog.capture("login_error", { reason: response.message || "Unknown error" });
+          posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });
         }
       } catch (err: any) {
         showErrorToast(

@@ -30,12 +30,6 @@ const SidebarItem = ({ href, label, icon, active, collapsed, darkMode }: Sidebar
       >
         <span className="relative group">
           <span className="text-lg">{icon}</span>
-          {/* Info: Will cater later */}
-          {/* {collapsed && (
-            <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 text-xs text-white bg-black rounded shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 transition-opacity">
-              {label}
-            </span>
-          )} */}
         </span>
         {!collapsed && <span>{label}</span>}
       </Link>

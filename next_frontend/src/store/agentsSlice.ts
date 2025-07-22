@@ -27,6 +27,30 @@ export const loadAgents = createAsyncThunk("agents/loadAll", async () => {
   return { templates, hired };
 });
 
+export const fetchAgentTemplates = createAsyncThunk(
+  'agents/fetchTemplates',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.fetchAgentTemplates();
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch agent templates');
+    }
+  }
+);
+
+export const fetchHiredAgents = createAsyncThunk(
+  'agents/fetchHired',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.fetchHiredAgents();
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch hired agents');
+    }
+  }
+);
+
 const agentsSlice = createSlice({
   name: "agents",
   initialState,
@@ -44,6 +68,40 @@ const agentsSlice = createSlice({
       .addCase(loadAgents.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.error.message ?? "Unknown error";
+      })
+      // Handle fetchAgentTemplates thunk
+      .addCase(fetchAgentTemplates.pending, state => {
+        state.status = "loading";
+      })
+      .addCase(fetchAgentTemplates.fulfilled, (state, action) => {
+        if (action.payload.success && action.payload.status_code === 200) {
+          state.status = "succeeded";
+          state.templates = action.payload.data;
+        } else {
+          state.status = "failed";
+          state.error = action.payload.message || "Failed to fetch agent templates";
+        }
+      })
+      .addCase(fetchAgentTemplates.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string || "Failed to fetch agent templates";
+      })
+      // Handle fetchHiredAgents thunk
+      .addCase(fetchHiredAgents.pending, state => {
+        state.status = "loading";
+      })
+      .addCase(fetchHiredAgents.fulfilled, (state, action) => {
+        if (action.payload.success && action.payload.status_code === 200) {
+          state.status = "succeeded";
+          state.hired = action.payload.data;
+        } else {
+          state.status = "failed";
+          state.error = action.payload.message || "Failed to fetch hired agents";
+        }
+      })
+      .addCase(fetchHiredAgents.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string || "Failed to fetch hired agents";
       });
   },
 });

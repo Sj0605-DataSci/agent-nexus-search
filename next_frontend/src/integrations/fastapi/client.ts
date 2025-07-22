@@ -28,6 +28,15 @@ export const apiClient = {
     }
   },
 
+  async fetchAgentTemplates() {
+    try {
+      const res = await axiosInstance.get("/agent_templates");
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async getAgentTemplate(id: string): Promise<AgentTemplate> {
     try {
       const res = await axiosInstance.get(`/agent_templates/${id}`);
@@ -71,6 +80,16 @@ export const apiClient = {
     } catch (error) {
       console.error("Error in getHiredAgents:", error);
       return [];
+    }
+  },
+
+  async fetchHiredAgents() {
+    try {
+      const res = await axiosInstance.get("/hired_agents");
+      return res.data;
+    } catch (error) {
+      console.error("Error in fetchHiredAgents:", error);
+      throw new Error(handleAxiosError(error as any));
     }
   },
 
@@ -184,14 +203,23 @@ export const apiClient = {
       const responseData = res.data;
 
       if (responseData.success && responseData.status_code === 200) {
-        localStorage.setItem("discover_minds_access_token", responseData.data.token.access_token);
-        localStorage.setItem("discover_minds_refresh_token", responseData.data.token.refresh_token);
+        localStorage.setItem("discover_minds_access_token", responseData.data.access_token);
+        localStorage.setItem("discover_minds_refresh_token", responseData.data.refresh_token);
 
         axiosInstance.defaults.headers.common["Authorization"] =
-          `Bearer ${responseData.data.token.access_token}`;
+          `Bearer ${responseData.data.access_token}`;
       }
 
       return responseData;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async fetchProfile() {
+    try {
+      const res = await axiosInstance.get("/profiles");
+      return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -274,15 +302,9 @@ export const apiClient = {
     }
   },
 
-  async getChatMessages(
-    chatThreadId: string,
-    limit: number = 10,
-    offset: number = 0
-  ): Promise<{ total: number; messages: any[] }> {
+  async getChatMessages(chatThreadId: string): Promise<{ total: number; messages: any[] }> {
     try {
-      const res = await axiosInstance.get(`/chat/messages/${chatThreadId}`, {
-        params: { limit, offset },
-      });
+      const res = await axiosInstance.get(`/chat/messages/${chatThreadId}`);
       return res.data?.data || { total: 0, messages: [] };
     } catch (error) {
       console.error("Error fetching chat messages:", error);
@@ -331,7 +353,9 @@ export const apiClient = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": axiosInstance.defaults.headers.common['Authorization'] as string || `Bearer ${localStorage.getItem("discover_minds_access_token")}`
+        Authorization:
+          (axiosInstance.defaults.headers.common["Authorization"] as string) ||
+          `Bearer ${localStorage.getItem("discover_minds_access_token")}`,
       },
       body: JSON.stringify(payload),
     });

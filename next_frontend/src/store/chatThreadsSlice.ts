@@ -29,7 +29,7 @@ export const fetchChatThreads = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const { chatThreads } = getState() as { chatThreads: ChatThreadsState };
     const { pageSize } = chatThreads;
-    
+
     try {
       const response = await apiClient.getChatThreads(pageSize, 1);
       return response;
@@ -44,9 +44,9 @@ export const loadMoreChatThreads = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const { chatThreads } = getState() as { chatThreads: ChatThreadsState };
     const { pageSize, currentPage, hasMore } = chatThreads;
-    
+
     if (!hasMore) return null;
-    
+
     try {
       // Always use 10 for page size in pagination as per API requirements
       const nextPage = currentPage + 1;
@@ -62,7 +62,7 @@ const chatThreadsSlice = createSlice({
   name: "chatThreads",
   initialState,
   reducers: {
-    resetChatThreads: (state) => {
+    resetChatThreads: state => {
       state.threads = [];
       state.currentPage = 1;
       state.hasMore = true;
@@ -76,16 +76,32 @@ const chatThreadsSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
     },
+    addChatThread: (state, action: PayloadAction<{ id: string; query: string }>) => {
+      const { id, query } = action.payload;
+      const existingThread = state.threads.find(thread => thread.id === id);
+      if (!existingThread) {
+        state.threads = [
+          {
+            id,
+            title: query,
+            created_at: new Date().toISOString(),
+            last_message_at: new Date().toISOString(),
+          },
+          ...state.threads,
+        ];
+        state.totalThreads += 1;
+      }
+    },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(fetchChatThreads.pending, (state) => {
+      .addCase(fetchChatThreads.pending, state => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchChatThreads.fulfilled, (state, action) => {
         if (!action.payload) return;
-        
+
         state.threads = action.payload.threads;
         state.totalThreads = action.payload.pagination.total;
         state.currentPage = action.payload.pagination.page;
@@ -97,17 +113,17 @@ const chatThreadsSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(loadMoreChatThreads.pending, (state) => {
+      .addCase(loadMoreChatThreads.pending, state => {
         state.loading = true;
         state.error = null;
       })
       .addCase(loadMoreChatThreads.fulfilled, (state, action) => {
         if (!action.payload) return;
-        
+
         // Filter out duplicates
         const existingIds = new Set(state.threads.map(thread => thread.id));
         const newThreads = action.payload.threads.filter(thread => !existingIds.has(thread.id));
-        
+
         // Properly concatenate new threads to existing threads
         state.threads = [...state.threads, ...newThreads];
         state.totalThreads = action.payload.pagination.total;
@@ -123,5 +139,6 @@ const chatThreadsSlice = createSlice({
   },
 });
 
-export const { resetChatThreads, setPageSize, setLoading } = chatThreadsSlice.actions;
+export const { resetChatThreads, setPageSize, setLoading, addChatThread } =
+  chatThreadsSlice.actions;
 export default chatThreadsSlice.reducer;
