@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import BrandLogo from "@/components/BrandLogo";
 import * as yup from "yup";
 import Confetti from "react-confetti";
 import { motion, AnimatePresence, Variants } from "framer-motion";
@@ -214,25 +215,8 @@ const Signup = () => {
         ) : (
           <>
             <div>
-              <div className=" mb-6">
-                <Link href="/" className="inline-flex items-center gap-2 mb-3">
-                  <div
-                    className={`w-7 h-7 rounded overflow-hidden flex items-center justify-center`}
-                  >
-                    <Image
-                      src="/icon.png"
-                      alt="DiscoverMinds Logo"
-                      width={28}
-                      height={28}
-                      className="h-7 w-7"
-                    />
-                  </div>
-                  <span
-                    className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}
-                  >
-                    DiscoverMinds.ai
-                  </span>
-                </Link>
+              <div className=" mb-3">
+                <BrandLogo darkMode={darkMode} className="mb-3" />
                 <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
                   Sign in to your account
                 </p>

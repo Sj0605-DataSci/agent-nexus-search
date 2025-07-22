@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import BrandLogo from "@/components/BrandLogo";
 import { motion, Variants } from "framer-motion";
 import posthog from "posthog-js";
 
@@ -174,20 +175,7 @@ const LoginContent = () => {
         <ToggleSystemTheme className={`absolute top-5 right-5  `} />
 
         <div className=" mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 mb-3">
-            <div className={`w-7 h-7 rounded overflow-hidden flex items-center justify-center`}>
-              <Image
-                src="/icon.png"
-                alt="DiscoverMinds Logo"
-                width={28}
-                height={28}
-                className="h-7 w-7"
-              />
-            </div>
-            <span className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
-              DiscoverMinds.ai
-            </span>
-          </Link>
+          <BrandLogo darkMode={darkMode} className="mb-3" />
           <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Sign in to your account</p>
         </div>
 

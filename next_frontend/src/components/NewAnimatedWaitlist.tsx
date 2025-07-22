@@ -3,12 +3,13 @@
 import React, { useEffect, useCallback, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import BrandLogo from "./BrandLogo";
 import * as yup from "yup";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { FaSun, FaMoon, FaUser, FaEnvelope, FaPhoneAlt } from "react-icons/fa";
 import Confetti from "react-confetti";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/integrations/fastapi/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import { generateToken } from "@/utils/globalconstant";
 import Aurora from "./Aurora";
@@ -77,27 +78,24 @@ const NewAnimatedWaitlist: React.FC = () => {
       setIsSubmitting(true);
 
       try {
-        const { error } = await supabase
-          .from("invitees")
-          .insert([
-            {
-              name: formData.name,
-              email: formData.email,
-              phone_number: formData.phone,
-            },
-          ])
-          .select();
-
-        if (error) {
-          if (error.code === "23505") {
-            if (error.message.includes("email")) {
-              showErrorToast("This email is already registered");
-            } else if (error.message.includes("phone_number")) {
-              showErrorToast("This phone number is already registered");
+        const response = await apiClient.joinWaitlist({
+          name: formData.name,
+          email: formData.email,
+          phone_number: formData.phone,
+        });
+        console.log("response", response);
+        if (!response.success) {
+          if (response.status_code === 409) {
+            if (response.message.includes("Email")) {
+              showErrorToast("This email is already registered in waitlist");
+            } else if (response.message.includes("Phone")) {
+              showErrorToast("This phone number is already registered in waitlist");
+            } else {
+              showErrorToast(response.message);
             }
           } else {
             setSubmitError("Oops! Something went wrong.");
-            console.error("Submission error:", error.message);
+            console.error("Submission error:", response.message);
           }
           return;
         }
@@ -255,13 +253,10 @@ const NewAnimatedWaitlist: React.FC = () => {
         ) : (
           <>
             <div>
-              <p
-                className={`text-xs font-semibold ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-              >
-                DiscoverMinds.ai
-              </p>
+              <BrandLogo darkMode={darkMode} className="mb-3" />
+
               <h1
-                className={`text-2xl sm:text-3xl font-extrabold mb-3 leading-tight ${
+                className={`text-xl sm:text-xl font-extrabold mb-3 leading-tight ${
                   darkMode ? "text-white" : "text-gray-900"
                 }`}
               >

@@ -181,6 +181,26 @@ export const apiClient = {
     }
   },
 
+  async signUp(email: string, password: string, fullName: string) {
+    try {
+      const res = await axiosInstance.post("/auth/signup", {
+        email,
+        password,
+        full_name: fullName
+      });
+      return res.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        // For 409 status code (conflict - email already exists), return the response data
+        if (error.response.status === 409) {
+          return error.response.data;
+        }
+        throw new Error(handleAxiosError(error));
+      }
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async login(email: string, password: string) {
     try {
       const res = await axiosInstance.post("/auth/login", {
@@ -190,6 +210,21 @@ export const apiClient = {
       return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async logout(): Promise<{ success: boolean; status_code: number; message: string; data: null }> {
+    try {
+      const res = await axiosInstance.post("/auth/logout");
+      return res.data;
+    } catch (error) {
+      // Even if the logout API fails, we should still clear local state
+      return {
+        success: false,
+        status_code: 500,
+        message: 'Failed to log out from server',
+        data: null
+      };
     }
   },
 
@@ -325,6 +360,26 @@ export const apiClient = {
       return res.data?.data;
     } catch (error) {
       console.error("Error sending feedback:", error);
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async joinWaitlist(data: { email: string; name: string; phone_number: string }): Promise<{
+    success: boolean;
+    status_code: number;
+    message: string;
+    data: { invitee_id?: string } | null;
+  }> {
+    try {
+      const res = await axiosInstance.post('/auth/join_waitlist', data);
+      return res.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 409) {
+          return error.response.data;
+        }
+        throw new Error(handleAxiosError(error));
+      }
       throw new Error(handleAxiosError(error as any));
     }
   },

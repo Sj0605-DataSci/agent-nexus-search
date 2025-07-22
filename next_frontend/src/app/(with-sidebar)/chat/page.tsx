@@ -1,14 +1,16 @@
 "use client";
-
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const ChatPage = () => {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    router.replace("/chat/new");
-  }, [router]);
+    if (pathname === "/chat") {
+      router.replace("/chat/new");
+    }
+  }, [router, pathname]);
 
   return null;
 };
