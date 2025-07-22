@@ -132,6 +132,8 @@ class ChatWorker:
             search_mode = task.get("search_mode", "basic")
             world_connections = task.get("world_connections", "world")
             thread_id = task.get("thread_id", "")
+
+            await asyncio.sleep(0.2)
             
             # Send initial thinking state
             thinking_update = StreamingChatUpdate(
@@ -139,6 +141,8 @@ class ChatWorker:
                 content={"message": "Thinking..."}
             )
             await client.publish(channel, thinking_update.model_dump_json())
+
+            await asyncio.sleep(0.2)
 
             if thread_id == "new":
                 thread_id = str(uuid.uuid4())
