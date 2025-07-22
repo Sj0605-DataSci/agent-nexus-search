@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { useEffect, useState, useRef, useCallback } from "react";
 import posthog from "posthog-js";
+import { apiClient } from "@/integrations/fastapi/client";
 
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
@@ -70,7 +71,7 @@ const Sidebar = () => {
   const loadMoreThreads = useCallback(() => {
     if (!profile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
 
-    setLoadingMoreThreads(true)
+    setLoadingMoreThreads(true);
     dispatch(setLoading(false));
     dispatch(loadMoreChatThreads())
       .then(() => {
@@ -104,15 +105,21 @@ const Sidebar = () => {
     { href: "/agents", label: "Agents", icon: <FiUsers /> },
   ];
 
-  const handleSignOut = () => {
-    localStorage.removeItem("discover_minds_access_token");
-    localStorage.removeItem("discover_minds_refresh_token");
+  const handleSignOut = async () => {
+    try {
+      await apiClient.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.removeItem("discover_minds_access_token");
+      localStorage.removeItem("discover_minds_refresh_token");
 
-    dispatch(clearProfile());
+      dispatch(clearProfile());
 
-    posthog.reset();
+      posthog.reset();
 
-    router.push("/");
+      router.push("/");
+    }
   };
 
   return (

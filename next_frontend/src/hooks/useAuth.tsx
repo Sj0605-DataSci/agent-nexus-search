@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/integrations/fastapi/client";
 import posthog from "posthog-js";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { clearProfile } from "@/store/profileSlice";
@@ -110,54 +111,44 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     invalidEmail?: boolean;
     serverError?: boolean;
   }> => {
-    const redirectUrl = `${window.location.origin}/`;
-
     try {
       // Track signup attempt
       posthog.capture("signup_attempted", { email });
 
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: fullName ? { full_name: fullName } : undefined,
-        },
-      });
+      const response = await apiClient.signUp(email, password, fullName || '');
 
-      // Initialize flags
       let emailExists = false;
-      let weakPassword = false;
       let invalidEmail = false;
+      let weakPassword = false;
       let serverError = false;
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-
-        if (error.status === 400) {
-          if (/email.*(already|exist|used|registered)/i.test(msg)) {
-            emailExists = true;
-            posthog.capture("signup_error", { reason: "email_exists" });
-          } else if (/password.*(weak|short|min)/i.test(msg)) {
-            weakPassword = true;
-            posthog.capture("signup_error", { reason: "weak_password" });
-          } else if (/email.*(invalid|format|not valid)/i.test(msg)) {
+      if (!response.success) {
+        const errorMessage = response.message?.toLowerCase() || '';
+        
+        if (response.status_code === 409) {
+          emailExists = true;
+          posthog.capture("signup_error", { reason: "email_exists" });
+        } else if (response.status_code === 400) {
+          if (/email.*(invalid|format|valid)/i.test(errorMessage)) {
             invalidEmail = true;
             posthog.capture("signup_error", { reason: "invalid_email" });
+          } else if (/password.*(weak|short|min|length)/i.test(errorMessage)) {
+            weakPassword = true;
+            posthog.capture("signup_error", { reason: "weak_password" });
+          } else {
+            serverError = true;
+            posthog.capture("signup_error", { reason: "validation_error", message: errorMessage });
           }
-        }
-
-        // Catch more general server-side or unknown issues
-        if ((error.status && error.status >= 500) || msg.includes("unexpected")) {
+        } else {
           serverError = true;
-          posthog.capture("signup_error", { reason: "server_error" });
+          posthog.capture("signup_error", { reason: "server_error", status: response.status_code });
         }
 
         return {
-          error,
+          error: new Error(response.message) as AuthError,
           emailExists,
-          weakPassword,
           invalidEmail,
+          weakPassword,
           serverError,
         };
       }
