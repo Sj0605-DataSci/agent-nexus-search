@@ -11,7 +11,6 @@ import redis.asyncio as redis
 from app.db.redis_client import redis_client
 from app.core.worker import CHAT_CHANNEL_PREFIX
 from app.core.structured_logger import get_structured_logger
-from app.core.profiling import profile_async, AsyncTimer
 
 # Configure logging
 logger = get_structured_logger(__name__)
@@ -20,7 +19,6 @@ class StreamService:
     """Service for handling streaming operations using Redis Pub/Sub"""
     
     @staticmethod
-    @profile_async("stream_service.subscribe_to_chat_stream")
     async def subscribe_to_chat_stream(request_id: str) -> AsyncGenerator[str, None]:
         """
         Subscribe to a chat stream channel and yield messages as they arrive
@@ -43,8 +41,7 @@ class StreamService:
         try:
             # Check if channel exists with timeout handling
             try:
-                async with AsyncTimer("redis.exists.channel"):
-                    exists = await asyncio.wait_for(client.exists(f"channel:{channel_name}"), timeout=2.0)
+                exists = await asyncio.wait_for(client.exists(f"channel:{channel_name}"), timeout=2.0)
                 if not exists:
                     logger.warning("Channel does not exist",
                                   channel_name=channel_name,
@@ -78,8 +75,7 @@ class StreamService:
             pubsub = client.pubsub()
             
             # Subscribe to the channel
-            async with AsyncTimer("redis.pubsub.subscribe"):
-                await pubsub.subscribe(channel_name)
+            await pubsub.subscribe(channel_name)
             logger.info("Subscribed to channel",
                        channel_name=channel_name,
                        request_id=request_id)
@@ -135,8 +131,7 @@ class StreamService:
             # Unsubscribe and clean up
             try:
                 if pubsub:
-                    async with AsyncTimer("redis.pubsub.unsubscribe"):
-                        await pubsub.unsubscribe(channel_name)
+                    await pubsub.unsubscribe(channel_name)
                     logger.info("Unsubscribed from channel",
                                channel_name=channel_name,
                                request_id=request_id)
@@ -150,8 +145,7 @@ class StreamService:
             # Clean up channel metadata with TTL
             try:
                 # Set a shorter TTL for completed channels
-                async with AsyncTimer("redis.expire.channel"):
-                    await client.expire(f"channel:{channel_name}", 300)  # 5 minute TTL after completion
+                await client.expire(f"channel:{channel_name}", 300)  # 5 minute TTL after completion
                 logger.debug("Set cleanup TTL for channel",
                            channel_name=channel_name,
                            request_id=request_id,
