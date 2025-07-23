@@ -34,7 +34,6 @@ async def get_chat_service():
     return ChatService(client=client)
 
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
-@profile_async("routes.chat.process_chat")
 async def process_chat(
     request: ChatRequest,
     current_user: Profile = Depends(get_current_user),
@@ -90,7 +89,6 @@ async def process_chat(
 
 
 @router.post("/stream")
-@profile_async("routes.chat.stream_chat")
 async def stream_chat(
     request: StreamingChatRequest,
     current_user: Profile = Depends(get_current_user),
