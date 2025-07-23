@@ -18,7 +18,7 @@ from app.db.redis_client import redis_client
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
 
@@ -149,6 +149,7 @@ app.include_router(profiles.router, prefix="/api", tags=["profiles"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(worker_status.router, prefix="/api", tags=["worker"])
 app.include_router(connections_processing.router, prefix="/api", tags=["connections_processing"])
+app.include_router(profiling.router, prefix="/api", tags=["profiling"])
 
 @app.get("/")
 async def root():

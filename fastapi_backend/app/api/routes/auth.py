@@ -5,6 +5,7 @@ from app.models.schemas import ProfileResponse, LoginRequest, StandardResponse, 
 from app.models.schemas import SignupRequest, RefreshTokenRequest
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async, AsyncTimer
 from supabase.client import AsyncClient
 
 # Setup structured logging
@@ -21,6 +22,7 @@ async def get_login_client():
     return client
 
 @router.get("/me", response_model=ProfileResponse)
+@profile_async("auth.get_current_user_info")
 async def get_current_user_info(current_user: Profile = Depends(get_current_user)):
     """
     Returns information about the currently authenticated user.
@@ -32,6 +34,7 @@ async def get_current_user_info(current_user: Profile = Depends(get_current_user
     return current_user
 
 @router.post("/verify-token", status_code=status.HTTP_200_OK)
+@profile_async("auth.verify_token")
 async def verify_token(request: Request):
     """
     Verifies that the provided JWT token is valid.
@@ -44,6 +47,7 @@ async def verify_token(request: Request):
     return {"valid": True}
 
 @router.post("/login")
+@profile_async("auth.login")
 async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Authenticates a user with email and password and returns profile details + access token.
@@ -59,12 +63,13 @@ async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_l
             # Authenticate with Supabase
             logger.info("Attempting authentication with Supabase")
             
-            auth_response = await client.auth.sign_in_with_password(
-                {
-                    "email": login_request.email,
-                    "password": login_request.password
-                }
-            )
+            async with AsyncTimer("supabase.auth.sign_in_with_password"):
+                auth_response = await client.auth.sign_in_with_password(
+                    {
+                        "email": login_request.email,
+                        "password": login_request.password
+                    }
+                )
             
             # Log successful authentication
             if auth_response.user:
@@ -142,6 +147,7 @@ async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_l
         )
 
 @router.post("/signup", response_model=StandardResponse, response_class=StandardJSONResponse)
+@profile_async("auth.signup")
 async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Creates a new user account with email and password.
@@ -157,15 +163,16 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
         try:
             # Create user with Supabase - this will automatically send a confirmation email
             # if email confirmation is enabled in your Supabase project settings
-            auth_response = await client.auth.sign_up({
-                "email": signup_request.email,
-                "password": signup_request.password,
-                "options": {
-                    "data": {
-                        "full_name": signup_request.full_name or ""
+            async with AsyncTimer("supabase.auth.sign_up"):
+                auth_response = await client.auth.sign_up({
+                    "email": signup_request.email,
+                    "password": signup_request.password,
+                    "options": {
+                        "data": {
+                            "full_name": signup_request.full_name or ""
+                        }
                     }
-                }
-            })
+                })
 
             return StandardJSONResponse(
                 StandardResponse(
@@ -198,6 +205,7 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
         )
 
 @router.post("/logout", response_model=StandardResponse, response_class=StandardJSONResponse)
+@profile_async("auth.logout")
 async def logout(request: Request, current_user: Profile = Depends(get_current_user), client: AsyncClient = Depends(get_login_client)):
     """
     Logs out the current user by invalidating their session.
@@ -226,7 +234,8 @@ async def logout(request: Request, current_user: Profile = Depends(get_current_u
         
         try:
             # Sign out - don't pass token as parameter
-            await client.auth.sign_out()
+            async with AsyncTimer("supabase.auth.sign_out"):
+                await client.auth.sign_out()
             logger.info("Logout successful")
             
             return StandardJSONResponse(
@@ -268,6 +277,7 @@ async def logout(request: Request, current_user: Profile = Depends(get_current_u
         )
 
 @router.post("/refresh_token", response_model=StandardResponse, response_class=StandardJSONResponse)
+@profile_async("auth.refresh_token")
 async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Refreshes an expired access token using a valid refresh token.
@@ -280,7 +290,8 @@ async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClien
         
         try:
             # Refresh the token
-            auth_response = await client.auth.refresh_session(refresh_request.refresh_token)
+            async with AsyncTimer("supabase.auth.refresh_session"):
+                auth_response = await client.auth.refresh_session(refresh_request.refresh_token)
             
             # Check if refresh was successful
             session = auth_response.session
@@ -346,6 +357,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClien
 
 
 @router.post("/join_waitlist", response_model=StandardResponse, response_class=StandardJSONResponse)
+@profile_async("auth.join_waitlist")
 async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Adds a user to the waitlist.
@@ -360,7 +372,8 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
         
         try:
             # Check if email already exists in invitees
-            email_check = await client.table("invitees").select("id").eq("email", waitlist_request.email).execute()
+            async with AsyncTimer("supabase.select.invitees.check_email"):
+                email_check = await client.table("invitees").select("id").eq("email", waitlist_request.email).execute()
             
             if email_check.data and len(email_check.data) > 0:
                 logger.warning("Waitlist join failed - email already exists", 
@@ -377,7 +390,8 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
                 )
             
             # Check if phone number already exists in invitees
-            phone_check = await client.table("invitees").select("id").eq("phone_number", waitlist_request.phone_number).execute()
+            async with AsyncTimer("supabase.select.invitees.check_phone"):
+                phone_check = await client.table("invitees").select("id").eq("phone_number", waitlist_request.phone_number).execute()
             
             if phone_check.data and len(phone_check.data) > 0:
                 logger.warning("Waitlist join failed - phone number already exists", 
@@ -401,7 +415,8 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
                 "beta_tester": waitlist_request.beta_tester
             }
             
-            response = await client.table("invitees").insert(invitee_data).execute()
+            async with AsyncTimer("supabase.insert.invitees"):
+                response = await client.table("invitees").insert(invitee_data).execute()
             
             if not response.data or len(response.data) == 0:
                 logger.error("Waitlist join failed - database error", 

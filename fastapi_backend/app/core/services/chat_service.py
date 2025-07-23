@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Union
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
+import time
 from app.core.config import settings
 from app.db.clients import get_async_supabase_client
 from app.core.utils.llm_utils import GeminiChatModel
@@ -9,6 +10,7 @@ from app.models.chat import IntentClassification
 from app.core.services.agent.prompts import query_title_generation
 from app.models.schemas import TitleGeneratorOutput
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async, AsyncTimer
 logger = get_structured_logger(__name__)
 
 wandb.login(key=settings.WANDB_API_KEY)
@@ -36,6 +38,7 @@ class ChatService:
         elif client is not None:
             self.client = client
     
+    @profile_async("chat_service.get_agent_config")
     async def get_agent_config(self, user_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Fetch agent configuration from Supabase
@@ -47,7 +50,8 @@ class ChatService:
                                          agent_id=agent_id)
             
             # Try with the regular query first
-            response = await self.client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
+            async with AsyncTimer("supabase.select.hired_agents.config"):
+                response = await self.client.table("hired_agents").select("*").eq("id", agent_id).eq("user_id", user_id).execute()
             
             # Log the raw response for debugging
             logger.debug("Supabase query response received",
@@ -579,6 +583,7 @@ class ChatService:
             web_research_result=result.get("web_research_result", [])
         )
     
+    @profile_async("chat_service.get_chat_threads")
     async def get_chat_threads(self, user_id: str, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
         """
         Get chat threads for a specific user with pagination
@@ -597,45 +602,20 @@ class ChatService:
                        limit=limit,
                        offset=offset)
             
-            # First get the total count of threads
-            count_response = await self.client.table("chat_threads") \
-                .select("id", count="exact") \
-                .eq("user_id", user_id) \
-                .execute()
-            
-            total_count = count_response.count if hasattr(count_response, 'count') else 0
-            
             # Query Supabase for chat threads where the user is a participant
             response = await self.client.table("chat_threads") \
-                .select("id, created_at, updated_at, title") \
+                .select("id, created_at, updated_at, title", count="exact") \
                 .eq("user_id", user_id) \
                 .order("updated_at", desc=True) \
                 .range(offset, offset + limit - 1) \
                 .execute()
-            
-            # Extract unique chat thread IDs with their latest timestamps
-            thread_map = {}
-            for item in response.data:
-                thread_id = item.get("id")
-                created_at = item.get("created_at")
-                updated_at = item.get("updated_at")
-                title = item.get("title")
-                
-                if thread_id not in thread_map or updated_at > thread_map[thread_id]["last_message_at"]:
-                    thread_map[thread_id] = {
-                        "id": thread_id,
-                        "title":title,
-                        "created_at": created_at,
-                        "last_message_at": updated_at,
-                    }
-            
-            # Convert to list and sort by most recent activity
-            threads = list(thread_map.values())
-            threads.sort(key=lambda x: x["last_message_at"], reverse=True)
+
+            # Ensure total_count is always an integer, even if response.count is None
+            total_count = response.count if hasattr(response, 'count') and response.count is not None else 0
             
             return {
                 "total": total_count,
-                "threads": threads
+                "threads": response.data
             }
         
         except Exception as e:
@@ -644,6 +624,7 @@ class ChatService:
                             error_message=str(e))
             raise
     
+    @profile_async("chat_service.get_messages_for_thread")
     async def get_messages_for_thread(self, user_id: str, chat_thread_id: str, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
         """
         Get messages for a specific chat thread and user with pagination
@@ -669,26 +650,18 @@ class ChatService:
                 # If this is a new thread, there are no messages to fetch yet
                 return {"total": 0, "messages": []}
             
-            # First get the total count of messages
-            count_response = await self.client.table("chat_messages") \
-                .select("id", count="exact") \
-                .eq("chat_thread_id", chat_thread_id) \
-                .eq("user_id", user_id) \
-                .execute()
-            
-            total_count = count_response.count if hasattr(count_response, 'count') else 0
-            
             # Query Supabase for messages in the specified chat thread with pagination
-            response = await self.client.table("chat_messages") \
-                .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at, is_positive, comment, format, search_mode, world_connections") \
-                .eq("chat_thread_id", chat_thread_id) \
-                .eq("user_id", user_id) \
-                .order("created_at", desc=False) \
-                .range(offset, offset + limit - 1) \
-                .execute()
+            async with AsyncTimer("supabase.select.chat_messages.list"):
+                response = await self.client.table("chat_messages") \
+                    .select("id, user_id, agent_id, main_query, message, sources_gathered, created_at, updated_at, is_positive, comment, format, search_mode, world_connections", count="exact") \
+                    .eq("chat_thread_id", chat_thread_id) \
+                    .eq("user_id", user_id) \
+                    .order("created_at", desc=False) \
+                    .range(offset, offset + limit - 1) \
+                    .execute()
             
             return {
-                "total": total_count,
+                "total": response.count,
                 "messages": response.data
             }
         
@@ -700,6 +673,7 @@ class ChatService:
                             user_id=user_id)
             raise
 
+    @profile_async("chat_service.get_feedback_for_thread_message")
     async def get_feedback_for_thread_message(self, user_id: str, message_id: str) -> List[Dict[str, Any]]:
         try:
             logger.info("Fetching feedback for thread message",
@@ -707,11 +681,12 @@ class ChatService:
                        message_id=message_id)
             
             # Query Supabase for feedback in the specified chat thread message
-            response = await self.client.table("chat_messages") \
-                .select("id, user_id, chat_thread_id,is_positive, comment, created_at, updated_at") \
-                .eq("user_id", user_id) \
-                .eq("id", message_id) \
-                .execute()
+            async with AsyncTimer("supabase.select.chat_messages.feedback"):
+                response = await self.client.table("chat_messages") \
+                    .select("id, user_id, chat_thread_id,is_positive, comment, created_at, updated_at") \
+                    .eq("user_id", user_id) \
+                    .eq("id", message_id) \
+                    .execute()
             
             return response.data
         
@@ -724,6 +699,7 @@ class ChatService:
             raise 
 
 
+    @profile_async("chat_service.patch_feedback_for_thread_message")
     async def patch_feedback_for_thread_message(self, user_id: str, message_id: str, is_positive: bool, comment: str) -> Dict[str, Any]:
         try:
             logger.info("Posting feedback for thread message",
@@ -733,14 +709,15 @@ class ChatService:
                        comment=comment)
             
             # Insert the feedback into the database
-            response = await self.client.table("chat_messages") \
-                .update({
-                    "is_positive": is_positive,
-                    "comment": comment
-                }) \
-                .eq("user_id", user_id) \
-                .eq("id", message_id) \
-                .execute()
+            async with AsyncTimer("supabase.update.chat_messages.feedback"):
+                response = await self.client.table("chat_messages") \
+                    .update({
+                        "is_positive": is_positive,
+                        "comment": comment
+                    }) \
+                    .eq("user_id", user_id) \
+                    .eq("id", message_id) \
+                    .execute()
             
             return response.data[0]
         

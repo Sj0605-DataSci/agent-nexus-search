@@ -15,12 +15,14 @@ from app.core.memory import get_memory_usage
 
 # Set up structured logging
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async
 logger = get_structured_logger(__name__)
 
 # Create router
 router = APIRouter(prefix="/worker", tags=["worker"])
 
 @router.get("/redis/health")
+@profile_async("routes.worker_status.check_redis_health")
 async def check_redis_health():
     """
     Check Redis connection health
@@ -84,6 +86,7 @@ async def check_redis_health():
         )
 
 @router.get("/status")
+@profile_async("routes.worker_status.get_worker_status")
 async def get_worker_status():
     """
     Get status information about the worker system

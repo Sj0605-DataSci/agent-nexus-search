@@ -1,6 +1,7 @@
 # app/core/clients.py
 from supabase import create_async_client, create_client
 from app.core.config import settings
+import httpx
 
 # Global client that will be initialized once
 _supabase_client = None

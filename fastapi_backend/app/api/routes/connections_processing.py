@@ -8,9 +8,11 @@ import logging
 from app.core.auth import get_current_user
 from app.core.connection_worker import enqueue_connection_task
 from app.db.clients import get_async_supabase_client
+from app.core.profiling import profile_async
+from app.core.structured_logger import get_structured_logger
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_structured_logger(__name__)
 
 from pydantic import BaseModel
 
@@ -18,6 +20,7 @@ class ConnectionFileRequest(BaseModel):
     file_id: str
 
 @router.post("/process-connection-file")
+@profile_async("routes.connections_processing.process_connection_file")
 async def process_connection_file(
     request: ConnectionFileRequest,
     background_tasks: BackgroundTasks,
