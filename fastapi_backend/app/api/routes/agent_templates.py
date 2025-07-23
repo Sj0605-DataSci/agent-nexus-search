@@ -15,6 +15,7 @@ from app.db.redis_client import cache_get, cache_set, cache_delete, cache_invali
 
 # Set up structured logging
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async
 logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/agent_templates", tags=["agent_templates"])
@@ -30,6 +31,7 @@ async def get_agent_template_service():
 
 
 @router.post("", response_model=StandardResponse[AgentTemplateResponse], status_code=status.HTTP_201_CREATED, response_class=StandardJSONResponse)
+@profile_async("routes.agent_templates.create_agent_template")
 async def create_agent_template(
     template: AgentTemplateCreate,
     current_user: Profile = Depends(get_current_user),
@@ -74,6 +76,7 @@ async def create_agent_template(
         ))
 
 @router.get("", response_model=StandardResponse[List[AgentTemplateResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.agent_templates.get_agent_templates")
 async def get_agent_templates(
     skip: int = 0,
     limit: int = 100,
@@ -134,6 +137,7 @@ async def get_agent_templates(
         ))        
 
 @router.get("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.agent_templates.get_agent_template")
 async def get_agent_template(
     template_id: UUID,
     agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
@@ -196,6 +200,7 @@ async def get_agent_template(
         ))
 
 @router.put("/{template_id}", response_model=StandardResponse[AgentTemplateResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.agent_templates.update_agent_template")
 async def update_agent_template(
     template_id: UUID,
     template_update: AgentTemplateUpdate,
@@ -246,6 +251,7 @@ async def update_agent_template(
         ))
 
 @router.delete("/{template_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.agent_templates.delete_agent_template")
 async def delete_agent_template(
     template_id: UUID,
     agent_template_service: AgentTemplateService = Depends(get_agent_template_service),

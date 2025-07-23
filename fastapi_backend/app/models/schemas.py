@@ -3,6 +3,7 @@ from typing import Generic, TypeVar, Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field, EmailStr
 from fastapi.responses import JSONResponse
 from uuid import UUID
+from app.core.profiling import Timer
 import logging
 import json
 
@@ -31,26 +32,28 @@ class CustomJSONEncoder(json.JSONEncoder):
 # Custom response class to handle StandardResponse objects
 class StandardJSONResponse(JSONResponse):
     def __init__(self, content, *args, **kwargs):
-        if isinstance(content, StandardResponse):
-            # Extract status code from the StandardResponse
-            status_code = content.status_code
-            # Convert Pydantic model to dict for proper JSON serialization
-            content = content.model_dump()
-            kwargs["status_code"] = status_code
-            
-            # Log the response for debugging
-            logger.info(f"Returning StandardJSONResponse with status code {status_code} and content: {content}")
-        super().__init__(content, *args, **kwargs)
+        with Timer("response.standard_json_response.init"):
+            if isinstance(content, StandardResponse):
+                # Extract status code from the StandardResponse
+                status_code = content.status_code
+                # Convert Pydantic model to dict for proper JSON serialization
+                content = content.model_dump()
+                kwargs["status_code"] = status_code
+                
+                # Log the response for debugging
+                logger.info(f"Returning StandardJSONResponse with status code {status_code} and content: {content}")
+            super().__init__(content, *args, **kwargs)
         
     def render(self, content) -> bytes:
-        return json.dumps(
-            content,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=None,
-            separators=(",", ":"),
-            cls=CustomJSONEncoder,
-        ).encode("utf-8")
+        with Timer("response.standard_json_response.render"):
+            return json.dumps(
+                content,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=None,
+                separators=(",", ":"),
+                cls=CustomJSONEncoder,
+            ).encode("utf-8")
 
 
 # Agent Template Schemas

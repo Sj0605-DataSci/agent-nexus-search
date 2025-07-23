@@ -13,6 +13,7 @@ from app.core.services.hired_agent_service import HiredAgentService
 
 # Set up structured logging
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async
 logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/hired_agents", tags=["hired_agents"])
@@ -28,6 +29,7 @@ async def get_hired_agent_service():
     return HiredAgentService(client=client)
 
 @router.post("", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
+@profile_async("routes.hired_agents.hire_agent")
 async def hire_agent(
     request: Request,
     agent: HiredAgentCreate,
@@ -86,6 +88,7 @@ async def hire_agent(
         ))
 
 @router.get("", response_model=StandardResponse[List[HiredAgentResponse]], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.hired_agents.get_hired_agents")
 async def get_hired_agents(
     request: Request,
     current_user: Profile = Depends(get_current_user),
@@ -157,6 +160,7 @@ async def get_hired_agents(
         ))
 
 @router.get("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.hired_agents.get_hired_agent")
 async def get_hired_agent(
     agent_id: UUID,
     current_user: Profile = Depends(get_current_user),
@@ -230,6 +234,7 @@ async def get_hired_agent(
         ))
 
 @router.put("/{agent_id}", response_model=StandardResponse[HiredAgentResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.hired_agents.update_hired_agent")
 async def update_hired_agent(
     agent_id: UUID,
     agent_update: HiredAgentUpdate,
@@ -297,7 +302,8 @@ async def update_hired_agent(
             data=None
         ))
 
-@router.delete("/{agent_id}", response_model=StandardResponse[None], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@router.delete("/{agent_id}", response_model=StandardResponse, response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.hired_agents.delete_hired_agent")
 async def delete_hired_agent(
     agent_id: UUID,
     current_user: Profile = Depends(get_current_user),

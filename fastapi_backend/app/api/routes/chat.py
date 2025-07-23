@@ -18,6 +18,7 @@ class FeedbackData(BaseModel):
 
 # Set up structured logging
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async
 logger = get_structured_logger(__name__)
 
 # Create router
@@ -33,6 +34,7 @@ async def get_chat_service():
     return ChatService(client=client)
 
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
+@profile_async("routes.chat.process_chat")
 async def process_chat(
     request: ChatRequest,
     current_user: Profile = Depends(get_current_user),
@@ -88,6 +90,7 @@ async def process_chat(
 
 
 @router.post("/stream")
+@profile_async("routes.chat.stream_chat")
 async def stream_chat(
     request: StreamingChatRequest,
     current_user: Profile = Depends(get_current_user),
@@ -152,6 +155,7 @@ async def stream_chat(
 
 
 @router.get("/threads", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+@profile_async("routes.chat.get_chat_threads")
 async def get_chat_threads(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
@@ -231,8 +235,11 @@ async def get_chat_threads(
 
 
 @router.get("/messages/{chat_thread_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+@profile_async("routes.chat.get_messages_for_thread")
 async def get_messages_for_thread(
     chat_thread_id: str = Path(..., description="ID of the chat thread"),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     current_user: Profile = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -246,7 +253,8 @@ async def get_messages_for_thread(
     """
     try:
         # Get messages for the chat thread
-        messages = await chat_service.get_messages_for_thread(current_user.id, chat_thread_id)
+        offset = (page - 1) * page_size
+        messages = await chat_service.get_messages_for_thread(current_user.id, chat_thread_id, limit=page_size, offset=offset)
         
         logger.info("Chat messages retrieved successfully",
                    user_id=current_user.id,
@@ -286,6 +294,7 @@ async def get_messages_for_thread(
         ))
         
 @router.get("/feedback/{message_id}", response_model=StandardResponse[List[Dict[str, Any]]], response_class=StandardJSONResponse)
+@profile_async("routes.chat.get_feedback_for_thread_message")
 async def get_feedback_for_thread_message(
     message_id: str, 
     current_user: Profile = Depends(get_current_user),
@@ -333,6 +342,7 @@ async def get_feedback_for_thread_message(
         ))
 
 @router.patch("/feedback/{message_id}", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+@profile_async("routes.chat.patch_feedback_for_thread_message")
 async def patch_feedback_for_thread_message(
     message_id: str, 
     feedback_data: FeedbackData = Body(...),

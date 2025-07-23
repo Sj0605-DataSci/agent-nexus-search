@@ -2,11 +2,13 @@ from typing import List, Optional
 from uuid import UUID
 import logging
 import traceback
+import time
 from fastapi import HTTPException, status
 
 from app.models.models import HiredAgent, Profile
 from app.models.schemas import HiredAgentCreate, HiredAgentResponse, HiredAgentUpdate
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async, AsyncTimer
 
 logger = get_structured_logger(__name__)
 
@@ -32,6 +34,7 @@ class HiredAgentService:
         elif client is not None:
             self.client = client
     
+    @profile_async("hired_agent_service.hire_agent")
     async def hire_agent(self, agent: HiredAgentCreate, current_user: Profile) -> HiredAgentResponse:
         """Hire a new agent for the user"""
         try:
@@ -51,7 +54,8 @@ class HiredAgentService:
                 logger.info("Checking if user already hired template",
                            user_id=str(agent.user_id),
                            template_id=str(agent.template_id))
-                response = await self.client.table("hired_agents").select("*").eq("user_id", str(agent.user_id)).eq("template_id", str(agent.template_id)).execute()
+                async with AsyncTimer("supabase.select.hired_agents.check_exists"):
+                    response = await self.client.table("hired_agents").select("*").eq("user_id", str(agent.user_id)).eq("template_id", str(agent.template_id)).execute()
                 
                 if response.data and len(response.data) > 0:
                     logger.warning("User already hired this template",
@@ -89,7 +93,8 @@ class HiredAgentService:
             if agent_data.get('template_id'):
                 agent_data['template_id'] = str(agent_data['template_id'])
             
-            response = await self.client.table("hired_agents").insert(agent_data).execute()
+            async with AsyncTimer("supabase.insert.hired_agents"):
+                response = await self.client.table("hired_agents").insert(agent_data).execute()
             
             if not response.data or len(response.data) == 0:
                 logger.error("Failed to create hired agent: No data returned",
@@ -115,13 +120,15 @@ class HiredAgentService:
                            template_id=str(agent.template_id) if agent.template_id else None)
             raise
     
+    @profile_async("hired_agent_service.get_hired_agents")
     async def get_hired_agents(self, user_id: str) -> List[HiredAgentResponse]:
         """Get all hired agents for a user"""
         try:
             logger.info("Fetching hired agents for user",
                        user_id=str(user_id))
 
-            response = await self.client.table("hired_agents").select("*").eq("user_id", str(user_id)).execute()
+            async with AsyncTimer("supabase.select.hired_agents.list"):
+                response = await self.client.table("hired_agents").select("*").eq("user_id", str(user_id)).execute()
             
             logger.info("Found hired agents for user",
                        user_id=str(user_id),
@@ -136,10 +143,12 @@ class HiredAgentService:
                            user_id=str(user_id) if user_id else None)
             raise
     
+    @profile_async("hired_agent_service.get_hired_agent_by_id")
     async def get_hired_agent_by_id(self, agent_id: UUID) -> Optional[HiredAgentResponse]:
         """Get a specific hired agent by ID"""
         try:
-            response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).execute()
+            async with AsyncTimer("supabase.select.hired_agents.by_id"):
+                response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).execute()
             
             if not response.data or len(response.data) == 0:
                 logger.warning("Hired agent not found",
@@ -160,11 +169,13 @@ class HiredAgentService:
                            agent_id=str(agent_id))
             raise
     
+    @profile_async("hired_agent_service.update_hired_agent")
     async def update_hired_agent(self, agent_id: UUID, agent_update: HiredAgentUpdate) -> Optional[HiredAgentResponse]:
         """Update a hired agent"""
         try:
             # First get the agent to check permissions
-            response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).execute()
+            async with AsyncTimer("supabase.select.hired_agents.for_update"):
+                response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).execute()
             
             if not response.data or len(response.data) == 0:
                 logger.warning("Hired agent not found for update",
@@ -186,7 +197,8 @@ class HiredAgentService:
                        update_fields=list(update_data.keys()))
             
             # Update in Supabase
-            update_response = await self.client.table("hired_agents").update(update_data).eq("id", str(agent_id)).execute()
+            async with AsyncTimer("supabase.update.hired_agents"):
+                update_response = await self.client.table("hired_agents").update(update_data).eq("id", str(agent_id)).execute()
             
             if not update_response.data or len(update_response.data) == 0:
                 logger.error("Failed to update hired agent: No data returned",
@@ -210,11 +222,13 @@ class HiredAgentService:
                            agent_id=str(agent_id))
             raise
     
+    @profile_async("hired_agent_service.delete_hired_agent")
     async def delete_hired_agent(self, agent_id: UUID) -> bool:
         """Delete a hired agent"""
         try:
             # First get the agent to check permissions
-            response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).eq("can_hire_unhire", True).execute()
+            async with AsyncTimer("supabase.select.hired_agents.for_delete"):
+                response = await self.client.table("hired_agents").select("*").eq("id", str(agent_id)).eq("can_hire_unhire", True).execute()
             
             if not response.data or len(response.data) == 0:
                 logger.warning("Hired agent not found for deletion or cannot be unhired",
@@ -227,7 +241,8 @@ class HiredAgentService:
                        agent_id=str(agent_id))
             
             # Delete from Supabase
-            delete_response = await self.client.table("hired_agents").delete().eq("id", str(agent_id)).execute()
+            async with AsyncTimer("supabase.delete.hired_agents"):
+                delete_response = await self.client.table("hired_agents").delete().eq("id", str(agent_id)).execute()
             
             success = len(delete_response.data) > 0
             

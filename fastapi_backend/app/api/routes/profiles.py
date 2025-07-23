@@ -5,6 +5,7 @@ from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import ProfileCreate, ProfileResponse, ProfileUpdate, StandardResponse, StandardJSONResponse
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import profile_async
 from app.core.services.hired_agent_service import HiredAgentService
 
 logger = get_structured_logger(__name__)
@@ -20,6 +21,7 @@ async def get_hired_agent_service():
     return HiredAgentService(client=client)
 
 @router.post("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
+@profile_async("routes.profiles.create_profile")
 async def create_profile(
     profile: ProfileCreate,
     current_user: Profile = Depends(get_current_user)
@@ -68,6 +70,7 @@ async def create_profile(
         ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @router.get("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.get_my_profile")
 async def get_my_profile(
     current_user: Profile = Depends(get_current_user)):
     """Get the current user's profile"""
@@ -104,6 +107,7 @@ async def get_my_profile(
         ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @router.put("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.update_my_profile")
 async def update_my_profile(
     profile_update: ProfileUpdate,
     current_user: Profile = Depends(get_current_user)
