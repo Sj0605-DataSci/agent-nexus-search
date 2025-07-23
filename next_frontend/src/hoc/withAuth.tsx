@@ -16,25 +16,18 @@ function withAuth<P extends object>(Wrapped: ComponentType<P>) {
     const router = useRouter();
     const profile = useAppSelector(state => state.profile.profile);
     const loading = useAppSelector(state => state.profile.loading);
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("discover_minds_access_token") : null;
 
     useEffect(() => {
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("discover_minds_access_token") : null;
-      if (!loading && !token && !profile) {
-        router.replace("/login");
+      if (typeof window !== "undefined") {
+        if (!loading && !token && !profile) {
+          router.replace("/login");
+        }
       }
     }, [loading, profile, router]);
 
-    if (
-      loading ||
-      (!profile &&
-        typeof window !== "undefined" &&
-        localStorage.getItem("discover_minds_access_token"))
-    ) {
-      return <FullScreenLoader isLoading />;
-    }
-
-    if (profile) {
+    if (token || profile) {
       return <Wrapped {...props} />;
     }
 

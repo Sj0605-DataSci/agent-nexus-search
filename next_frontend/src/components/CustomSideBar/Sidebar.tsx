@@ -85,7 +85,7 @@ const Sidebar = () => {
           setLoadingMoreThreads(false);
         }, 300);
       });
-  }, [profile?.id, hasMoreThreads, loadingMoreThreads, loadingThreads, dispatch]);
+  }, [hasMoreThreads, loadingMoreThreads, dispatch]);
 
   useEffect(() => {
     if (profile?.id && !threadsFetchedRef.current) {
@@ -118,7 +118,7 @@ const Sidebar = () => {
 
       posthog.reset();
 
-      router.push("/");
+      router.push("/login");
     }
   };
 
@@ -185,20 +185,30 @@ const Sidebar = () => {
 
         <nav className="flex-1 overflow-y-auto px-2 py-2">
           <ul className="space-y-1 pb-3">
-            {navItems.map(({ href, label, icon }) => {
-              const active = pathname.startsWith(href);
-              return (
-                <SidebarItem
-                  key={href}
-                  href={href}
-                  label={label}
-                  icon={icon}
-                  active={active}
-                  collapsed={collapsed}
-                  darkMode={darkMode}
-                />
-              );
-            })}
+            {navItems.map(({ href, label, icon }) => (
+              <Link
+                prefetch={true}
+                href={href}
+                className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors
+        ${collapsed ? "justify-center" : "gap-3 pl-2 pr-4"}
+        ${
+          pathname.startsWith(href)
+            ? darkMode
+              ? "bg-indigo-600/20 text-indigo-300"
+              : "bg-indigo-100 text-indigo-700"
+            : darkMode
+              ? "text-gray-400 hover:text-white hover:bg-gray-800/60"
+              : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+        }
+      `}
+                key={href}
+              >
+                <span className="relative group">
+                  <span className="text-lg">{icon}</span>
+                </span>
+                {!collapsed && <span>{label}</span>}
+              </Link>
+            ))}
           </ul>
           {profile && (
             <div className="mb-4">
@@ -315,7 +325,26 @@ const Sidebar = () => {
           className={`mt-auto border-t ${darkMode ? "border-gray-700/80" : "border-gray-200/80"}`}
         >
           <div className="p-2">
-            {profile ? (
+            {useAppSelector(state => state.profile.loading) ? (
+              <div className="flex items-center justify-between">
+                <div
+                  className={`flex items-center py-1 rounded-md ${collapsed ? "justify-center w-full" : "gap-2 flex-1"}`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-200"} flex items-center justify-center animate-pulse`}
+                  >
+                    <span className="sr-only">Loading profile</span>
+                  </div>
+                  {!collapsed && (
+                    <div className="flex-1">
+                      <div
+                        className={`h-4 w-24 ${darkMode ? "bg-gray-700" : "bg-gray-200"} rounded animate-pulse mb-1`}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : profile ? (
               <div className="flex items-center justify-between">
                 <Link
                   href="/profile"

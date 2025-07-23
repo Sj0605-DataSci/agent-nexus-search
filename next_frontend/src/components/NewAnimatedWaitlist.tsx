@@ -145,7 +145,7 @@ const NewAnimatedWaitlist: React.FC = () => {
         className={`absolute top-0 left-0 z-0 ${darkMode ? "flex" : "hidden"}`}
         style={{
           width: "100vw",
-          height: "320px", // or any custom height you prefer
+          height: "320px",
           overflow: "hidden",
         }}
       >
@@ -201,9 +201,8 @@ const NewAnimatedWaitlist: React.FC = () => {
         </svg>
       </motion.div>
 
-      {/* Navigation links positioned at the top */}
       <div className="absolute top-6 right-6 z-20 flex items-center space-x-6">
-        <Link href="/login">
+        <Link prefetch={true} href="/login">
           <span
             className={`text-sm font-medium cursor-pointer hover:underline hover:opacity-80 transition-opacity ${darkMode ? "text-blue-300" : "text-blue-600"}`}
           >
@@ -356,7 +355,6 @@ const NewAnimatedWaitlist: React.FC = () => {
               </p>
             </form>
 
-            {/* Social proof */}
             <div className="flex items-center gap-2 mt-3">
               <img
                 src="https://randomuser.me/api/portraits/men/32.jpg"

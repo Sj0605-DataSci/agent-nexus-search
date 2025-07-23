@@ -1,8 +1,9 @@
 "use client";
 
-import Sidebar from "@/components/CustomSideBar/Sidebar";
 import withAuth from "@/hoc/withAuth";
 import { useAppSelector } from "@/store";
+import dynamic from "next/dynamic";
+const Sidebar = dynamic(() => import("@/components/CustomSideBar/Sidebar"), { ssr: false });
 
 function WithSidebarLayout({ children }: { children: React.ReactNode }) {
   const darkMode = useAppSelector(s => s.theme.dark);

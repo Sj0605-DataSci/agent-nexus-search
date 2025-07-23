@@ -54,7 +54,7 @@ type FeedbackType = {
 
 type MessageType = {
   id: string;
-  type: 'user' | 'agent';
+  type: "user" | "agent";
   content: string;
   timestamp: Date;
   sources?: SourceType[];
@@ -96,7 +96,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [cachedThreads, setCachedThreads] = useState<Record<string, { messages: any[]; timestamp: number }>>({});
+  const [cachedThreads, setCachedThreads] = useState<
+    Record<string, { messages: any[]; timestamp: number }>
+  >({});
   const { profile } = useAppSelector(state => state.profile);
 
   const userId = profile?.id;
@@ -188,7 +190,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     if (cachedThreads[threadId] && initialLoadComplete && !forceRefresh) {
       const { messages: cachedMessages, timestamp } = cachedThreads[threadId];
       const cacheAge = Date.now() - timestamp;
-      
       // Use cached data if it's less than 5 minutes old
       if (cacheAge < 5 * 60 * 1000) {
         setChatPairs(cachedMessages);
@@ -197,12 +198,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       }
     }
 
+    setIsLoading(true);
     try {
       if (!userId) {
-        console.error("User not authenticated.");
+        setIsLoading(false);
         return;
       }
-
       const messagesResponse = await apiClient.getChatMessages(threadId);
       setMessagesOffset(MESSAGES_PER_PAGE);
       setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
@@ -210,26 +211,37 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       if (messagesResponse.messages?.length > 0) {
         setChatPairs(messagesResponse.messages);
         setCurrentMessageIndex(messagesResponse.messages.length - 1);
-        
         setCachedThreads(prev => ({
           ...prev,
           [threadId]: {
             messages: messagesResponse.messages,
-            timestamp: Date.now()
-          }
+            timestamp: Date.now(),
+          },
         }));
+      } else {
       }
       setInitialLoadComplete(true);
-    } catch (error) {
-      console.error("Error fetching chat messages:", error);
+    } catch (error: any) {
+      console.log("[ChatThreadView] fetchMessages error:", error);
+      let message = "An error occurred while loading this chat thread.";
+      if (error?.response?.status === 404) {
+        message = "This chat thread was not found.";
+      } else if (error?.response?.status === 403) {
+        message = "You do not have access to this chat thread.";
+      }
+      console.log("[ChatThreadView] threadError:", message);
+      setChatPairs([]);
+      setCurrentMessageIndex(0);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (threadId && !initialLoadComplete) {
+    if (threadId) {
       fetchMessages();
     }
-  }, [threadId, initialLoadComplete]);
+  }, [threadId]);
 
   useEffect(() => {
     return () => {
@@ -428,15 +440,17 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             case "thread_id":
               if (update.content && update.content.thread_id) {
                 const newUrl = `/chat/${update.content.thread_id}`;
-                window.history.replaceState({ path: newUrl }, '', newUrl);
-                
-                dispatch(addChatThread({
-                  id: update.content.thread_id,
-                  query: q
-                }));
+                window.history.replaceState({ path: newUrl }, "", newUrl);
+
+                dispatch(
+                  addChatThread({
+                    id: update.content.thread_id,
+                    query: q,
+                  })
+                );
               }
               break;
-              
+
             case "thinking":
               currentContent = "🧠 Thinking...";
               updateMessageContent(currentContent);
@@ -1180,95 +1194,107 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                           </div>
                         )}
 
-                        {((m.sources && m.sources.length > 0) || (m.sources_gathered && m.sources_gathered.length > 0)) && activeTab === "sources" && (
-                          <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} mt-2`}>
-                            <div className="mb-3 flex items-center">
-                              <FiInfo className="w-4 h-4 mr-2 text-blue-500" />
-                              <span className="text-sm text-opacity-80">
-                                {(m.sources?.length || m.sources_gathered?.length) ? 
-                                  `${(m.sources?.length || m.sources_gathered?.length)} ${(m.sources?.length || m.sources_gathered?.length) === 1 ? "source" : "sources"} used to generate this response` 
-                                  : "No sources available"}
-                              </span>
-                            </div>
-                            <ul className="space-y-3">
-                              {((m.sources && m.sources.length > 0 ? m.sources : m.sources_gathered) || []).map((source: any, index: number) => {
-                                // Normalize source object to handle both formats
-                                const src = source?.value ? source : { 
-                                  value: source, 
-                                  title: `Source ${index + 1}`, 
-                                  short_url: `[${index + 1}]` 
-                                };
+                        {((m.sources && m.sources.length > 0) ||
+                          (m.sources_gathered && m.sources_gathered.length > 0)) &&
+                          activeTab === "sources" && (
+                            <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} mt-2`}>
+                              <div className="mb-3 flex items-center">
+                                <FiInfo className="w-4 h-4 mr-2 text-blue-500" />
+                                <span className="text-sm text-opacity-80">
+                                  {m.sources?.length || m.sources_gathered?.length
+                                    ? `${m.sources?.length || m.sources_gathered?.length} ${(m.sources?.length || m.sources_gathered?.length) === 1 ? "source" : "sources"} used to generate this response`
+                                    : "No sources available"}
+                                </span>
+                              </div>
+                              <ul className="space-y-3">
+                                {(
+                                  (m.sources && m.sources.length > 0
+                                    ? m.sources
+                                    : m.sources_gathered) || []
+                                ).map((source: any, index: number) => {
+                                  // Normalize source object to handle both formats
+                                  const src = source?.value
+                                    ? source
+                                    : {
+                                        value: source,
+                                        title: `Source ${index + 1}`,
+                                        short_url: `[${index + 1}]`,
+                                      };
 
-                                return (
-                                  <li
-                                    key={index}
-                                    className={`p-4 rounded-lg ${
-                                      darkMode 
-                                        ? "bg-gray-800/50 hover:bg-gray-800/70" 
-                                        : "bg-gray-100/70 hover:bg-gray-100"
-                                    } transition-colors duration-150 border ${
-                                      darkMode ? "border-gray-700" : "border-gray-200"
-                                    }`}
-                                  >
-                                    <div className="flex items-start">
-                                      <div
-                                        className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mr-3 ${
-                                          darkMode ? "bg-blue-900/50 text-blue-300" : "bg-blue-100 text-blue-700"
-                                        }`}
-                                      >
-                                        <span className="text-xs font-medium">
-                                          {src.short_url || `[${index + 1}]`}
-                                        </span>
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <h4
-                                          className={`text-sm font-medium ${
-                                            darkMode ? "text-gray-200" : "text-gray-800"
-                                          } line-clamp-2`}
-                                          title={src.title || "Untitled Source"}
+                                  return (
+                                    <li
+                                      key={index}
+                                      className={`p-4 rounded-lg ${
+                                        darkMode
+                                          ? "bg-gray-800/50 hover:bg-gray-800/70"
+                                          : "bg-gray-100/70 hover:bg-gray-100"
+                                      } transition-colors duration-150 border ${
+                                        darkMode ? "border-gray-700" : "border-gray-200"
+                                      }`}
+                                    >
+                                      <div className="flex items-start">
+                                        <div
+                                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mr-3 ${
+                                            darkMode
+                                              ? "bg-blue-900/50 text-blue-300"
+                                              : "bg-blue-100 text-blue-700"
+                                          }`}
                                         >
-                                          {src.title || "Untitled Source"}
-                                        </h4>
-                                        <div className="flex items-center justify-between mt-2">
-                                          <a
-                                            href={src.value || '#'}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={`text-xs flex items-center ${
-                                              darkMode 
-                                                ? "text-blue-400 hover:text-blue-300" 
-                                                : "text-blue-600 hover:text-blue-500"
-                                            } hover:underline truncate max-w-[70%]`}
-                                            title={src.value}
+                                          <span className="text-xs font-medium">
+                                            {src.short_url || `[${index + 1}]`}
+                                          </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <h4
+                                            className={`text-sm font-medium ${
+                                              darkMode ? "text-gray-200" : "text-gray-800"
+                                            } line-clamp-2`}
+                                            title={src.title || "Untitled Source"}
                                           >
-                                            {src.short_url || `Source ${index + 1}`}
-                                            <FiExternalLink className="ml-1 w-3 h-3 flex-shrink-0" />
-                                          </a>
-                                          <a
-                                            href={src.value || '#'}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={`ml-2 px-2 py-1 text-xs rounded ${
-                                              darkMode 
-                                                ? "bg-blue-900/30 text-blue-300 hover:bg-blue-900/50" 
-                                                : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                                            } transition-colors duration-150 flex items-center whitespace-nowrap`}
-                                          >
-                                            <FiExternalLink className="mr-1 w-3 h-3" />
-                                            Visit
-                                          </a>
+                                            {src.title || "Untitled Source"}
+                                          </h4>
+                                          <div className="flex items-center justify-between mt-2">
+                                            <a
+                                              href={src.value || "#"}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={`text-xs flex items-center ${
+                                                darkMode
+                                                  ? "text-blue-400 hover:text-blue-300"
+                                                  : "text-blue-600 hover:text-blue-500"
+                                              } hover:underline truncate max-w-[70%]`}
+                                              title={src.value}
+                                            >
+                                              {src.short_url || `Source ${index + 1}`}
+                                              <FiExternalLink className="ml-1 w-3 h-3 flex-shrink-0" />
+                                            </a>
+                                            <a
+                                              href={src.value || "#"}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={`ml-2 px-2 py-1 text-xs rounded ${
+                                                darkMode
+                                                  ? "bg-blue-900/30 text-blue-300 hover:bg-blue-900/50"
+                                                  : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                              } transition-colors duration-150 flex items-center whitespace-nowrap`}
+                                            >
+                                              <FiExternalLink className="mr-1 w-3 h-3" />
+                                              Visit
+                                            </a>
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
+                                    </li>
+                                  );
+                                })}
+                                {!m.sources?.length && !m.sources_gathered?.length && (
+                                  <li className="p-4 text-center text-gray-500">
+                                    No sources available
                                   </li>
-                                );
-                              })}
-                              {(!m.sources?.length && !m.sources_gathered?.length) && (
-                                <li className="p-4 text-center text-gray-500">No sources available</li>
-                              )}
-                            </ul>
-                          </div>
-                        )}
+                                )}
+                              </ul>
+                            </div>
+                          )}
 
                         <div className="mt-4 flex justify-between items-center">
                           <span
