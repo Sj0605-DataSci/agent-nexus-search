@@ -62,6 +62,9 @@ const profileSlice = createSlice({
       state.error = null;
       state.isAuthenticated = true;
     },
+    setLoadingState: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -101,5 +104,5 @@ const profileSlice = createSlice({
   }
 });
 
-export const { clearProfile, setProfileData } = profileSlice.actions;
+export const { clearProfile, setProfileData, setLoadingState } = profileSlice.actions;
 export default profileSlice.reducer;

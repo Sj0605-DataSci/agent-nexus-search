@@ -2,59 +2,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimationControls } from "framer-motion";
-import { useAppSelector } from "@/store";
-import { useAuth } from "@/hooks/useAuth";
-import { apiClient } from "@/integrations/fastapi/client";
-import { UserProfile } from "@/integrations/fastapi/types";
+import { useAppDispatch, useAppSelector } from "@/store";
 import posthog from "posthog-js";
+import { apiClient } from "@/integrations/fastapi/client";
+import { fetchProfile } from "@/store/profileSlice";
 
 export default function RedirectSplash() {
   const dark = useAppSelector(s => s.theme.dark);
   const router = useRouter();
   const ctrls = useAnimationControls();
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
 
   const RING_TIME = 1;
   const FADE_TIME = 0.35;
-
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      const token = localStorage.getItem("discover_minds_access_token");
-      
-      if (token && !profile) {
-        setLoading(true);
-        try {
-          posthog.capture("profile_fetch_attempted", {
-            source: "RedirectSplash",
-            hasToken: true,
-          });
-
-          const profileData = await apiClient.fetchProfileFromAPI();
-          setProfile(profileData);
-
-          posthog.capture("profile_fetch_successful", {
-            hasProfile: !!profileData,
-          });
-        } catch (error) {
-          console.error("Error fetching profile data:", error);
-
-          posthog.capture("profile_fetch_error", {
-            error: error instanceof Error ? error.message : String(error),
-          });
-
-          // Token is invalid, clear and redirect to login
-          localStorage.removeItem("discover_minds_access_token");
-          localStorage.removeItem("discover_minds_refresh_token");
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchProfileData();
-  }, [profile]);
 
   useEffect(() => {
     ctrls.start({
@@ -62,6 +22,37 @@ export default function RedirectSplash() {
       transition: { duration: RING_TIME, ease: "linear" },
     });
   }, [ctrls]);
+
+  useEffect(() => {
+    (async () => {
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("discover_minds_access_token") || null;
+        if (token) {
+          router.replace("/chat/new");
+          const profileResult = await dispatch(fetchProfile()).unwrap();
+          try {
+            posthog.capture("profile_fetch_attempted", {
+              source: "RedirectSplash",
+              hasToken: true,
+            });
+
+            posthog.capture("profile_fetch_successful", {
+              hasProfile: !!profileResult,
+            });
+          } catch (error) {
+            console.error("Error fetching profile data:", error);
+
+            posthog.capture("profile_fetch_error", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+
+            localStorage.removeItem("discover_minds_access_token");
+            localStorage.removeItem("discover_minds_refresh_token");
+          }
+        } 
+      }
+    })();
+  }, [dispatch, router]);
 
   const shellVariants = {
     enter: { opacity: 1, scale: 1 },
@@ -81,14 +72,7 @@ export default function RedirectSplash() {
         initial="enter"
         animate="exit"
         variants={shellVariants}
-        onAnimationComplete={() => {
-          const token = localStorage.getItem("discover_minds_access_token");
-          if (token && profile) {
-            router.replace("/chat");
-          } else {
-            router.replace("/join-waitlist");
-          }
-        }}
+        onAnimationComplete={() => router.replace("/join-waitlist")}
         className="flex flex-col items-center space-y-6"
       >
         <svg width="96" height="96" viewBox="0 0 120 120">

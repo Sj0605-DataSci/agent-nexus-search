@@ -52,7 +52,8 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
               console.error("Error fetching agent data:", agentError);
             }
 
-            if (pathname !== "/chat/new") {
+            const chatThreadRegex = /^\/chat\/[\w-]+$/;
+            if (pathname !== "/chat/new" && !chatThreadRegex.test(pathname)) {
               router.push("/chat/new");
             }
           } else {

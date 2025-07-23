@@ -32,8 +32,8 @@ const processQueue = (error: any, token: string | null = null) => {
 axiosInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const storedToken = localStorage.getItem('discover_minds_access_token');
-      
+      const storedToken = localStorage.getItem("discover_minds_access_token");
+
       if (storedToken) {
         config.headers["Authorization"] = `Bearer ${storedToken}`;
       } else {
@@ -62,6 +62,16 @@ axiosInstance.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
+    
+    if (error.response?.status === 403) {
+      console.error("Access forbidden (403):", error.response.data);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("discover_minds_access_token");
+        localStorage.removeItem("discover_minds_refresh_token");
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -79,25 +89,24 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('discover_minds_refresh_token');
+        const refreshToken = localStorage.getItem("discover_minds_refresh_token");
         if (!refreshToken) {
-          throw new Error('No refresh token available');
+          throw new Error("No refresh token available");
         }
 
         const { data } = await axios.post(`${baseURL}/auth/refresh_token`, {
-          refresh_token: refreshToken
+          refresh_token: refreshToken,
         });
 
-        if (!data.success || !data.data) {
-          throw new Error('Invalid refresh token response');
+        if (!data.success || !data.data || !data.data.access_token || !data.data.refresh_token) {
+          throw new Error("Invalid refresh token response");
         }
 
         const newAccessToken = data.data.access_token;
         const newRefreshToken = data.data.refresh_token;
-
         if (typeof window !== "undefined") {
-          localStorage.setItem('discover_minds_access_token', newAccessToken);
-          localStorage.setItem('discover_minds_refresh_token', newRefreshToken);
+          localStorage.setItem("discover_minds_access_token", newAccessToken);
+          localStorage.setItem("discover_minds_refresh_token", newRefreshToken);
         }
 
         await supabase.auth.setSession({
@@ -111,12 +120,11 @@ axiosInstance.interceptors.response.use(
         processQueue(null, newAccessToken);
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
+        console.error("Token refresh failed:", refreshError);
         processQueue(refreshError, null);
         if (typeof window !== "undefined") {
-          // Clear auth state on refresh failure
-          localStorage.removeItem('discover_minds_access_token');
-          localStorage.removeItem('discover_minds_refresh_token');
+          localStorage.removeItem("discover_minds_access_token");
+          localStorage.removeItem("discover_minds_refresh_token");
           window.location.href = "/login";
         }
         return Promise.reject(refreshError);
@@ -125,6 +133,9 @@ axiosInstance.interceptors.response.use(
       }
     }
 
+    if (process.env.NODE_ENV === "development") {
+      console.debug("❌ Error:", error.response?.status, error.response?.data);
+    }
     return Promise.reject(error);
   }
 );
