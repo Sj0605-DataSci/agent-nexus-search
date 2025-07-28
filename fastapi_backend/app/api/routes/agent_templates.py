@@ -34,8 +34,8 @@ async def get_agent_template_service():
 @profile_async("routes.agent_templates.create_agent_template")
 async def create_agent_template(
     template: AgentTemplateCreate,
-    current_user: Profile = Depends(get_current_user),
-    agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service,use_cache=True)
 ):
     """Create a new agent template"""
     try:
@@ -80,7 +80,7 @@ async def create_agent_template(
 async def get_agent_templates(
     skip: int = 0,
     limit: int = 100,
-    agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service,use_cache=True)
 ):
     """Get all agent templates with Redis caching"""
     try:
@@ -140,7 +140,7 @@ async def get_agent_templates(
 @profile_async("routes.agent_templates.get_agent_template")
 async def get_agent_template(
     template_id: UUID,
-    agent_template_service: AgentTemplateService = Depends(get_agent_template_service)
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service,use_cache=True)
 ):
     """Get a specific agent template by ID with Redis caching"""
     try:
@@ -204,8 +204,8 @@ async def get_agent_template(
 async def update_agent_template(
     template_id: UUID,
     template_update: AgentTemplateUpdate,
-    agent_template_service: AgentTemplateService = Depends(get_agent_template_service),
-    current_user: Profile = Depends(get_current_user)
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service,use_cache=True),
+    current_user: Profile = Depends(get_current_user,use_cache=True)
 ):
     """Update an agent template"""
     try:
@@ -254,8 +254,8 @@ async def update_agent_template(
 @profile_async("routes.agent_templates.delete_agent_template")
 async def delete_agent_template(
     template_id: UUID,
-    agent_template_service: AgentTemplateService = Depends(get_agent_template_service),
-    current_user: Profile = Depends(get_current_user)
+    agent_template_service: AgentTemplateService = Depends(get_agent_template_service,use_cache=True),
+    current_user: Profile = Depends(get_current_user,use_cache=True)
 ):
     """Delete an agent template"""
     try:

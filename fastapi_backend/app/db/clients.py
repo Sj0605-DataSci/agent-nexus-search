@@ -2,6 +2,9 @@
 from supabase import create_async_client, create_client
 from app.core.config import settings
 import httpx
+import time
+from fastapi import Request
+from starlette.concurrency import iterate_in_threadpool
 
 # Global client that will be initialized once
 _supabase_client = None
@@ -44,10 +47,13 @@ def get_supabase_client():
     return _supabase_client
 
 # Keep the async version for compatibility where needed
-async def get_async_supabase_client():
+async def get_async_supabase_client(request: Request = None):
     """Get the global async Supabase client, initializing if needed or if environment changed"""
     global _async_supabase_client, _client_environment
     current_env = settings.ENVIRONMENT
+    
+    # Start timing if we're tracking DB connection time
+    connection_start = time.time() if request is not None else None
     
     # Create a new client if none exists or if environment has changed
     if _async_supabase_client is None or _client_environment != current_env:
@@ -62,6 +68,11 @@ async def get_async_supabase_client():
         # Create the Supabase client - await is needed here
         _async_supabase_client = await create_async_client(supabase_url, supabase_key)
         _client_environment = current_env
+    
+    # Record connection time if we're tracking it
+    if connection_start is not None and request is not None:
+        connection_time_ms = (time.time() - connection_start) * 1000
+        request.state.db_connection_time = connection_time_ms
     
     return _async_supabase_client
 

@@ -24,7 +24,7 @@ async def get_hired_agent_service():
 @profile_async("routes.profiles.create_profile")
 async def create_profile(
     profile: ProfileCreate,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user,use_cache=True)
 ):
     """
     Create a new user profile.
@@ -72,7 +72,7 @@ async def create_profile(
 @router.get("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse)
 @profile_async("routes.profiles.get_my_profile")
 async def get_my_profile(
-    current_user: Profile = Depends(get_current_user)):
+    current_user: Profile = Depends(get_current_user,use_cache=True)):
     """Get the current user's profile"""
     try:
         profile_data = {
@@ -110,7 +110,7 @@ async def get_my_profile(
 @profile_async("routes.profiles.update_my_profile")
 async def update_my_profile(
     profile_update: ProfileUpdate,
-    current_user: Profile = Depends(get_current_user)
+    current_user: Profile = Depends(get_current_user,use_cache=True)
 ):
     """Update the current user's profile"""
     try:
