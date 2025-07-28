@@ -1,6 +1,7 @@
 import logging
 import os
 import gc
+import time
 from fastapi import FastAPI, Request, Response, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -17,6 +18,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from app.db.redis_client import redis_client
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
+from app.core.profiling import Timer, record_request_time
 
 from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling
 from app.core.config import settings
@@ -39,6 +41,126 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Add request timing middleware
+class RequestTimingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Start timer
+        start_time = time.time()
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # Calculate processing time
+        process_time = time.time() - start_time
+        process_time_ms = round(process_time * 1000, 2)
+        
+        # Get path and method
+        path = request.url.path
+        method = request.method
+        
+        # Skip profiling for certain paths
+        if not path.startswith("/api/profiling"):
+            # Record the request timing in the profiling stats
+            record_request_time(method, path, process_time_ms)
+            
+            # Add timing header to response
+            response.headers["X-Process-Time"] = str(process_time_ms)
+        
+        return response
+
+# Add detailed middleware profiling
+class DetailedProfilingMiddleware(BaseHTTPMiddleware):
+    """Middleware that profiles each component of the request processing pipeline"""
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip profiling for profiling endpoints to avoid recursive profiling
+        if request.url.path.startswith("/api/profiling"):
+            return await call_next(request)
+        
+        # Start overall timer
+        total_start_time = time.time()
+        
+        # 1. Profile authentication time (extract from headers)
+        auth_start_time = time.time()
+        auth_header = request.headers.get("Authorization")
+        has_auth = auth_header is not None and auth_header.startswith("Bearer ")
+        
+        # 2. Profile request parsing/preparation
+        prep_start_time = time.time()
+        auth_time_ms = (prep_start_time - auth_start_time) * 1000 if has_auth else 0
+        
+        # Record authentication time if applicable
+        if has_auth:
+            record_request_time(request.method, f"{request.url.path}.auth", auth_time_ms)
+        
+        # 3. Profile the main request handling (including route handler)
+        handler_start_time = time.time()
+        prep_time_ms = (handler_start_time - prep_start_time) * 1000
+        record_request_time(request.method, f"{request.url.path}.prep", prep_time_ms)
+        
+        # Process the request through the rest of the middleware stack and route handler
+        response = await call_next(request)
+        
+        # 4. Profile response generation time
+        response_start_time = time.time()
+        handler_time_ms = (response_start_time - handler_start_time) * 1000
+        record_request_time(request.method, f"{request.url.path}.handler", handler_time_ms)
+        
+        # 5. Calculate final response preparation time
+        end_time = time.time()
+        response_time_ms = (end_time - response_start_time) * 1000
+        record_request_time(request.method, f"{request.url.path}.response", response_time_ms)
+        
+        # 6. Calculate and record total time
+        total_time_ms = (end_time - total_start_time) * 1000
+        record_request_time(request.method, f"{request.url.path}.total", total_time_ms)
+        
+        # Add timing headers to response
+        response.headers["X-Total-Process-Time"] = str(round(total_time_ms, 2))
+        response.headers["X-Auth-Time"] = str(round(auth_time_ms, 2)) if has_auth else "0"
+        response.headers["X-Handler-Time"] = str(round(handler_time_ms, 2))
+        response.headers["X-Response-Time"] = str(round(response_time_ms, 2))
+        
+        return response
+
+# Add auth profiling middleware
+class AuthProfilingMiddleware(BaseHTTPMiddleware):
+    """Middleware specifically for profiling authentication time"""
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip profiling for profiling endpoints
+        if request.url.path.startswith("/api/profiling"):
+            return await call_next(request)
+        
+        # No auth header, skip timing
+        return await call_next(request)
+
+# Add database connection profiling middleware
+class DBConnectionProfilingMiddleware(BaseHTTPMiddleware):
+    """Middleware for profiling database connection time"""
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip profiling for profiling endpoints
+        if request.url.path.startswith("/api/profiling"):
+            return await call_next(request)
+        
+        # Store the current time before processing
+        start_time = time.time()
+        
+        # Add a flag to the request state to indicate DB profiling is active
+        request.state.db_profiling_start = start_time
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # Check if DB connection time was recorded by the dependency
+        if hasattr(request.state, "db_connection_time"):
+            db_time_ms = request.state.db_connection_time
+            record_request_time(request.method, f"{request.url.path}.db_connection", db_time_ms)
+            response.headers["X-DB-Connection-Time"] = str(round(db_time_ms, 2))
+        
+        return response
+
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +170,11 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Add profiling middleware in reverse order (first added = last executed)
+app.add_middleware(DetailedProfilingMiddleware)
+app.add_middleware(AuthProfilingMiddleware)
+app.add_middleware(DBConnectionProfilingMiddleware)
 
 # Add CORS debugging middleware - must be added AFTER the CORS middleware
 @app.middleware("http")

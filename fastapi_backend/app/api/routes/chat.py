@@ -36,8 +36,8 @@ async def get_chat_service():
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def process_chat(
     request: ChatRequest,
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
 ):
     """
     Process a chat request and return search results
@@ -91,8 +91,8 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
 ) -> StreamingResponse:
     """
     Stream chat response as Server-Sent Events (SSE) using Redis-based background workers
@@ -157,8 +157,8 @@ async def stream_chat(
 async def get_chat_threads(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
 ):
     """
     Get chat threads for a specific user with pagination
@@ -238,8 +238,8 @@ async def get_messages_for_thread(
     chat_thread_id: str = Path(..., description="ID of the chat thread"),
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
 ):
     """
     Get all messages for a specific chat thread and user
@@ -295,8 +295,8 @@ async def get_messages_for_thread(
 @profile_async("routes.chat.get_feedback_for_thread_message")
 async def get_feedback_for_thread_message(
     message_id: str, 
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
 ):
     try:
         # Get feedback for the chat thread
@@ -344,8 +344,8 @@ async def get_feedback_for_thread_message(
 async def patch_feedback_for_thread_message(
     message_id: str, 
     feedback_data: FeedbackData = Body(...),
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
 ):
     try:
         # Log the received feedback data

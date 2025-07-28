@@ -33,8 +33,8 @@ async def get_hired_agent_service():
 async def hire_agent(
     request: Request,
     agent: HiredAgentCreate,
-    current_user: Profile = Depends(get_current_user),
-    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service,use_cache=True)
 ):
     """Hire a new agent for the user"""
     try:
@@ -91,8 +91,8 @@ async def hire_agent(
 @profile_async("routes.hired_agents.get_hired_agents")
 async def get_hired_agents(
     request: Request,
-    current_user: Profile = Depends(get_current_user),
-    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service,use_cache=True)
 ):
     """Get all hired agents for a user"""
     try:
@@ -163,8 +163,8 @@ async def get_hired_agents(
 @profile_async("routes.hired_agents.get_hired_agent")
 async def get_hired_agent(
     agent_id: UUID,
-    current_user: Profile = Depends(get_current_user),
-    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service,use_cache=True)
 ):
     """Get a specific hired agent by ID"""
     try:
@@ -238,8 +238,8 @@ async def get_hired_agent(
 async def update_hired_agent(
     agent_id: UUID,
     agent_update: HiredAgentUpdate,
-    current_user: Profile = Depends(get_current_user),
-    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service,use_cache=True)
 ):
     """Update a hired agent"""
     try:
@@ -306,8 +306,8 @@ async def update_hired_agent(
 @profile_async("routes.hired_agents.delete_hired_agent")
 async def delete_hired_agent(
     agent_id: UUID,
-    current_user: Profile = Depends(get_current_user),
-    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service)
+    current_user: Profile = Depends(get_current_user,use_cache=True),
+    hired_agent_service: HiredAgentService = Depends(get_hired_agent_service,use_cache=True)
 ):
     """Delete a hired agent"""
     try:

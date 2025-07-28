@@ -23,7 +23,7 @@ async def get_login_client():
 
 @router.get("/me", response_model=ProfileResponse)
 @profile_async("auth.get_current_user_info")
-async def get_current_user_info(current_user: Profile = Depends(get_current_user)):
+async def get_current_user_info(current_user: Profile = Depends(get_current_user,use_cache=True)):
     """
     Returns information about the currently authenticated user.
     
@@ -48,7 +48,7 @@ async def verify_token(request: Request):
 
 @router.post("/login")
 @profile_async("auth.login")
-async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_login_client)):
+async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
     """
     Authenticates a user with email and password and returns profile details + access token.
     
@@ -148,7 +148,7 @@ async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_l
 
 @router.post("/signup", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.signup")
-async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(get_login_client)):
+async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
     """
     Creates a new user account with email and password.
     
@@ -206,7 +206,7 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
 
 @router.post("/logout", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.logout")
-async def logout(request: Request, current_user: Profile = Depends(get_current_user), client: AsyncClient = Depends(get_login_client)):
+async def logout(request: Request, current_user: Profile = Depends(get_current_user,use_cache=True), client: AsyncClient = Depends(get_login_client,use_cache=True)):
     """
     Logs out the current user by invalidating their session.
     
@@ -278,7 +278,7 @@ async def logout(request: Request, current_user: Profile = Depends(get_current_u
 
 @router.post("/refresh_token", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.refresh_token")
-async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClient = Depends(get_login_client)):
+async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
     """
     Refreshes an expired access token using a valid refresh token.
     
@@ -358,7 +358,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClien
 
 @router.post("/join_waitlist", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.join_waitlist")
-async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient = Depends(get_login_client)):
+async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
     """
     Adds a user to the waitlist.
     

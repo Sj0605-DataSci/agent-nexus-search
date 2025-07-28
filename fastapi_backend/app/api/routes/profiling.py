@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.models.schemas import StandardResponse, StandardJSONResponse
-from app.core.profiling import get_profiling_stats, reset_profiling_data, profile_async
+from app.core.profiling import get_stats, reset_stats, profile_async
 from app.core.auth import get_current_user
 from app.models.models import Profile
 
@@ -12,15 +12,15 @@ router = APIRouter(prefix="/profiling", tags=["profiling"])
 
 @router.get("/stats", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("routes.profiling.get_stats")
-async def get_stats(current_user: Profile = Depends(get_current_user)):
+async def get_profiling_stats(current_user: Profile = Depends(get_current_user,use_cache=True)):
     """
     Get statistics for all profiled operations
     
     This endpoint returns timing statistics for all operations that have been profiled,
-    including Supabase CRUD operations, Pydantic model conversions, and other key operations.
+    including Supabase CRUD operations, Pydantic model conversions, HTTP requests, and other key operations.
     """
     try:
-        stats = get_profiling_stats()
+        stats = get_stats()
         
         return StandardJSONResponse(StandardResponse(
             success=True,
@@ -41,14 +41,14 @@ async def get_stats(current_user: Profile = Depends(get_current_user)):
 
 @router.post("/reset", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("routes.profiling.reset_stats")
-async def reset_stats(current_user: Profile = Depends(get_current_user)):
+async def reset_profiling_stats(current_user: Profile = Depends(get_current_user,use_cache=True)):
     """
     Reset all profiling statistics
     
     This endpoint clears all collected profiling data to start fresh measurements.
     """
     try:
-        reset_profiling_data()
+        reset_stats()
         
         return StandardJSONResponse(StandardResponse(
             success=True,

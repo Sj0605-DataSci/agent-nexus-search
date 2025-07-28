@@ -1,17 +1,20 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Tuple, Any
 import logging
 import jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from uuid import UUID
 from jose import JWTError
+import time
+from functools import lru_cache
 
 from app.core.config import settings
 from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import TokenData, StandardResponse, StandardJSONResponse
 from app.core.structured_logger import get_structured_logger
+from app.core.profiling import record_execution_time, record_request_time
 
 # Setup structured logging
 logger = get_structured_logger(__name__)
@@ -19,6 +22,12 @@ logger = get_structured_logger(__name__)
 # Use HTTPBearer instead of OAuth2PasswordBearer since we're validating Supabase JWTs
 # and not generating tokens ourselves
 security = HTTPBearer()
+# Pre-compile JWT verification options
+JWT_VERIFICATION_OPTIONS = {
+    "verify_signature": True,
+    "verify_exp": True,
+    "verify_aud": False
+}
 
 # This function is kept for potential future use, but not actively used
 # since authentication is handled by Supabase
@@ -47,11 +56,7 @@ async def verify_supabase_token(token: str, credentials_exception):
             token, 
             settings.SUPABASE_JWT_SECRET, 
             algorithms=[settings.ALGORITHM],
-            options={
-                "verify_signature": True,  # Explicitly verify signature
-                "verify_exp": True,       # Verify expiration
-                "verify_aud": False       # Supabase JWTs use 'aud' claim which might not match our API
-            }
+            options=JWT_VERIFICATION_OPTIONS
         )
         
         # Extract user ID from the 'sub' claim in the Supabase JWT
@@ -121,6 +126,9 @@ class OptionalAuthDependency:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Not authenticated"
             )
+        
+        # Start timing for JWT validation
+        jwt_start_time = time.time()
             
         credentials_exception = StandardResponse(
             success=False,
@@ -131,30 +139,55 @@ class OptionalAuthDependency:
         
         token_data = await verify_supabase_token(credentials.credentials, credentials_exception)
         
+        # Record JWT validation time
+        jwt_validation_time = time.time() - jwt_start_time
+        jwt_validation_time_ms = round(jwt_validation_time * 1000, 2)
+        record_execution_time("auth.jwt_validation", jwt_validation_time_ms)
+        
+        if hasattr(request, "state"):
+            request.state.jwt_validation_time = jwt_validation_time_ms
+            
         # If verify_supabase_token returned a StandardJSONResponse, raise an HTTPException
         if isinstance(token_data, StandardJSONResponse):
             # This will cause FastAPI to use this response directly
             # Instead of continuing with the dependency chain
             raise HTTPException(status_code=401, detail="Could not validate credentials, please login again for fresh token")
         
+        # Start timing for profile retrieval
+        profile_start_time = time.time()
+        
+        # Cache miss - get from database
         # Get Supabase client
-        client = await get_async_supabase_client()
+        client = await get_async_supabase_client(request)
         
-        # Query the profiles table using Supabase client
-        response = await client.table("profiles").select("*").eq("id", str(token_data.user_id)).execute()
+        # Query the profiles table using Supabase client - select only needed fields
+        response = await client.table("profiles").select("id, email, full_name, created_at, has_connections").eq("id", str(token_data.user_id)).execute()
         
+        # Record profile retrieval time
+        profile_time = time.time() - profile_start_time
+        profile_time_ms = round(profile_time * 1000, 2)
+        record_execution_time("auth.profile_retrieval.db", profile_time_ms)
+        
+        if hasattr(request, "state"):
+            request.state.profile_retrieval_time = profile_time_ms
+            
         # Check if user exists
         if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=401, detail="User not found")
             
         # Create a Profile object from the response data
-        user = Profile(**response.data[0])
-            
+        user_data = response.data[0]
+        user = Profile(**user_data)
+        
+        # Record total auth time
+        total_auth_time_ms = jwt_validation_time_ms + profile_time_ms
+        record_request_time(request.method, f"{request.url.path}.auth_total", total_auth_time_ms)
+        
         return user
 
 async def get_current_user(
     request: Request,
-    user = Depends(OptionalAuthDependency())
+    user = Depends(OptionalAuthDependency(),use_cache=True)
 ):
     # This will be None for OPTIONS requests
     if user is None and request.method != "OPTIONS":
