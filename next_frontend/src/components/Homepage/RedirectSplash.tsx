@@ -49,7 +49,7 @@ export default function RedirectSplash() {
             localStorage.removeItem("discover_minds_access_token");
             localStorage.removeItem("discover_minds_refresh_token");
           }
-        } 
+        }
       }
     })();
   }, [dispatch, router]);

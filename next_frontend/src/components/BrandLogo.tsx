@@ -12,7 +12,7 @@ interface BrandLogoProps {
   size?: "small" | "medium" | "large";
 }
 
-const BrandLogo: React.FC<BrandLogoProps> = ({
+export const BrandLogo: React.FC<BrandLogoProps> = ({
   variant = "full",
   darkMode = false,
   className = "",
@@ -46,7 +46,9 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
   const logoContent = (
     <>
       {variant === "full" && (
-        <div className={`${iconContainer} rounded overflow-hidden flex items-center justify-center`}>
+        <div
+          className={`${iconContainer} rounded overflow-hidden flex items-center justify-center`}
+        >
           <Image
             src="/icon.png"
             alt="DiscoverMinds Logo"
