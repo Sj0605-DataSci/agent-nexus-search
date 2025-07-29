@@ -62,7 +62,7 @@ axiosInstance.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
-    
+
     if (error.response?.status === 403) {
       console.error("Access forbidden (403):", error.response.data);
       if (typeof window !== "undefined") {
@@ -73,7 +73,12 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const unauthenticatedEndpoints = ["/login", "/signup"];
+    const isUnauthenticatedEndpoint = unauthenticatedEndpoints.some(path =>
+      originalRequest.url?.includes(path)
+    );
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isUnauthenticatedEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -132,7 +137,6 @@ axiosInstance.interceptors.response.use(
         isRefreshing = false;
       }
     }
-
     if (process.env.NODE_ENV === "development") {
       console.debug("❌ Error:", error.response?.status, error.response?.data);
     }

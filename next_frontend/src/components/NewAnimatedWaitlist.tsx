@@ -43,7 +43,7 @@ const backdropVariants: Variants = {
 };
 
 const NewAnimatedWaitlist: React.FC = () => {
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,13 +121,7 @@ const NewAnimatedWaitlist: React.FC = () => {
   const isButtonDisabled = isSubmitting || !isDirty || !isValid;
 
   return (
-    <div
-      className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
-        darkMode
-          ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
-          : "bg-gradient-to-br from-blue-50 to-purple-50"
-      }`}
-    >
+    <div className="min-h-screen flex items-center justify-center transition-colors duration-500 bg-gradient-to-br from-blue-50 to-purple-50">
       <AnimatePresence>
         {isSuccess && (
           <Confetti
@@ -141,7 +135,7 @@ const NewAnimatedWaitlist: React.FC = () => {
       </AnimatePresence>
 
       <div
-        className={`absolute top-0 left-0 z-0 ${darkMode ? "flex" : "hidden"}`}
+        className="absolute top-0 left-0 z-0 hidden"
         style={{
           width: "100vw",
           height: "320px",
@@ -176,7 +170,7 @@ const NewAnimatedWaitlist: React.FC = () => {
             cy="260"
             rx="180"
             ry="240"
-            fill={darkMode ? "url(#darkGradient)" : "url(#lightGradient)"}
+            fill="url(#lightGradient)"
             initial={{ filter: "blur(24px)", opacity: 0.7 }}
             animate={{ filter: "blur(36px)", opacity: 0.85 }}
             transition={{
@@ -202,29 +196,29 @@ const NewAnimatedWaitlist: React.FC = () => {
 
       <div className="absolute top-6 right-6 z-20 flex items-center space-x-6">
         <Link prefetch={true} href="/login">
-          <span
-            className={`text-sm font-medium cursor-pointer hover:underline hover:opacity-80 transition-opacity ${darkMode ? "text-blue-300" : "text-blue-600"}`}
-          >
+          <span className="text-sm font-medium cursor-pointer hover:underline hover:opacity-80 transition-opacity text-blue-600">
             Login
           </span>
+        </Link>
+        <Link prefetch={true} href="/signup">
+          <button
+            className="px-4 py-1.5 rounded-lg font-semibold text-sm shadow transition-all duration-200 bg-gradient-to-r from-blue-600 to-indigo-500 text-white hover:from-blue-700 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-blue-300 hover:scale-105"
+            type="button"
+          >
+            Sign Up
+          </button>
         </Link>
       </div>
 
       <motion.main
-        className={`relative mx-2 z-10 w-full max-w-md rounded-3xl shadow-2xl border transition-colors duration-500 ${
-          darkMode ? "bg-black/80 border-gray-800" : "bg-white/90 border-gray-200"
-        } p-8 sm:p-10 flex flex-col gap-6`}
+        className="relative mx-2 z-10 w-full max-w-md rounded-3xl shadow-2xl border transition-colors duration-500 bg-white/90 border-gray-200 p-8 sm:p-10 flex flex-col gap-6"
         initial={{ opacity: 0, y: 40, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.7, ease: "easeOut" }}
       >
         {isSuccess ? (
           <div className="text-center py-8">
-            <div
-              className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
-                darkMode ? "bg-green-900/30" : "bg-green-100"
-              }`}
-            >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-green-100">
               <svg
                 className="w-8 h-8 text-green-500"
                 fill="none"
@@ -239,28 +233,20 @@ const NewAnimatedWaitlist: React.FC = () => {
                 />
               </svg>
             </div>
-            <h2
-              className={`text-xl font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}
-            >
-              You're on the list!
-            </h2>
-            <p className={darkMode ? "text-gray-300" : "text-gray-600"}>
+            <h2 className="text-xl font-semibold mb-2 text-gray-900">You're on the list!</h2>
+            <p className="text-gray-600">
               Thank you for joining our waitlist. We'll be in touch soon!
             </p>
           </div>
         ) : (
           <>
             <div>
-              <BrandLogo darkMode={darkMode} className="mb-3" />
+              <BrandLogo darkMode={false} className="mb-3" />
 
-              <h1
-                className={`text-xl sm:text-xl font-extrabold mb-3 leading-tight ${
-                  darkMode ? "text-white" : "text-gray-900"
-                }`}
-              >
+              <h1 className="text-xl sm:text-xl font-extrabold mb-3 leading-tight text-gray-900">
                 Join the Waitlist
               </h1>
-              <p className={` text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+              <p className=" text-sm text-gray-700">
                 Reimagine how you find the perfect hire or your perfect lead smarter, faster, more
                 personal.
               </p>
@@ -272,11 +258,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                   type="text"
                   placeholder="Full Name"
                   {...register("name")}
-                  className={`w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 ${
-                    darkMode
-                      ? "bg-gray-900/80 text-white border-gray-800 placeholder-gray-500"
-                      : "bg-white text-gray-900 border-gray-400 placeholder-gray-400"
-                  } focus:ring-2 focus:ring-blue-500 focus:border-blue-400`}
+                  className="w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 bg-white text-gray-900 border-gray-400 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
                 />
                 {errors.name && <span className="text-xs text-red-400">{errors.name.message}</span>}
               </div>
@@ -287,11 +269,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                   type="email"
                   placeholder="your@email.com"
                   {...register("email")}
-                  className={`w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 ${
-                    darkMode
-                      ? "bg-gray-900/80 text-white border-gray-800 placeholder-gray-500"
-                      : "bg-white text-gray-900 border-gray-400 placeholder-gray-400"
-                  } focus:ring-2 focus:ring-blue-500 focus:border-blue-400`}
+                  className="w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 bg-white text-gray-900 border-gray-400 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
                 />
                 {errors.email && (
                   <span className="text-xs text-red-400">{errors.email.message}</span>
@@ -304,11 +282,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                   type="tel"
                   placeholder="Phone Number"
                   {...register("phone")}
-                  className={`w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 ${
-                    darkMode
-                      ? "bg-gray-900/80 text-white border-gray-800 placeholder-gray-500"
-                      : "bg-white text-gray-900 border-gray-400 placeholder-gray-400"
-                  } focus:ring-2 focus:ring-blue-500 focus:border-blue-400`}
+                  className="w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 bg-white text-gray-900 border-gray-400 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
                 />
                 {errors.phone && (
                   <span className="text-xs text-red-400">{errors.phone.message}</span>
@@ -323,33 +297,23 @@ const NewAnimatedWaitlist: React.FC = () => {
                   boxShadow: isButtonDisabled ? "none" : "0 0 24px #3b82f6",
                   background: isButtonDisabled
                     ? undefined
-                    : darkMode
-                      ? "linear-gradient(90deg, #2563eb 0%, #6366f1 100%)"
-                      : "linear-gradient(90deg, #3b82f6 0%, #a5b4fc 100%)",
+                    : "linear-gradient(90deg, #3b82f6 0%, #a5b4fc 100%)",
                 }}
                 whileTap={{
                   scale: isButtonDisabled ? 1 : 0.97,
                 }}
                 className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
                   isButtonDisabled
-                    ? darkMode
-                      ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : darkMode
-                      ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-lg"
-                      : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
                 }`}
               >
                 {isSubmitting ? "Submitting..." : "Join waitlist"}
               </motion.button>
 
-              {submitError && (
-                <p className={`text-sm text-center ${darkMode ? "text-red-400" : "text-red-600"}`}>
-                  {submitError}
-                </p>
-              )}
+              {submitError && <p className="text-sm text-center text-red-600">{submitError}</p>}
 
-              <p className={`text-xs text-center ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+              <p className="text-xs text-center text-gray-400">
                 We respect your privacy. No spam, ever.
               </p>
             </form>
@@ -370,11 +334,7 @@ const NewAnimatedWaitlist: React.FC = () => {
                 alt=""
                 className="w-6 h-6 rounded-full border-2 border-white -ml-4"
               />
-              <span
-                className={`text-xs font-medium ${darkMode ? "text-blue-200" : "text-blue-700"}`}
-              >
-                55+ Users already joined
-              </span>
+              <span className="text-xs font-medium text-blue-700">55+ Users already joined</span>
             </div>
           </>
         )}
