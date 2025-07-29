@@ -238,12 +238,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   };
 
   useEffect(() => {
-    if (threadId) {
-      fetchMessages();
-    }
-  }, [threadId]);
-
-  useEffect(() => {
+    fetchMessages();
     return () => {
       setInitialLoadComplete(false);
     };
