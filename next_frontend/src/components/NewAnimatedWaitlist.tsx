@@ -83,7 +83,6 @@ const NewAnimatedWaitlist: React.FC = () => {
           email: formData.email,
           phone_number: formData.phone,
         });
-        console.log("response", response);
         if (!response.success) {
           if (response.status_code === 409) {
             if (response.message.includes("Email")) {
