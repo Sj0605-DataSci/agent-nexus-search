@@ -41,7 +41,6 @@ function UploadConnectionsContent() {
     try {
       setUploading(true);
       setErrorMessage("");
-      "Starting upload process...");
 
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
 
