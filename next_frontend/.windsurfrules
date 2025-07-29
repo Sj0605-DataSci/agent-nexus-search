@@ -25,7 +25,7 @@ function TestComponent() {
         op: "ui.click",
         name: "Test Button Click",
       },
-      (span) => {
+      span => {
         const value = "some config";
         const metric = "some metric";
 
@@ -34,7 +34,7 @@ function TestComponent() {
         span.setAttribute("metric", metric);
 
         doSomething();
-      },
+      }
     );
   };
 
@@ -45,6 +45,8 @@ function TestComponent() {
   );
 }
 ```
+
+# RULE: Do not add comments or console logs when implementing Sentry rules or examples.
 
 ## Custom span instrumentation in API calls
 
@@ -62,7 +64,7 @@ async function fetchUserData(userId) {
       const response = await fetch(`/api/users/${userId}`);
       const data = await response.json();
       return data;
-    },
+    }
   );
 }
 ```
