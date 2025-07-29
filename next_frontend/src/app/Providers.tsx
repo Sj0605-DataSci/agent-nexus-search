@@ -70,7 +70,15 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
           router.push("/login");
         }
       } else if (!user && !token && !profile) {
-        router.push("/");
+        if (
+          pathname !== "/login" &&
+          pathname !== "/" &&
+          pathname !== "/signup" &&
+          pathname !== "/join-waitlist" &&
+          !pathname.startsWith("/reset-password")
+        ) {
+          // router.push("/join-waitlist");
+        }
       } else if (profile && agentsStatus === "idle") {
         try {
           await Promise.all([

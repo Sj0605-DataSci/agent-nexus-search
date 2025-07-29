@@ -37,7 +37,7 @@ const HeroSection: React.FC = () => {
         <div className="absolute inset-0 z-0 opacity-90">
           <LightRays
             raysOrigin="top-center"
-            raysColor="#fff"
+            raysColor="#ffffff30"
             raysSpeed={1.0}
             lightSpread={1.5}
             rayLength={1.8}

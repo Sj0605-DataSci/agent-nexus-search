@@ -70,7 +70,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   if (showLink) {
     return (
-      <Link href="/" className={`inline-flex items-center ${gap} ${className}`}>
+      <Link prefetch href="/" className={`inline-flex items-center ${gap} ${className}`}>
         {logoContent}
       </Link>
     );
