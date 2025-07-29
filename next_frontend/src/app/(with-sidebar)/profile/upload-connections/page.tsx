@@ -41,10 +41,9 @@ function UploadConnectionsContent() {
     try {
       setUploading(true);
       setErrorMessage("");
-      console.log("Starting upload process...");
+      "Starting upload process...");
 
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
-      console.log(`Uploading to storage bucket 'connection-files' with filename: ${fileName}`);
 
       const { data: fileData, error: uploadError } = await supabase.storage
         .from("connection-files")
@@ -55,7 +54,6 @@ function UploadConnectionsContent() {
         throw new Error(`File upload failed: ${uploadError.message}`);
       }
 
-      console.log("Getting public URL...");
       const { data: urlData } = await supabase.storage
         .from("connection-files")
         .getPublicUrl(fileName);
@@ -90,7 +88,6 @@ function UploadConnectionsContent() {
 
         try {
           await apiClient.processConnectionFile(fileId);
-          console.log("Background processing triggered successfully");
           setUploadStatus("success");
         } catch (error) {
           console.error("Processing trigger error:", error);

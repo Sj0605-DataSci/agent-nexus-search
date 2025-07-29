@@ -186,7 +186,7 @@ export const apiClient = {
       const res = await axiosInstance.post("/auth/signup", {
         email,
         password,
-        full_name: fullName
+        full_name: fullName,
       });
       return res.data;
     } catch (error) {
@@ -222,8 +222,8 @@ export const apiClient = {
       return {
         success: false,
         status_code: 500,
-        message: 'Failed to log out from server',
-        data: null
+        message: "Failed to log out from server",
+        data: null,
       };
     }
   },
@@ -353,7 +353,7 @@ export const apiClient = {
     comment?: string;
   }): Promise<any> {
     try {
-      const res = await axiosInstance.post(`/chat/feedback/${data.message_id}`, {
+      const res = await axiosInstance.patch(`/chat/feedback/${data.message_id}`, {
         is_positive: data.is_positive,
         comment: data.comment || "",
       });
@@ -371,7 +371,7 @@ export const apiClient = {
     data: { invitee_id?: string } | null;
   }> {
     try {
-      const res = await axiosInstance.post('/auth/join_waitlist', data);
+      const res = await axiosInstance.post("/auth/join_waitlist", data);
       return res.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
