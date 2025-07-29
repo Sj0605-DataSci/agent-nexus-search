@@ -705,7 +705,9 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         <div
           className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
         >
-          {!(messages?.length && messages.length > 0) && <OrbAura />}
+          <div className="items-center justify-center h-20 ">
+            {/* {!(messages?.length && messages.length > 0) && <OrbAura />} */}
+          </div>
           <h1
             className={`font-bold -mt-3 mb-2 ${darkMode ? "text-white" : "text-gray-900"} ${
               messages.length ? "text-2xl" : "text-4xl"
