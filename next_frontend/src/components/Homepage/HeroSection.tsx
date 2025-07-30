@@ -168,10 +168,10 @@ const HeroSection: React.FC = () => {
             <ScrollVelocity
               velocity={8}
               texts={[
-                "🔍 Find experts in seconds, not hours",
-                "🤖 AI that learns your search patterns",
-                "🌐 10,000+ profiles indexed daily",
-                "💡 Get actionable contact info instantly",
+                " Find experts in seconds, not hours | ",
+                " AI that learns your search patterns | ",
+                " 10,000+ profiles indexed daily | ",
+                " Get actionable contact info instantly | ",
               ]}
               className="t text-xl font-medium text-primary"
             />
