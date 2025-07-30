@@ -161,7 +161,16 @@ const HeroSection: React.FC = () => {
               </div>
             </Parallax>
           </div>
-          <div className="mt-18 mb-12 sm:mt-20 sm:mb-20 text-center">
+          <div className="flex flex-wrap justify-center w-full mt-10 sm:hidden items-center gap-4">
+            <Parallax translateY={[25, -5]} speed={-0.2}>
+              <Link href={"/join-waitlist"}>
+                <button className="backdrop-blur-sm px-6 py-2.5 lg:px-8 lg:py-3.5 bg-[#333333] text-white font-semibold rounded-full transition-all duration-300 hover:bg-[#000000] hover:scale-105 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(0,0,0,0.7)] transform hover:-translate-y-0.5 border-2 border-white">
+                  Join Waitlist
+                </button>
+              </Link>
+            </Parallax>
+          </div>
+          <div className="mt-10 mb-12 sm:mt-18 sm:mb-20 text-center">
             <p className="text-sm text-text-secondary mb-3 font-medium">
               Powered by AI Agents • Real-time Insights • Evolving Intelligence
             </p>
