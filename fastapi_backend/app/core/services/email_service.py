@@ -32,8 +32,8 @@ class EmailService:
     def _find_logo_path(self) -> Optional[str]:
         """Find the logo file in the project"""
         possible_paths = [
-            "/Users/sanyamjain/Desktop/Projects/agent-nexus-search/next_frontend/public/Logo.png",
-            "/Users/sanyamjain/Desktop/Projects/agent-nexus-search/js_chrome_extension/assets/Logo.png"
+            "../next_frontend/public/Logo.png",
+            "../js_chrome_extension/assets/Logo.png"
         ]
         
         for path in possible_paths:
