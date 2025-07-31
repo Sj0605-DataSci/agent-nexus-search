@@ -48,10 +48,9 @@ export default function LoginForm() {
         posthog.capture("login_attempted", { email });
 
         const loginResult = await dispatch(loginUser({ email, password })).unwrap();
-
         if (loginResult.success && loginResult.status_code === 200) {
+          router.replace("/chat/new");
           showSuccessToast("Welcome back!", "You have successfully signed in.");
-          router.push("/chat/new");
 
           setTimeout(() => {
             dispatch(fetchProfile())
@@ -109,7 +108,6 @@ export default function LoginForm() {
         style={{
           width: "100%",
           overflow: "hidden",
-          // Using fixed position to prevent layout shift
           position: "fixed",
         }}
         aria-hidden="true"
