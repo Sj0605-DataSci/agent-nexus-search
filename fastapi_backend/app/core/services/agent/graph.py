@@ -264,28 +264,36 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     tavilly_search = TavilyClient(api_key=tavily_api_key)
     print(tavily_api_key)
     
+    # Create single ThreadPoolExecutor for all operations
+    # Use semaphore to control concurrent Tavily API calls
+    max_concurrent_searches = min(8, len(search_queries))  # Use all 8 cores efficiently
+    search_semaphore = asyncio.Semaphore(max_concurrent_searches)
+    
+    # Single ThreadPoolExecutor for all CPU-bound operations
+    executor = ThreadPoolExecutor(max_workers=8)
+    
     async def search_single_query(query_data, idx):
-        """Process a single search query asynchronously with same format as web_research."""
-        try:
-            # Extract query string (same logic as web_research)
-            if isinstance(query_data, dict):
-                if "query" in query_data:
-                    if isinstance(query_data["query"], list):
-                        query = query_data["query"][0]
+        """Process a single search query asynchronously with optimized resource usage."""
+        async with search_semaphore:  # Control concurrent API calls
+            try:
+                # Extract query string (same logic as web_research)
+                if isinstance(query_data, dict):
+                    if "query" in query_data:
+                        if isinstance(query_data["query"], list):
+                            query = query_data["query"][0]
+                        else:
+                            query = query_data["query"]
                     else:
-                        query = query_data["query"]
+                        query = str(query_data)
+                elif isinstance(query_data, str):
+                    query = query_data
                 else:
                     query = str(query_data)
-            elif isinstance(query_data, str):
-                query = query_data
-            else:
-                query = str(query_data)
-            
-            print(f"Using search query {idx + 1}: {query}")
-            
-            # Use ThreadPoolExecutor for CPU-bound Tavily API calls
-            loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor() as executor:
+                
+                print(f"Using search query {idx + 1}: {query}")
+                
+                # Use shared ThreadPoolExecutor for CPU-bound Tavily API calls
+                loop = asyncio.get_event_loop()
                 search_results = await loop.run_in_executor(
                     executor,
                     lambda: tavilly_search.search(
@@ -297,36 +305,35 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                         exclude_domains=[]
                     )
                 )
-            
-            print(f"Search results for query {idx + 1}:", search_results)
-            
-            # Process search results from Tavily API (same logic as web_research)
-            processed_results = []
-            
-            if isinstance(search_results, dict) and 'results' in search_results:
-                tavily_results = search_results['results']
                 
-                for result in tavily_results:
-                    processed_result = {
-                        "url": result.get("url", ""),
-                        "title": result.get("title", "No title"),
-                        "content": result.get("content", ""),
-                        "raw_content": result.get("raw_content", ""),
-                        "score": result.get("score", 0.0),
-                    }
-                    processed_results.append(processed_result)
-            
-            # Check if we need to fetch more content for any results
-            urls_to_fetch = []
-            for result in processed_results:
-                if result.get("url"):
-                    urls_to_fetch.append(result.get("url"))
-            
-            # Fetch additional content if needed (same logic as web_research)
-            url_to_content = {}
-            if urls_to_fetch:
-                try:
-                    with ThreadPoolExecutor() as executor:
+                print(f"Search results for query {idx + 1}:", search_results)
+                
+                # Process search results from Tavily API (same logic as web_research)
+                processed_results = []
+                
+                if isinstance(search_results, dict) and 'results' in search_results:
+                    tavily_results = search_results['results']
+                    
+                    for result in tavily_results:
+                        processed_result = {
+                            "url": result.get("url", ""),
+                            "title": result.get("title", "No title"),
+                            "content": result.get("content", ""),
+                            "raw_content": result.get("raw_content", ""),
+                            "score": result.get("score", 0.0),
+                        }
+                        processed_results.append(processed_result)
+                
+                # Check if we need to fetch more content for any results
+                urls_to_fetch = []
+                for result in processed_results:
+                    if result.get("url"):
+                        urls_to_fetch.append(result.get("url"))
+                
+                # Fetch additional content if needed (same logic as web_research)
+                url_to_content = {}
+                if urls_to_fetch:
+                    try:
                         extraction_results = await loop.run_in_executor(
                             executor,
                             lambda: tavilly_search.extract(
@@ -336,116 +343,121 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                                 format="text",
                             )
                         )
-                    
-                    # Process extraction results
-                    if extraction_results:
-                        if isinstance(extraction_results, dict) and 'results' in extraction_results:
-                            for extract_result in extraction_results['results']:
-                                url = extract_result.get('url', '')
-                                if url:
-                                    url_to_content[url] = extract_result
-                        elif isinstance(extraction_results, list):
-                            for extract_result in extraction_results:
-                                url = extract_result.get('url', '')
-                                if url:
-                                    url_to_content[url] = extract_result
-                except Exception as e:
-                    print(f"Error extracting content for query {idx + 1}: {e}")
-            
-            # Update processed results with extracted content
-            for i, result in enumerate(processed_results):
-                url = result.get("url")
-                if url in url_to_content:
-                    extracted_content = url_to_content[url]
-                    processed_results[i]["raw_content"] = extracted_content.get("raw_content", result.get("raw_content", ""))
-                    if not processed_results[i].get("content") and extracted_content.get("content"):
-                        processed_results[i]["content"] = extracted_content.get("content")
-            
-            # Format the search results into a readable text (same format as web_research)
-            response_text = f"Research on: {query}\n\n"
-            print(f"Response text for query {idx + 1}:", response_text)
-            
-            # Process search results (same logic as web_research)
-            for i, result in enumerate(processed_results):
-                content_to_show = ""
-                if result.get("content"):
-                    content_to_show = content_to_show + result.get("content")
-                if result.get("raw_content"):
-                    content_to_show = content_to_show + result.get("raw_content")
-                if not content_to_show:
-                    content_to_show = "No content available"
+                        
+                        # Process extraction results
+                        if extraction_results:
+                            if isinstance(extraction_results, dict) and 'results' in extraction_results:
+                                for extract_result in extraction_results['results']:
+                                    url = extract_result.get('url', '')
+                                    if url:
+                                        url_to_content[url] = extract_result
+                            elif isinstance(extraction_results, list):
+                                for extract_result in extraction_results:
+                                    url = extract_result.get('url', '')
+                                    if url:
+                                        url_to_content[url] = extract_result
+                    except Exception as e:
+                        print(f"Error extracting content for query {idx + 1}: {e}")
                 
-                response_text += f"Source {i+1}: {result.get('title', 'No title')}\n"
-                response_text += f"URL: {result.get('url')}\n"
-                response_text += f"Content: {content_to_show}\n\n"
-                print(f"Updated response text for query {idx + 1}:", response_text)
-            
-            # Create citation structure (same logic as web_research)
-            resolved_urls = []
-            for i, result in enumerate(processed_results):
-                if "url" in result:
-                    resolved_urls.append({
-                        "original_url": result["url"],
-                        "short_url": f"[{i+1}]",
-                        "id": i
+                # Update processed results with extracted content
+                for i, result in enumerate(processed_results):
+                    url = result.get("url")
+                    if url in url_to_content:
+                        extracted_content = url_to_content[url]
+                        processed_results[i]["raw_content"] = extracted_content.get("raw_content", result.get("raw_content", ""))
+                        if not processed_results[i].get("content") and extracted_content.get("content"):
+                            processed_results[i]["content"] = extracted_content.get("content")
+                
+                # Format the search results into a readable text (same format as web_research)
+                response_text = f"Research on: {query}\n\n"
+                print(f"Response text for query {idx + 1}:", response_text)
+                
+                # Process search results (same logic as web_research)
+                for i, result in enumerate(processed_results):
+                    content_to_show = ""
+                    if result.get("content"):
+                        content_to_show = content_to_show + result.get("content")
+                    if result.get("raw_content"):
+                        content_to_show = content_to_show + result.get("raw_content")
+                    if not content_to_show:
+                        content_to_show = "No content available"
+                    
+                    response_text += f"Source {i+1}: {result.get('title', 'No title')}\n"
+                    response_text += f"URL: {result.get('url')}\n"
+                    response_text += f"Content: {content_to_show}\n\n"
+                    print(f"Updated response text for query {idx + 1}:", response_text)
+                
+                # Create citation structure (same logic as web_research)
+                resolved_urls = []
+                for i, result in enumerate(processed_results):
+                    if "url" in result:
+                        resolved_urls.append({
+                            "original_url": result["url"],
+                            "short_url": f"[{i+1}]",
+                            "id": i
+                        })
+                
+                # Format citations
+                citations = []
+                for i, url_data in enumerate(resolved_urls):
+                    citations.append({
+                        "segments": [{
+                            "value": url_data["original_url"],
+                            "short_url": url_data["short_url"],
+                            "title": processed_results[i].get("title", "No title") if i < len(processed_results) else ""
+                        }]
                     })
-            
-            # Format citations
-            citations = []
-            for i, url_data in enumerate(resolved_urls):
-                citations.append({
-                    "segments": [{
-                        "value": url_data["original_url"],
-                        "short_url": url_data["short_url"],
-                        "title": processed_results[i].get("title", "No title") if i < len(processed_results) else ""
-                    }]
-                })
-            
-            # Add citation markers to the text
-            modified_text = response_text
-            for i, url_data in enumerate(resolved_urls):
-                if i < len(processed_results):
-                    modified_text = modified_text.replace(
-                        f"URL: {processed_results[i].get('url')}", 
-                        f"URL: {url_data['short_url']}"
-                    )
-            
-            # Collect sources with metadata (same format as web_research)
-            sources_gathered = []
-            for citation in citations:
-                for item in citation["segments"]:
-                    sources_gathered.append(item)
-            
-            return {
-                "query_index": idx,
-                "query": query,
-                "sources_gathered": sources_gathered,
-                "modified_text": modified_text,
-                "processed_results": processed_results
-            }
-            
-        except Exception as e:
-            print(f"Error processing query {idx + 1}: {e}")
-            return {
-                "query_index": idx,
-                "query": query if 'query' in locals() else str(query_data),
-                "sources_gathered": [],
-                "modified_text": f"Error processing query {idx + 1}: {str(e)}\n\n",
-                "processed_results": []
-            }
+                
+                # Add citation markers to the text
+                modified_text = response_text
+                for i, url_data in enumerate(resolved_urls):
+                    if i < len(processed_results):
+                        modified_text = modified_text.replace(
+                            f"URL: {processed_results[i].get('url')}", 
+                            f"URL: {url_data['short_url']}"
+                        )
+                
+                # Collect sources with metadata (same format as web_research)
+                sources_gathered = []
+                for citation in citations:
+                    for item in citation["segments"]:
+                        sources_gathered.append(item)
+                
+                return {
+                    "query_index": idx,
+                    "query": query,
+                    "sources_gathered": sources_gathered,
+                    "modified_text": modified_text,
+                    "processed_results": processed_results
+                }
+                
+            except Exception as e:
+                print(f"Error processing query {idx + 1}: {e}")
+                return {
+                    "query_index": idx,
+                    "query": query if 'query' in locals() else str(query_data),
+                    "sources_gathered": [],
+                    "modified_text": f"Error processing query {idx + 1}: {str(e)}\n\n",
+                    "processed_results": []
+                }
     
-    # Execute all searches in parallel
-    print(f"Starting parallel processing of {len(search_queries)} queries...")
-    start_time = asyncio.get_event_loop().time()
-    
-    # Use asyncio.gather for true parallel execution
-    results = await asyncio.gather(
-        *[search_single_query(query, idx) for idx, query in enumerate(search_queries)],
-        return_exceptions=True
-    )
-    
-    end_time = asyncio.get_event_loop().time()
-    print(f"Parallel processing completed in {end_time - start_time:.2f} seconds")
+    try:
+        # Execute all searches in parallel
+        print(f"Starting parallel processing of {len(search_queries)} queries...")
+        start_time = asyncio.get_event_loop().time()
+        
+        # Use asyncio.gather for true parallel execution
+        results = await asyncio.gather(
+            *[search_single_query(query, idx) for idx, query in enumerate(search_queries)],
+            return_exceptions=True
+        )
+        
+        end_time = asyncio.get_event_loop().time()
+        print(f"Parallel processing completed in {end_time - start_time:.2f} seconds")
+        
+    finally:
+        # Clean up the executor
+        executor.shutdown(wait=False)
     
     # Aggregate all results (same format as web_research)
     all_sources_gathered = []
