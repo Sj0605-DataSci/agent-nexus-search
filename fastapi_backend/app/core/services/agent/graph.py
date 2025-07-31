@@ -738,7 +738,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         )
     # Use Gemini client
     llm = GeminiChatModel(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-pro",
         temperature=0
     )
     response, usage_metadata = llm.with_structured_output(prompt=formatted_prompt, schema_type=ReflectionOutput) 

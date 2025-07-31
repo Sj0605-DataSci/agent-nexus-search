@@ -42,3 +42,6 @@ redis
 psutil
 wandb
 weave
+
+# PDF generation
+reportlab

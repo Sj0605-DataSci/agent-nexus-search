@@ -209,6 +209,30 @@ class ChatWorker:
                     )
                     await client.publish(channel, done_update.model_dump_json())
                     
+                    # Generate and email PDF after streaming is complete
+                    # Use the data from the 'done' message to avoid race conditions
+                    try:
+                        content = update.get("content", {})
+                        if isinstance(content, dict) and "message_id" in content and "query" in content:
+                            # Generate and email PDF in the background (don't await to avoid blocking)
+                            asyncio.create_task(
+                                chat_service.generate_and_email_pdf_results(
+                                    user_id=content["user_id"],
+                                    agent_id=content["agent_id"],
+                                    chat_thread_id=content["chat_thread_id"],
+                                    message_id=content["message_id"],
+                                    query=content["query"]
+                                )
+                            )
+                            
+                            logger.info(f"PDF email task queued for thread {content['chat_thread_id']}")
+                        else:
+                            logger.warning("Done message missing required data for PDF email")
+                            
+                    except Exception as pdf_error:
+                        logger.error(f"Error queuing PDF email task: {str(pdf_error)}")
+                        # Don't fail the main task if PDF email fails
+                    
                 elif update["type"] == "error":
                     # For error messages
                     error_update = StreamingChatUpdate(

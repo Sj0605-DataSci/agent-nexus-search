@@ -2,7 +2,6 @@ from typing import Dict, Any, List, Union
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
-import time
 from app.core.config import settings
 from app.db.clients import get_async_supabase_client
 from app.core.utils.llm_utils import GeminiChatModel
@@ -11,6 +10,10 @@ from app.core.services.agent.prompts import query_title_generation
 from app.models.schemas import TitleGeneratorOutput
 from app.core.structured_logger import get_structured_logger
 from app.core.profiling import profile_async, AsyncTimer
+from app.core.services.email_service import email_service
+from app.core.services.pdf_service import pdf_service
+from pathlib import Path
+
 logger = get_structured_logger(__name__)
 
 wandb.login(key=settings.WANDB_API_KEY)
@@ -395,7 +398,14 @@ class ChatService:
                 # Send completion signal
                 yield {
                     "type": "done",
-                    "content": {"message": "Chat response complete"}
+                    "content": {
+                        "message": "Chat response complete",
+                        "message_id": message_id,
+                        "query": latest_message,
+                        "user_id": user_id,
+                        "agent_id": agent_id,
+                        "chat_thread_id": thread_id
+                    }
                 }
             elif intent == "search":
                 # Create initial state based on search mode and world connections
@@ -413,7 +423,7 @@ class ChatService:
                         "web_research_result": [],
                         "sources_gathered": [],
                         "search_query": [],
-                        "number_of_results_returned":6,
+                        "number_of_results_returned":5,
                         "format": format,
                         "world_connections": world_connections,
                         "sql_queries": [],
@@ -433,7 +443,7 @@ class ChatService:
                         "web_research_result": [],
                         "sources_gathered": [],
                         "search_query": [],
-                        "number_of_results_returned":6,
+                        "number_of_results_returned":5,
                         "format": format,
                         "world_connections": world_connections,
                         "sql_queries": [],
@@ -527,7 +537,14 @@ class ChatService:
             
                 yield {
                         "type": "done",
-                        "content": {"message": "Chat response complete"}
+                        "content": {
+                            "message": "Chat response complete",
+                            "message_id": message_id,
+                            "query": latest_message,
+                            "user_id": user_id,
+                            "agent_id": agent_id,
+                            "chat_thread_id": thread_id
+                        }
                     }
             
         except Exception as e:
@@ -541,6 +558,151 @@ class ChatService:
                 "content": {"message": f"Error: {str(e)}"}
             }
     
+    async def generate_and_email_pdf_results(
+        self,
+        user_id: str,
+        agent_id: str,
+        chat_thread_id: str,
+        message_id: str,
+        query: str
+    ) -> bool:
+        """
+        Generate PDF with chat results and email it to the user
+        
+        Args:
+            user_id: User ID
+            agent_id: Agent ID  
+            chat_thread_id: Chat thread ID
+            message_id: Message ID to get results from
+            query: Original user query
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            logger.info("Starting PDF generation and email process",
+                       user_id=user_id,
+                       agent_id=agent_id,
+                       chat_thread_id=chat_thread_id,
+                       message_id=message_id)
+            
+            # Get Supabase client
+            supabase_client = await get_async_supabase_client()
+            
+            # Get user profile and email
+            user_profile = await supabase_client.table("profiles").select("email, full_name").eq("id", user_id).execute()
+            if not user_profile.data or not user_profile.data[0].get("email"):
+                logger.warning("User email not found, cannot send PDF",
+                             user_id=user_id)
+                return False
+            
+            user_email = user_profile.data[0]["email"]
+            user_name = user_profile.data[0].get("full_name", "")
+            
+            # Get agent configuration
+            agent_config = await self.get_agent_config(user_id, agent_id)
+            agent_name = agent_config.get('name', 'Unknown Agent')
+            
+            # Get chat message with results
+            chat_message = await supabase_client.table("chat_messages").select("message, sources_gathered").eq("id", message_id).execute()
+            if not chat_message.data:
+                logger.warning("Chat message not found",
+                             message_id=message_id)
+                return False
+            
+            chat_response = chat_message.data[0].get("message", "")
+            sources_gathered = chat_message.data[0].get("sources_gathered", [])
+            
+            # Parse sources if they're stored as JSON string
+            if isinstance(sources_gathered, str):
+                try:
+                    import json
+                    sources_gathered = json.loads(sources_gathered)
+                except:
+                    sources_gathered = []
+            
+            if not isinstance(sources_gathered, list):
+                sources_gathered = []
+            
+            logger.info("Retrieved chat data for PDF generation",
+                       chat_response_length=len(chat_response) if chat_response else 0,
+                       sources_count=len(sources_gathered))
+            
+            # Generate PDF
+            try:
+                pdf_path = await pdf_service.create_chat_pdf(
+                    query=query,
+                    agent_name=agent_name,
+                    chat_response=chat_response,
+                    sources=sources_gathered,
+                    user_name=user_name,
+                    chat_thread_id=chat_thread_id
+                )
+                
+                logger.info("PDF generated successfully",
+                           pdf_path=pdf_path)
+                
+            except Exception as e:
+                logger.error("Failed to generate PDF",
+                           error=str(e),
+                           user_id=user_id,
+                           chat_thread_id=chat_thread_id)
+                return False
+            
+            # Create email content
+            email_subject = f"Your Search Results - {query[:50]}{'...' if len(query) > 50 else ''}"
+            email_body = email_service.create_chat_summary_email(
+                user_name=user_name,
+                query=query,
+                agent_name=agent_name
+            )
+            
+            # Send email with PDF attachment
+            try:
+                pdf_filename = f"search_results_{chat_thread_id}.pdf"
+                email_success = await email_service.send_email(
+                    to_email=user_email,
+                    subject=email_subject,
+                    body=email_body,
+                    pdf_path=pdf_path,
+                    pdf_filename=pdf_filename
+                )
+                
+                if email_success:
+                    logger.info("PDF email sent successfully",
+                               user_email=user_email,
+                               chat_thread_id=chat_thread_id)
+                    
+                    # Clean up the PDF file after sending
+                    try:
+                        Path(pdf_path).unlink()
+                        logger.info("PDF file cleaned up", pdf_path=pdf_path)
+                    except Exception as cleanup_error:
+                        logger.warning("Failed to clean up PDF file",
+                                     pdf_path=pdf_path,
+                                     error=str(cleanup_error))
+                    
+                    return True
+                else:
+                    logger.error("Failed to send PDF email",
+                               user_email=user_email,
+                               chat_thread_id=chat_thread_id)
+                    return False
+                    
+            except Exception as e:
+                logger.error("Error sending PDF email",
+                           error=str(e),
+                           user_email=user_email,
+                           chat_thread_id=chat_thread_id)
+                return False
+                
+        except Exception as e:
+            logger.error("Error in PDF generation and email process",
+                        error=str(e),
+                        user_id=user_id,
+                        chat_thread_id=chat_thread_id)
+            return False
+
     def _format_chat_response(self, result: Dict[str, Any]) -> 'ChatResponse':
         """
         Format raw chat result into a proper ChatResponse object
@@ -687,7 +849,7 @@ class ChatService:
                     .eq("user_id", user_id) \
                     .eq("id", message_id) \
                     .execute()
-            
+
             return response.data
         
         except Exception as e:
