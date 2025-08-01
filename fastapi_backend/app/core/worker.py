@@ -233,6 +233,14 @@ class ChatWorker:
                         logger.error(f"Error queuing PDF email task: {str(pdf_error)}")
                         # Don't fail the main task if PDF email fails
                     
+                elif update["type"] == "credit_info":
+                    # For credit information updates
+                    credit_update = StreamingChatUpdate(
+                        type="credit_info",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, credit_update.model_dump_json())
+                    
                 elif update["type"] == "error":
                     # For error messages
                     error_update = StreamingChatUpdate(

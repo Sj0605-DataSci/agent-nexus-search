@@ -1,24 +1,28 @@
 from uuid import UUID
+from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.auth import get_current_user
 from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
-from app.models.schemas import ProfileCreate, ProfileResponse, ProfileUpdate, StandardResponse, StandardJSONResponse
-from app.core.structured_logger import get_structured_logger
+from app.models.schemas import (
+    ProfileCreate, ProfileUpdate, ProfileResponse, StandardResponse, StandardJSONResponse,
+    UserSubscriptionResponse
+)
+from app.core.services.credit_service import CreditService
 from app.core.profiling import profile_async
-from app.core.services.hired_agent_service import HiredAgentService
+from app.core.structured_logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
-async def get_hired_agent_service():
+async def get_credit_service():
     """
-    Dependency to get a HiredAgentService instance.
+    Dependency to get a CreditService instance.
     This helps reduce the overhead of creating a new service for each request.
     """
     client = await get_async_supabase_client()
-    return HiredAgentService(client=client)
+    return CreditService(client=client)
 
 @router.post("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
 @profile_async("routes.profiles.create_profile")
@@ -80,7 +84,9 @@ async def get_my_profile(
             "full_name": current_user.full_name,
             "email": current_user.email,
             "created_at": current_user.created_at,
-            "updated_at": current_user.updated_at
+            "updated_at": current_user.updated_at,
+            "has_connections": current_user.has_connections,
+            "user_subscriptions_id": current_user.user_subscriptions_id
         }
         
         profile_response = ProfileResponse(**profile_data)
@@ -165,5 +171,224 @@ async def update_my_profile(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Error updating profile: {str(e)}",
+            data=None
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Credit and Subscription Management Endpoints
+
+@router.get("/subscription", response_model=StandardResponse[UserSubscriptionResponse], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.get_subscription")
+async def get_my_subscription(
+    current_user: Profile = Depends(get_current_user, use_cache=True),
+    credit_service: CreditService = Depends(get_credit_service, use_cache=True)
+):
+    """
+    Get the current user's subscription details including credits, tier, and usage stats.
+    Uses optimized query with direct profile->subscription relationship.
+    """
+    try:
+        # Use optimized method that leverages the direct foreign key relationship
+        subscription = await credit_service.get_user_subscription_optimized(current_user.id)
+        
+        if not subscription:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Subscription not found",
+                data=None
+            ), status_code=status.HTTP_404_NOT_FOUND)
+        
+        logger.info("Subscription retrieved successfully (optimized)", user_id=str(current_user.id))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Subscription retrieved successfully",
+            data=subscription
+        ))
+        
+    except Exception as e:
+        logger.exception("Error retrieving subscription",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=str(current_user.id))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error retrieving subscription: {str(e)}",
+            data=None
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@router.get("/usage_stats", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.get_usage_stats")
+async def get_usage_stats(
+    days: int = 30,
+    current_user: Profile = Depends(get_current_user, use_cache=True),
+    credit_service: CreditService = Depends(get_credit_service, use_cache=True)
+):
+    """
+    Get the current user's usage statistics for the specified number of days.
+    """
+    try:
+        if days < 1 or days > 365:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Days must be between 1 and 365",
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        usage_stats = await credit_service.get_usage_stats(current_user.id, days)
+        
+        logger.info("Usage stats retrieved successfully", 
+                   user_id=str(current_user.id),
+                   days=days)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Usage statistics retrieved successfully",
+            data=usage_stats
+        ))
+        
+    except Exception as e:
+        logger.exception("Error retrieving usage stats",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=str(current_user.id))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error retrieving usage stats: {str(e)}",
+            data=None
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.post("/add_credits", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.add_credits")
+async def add_credits(
+    credits: int,
+    description: str = "Credit purchase",
+    reference_id: str = None,
+    current_user: Profile = Depends(get_current_user, use_cache=True),
+    credit_service: CreditService = Depends(get_credit_service, use_cache=True) 
+):
+    """
+    Add credits to the current user's account.
+    This endpoint would typically be called after a successful payment.
+    """
+    try:
+        if credits <= 0:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Credits must be greater than 0",
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        if credits > 10000:  # Reasonable upper limit
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Cannot add more than 10,000 credits at once",
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        result = await credit_service.add_credits(
+            user_id=current_user.id,
+            credits=credits,
+            description=description,
+            reference_id=reference_id
+        )
+        
+        if not result.get("success", False):
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=result.get("error", "Failed to add credits"),
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        logger.info("Credits added successfully", 
+                   user_id=str(current_user.id),
+                   credits_added=credits,
+                   new_balance=result.get("new_balance", 0))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Credits added successfully",
+            data=result
+        ))
+        
+    except Exception as e:
+        logger.exception("Error adding credits",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=str(current_user.id))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error adding credits: {str(e)}",
+            data=None
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.patch("/upgrade_tier", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.upgrade_tier")
+async def upgrade_tier(
+    new_tier: str,
+    current_user: Profile = Depends(get_current_user, use_cache=True),
+    credit_service: CreditService = Depends(get_credit_service, use_cache=True)
+):
+    """
+    Upgrade the current user's tier.
+    This endpoint would typically be called after a successful subscription payment.
+    """
+    try:
+        valid_tiers = ["free", "pro", "enterprise"]
+        if new_tier not in valid_tiers:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=f"Invalid tier. Must be one of: {', '.join(valid_tiers)}",
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        result = await credit_service.upgrade_tier(
+            user_id=current_user.id,
+            new_tier=new_tier
+        )
+        
+        if not result.get("success", False):
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=result.get("error", "Failed to upgrade tier"),
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        logger.info("Tier upgraded successfully", 
+                   user_id=str(current_user.id),
+                   old_tier=result.get("old_tier"),
+                   new_tier=result.get("new_tier"))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Tier upgraded successfully",
+            data=result
+        ))
+        
+    except Exception as e:
+        logger.exception("Error upgrading tier",
+                        exception_type=type(e).__name__,
+                        error_message=str(e),
+                        user_id=str(current_user.id))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Error upgrading tier: {str(e)}",
             data=None
         ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
