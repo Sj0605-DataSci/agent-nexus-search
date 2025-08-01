@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Generic, TypeVar, Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field, EmailStr
 from fastapi.responses import JSONResponse
@@ -26,6 +26,8 @@ class CustomJSONEncoder(json.JSONEncoder):
         if isinstance(obj, UUID):
             return str(obj)
         if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
             return obj.isoformat()
         return super().default(obj)
 
@@ -141,6 +143,44 @@ class ProfileUpdate(BaseModel):
 class ProfileResponse(ProfileBase):
     id: UUID
     has_connections: Optional[bool] = False
+    user_subscriptions_id: Optional[UUID] = None
+
+    class Config:
+        from_attributes = True
+
+
+# User Subscription Schemas
+class UserSubscriptionBase(BaseModel):
+    tier: str = "free"
+    credits: int = 10
+    total_credits_purchased: int = 0
+    daily_searches_allowed: int = 5
+    daily_searches_used: int = 0
+    last_search_date: Optional[date] = None
+    deep_searches_allowed: int = 1
+    deep_searches_used: int = 0
+    basic_searches_allowed: int = 5
+    basic_searches_used: int = 0
+    subscription_start_date: Optional[datetime] = None
+    subscription_end_date: Optional[datetime] = None
+    auto_renew: bool = False
+
+
+class UserSubscriptionCreate(UserSubscriptionBase):
+    profile_id: UUID
+
+
+class UserSubscriptionUpdate(BaseModel):
+    tier: Optional[str] = None
+    credits: Optional[int] = None
+    auto_renew: Optional[bool] = None
+
+
+class UserSubscriptionResponse(UserSubscriptionBase):
+    id: UUID
+    profile_id: UUID
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

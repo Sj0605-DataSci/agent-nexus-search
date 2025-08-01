@@ -3,7 +3,7 @@ from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
 from app.core.config import settings
-from app.db.clients import get_async_supabase_client
+from app.core.services.credit_service import CreditService
 from app.core.utils.llm_utils import GeminiChatModel
 from app.models.chat import IntentClassification
 from app.core.services.agent.prompts import query_title_generation
@@ -178,6 +178,26 @@ class ChatService:
         """
         try:
             # Capture the Weave operation ID
+                # Check if user can perform this search
+            credit_service = CreditService(client=self.client)
+                    
+            limit_check = await credit_service.check_search_limit(user_id, search_mode=search_mode)
+                    
+            if not limit_check.get("can_search", False):
+                        # User cannot perform search, yield error and return
+                error_msg = limit_check.get("error", "Search limit reached")
+                        
+                yield {
+                    "type": "error",
+                    "content": {
+                        "message": f"❌ {error_msg}",
+                        "tier": limit_check.get("tier", "unknown"),
+                        "credits_available": limit_check.get("credits_available", 0),
+                        "credits_needed": limit_check.get("credits_needed", 0),
+                        "search_mode": search_mode
+                    }
+                }
+                return
             op = weave.get_current_call()
             op_id = op.id
             weave_url = f"https://wandb.ai/sanyam0605/deep-search/r/call/{op_id}" if op_id else None
@@ -192,9 +212,6 @@ class ChatService:
                        agent_name=agent_config.get('name', 'Unknown'),
                        has_number_of_results=('number_of_results_returned' in agent_config),
                        number_of_results_returned=agent_config.get('number_of_results_returned', 'Missing'))
-                
-            # Generate a new thread_id if one doesn't exist
-            supabase_client = await get_async_supabase_client()
             
             # Get the latest user message for intent classification and title generation
             latest_message = ""
@@ -216,11 +233,11 @@ class ChatService:
             # Create the thread in the database
             if thread_id != "new":
                 # Check if thread already exists
-                existing_thread = await supabase_client.table("chat_threads").select("id").eq("id", thread_id).execute()
+                existing_thread = await self.client.table("chat_threads").select("id").eq("id", thread_id).execute()
                 
                 if not existing_thread.data:
                     # Thread doesn't exist, create it
-                    await supabase_client.table("chat_threads").insert({
+                    await self.client.table("chat_threads").insert({
                         "user_id": user_id, 
                         "id": thread_id,
                         "title": title,
@@ -234,7 +251,7 @@ class ChatService:
                                title=title)
                 else:
                     # Thread exists, update it if needed
-                    await supabase_client.table("chat_threads").update({
+                    await self.client.table("chat_threads").update({
                         "title": title,
                         "weave_url": weave_url
                     }).eq("id", thread_id).execute()
@@ -277,7 +294,7 @@ class ChatService:
                 
                 # Record the message in the database
                 try:
-                    response = await supabase_client.table("chat_messages").insert({
+                    response = await self.client.table("chat_messages").insert({
                         "user_id": user_id, 
                         "agent_id": agent_id, 
                         "chat_thread_id": thread_id, 
@@ -300,7 +317,7 @@ class ChatService:
                         
                         cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
                         cost_rupees = cost_dollar * 85.86
-                        await supabase_client.table("chat_costs").insert({
+                        await self.client.table("chat_costs").insert({
                             "user_id": user_id, 
                             "agent_id": agent_id, 
                             "chat_thread_id": thread_id,
@@ -360,7 +377,7 @@ class ChatService:
                 
                 # Record the response in the database
                 try:
-                    await supabase_client.table("chat_messages").update({
+                    await self.client.table("chat_messages").update({
                         "message": direct_answer,
                     }).eq("id", message_id).execute()
                     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
@@ -368,7 +385,7 @@ class ChatService:
                         
                     cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
                     cost_rupees = cost_dollar * 85.86
-                    await supabase_client.table("chat_costs").insert({
+                    await self.client.table("chat_costs").insert({
                         "user_id": user_id, 
                         "agent_id": agent_id, 
                         "chat_thread_id": thread_id,
@@ -395,6 +412,15 @@ class ChatService:
                     "tags": []
                     }
                 
+                # Get user subscription for credit info
+                user_subscription = await credit_service.get_user_subscription_optimized(user_id)
+                credit_info = {
+                    "credits_remaining": user_subscription.credits if user_subscription else 0,
+                    "tier": user_subscription.tier if user_subscription else "free",
+                    "credits_used": 0,  # No credits used for direct answers
+                    "search_mode": "direct_answer"
+                }
+                
                 # Send completion signal
                 yield {
                     "type": "done",
@@ -404,7 +430,8 @@ class ChatService:
                         "query": latest_message,
                         "user_id": user_id,
                         "agent_id": agent_id,
-                        "chat_thread_id": thread_id
+                        "chat_thread_id": thread_id,
+                        "credit_info": credit_info
                     }
                 }
             elif intent == "search":
@@ -492,6 +519,39 @@ class ChatService:
                 else:
                     raise ValueError(f"Invalid search mode: {search_mode}")
             
+                # Check credits and limits before starting search (only for search intent)
+                if intent == "search":
+                    # Consume credits for the search
+                    consumption_result = await credit_service.consume_search_credits(
+                        user_id=user_id,
+                        search_mode=search_mode,
+                        thread_id=thread_id,
+                        message_id=message_id,
+                        query=latest_message
+                    )
+                    
+                    if not consumption_result.get("success", False):
+                        # Failed to consume credits
+                        yield {
+                            "type": "error",
+                            "content": {
+                                "message": f"❌ Failed to process search: {consumption_result.get('error', 'Unknown error')}",
+                                "search_mode": search_mode
+                            }
+                        }
+                        return
+                    
+                    # Yield credit consumption info
+                    yield {
+                        "type": "credit_info",
+                        "content": {
+                            "message": f"🔍 Starting {search_mode} search (Cost: {consumption_result.get('credits_used', 0)} credits)",
+                            "credits_used": consumption_result.get("credits_used", 0),
+                            "remaining_credits": consumption_result.get("remaining_credits", 0),
+                            "search_mode": search_mode
+                        }
+                    }
+            
                 async for chunk_type, chunk_data in graph.astream(
                     initial_state, 
                     stream_mode=["messages", "updates"]
@@ -535,6 +595,15 @@ class ChatService:
                                 "content": {"sources": node_data["sources_gathered"]}
                             }
             
+                # Get updated user subscription for final credit info
+                user_subscription = await credit_service.get_user_subscription_optimized(user_id)
+                final_credit_info = {
+                    "credits_remaining": user_subscription.credits if user_subscription else 0,
+                    "tier": user_subscription.tier if user_subscription else "free",
+                    "credits_used": consumption_result.get("credits_used", 0) if 'consumption_result' in locals() else 0,
+                    "search_mode": search_mode if 'search_mode' in locals() else "unknown"
+                }
+                
                 yield {
                         "type": "done",
                         "content": {
@@ -543,7 +612,8 @@ class ChatService:
                             "query": latest_message,
                             "user_id": user_id,
                             "agent_id": agent_id,
-                            "chat_thread_id": thread_id
+                            "chat_thread_id": thread_id,
+                            "credit_info": final_credit_info
                         }
                     }
             
@@ -586,11 +656,8 @@ class ChatService:
                        chat_thread_id=chat_thread_id,
                        message_id=message_id)
             
-            # Get Supabase client
-            supabase_client = await get_async_supabase_client()
-            
             # Get user profile and email
-            user_profile = await supabase_client.table("profiles").select("email, full_name").eq("id", user_id).execute()
+            user_profile = await self.client.table("profiles").select("email, full_name").eq("id", user_id).execute()
             if not user_profile.data or not user_profile.data[0].get("email"):
                 logger.warning("User email not found, cannot send PDF",
                              user_id=user_id)
@@ -604,7 +671,7 @@ class ChatService:
             agent_name = agent_config.get('name', 'Unknown Agent')
             
             # Get chat message with results
-            chat_message = await supabase_client.table("chat_messages").select("message, sources_gathered").eq("id", message_id).execute()
+            chat_message = await self.client.table("chat_messages").select("message, sources_gathered").eq("id", message_id).execute()
             if not chat_message.data:
                 logger.warning("Chat message not found",
                              message_id=message_id)
