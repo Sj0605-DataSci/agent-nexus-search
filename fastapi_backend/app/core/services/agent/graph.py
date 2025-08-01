@@ -11,13 +11,20 @@ from app.core.config import settings
 from app.core.services.agent.configuration import Configuration
 from app.core.services.agent.prompts import (
     get_current_date,
-    query_writer_instructions,
-    reflection_instructions,
-    answer_instructions,
-    optimised_query_instructions,
-    sql_query_instructions,
-    reflection_instructions_sql,
-    answer_instructions_table_format
+    query_writer_system_instruction,
+    query_writer_user_prompt,
+    reflection_system_instruction,
+    reflection_user_prompt,
+    answer_system_instruction,
+    answer_user_prompt,
+    optimised_query_system_instruction,
+    optimised_query_user_prompt,
+    sql_query_system_instruction,
+    sql_query_user_prompt,
+    reflection_sql_system_instruction,
+    reflection_sql_user_prompt,
+    answer_table_system_instruction,
+    answer_table_user_prompt
 )
 from app.models.schemas import PersonDetailsResponse
 import weave
@@ -82,11 +89,6 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
 
         supabase_client = await get_async_supabase_client()
 
-        llm = GeminiChatModel(
-            model="gemini-2.5-flash",
-            temperature=0
-        )
-
         messages = state["messages"]
 
         if isinstance(messages[0], dict):
@@ -110,21 +112,35 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         current_date = get_current_date()
 
         if state["world_connections"]=="world":
-            formatted_prompt = query_writer_instructions.format(
+            # Format system instruction
+            system_instruction = query_writer_system_instruction.format(
                 current_date=current_date,
-                research_topic=get_research_topic(state["messages"]),
                 agent_config=agent_config,
                 number_queries=initial_search_query_count,
             )
+            # Format user prompt
+            user_prompt = query_writer_user_prompt.format(
+                research_topic=get_research_topic(state["messages"])
+            )
         elif state["world_connections"]=="connections":
-            formatted_prompt = optimised_query_instructions.format(
-                current_date=current_date,
-                research_topic=get_research_topic(state["messages"]),
+            # Format system instruction
+            system_instruction = optimised_query_system_instruction.format(
                 number_queries=initial_search_query_count,
             )
+            # Format user prompt
+            user_prompt = optimised_query_user_prompt.format(
+                research_topic=get_research_topic(state["messages"])
+            )
+            
+        # Create LLM with system instruction
+        llm = GeminiChatModel(
+            model="gemini-2.5-flash",
+            temperature=0,
+            system_instruction=system_instruction
+        )
     
     # Generate the search queries
-        response, usage_metadata = llm.with_structured_output(schema_type=QueryWriterOutput, prompt=formatted_prompt)
+        response, usage_metadata = llm.with_structured_output(schema_type=QueryWriterOutput, prompt=user_prompt)
         
         # Convert to expected format
         search_queries = []
@@ -511,9 +527,18 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
     message_id = state["current_message_id"]    
 
     sql_queries = []
+    
+    # Format system instruction
+    system_instruction = sql_query_system_instruction.format(
+        user_id=state["user_id"],
+        number_of_results_returned=state["number_of_results_returned"]
+    )
+    
+    # Create LLM with system instruction
     llm = GeminiChatModel(
         model="gemini-2.5-flash",
-        temperature=0
+        temperature=0,
+        system_instruction=system_instruction
     )
 
     # Handle both single dict and list of dicts for search_query
@@ -526,14 +551,14 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         query_text = search_query["query"] if isinstance(search_query, dict) else search_query
         print(f"Processing query: {query_text}")
         
-        formatted_prompt = sql_query_instructions.format(
+        # Format user prompt
+        user_prompt = sql_query_user_prompt.format(
             user_id=state["user_id"],
-            subquery=query_text,
-            number_of_results_returned=state["number_of_results_returned"]
-            )
+            subquery=query_text
+        )
     
         # Generate the search queries
-        response = llm.invoke(formatted_prompt)
+        response = llm.invoke(user_prompt)
         usage_metadata = response.usage_metadata
 
         input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
@@ -724,24 +749,34 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     summaries = state["web_research_result"]
     
     if state["sources_gathered"] and state["world_connections"] == "world":
-        formatted_prompt = reflection_instructions.format(
-            research_topic=research_topic,
+        # Format system instruction
+        system_instruction = reflection_system_instruction.format(
             agent_config=state["agent_config"],
-            number_queries=state["initial_search_query_count"],
+            number_queries=state["initial_search_query_count"]
+        )
+        # Format user prompt
+        user_prompt = reflection_user_prompt.format(
+            research_topic=research_topic,
             summaries="\n\n---\n\n".join(summaries)
         )
     elif state["world_connections"] == "connections":
-        formatted_prompt = reflection_instructions_sql.format(
+        # Format system instruction
+        system_instruction = reflection_sql_system_instruction.format(
+            number_queries=state["initial_search_query_count"]
+        )
+        # Format user prompt
+        user_prompt = reflection_sql_user_prompt.format(
             research_topic=research_topic,
-            number_queries=state["initial_search_query_count"],
             summaries="\n\n---\n\n".join(str(summaries))
         )
-    # Use Gemini client
+        
+    # Use Gemini client with system instruction
     llm = GeminiChatModel(
-        model="gemini-2.5-pro",
-        temperature=0
+        model="gemini-2.5-flash",
+        temperature=0,
+        system_instruction=system_instruction
     )
-    response, usage_metadata = llm.with_structured_output(prompt=formatted_prompt, schema_type=ReflectionOutput) 
+    response, usage_metadata = llm.with_structured_output(prompt=user_prompt, schema_type=ReflectionOutput) 
     
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
     output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
@@ -911,40 +946,56 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     # Format the prompt
     current_date = get_current_date()
     if state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "chat":
-        formatted_prompt = answer_instructions.format(
-            current_date=current_date,
-            links=state["sources_gathered"],
+        # Format system instruction
+        system_instruction = answer_system_instruction.format(
             agent_config=state["agent_config"],
+            current_date=current_date,
+            format=state.get("format", "table")
+        )
+        # Format user prompt
+        user_prompt = answer_user_prompt.format(
             research_topic=get_research_topic(state["messages"]),
             summaries=str(state["web_research_result"]),
-            format=state.get("format", "table")
+            links=state["sources_gathered"]
         )
     elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "chat":
-        formatted_prompt = answer_instructions.format(
-            current_date=current_date,
-            links=state["sources_gathered"],
+        # Format system instruction
+        system_instruction = answer_system_instruction.format(
             agent_config=state["agent_config"],
+            current_date=current_date,
+            format=state.get("format", "table")
+        )
+        # Format user prompt
+        user_prompt = answer_user_prompt.format(
             research_topic=get_research_topic(state["messages"]),
             summaries=str(state["web_research_result"]),
-            format=state.get("format", "table")
+            links=state["sources_gathered"]
         )
     elif state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "table":
-        formatted_prompt_table = answer_instructions_table_format.format(
-            current_date=current_date,
+        # Format system instruction
+        system_instruction = answer_table_system_instruction.format(
             agent_config=state["agent_config"],
-            links = state["sources_gathered"],
-            research_topic=get_research_topic(state["messages"]),
-            summaries=str(state["web_research_result"]),
+            current_date=current_date,
             format=state.get("format", "table")
         )
-    elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "table":
-        formatted_prompt_table = answer_instructions_table_format.format(
-            current_date=current_date,
-            agent_config=state["agent_config"],
-            links = state["sources_gathered"],
+        # Format user prompt
+        user_prompt_table = answer_table_user_prompt.format(
             research_topic=get_research_topic(state["messages"]),
             summaries=str(state["web_research_result"]),
+            links=state["sources_gathered"]
+        )
+    elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "table":
+        # Format system instruction
+        system_instruction = answer_table_system_instruction.format(
+            agent_config=state["agent_config"],
+            current_date=current_date,
             format=state.get("format", "table")
+        )
+        # Format user prompt
+        user_prompt_table = answer_table_user_prompt.format(
+            research_topic=get_research_topic(state["messages"]),
+            summaries=str(state["web_research_result"]),
+            links=state["sources_gathered"]
         )
 
     supabase_client = await get_async_supabase_client()    
@@ -954,15 +1005,16 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     chat_thread_id = state.get("chat_thread_id", "")
     current_message_id = state.get("current_message_id", "")
 
-    # Use Gemini client
+    # Use Gemini client with system instruction
     llm = GeminiChatModel(
         model="gemini-2.5-flash",
-        temperature=0
+        temperature=0,
+        system_instruction=system_instruction
     )
     if state["format"] == "table":
-        result_table, usage_metadata_table = llm.with_structured_output(prompt=formatted_prompt_table, schema_type=PersonDetailsResponse)
+        result_table, usage_metadata_table = llm.with_structured_output(prompt=user_prompt_table, schema_type=PersonDetailsResponse)
     else:
-        result = llm.invoke(formatted_prompt)
+        result = llm.invoke(user_prompt)
 
     if state["format"] == "table":
         usage_metadata = usage_metadata_table
