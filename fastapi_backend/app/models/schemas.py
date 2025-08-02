@@ -138,13 +138,15 @@ class ProfileCreate(ProfileBase):
 class ProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    
 
 
 class ProfileResponse(ProfileBase):
     id: UUID
     has_connections: Optional[bool] = False
     user_subscriptions_id: Optional[UUID] = None
-
+    linkedin_url: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -206,6 +208,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str
     full_name: Optional[str] = None
+    linkedin_url: Optional[str] = None
 
 # Refresh Token Schema
 class RefreshTokenRequest(BaseModel):
@@ -217,7 +220,7 @@ class WaitlistRequest(BaseModel):
     email: EmailStr
     phone_number: str
     beta_tester: Optional[bool] = False
-
+    linkedin_url: Optional[str] = None
 
 class PersonDetails(BaseModel):
     """Pydantic model for person details in table format."""

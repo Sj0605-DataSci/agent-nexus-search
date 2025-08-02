@@ -160,6 +160,30 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
         # Log signup attempt (without password)
         logger.info("Signup attempt", email=signup_request.email)
         
+        # Check if email already exists in profiles table
+        try:
+            async with AsyncTimer("supabase.select.profiles.check_email"):
+                email_check = await client.table("profiles").select("id").eq("email", signup_request.email).execute()
+            
+            if email_check.data and len(email_check.data) > 0:
+                logger.warning("Signup failed - email already exists", 
+                              email=signup_request.email)
+                
+                return StandardJSONResponse(
+                    StandardResponse(
+                        success=False,
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        message="Email already registered. Please use a different email or try logging in.",
+                        data=None
+                    ),
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as db_error:
+            logger.warning("Failed to check email existence", 
+                          email=signup_request.email,
+                          error=str(db_error))
+            # Continue with signup attempt even if check fails
+        
         try:
             # Create user with Supabase - this will automatically send a confirmation email
             # if email confirmation is enabled in your Supabase project settings
@@ -169,7 +193,8 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
                     "password": signup_request.password,
                     "options": {
                         "data": {
-                            "full_name": signup_request.full_name or ""
+                            "full_name": signup_request.full_name or "",
+                            "linkedin_url": signup_request.linkedin_url or "",
                         }
                     }
                 })
@@ -188,6 +213,16 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
             logger.warning("Signup mail failed", 
                           email=signup_request.email,
                           error=str(auth_error))
+            
+            return StandardJSONResponse(
+                StandardResponse(
+                    success=False,
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message=f"Signup failed: {str(auth_error)}",
+                    data=None
+                ),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
     except Exception as e:
         logger.exception("Unexpected error during signup",
                         exception_type=type(e).__name__,
@@ -412,7 +447,8 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
                 "name": waitlist_request.name,
                 "email": waitlist_request.email,
                 "phone_number": waitlist_request.phone_number,
-                "beta_tester": waitlist_request.beta_tester
+                "beta_tester": waitlist_request.beta_tester,
+                "linkedin_url": waitlist_request.linkedin_url,
             }
             
             async with AsyncTimer("supabase.insert.invitees"):
