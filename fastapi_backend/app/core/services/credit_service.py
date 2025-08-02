@@ -191,7 +191,9 @@ class CreditService:
                 "search_date": datetime.now().isoformat(),
                 "thread_id": thread_id,
                 "message_id": message_id,
-                "success": True
+                "search_mode": search_mode,
+                "success": True,
+                "error_message": None
             }
             
             search_usage_response = await self.client.table("search_usage").insert(search_usage_data).execute()

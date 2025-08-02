@@ -110,6 +110,7 @@ class SearchUsage(Base):
     search_date = Column(DateTime(timezone=True), default=datetime.now)
     thread_id = Column(UUID(as_uuid=True), nullable=True)
     message_id = Column(UUID(as_uuid=True), nullable=True)
+    search_mode = Column(Text, nullable=False)
     success = Column(Boolean, nullable=False, default=True)
     error_message = Column(Text, nullable=True)
     
