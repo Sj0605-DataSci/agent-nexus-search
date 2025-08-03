@@ -2,21 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
-import ToggleSystemTheme from "@/components/ToggleSystemTheme";
-
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
-
 import { useAppDispatch, useAppSelector } from "@/store";
 import Link from "next/link";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import AgentMarketplaceCard from "@/components/AgentMarketplace/AgentMarketplaceCard";
 import AgentMarketPlaceLoading from "@/components/AgentMarketplace/AgentMarketPlaceLoading";
-
 import React, { Suspense } from "react";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 
@@ -28,9 +22,8 @@ const Marketplace = () => {
   const hiredAgentsRaw = useAppSelector(selectHired);
   const hiredTemplateId = hiredAgentsRaw.map(h => h.template_id);
 
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
   const templates = useAppSelector(selectTemplates);
-  // Helper function to get features and description based on category
   const getAgentDetails = (category: string) => {
     switch (category.toLowerCase()) {
       case "hr":

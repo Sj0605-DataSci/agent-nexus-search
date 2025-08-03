@@ -36,8 +36,7 @@ const Agents = () => {
   const agentsStatus = useAppSelector(selectAgentsStatus);
   const hiredRaw = useAppSelector(selectHired);
   const hiredIds = hiredRaw.map(h => h.template_id);
-
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
 
   useEffect(() => {
     if (agentsStatus === "idle" && user) {

@@ -27,10 +27,10 @@ const themeSlice = createSlice({
       }
     },
     setTheme(state, action: PayloadAction<"dark" | "light">) {
-      const dark = action.payload === "dark";
+      const dark = false;
       state.dark = dark;
       if (typeof window !== "undefined") {
-        localStorage.setItem("discover_minds_theme", action.payload);
+        localStorage.setItem("discover_minds_theme", "light");
         document.documentElement.classList.toggle("dark", dark);
       }
     },

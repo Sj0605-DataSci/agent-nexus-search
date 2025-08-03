@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAppSelector } from "@/store";
 
 interface TagCarouselProps {
   onTagClick: (tag: string) => void;
@@ -67,7 +66,6 @@ const trimWords = (text: string, maxWords = 10): string =>
     : text;
 
 function TagCarousel({ onTagClick, category, scrollSpeed = 1 }: TagCarouselProps) {
-  const darkMode = useAppSelector(s => s.theme.dark);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
@@ -165,16 +163,12 @@ function TagCarousel({ onTagClick, category, scrollSpeed = 1 }: TagCarouselProps
             <button
               key={index}
               onClick={() => onTagClick(tag)}
-              className={`flex-shrink-0 text-[10px] rounded-full px-3 py-2 shadow-sm transition whitespace-nowrap ${
-                darkMode
-                  ? "bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
-              }`}
+              className={`flex-shrink-0 text-[10px] rounded-full px-3 py-2 shadow-sm transition whitespace-nowrap bg-white border border-gray-300 text-gray-700 hover:bg-gray-100`}
             >
               {trimWords(tag)}
             </button>
           ));
-        }, [onTagClick, darkMode, category])}
+        }, [onTagClick, category])}
       </div>
     </div>
   );

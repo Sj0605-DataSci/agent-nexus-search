@@ -8,17 +8,31 @@ import * as yup from "yup";
 import Confetti from "react-confetti";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { FiLock, FiUser, FiMail, FiEye, FiEyeOff } from "react-icons/fi";
+import { FaLinkedin } from "react-icons/fa";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
-import { useAuth } from "@/hooks/useAuth";
+import { apiClient } from "@/integrations/fastapi/client";
 import { useAppSelector } from "@/store";
-import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 import Link from "next/link";
 
 const schema = yup.object().shape({
-  name: yup.string().required("Name is required").min(2),
+  name: yup.string().required("Full name is required").min(2, "Name must be at least 2 characters"),
   email: yup.string().required("Email is required").email("Invalid email"),
-  password: yup.string().required("Password is required").min(6),
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(6, "Password must be at least 6 characters")
+    .matches(/[A-Z]/, "Password must contain an uppercase letter")
+    .matches(/[a-z]/, "Password must contain a lowercase letter")
+    .matches(/[0-9]/, "Password must contain a number")
+    .matches(/[^A-Za-z0-9]/, "Password must contain a special character"),
+  linkedin_url: yup
+    .string()
+    .required("LinkedIn profile URL is required")
+    .matches(
+      /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/?$/,
+      "Enter a valid LinkedIn profile URL"
+    ),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -32,124 +46,90 @@ const backdropVariants: Variants = {
 };
 
 export default function SignupForm() {
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { width, height } = useWindowSize();
-  const { signUp } = useAuth();
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isDirty, isValid },
+    formState: { errors, isDirty, isValid, isSubmitted },
   } = useForm<FormData>({
     resolver: yupResolver(schema),
-    mode: "onChange",
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
   });
 
   const onSubmit: SubmitHandler<FormData> = useCallback(
     async data => {
       setIsSubmitting(true);
       try {
-        const { error, emailExists, weakPassword, invalidEmail, serverError } = await signUp(
+        const response = await apiClient.userSignUp(
           data.email,
           data.password,
-          data.name
+          data.name,
+          data.linkedin_url
         );
 
-        if (error) {
-          if (emailExists) {
-            showErrorToast("This email is already registered. Please log in instead.");
-          } else if (weakPassword) {
+        if (!response.success) {
+          const msg = response.message?.toLowerCase() || "";
+          if (
+            (response.status_code === 400 && msg.includes("already registered")) ||
+            msg.includes("already exists")
+          ) {
+            showErrorToast(
+              "This email is already registered. Please use a different email or try logging in."
+            );
+            return;
+          } else if (response.status_code === 400 && msg.includes("security purposes")) {
+            showErrorToast(
+              "You can only request signup again after a short wait. Please try again soon."
+            );
+            return;
+          } else if (msg.includes("weak password")) {
             showErrorToast("Your password is too weak. Use at least 6 characters.");
-          } else if (invalidEmail) {
+            return;
+          } else if (msg.includes("invalid email")) {
             showErrorToast("Please enter a valid email address.");
-          } else if (serverError) {
-            showErrorToast("Server error. Please try again later.");
+            return;
           } else {
-            showErrorToast(error.message); // fallback
+            showErrorToast(response.message || "Signup failed. Please try again.");
+            return;
           }
-          return;
         }
 
-        showSuccessToast("Signup success! Check your email.");
+        showSuccessToast("Signup mail sent successfully! Check your email.");
         setIsSuccess(true);
         reset();
-      } catch (err) {
+      } catch (err: any) {
         console.log("Signup exception", err);
-        showErrorToast("Something went wrong. Please try again.");
+        showErrorToast(err.message || "Something went wrong. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [reset, signUp]
+    [reset]
   );
 
-  const isDisabled = isSubmitting || !isDirty || !isValid;
+  const isButtonDisabled = isSubmitting || !isDirty;
 
   return (
-    <div
-      className={`min-h-screen flex items-center justify-center ${
-        darkMode ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800" : "bg-gray-100"
-      }`}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 px-4 py-8 flex items-center justify-center">
       <AnimatePresence>
         {isSuccess && (
           <Confetti
             width={width}
             height={height}
-            numberOfPieces={100} // reduced for performance
+            numberOfPieces={100}
             recycle={false}
             gravity={0.2}
           />
         )}
       </AnimatePresence>
-
-      <motion.div
-        className="absolute z-0 hidden md:block"
-        style={{
-          width: 450,
-          height: 550,
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          pointerEvents: "none",
-        }}
-        variants={backdropVariants}
-        animate="animate"
-      >
-        <svg width="100%" height="100%" viewBox="0 0 420 520" fill="none">
-          <motion.ellipse
-            cx="210"
-            cy="260"
-            rx="180"
-            ry="240"
-            fill={darkMode ? "url(#darkGradient)" : "url(#lightGradient)"}
-            initial={{ filter: "blur(20px)", opacity: 0.7 }}
-            animate={{ filter: "blur(35px)", opacity: 0.85 }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              repeatType: "reverse",
-            }}
-          />
-          <defs>
-            <radialGradient id="darkGradient" cx="0.5" cy="0.5" r="0.7">
-              <stop offset="0%" stopColor="#2563eb" />
-              <stop offset="70%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#111827" />
-            </radialGradient>
-            <radialGradient id="lightGradient" cx="0.5" cy="0.5" r="0.7">
-              <stop offset="0%" stopColor="#93c5fd" />
-              <stop offset="70%" stopColor="#a5b4fc" />
-              <stop offset="100%" stopColor="#f3f4f6" />
-            </radialGradient>
-          </defs>
-        </svg>
-      </motion.div>
 
       <div
         className={`relative mx-2 md:mx-0 z-10 w-full max-w-md p-4 md:p-8 rounded-3xl shadow-2xl border transition-colors duration-500 ease-in animate-fade-in ${
@@ -158,8 +138,6 @@ export default function SignupForm() {
             : "bg-white border-gray-200 text-gray-900"
         }`}
       >
-        <ToggleSystemTheme className="absolute top-4 right-4" />
-
         {isSuccess ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -167,7 +145,6 @@ export default function SignupForm() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="text-center flex flex-col items-center gap-4 mt-4"
           >
-            {/* ✅ Checkmark Icon with Sparkle */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
@@ -210,8 +187,8 @@ export default function SignupForm() {
           <>
             <div>
               <div className="mb-3">
-                <BrandLogo darkMode={darkMode} className="mb-3" />
-                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                <BrandLogo className="mb-3" />
+                <p className="text-gray-600">
                   Sign in to your account
                 </p>
               </div>
@@ -228,7 +205,7 @@ export default function SignupForm() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="">
               {["name", "email", "password"].map(field => (
                 <div key={field}>
                   <div className="relative">
@@ -269,21 +246,46 @@ export default function SignupForm() {
                     )}
                   </div>
 
-                  {errors[field as keyof FormData] && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors[field as keyof FormData]?.message}
-                    </p>
-                  )}
+                  <p
+                    className={`text-xs mt-0.5 transition-all duration-200 ${isSubmitted && errors[field as keyof FormData] ? "text-red-500" : "text-transparent"}`}
+                    style={{ minHeight: 5 }}
+                  >
+                    {(isSubmitted && errors[field as keyof FormData]?.message) || "\u200E"}
+                  </p>
                 </div>
               ))}
 
+              <div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="LinkedIn Profile URL "
+                    {...register("linkedin_url")}
+                    className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
+                      darkMode
+                        ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
+                        : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
+                    }`}
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center">
+                    <FaLinkedin size={18} color="[#99a1af]" />
+                  </span>
+                </div>
+                <p
+                  className={`text-xs mt-1 transition-all duration-200 ${isSubmitted && errors.linkedin_url ? "text-red-500" : "text-transparent"}`}
+                  style={{ minHeight: 5 }}
+                >
+                  {(isSubmitted && errors.linkedin_url?.message) || "\u200E"}
+                </p>
+              </div>
+
               <button
                 type="submit"
-                disabled={isDisabled}
-                className={`w-full py-3 rounded-lg font-semibold text-lg relative transition-all duration-300 flex items-center justify-center ${
-                  isDisabled
-                    ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                disabled={isButtonDisabled}
+                className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-300 flex items-center justify-center ${
+                  isButtonDisabled
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
                 }`}
                 style={{
                   opacity: isSubmitting ? 0.8 : 1,
@@ -317,9 +319,7 @@ export default function SignupForm() {
                 {isSuccess ? "Success!" : isSubmitting ? "Signing Up..." : "Sign Up"}
               </button>
               <div className="mt-4 text-center text-sm">
-                <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
-                  Already have an account?
-                </span>{" "}
+                <span className={"text-gray-600"}>Already have an account?</span>{" "}
                 <Link
                   prefetch={true}
                   href="/login"

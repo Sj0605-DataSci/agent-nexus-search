@@ -7,13 +7,12 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
-import { useAppSelector } from "@/store";
 
 function UploadConnectionsContent() {
   const { user } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
 
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);

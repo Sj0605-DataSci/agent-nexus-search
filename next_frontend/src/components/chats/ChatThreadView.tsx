@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
 import {
@@ -19,18 +20,11 @@ import {
 } from "react-icons/fi";
 import { BsTextParagraph } from "react-icons/bs";
 import { getTimeBasedGreeting } from "../../utils/timeUtils";
+const FeedbackModal = dynamic(() => import("./FeedbackModal"));
 import Image from "next/image";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
@@ -45,6 +39,9 @@ import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
 import Link from "next/link";
 import OrbAura from "../OrbAura";
 import { ProcessCitationReferences, SourceType } from "../common/Citation";
+import dynamic from "next/dynamic";
+
+const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
 
 type FeedbackType = {
   messageId: string;
@@ -53,6 +50,7 @@ type FeedbackType = {
 };
 
 type MessageType = {
+  is_positive: boolean;
   id: string;
   type: "user" | "agent";
   content: string;
@@ -87,6 +85,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const [messages, setMessages] = useState<MessageType[]>([]);
 
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
   const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
   const [chatPairs, setChatPairs] = useState<any[]>([]);
@@ -123,7 +122,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
 
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
   const sidebarCollapsed = useAppSelector(selectSidebarCollapsed);
 
   const dispatch = useAppDispatch();
@@ -243,6 +242,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       setInitialLoadComplete(false);
     };
   }, []);
+
+  useEffect(() => {
+    const hasDismissed = localStorage.getItem("hasDismissedLinkedInModal");
+    if (profile && !profile.linkedin_url && hasDismissed !== "true") {
+      setLinkedinModalOpen(true);
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (chatPairs.length > 0) {
@@ -434,15 +440,18 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           switch (update.type) {
             case "thread_id":
               if (update.content && update.content.thread_id) {
-                const newUrl = `/chat/${update.content.thread_id}`;
-                window.history.replaceState({ path: newUrl }, "", newUrl);
+                const newThreadId = update.content.thread_id;
+                if (newThreadId !== threadId) {
+                  const newUrl = `/chat/${newThreadId}`;
+                  window.history.replaceState({ path: newUrl }, "", newUrl);
 
-                dispatch(
-                  addChatThread({
-                    id: update.content.thread_id,
-                    query: q,
-                  })
-                );
+                  dispatch(
+                    addChatThread({
+                      id: newThreadId,
+                      query: q,
+                    })
+                  );
+                }
               }
               break;
 
@@ -708,7 +717,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               messages.length ? "text-2xl" : "text-4xl"
             }`}
           >
-            {getPersonalizedGreeting()}
+            {getTimeBasedGreeting()}
             <div className="mt-2">
               <span>What's on </span>
               <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-bold">
@@ -1339,65 +1348,29 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         </div>
       )}
 
-      <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        <DialogContent
-          className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}
-        >
-          <DialogHeader>
-            <DialogTitle className={darkMode ? "text-white" : "text-gray-900"}>
-              {currentFeedback?.isPositive ? "What was helpful?" : "What went wrong?"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder={
-                currentFeedback?.isPositive
-                  ? "Tell us what was helpful about this response..."
-                  : "Tell us what went wrong with this response..."
-              }
-              value={currentFeedback?.comment || ""}
-              onChange={e =>
-                setCurrentFeedback(prev => (prev ? { ...prev, comment: e.target.value } : null))
-              }
-              className={`min-h-[100px] ${
-                darkMode
-                  ? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                  : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-500"
-              }`}
-            />
-          </div>
-          <DialogFooter className="flex justify-end gap-2">
-            <DialogClose asChild>
-              <Button
-                variant="outline"
-                className={
-                  darkMode
-                    ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                }
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              onClick={() => {
-                if (currentFeedback) {
-                  handleFeedbackSubmit(currentFeedback);
-                  setFeedbackModalOpen(false);
-                  setCurrentFeedback(null);
-                }
-              }}
-              className={
-                darkMode
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
-              }
-            >
-              Submit Feedback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* LinkedIn URL Modal */}
+      {linkedinModalOpen && (
+        <LinkedInUrlModal
+          open={linkedinModalOpen}
+          onOpenChange={isOpen => {
+            setLinkedinModalOpen(isOpen);
+            // If the modal is closed and the profile still lacks a URL, set the flag
+            if (!isOpen && profile && !profile.linkedin_url) {
+              localStorage.setItem("hasDismissedLinkedInModal", "true");
+            }
+          }}
+        />
+      )}
+
+      <FeedbackModal
+        open={feedbackModalOpen}
+        onOpenChange={setFeedbackModalOpen}
+        initialFeedback={currentFeedback}
+        onSubmit={feedback => {
+          handleFeedbackSubmit(feedback);
+          setCurrentFeedback(null);
+        }}
+      />
     </div>
   );
 };

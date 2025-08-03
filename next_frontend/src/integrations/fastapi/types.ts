@@ -4,6 +4,15 @@
 
 import { UUID } from "crypto";
 
+export interface UsageStats {
+  period_days: number;
+  total_searches: number;
+  basic_searches: number;
+  deep_searches: number;
+  total_credits_used: number;
+  total_credits_purchased: number;
+}
+
 // Agent Template types
 export interface AgentTemplate {
   id: string;
@@ -78,6 +87,7 @@ export interface UserProfile {
   full_name: string;
   has_connections: boolean;
   hired_agents?: string[];
+  linkedin_url?: string;
 }
 
 export interface ApiResponse<T> {
@@ -95,6 +105,7 @@ export interface AuthResponse {
 export interface ProfileUpdate {
   email?: string;
   full_name?: string;
+  linkedin_url?: string;
 }
 
 // Chat types

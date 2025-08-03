@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { useAppSelector } from "@/store";
 import React from "react";
 
 interface FullScreenLoaderProps {
@@ -31,8 +30,6 @@ const bgVariants: Variants = {
 };
 
 const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ isLoading, label = "Loading…" }) => {
-  const dark = useAppSelector(s => s.theme.dark);
-
   return (
     <AnimatePresence>
       {isLoading && (
@@ -42,9 +39,7 @@ const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ isLoading, label = 
           initial="enter"
           animate="animate"
           exit="exit"
-          className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center ${
-            dark ? "bg-gray-950" : "bg-white"
-          }`}
+          className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white`}
         >
           <motion.div
             className="relative flex items-center justify-center"
@@ -61,29 +56,19 @@ const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ isLoading, label = 
             }}
           >
             <div
-              className={`absolute inset-0 rounded-full blur-xl ${
-                dark
-                  ? "bg-gradient-to-tr from-blue-600/40 via-indigo-500/40 to-purple-500/40"
-                  : "bg-gradient-to-tr from-blue-400/40 via-indigo-400/40 to-purple-400/40"
-              }`}
+              className={`absolute inset-0 rounded-full blur-xl bg-gradient-to-tr from-blue-400/40 via-indigo-400/40 to-purple-400/40`}
             />
             <motion.span
               variants={spinnerVariants}
               initial="enter"
               animate="animate"
-              className={dark ? "text-indigo-300" : "text-indigo-600"}
+              className={"text-indigo-600"}
             >
               <Loader2 className="h-16 w-16" />
             </motion.span>
           </motion.div>
 
-          <p
-            className={`mt-6 text-lg font-medium tracking-wide ${
-              dark ? "text-gray-300" : "text-gray-700"
-            }`}
-          >
-            {label}
-          </p>
+          <p className={`mt-6 text-lg font-medium tracking-wide text-gray-700`}>{label}</p>
         </motion.div>
       )}
     </AnimatePresence>

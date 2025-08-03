@@ -1,9 +1,7 @@
 "use client";
 
-import { useAppSelector } from "@/store";
-
 function AgentMarketPlaceLoading() {
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
 
   return (
     <div>

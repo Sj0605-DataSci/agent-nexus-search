@@ -15,6 +15,7 @@ import {
   StreamingChatRequest,
   StreamingChatUpdate,
   UserProfile,
+  UsageStats,
 } from "./types";
 
 export const apiClient = {
@@ -164,7 +165,7 @@ export const apiClient = {
 
   async updateProfile(data: ProfileUpdate): Promise<Profile> {
     try {
-      const res = await axiosInstance.put("/profiles/me", data);
+      const res = await axiosInstance.put("/profiles", data);
       return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
@@ -176,6 +177,20 @@ export const apiClient = {
     try {
       const res = await axiosInstance.post("/auth/verify-token");
       return res.data?.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async userSignUp(email: string, password: string, fullName: string, linkedinUrl: string) {
+    try {
+      const res = await axiosInstance.post("/auth/signup", {
+        email,
+        password,
+        full_name: fullName,
+        linkedin_url: linkedinUrl,
+      });
+      return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -246,6 +261,15 @@ export const apiClient = {
       }
 
       return responseData;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async getUsageStats(days: number): Promise<UsageStats> {
+    try {
+      const res = await axiosInstance.get(`/profiles/usage_stats?days=${days}`);
+      return res.data?.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -364,7 +388,12 @@ export const apiClient = {
     }
   },
 
-  async joinWaitlist(data: { email: string; name: string; phone_number: string }): Promise<{
+  async joinWaitlist(data: {
+    email: string;
+    name: string;
+    phone_number: string;
+    linkedin_url: string;
+  }): Promise<{
     success: boolean;
     status_code: number;
     message: string;

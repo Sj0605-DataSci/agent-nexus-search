@@ -1,14 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimationControls } from "framer-motion";
-import { useAppDispatch, useAppSelector } from "@/store";
+import { useAppDispatch } from "@/store";
 import posthog from "posthog-js";
-import { apiClient } from "@/integrations/fastapi/client";
 import { fetchProfile } from "@/store/profileSlice";
 
 export default function RedirectSplash() {
-  const dark = useAppSelector(s => s.theme.dark);
   const router = useRouter();
   const ctrls = useAnimationControls();
   const dispatch = useAppDispatch();
@@ -62,11 +60,7 @@ export default function RedirectSplash() {
   return (
     <div
       className={`min-h-screen flex items-center justify-center transition-colors duration-300
-        ${
-          dark
-            ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800 text-white"
-            : "bg-gradient-to-br from-white via-gray-100 to-gray-200 text-gray-900"
-        }`}
+       bg-gradient-to-br from-white via-gray-100 to-gray-200 text-gray-900`}
     >
       <motion.div
         initial="enter"
@@ -81,7 +75,7 @@ export default function RedirectSplash() {
             cy="60"
             r="52"
             fill="none"
-            stroke={dark ? "#4f46e5" : "#3b82f6"}
+            stroke={"#3b82f6"}
             strokeWidth="8"
             strokeDasharray="330"
             strokeDashoffset="330"
@@ -92,7 +86,7 @@ export default function RedirectSplash() {
             cy="60"
             r="52"
             fill="none"
-            stroke={dark ? "#6366f1" : "#2563eb"}
+            stroke={"#2563eb"}
             strokeWidth="8"
             strokeDasharray="330"
             strokeDashoffset="330"

@@ -12,10 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import Aurora from "@/components/Aurora";
-import { useAppSelector, useAppDispatch } from "@/store";
+import { useAppDispatch } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
-import { fetchAgentTemplates, fetchHiredAgents } from "@/store/agentsSlice";
-import ToggleSystemTheme from "@/components/ToggleSystemTheme";
 
 const backdropVariants: Variants = {
   animate: {
@@ -37,7 +35,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -70,9 +68,9 @@ export default function LoginForm() {
               })
               .catch(error => console.error("Profile fetch error:", error));
 
-            Promise.all([dispatch(fetchAgentTemplates()), dispatch(fetchHiredAgents())]).catch(
-              error => console.error("Agent data fetch error:", error)
-            );
+            // Promise.all([dispatch(fetchAgentTemplates()), dispatch(fetchHiredAgents())]).catch(
+            //   error => console.error("Agent data fetch error:", error)
+            // );
           }, 0);
         } else {
           showErrorToast(
@@ -119,60 +117,14 @@ export default function LoginForm() {
           speed={0.5}
         />
       </div>
-
-      <motion.div
-        className="absolute z-0 -mt-30 hidden md:flex"
-        style={{
-          width: 320,
-          height: 420,
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -55%)",
-          pointerEvents: "none",
-        }}
-        variants={backdropVariants}
-        animate="animate"
-      >
-        <svg width="100%" height="100%" viewBox="0 0 420 520" fill="none">
-          <motion.ellipse
-            cx="210"
-            cy="260"
-            rx="180"
-            ry="240"
-            fill={darkMode ? "url(#darkGradient)" : "url(#lightGradient)"}
-            initial={{ filter: "blur(24px)", opacity: 0.7 }}
-            animate={{ filter: "blur(36px)", opacity: 0.85 }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              repeatType: "reverse",
-            }}
-          />
-          <defs>
-            <radialGradient id="darkGradient" cx="0.5" cy="0.5" r="0.7">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="70%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#111827" />
-            </radialGradient>
-            <radialGradient id="lightGradient" cx="0.5" cy="0.5" r="0.7">
-              <stop offset="0%" stopColor="#93c5fd" />
-              <stop offset="70%" stopColor="#a5b4fc" />
-              <stop offset="100%" stopColor="#f3f4f6" />
-            </radialGradient>
-          </defs>
-        </svg>
-      </motion.div>
-
       <div
         className={`relative w-full max-w-md mx-2 p-8 sm:p-10 rounded-3xl shadow-2xl border transition-colors duration-500 ${
           darkMode ? "bg-black/80 border-gray-800" : "bg-white/90 border-white/20 backdrop-blur-md"
         }`}
       >
-        <ToggleSystemTheme className={`absolute top-5 right-5`} />
-
         <div className="mb-6">
-          <BrandLogo darkMode={darkMode} className="mb-3" />
-          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Sign in to your account</p>
+          <BrandLogo className="mb-3" />
+          <p className="text-gray-600">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

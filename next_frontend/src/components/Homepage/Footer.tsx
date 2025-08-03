@@ -6,13 +6,12 @@ export default function Footer() {
     <footer className="bg-white py-12 border-t border-gray-100">
       <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center space-y-8">
-          <Link
-            href="/"
+          <div
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             aria-label="Discoverminds Home"
           >
-            <BrandLogo darkMode={false} className="mb-1" />
-          </Link>
+            <BrandLogo className="mb-1" />
+          </div>
 
           <nav>
             <ul className="flex items-center gap-x-8 text-sm">
