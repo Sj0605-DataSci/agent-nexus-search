@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, FC, ReactNode } from 'react';
-import { apiClient } from '@/integrations/fastapi/client';
-import type { UsageStats } from '@/integrations/fastapi/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Search, Zap, Star, CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, FC, ReactNode } from "react";
+import { apiClient } from "@/integrations/fastapi/client";
+import type { UsageStats } from "@/integrations/fastapi/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Search, Zap, Star, CreditCard, Loader2, AlertCircle } from "lucide-react";
 
 const timePeriods = [
-  { days: 1, label: '24H' },
-  { days: 7, label: '7D' },
-  { days: 30, label: '30D' },
-  { days: 90, label: '90D' },
+  { days: 1, label: "24H" },
+  { days: 7, label: "7D" },
+  { days: 30, label: "30D" },
+  { days: 90, label: "90D" },
 ];
 
 interface StatBoxProps {
@@ -44,7 +44,7 @@ const UsageStatsCard = () => {
       const data = await apiClient.getUsageStats(days);
       setStats(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      setError(err instanceof Error ? err.message : "An unknown error occurred.");
       setStats(null);
     } finally {
       setLoading(false);
@@ -55,16 +55,15 @@ const UsageStatsCard = () => {
     fetchUsageStats(selectedDays);
   }, [selectedDays, fetchUsageStats]);
 
-  const creditUsagePercentage = stats && stats.total_credits_purchased > 0
-    ? (stats.total_credits_used / stats.total_credits_purchased) * 100
-    : 0;
+  const creditUsagePercentage =
+    stats && stats.total_credits_purchased > 0
+      ? (stats.total_credits_used / stats.total_credits_purchased) * 100
+      : 0;
 
   return (
     <Card className="transition-all duration-300 bg-white border-gray-200">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-xl font-semibold text-gray-800">
-          Usage Statistics
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold text-gray-800">Usage Statistics</CardTitle>
         <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-100">
           {timePeriods.map(({ days, label }) => (
             <button
@@ -72,9 +71,10 @@ const UsageStatsCard = () => {
               onClick={() => setSelectedDays(days)}
               className={`px-3 py-1 text-sm font-medium rounded-md transition-colors duration-200 ${
                 selectedDays === days
-                  ? 'bg-indigo-500 text-white shadow'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}>
+                  ? "bg-indigo-500 text-white shadow"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
+            >
               {label}
             </button>
           ))}
@@ -94,9 +94,21 @@ const UsageStatsCard = () => {
         ) : stats ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <StatBox title="Total Searches" value={stats.total_searches} icon={<Search className="h-5 w-5 text-gray-500" />} />
-              <StatBox title="Basic Searches" value={stats.basic_searches} icon={<Zap className="h-5 w-5 text-gray-500" />} />
-              <StatBox title="Deep Searches" value={stats.deep_searches} icon={<Star className="h-5 w-5 text-gray-500" />} />
+              <StatBox
+                title="Total Searches"
+                value={stats.total_searches}
+                icon={<Search className="h-5 w-5 text-gray-500" />}
+              />
+              <StatBox
+                title="Basic Searches"
+                value={stats.basic_searches}
+                icon={<Zap className="h-5 w-5 text-gray-500" />}
+              />
+              <StatBox
+                title="Deep Searches"
+                value={stats.deep_searches}
+                icon={<Star className="h-5 w-5 text-gray-500" />}
+              />
             </div>
             <div className="p-4 rounded-lg bg-gray-50">
               <div className="flex justify-between items-center mb-2">
@@ -118,7 +130,7 @@ const UsageStatsCard = () => {
             </div>
           </div>
         ) : (
-           <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-gray-400">
             <p>No usage data available for this period.</p>
           </div>
         )}

@@ -188,9 +188,7 @@ export default function SignupForm() {
             <div>
               <div className="mb-3">
                 <BrandLogo className="mb-3" />
-                <p className="text-gray-600">
-                  Sign in to your account
-                </p>
+                <p className="text-gray-600">Sign in to your account</p>
               </div>
               <h1
                 className={`text-2xl sm:text-3xl font-extrabold mb-3 ${

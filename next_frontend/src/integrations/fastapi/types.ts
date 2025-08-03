@@ -138,7 +138,15 @@ export interface ChatResponse {
 }
 
 export interface StreamingChatUpdate {
-  type: "thinking" | "search_query" | "source" | "message" | "done" | "error" | "token" | "connected";
+  type:
+    | "thinking"
+    | "search_query"
+    | "source"
+    | "message"
+    | "done"
+    | "error"
+    | "token"
+    | "connected";
   content: any;
 }
 

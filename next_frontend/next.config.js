@@ -23,16 +23,16 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'wznveojncixcptajnjom.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/public-files/**',
+        protocol: "https",
+        hostname: "wznveojncixcptajnjom.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/public-files/**",
       },
       {
-        protocol: 'https',
-        hostname: 'mtxrobrwanikajymnkaf.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/public-files/**',
+        protocol: "https",
+        hostname: "mtxrobrwanikajymnkaf.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/public-files/**",
       },
     ],
   },

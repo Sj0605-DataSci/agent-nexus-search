@@ -73,18 +73,16 @@ const LinkedInUrlModal: React.FC<LinkedInUrlModalProps> = ({ open, onOpenChange 
             </span>
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
               <label htmlFor="linkedin-url" className="text-sm font-medium text-gray-700">
                 LinkedIn URL
               </label>
-              <span className="text-xs text-gray-500">
-                Required for best results
-              </span>
+              <span className="text-xs text-gray-500">Required for best results</span>
             </div>
-            
+
             <div className="relative">
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                 <FiLinkedin className="h-4 w-4" />
@@ -93,7 +91,7 @@ const LinkedInUrlModal: React.FC<LinkedInUrlModalProps> = ({ open, onOpenChange 
                 id="linkedin-url"
                 type="text"
                 value={linkedinUrl}
-                onChange={(e) => {
+                onChange={e => {
                   setLinkedinUrl(e.target.value);
                   if (!isLinkedinUrlValid) setIsLinkedinUrlValid(true);
                 }}
@@ -106,20 +104,20 @@ const LinkedInUrlModal: React.FC<LinkedInUrlModalProps> = ({ open, onOpenChange 
                 </div>
               )}
             </div>
-            
+
             {!isLinkedinUrlValid && (
               <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                 <span className="inline-block h-1 w-1 rounded-full bg-red-500"></span>
                 Please enter a valid LinkedIn URL
               </p>
             )}
-            
+
             <p className="text-xs mt-1 text-gray-500">
               Example: https://www.linkedin.com/in/yourname
             </p>
           </div>
         </div>
-        
+
         <DialogFooter className="flex space-x-2 sm:justify-between">
           <Button
             type="button"
@@ -129,20 +127,23 @@ const LinkedInUrlModal: React.FC<LinkedInUrlModalProps> = ({ open, onOpenChange 
           >
             Skip for now
           </Button>
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             onClick={handleLinkedinSubmit}
             disabled={isUpdatingProfile}
             className="relative overflow-hidden transition-all duration-300 shadow-md flex items-center justify-center gap-2 px-5 py-2.5 font-medium rounded-md bg-gradient-to-r from-[#0077B5] via-[#0A66C2] to-[#0D47A1] hover:from-[#0077B5] hover:via-[#0A66C2] hover:to-[#0D47A1] hover:shadow-[0_0_15px_rgba(10,102,194,0.5)] text-white"
           >
-         
             {isUpdatingProfile ? (
               <>
                 <span className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-b-transparent shadow-[0_0_5px_rgba(255,255,255,0.3)]"></span>
-                <span className="text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.5)]">Updating...</span>
+                <span className="text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.5)]">
+                  Updating...
+                </span>
               </>
             ) : (
-              <span className="font-semibold text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.5)]">Connect LinkedIn</span>
+              <span className="font-semibold text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.5)]">
+                Connect LinkedIn
+              </span>
             )}
             {!isUpdatingProfile && (
               <>

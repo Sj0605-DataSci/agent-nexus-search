@@ -28,25 +28,25 @@ export const loadAgents = createAsyncThunk("agents/loadAll", async () => {
 });
 
 export const fetchAgentTemplates = createAsyncThunk(
-  'agents/fetchTemplates',
+  "agents/fetchTemplates",
   async (_, { rejectWithValue }) => {
     try {
       const response = await apiClient.fetchAgentTemplates();
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch agent templates');
+      return rejectWithValue(error.message || "Failed to fetch agent templates");
     }
   }
 );
 
 export const fetchHiredAgents = createAsyncThunk(
-  'agents/fetchHired',
+  "agents/fetchHired",
   async (_, { rejectWithValue }) => {
     try {
       const response = await apiClient.fetchHiredAgents();
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch hired agents');
+      return rejectWithValue(error.message || "Failed to fetch hired agents");
     }
   }
 );
@@ -84,7 +84,7 @@ const agentsSlice = createSlice({
       })
       .addCase(fetchAgentTemplates.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload as string || "Failed to fetch agent templates";
+        state.error = (action.payload as string) || "Failed to fetch agent templates";
       })
       // Handle fetchHiredAgents thunk
       .addCase(fetchHiredAgents.pending, state => {
@@ -101,7 +101,7 @@ const agentsSlice = createSlice({
       })
       .addCase(fetchHiredAgents.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload as string || "Failed to fetch hired agents";
+        state.error = (action.payload as string) || "Failed to fetch hired agents";
       });
   },
 });

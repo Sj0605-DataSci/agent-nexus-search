@@ -5,8 +5,10 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Disable Sentry in development mode or on localhost
-const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const isDevelopment = process.env.NODE_ENV === "development";
 
 Sentry.init({
   // Disable Sentry in development mode or on localhost

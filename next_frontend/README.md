@@ -9,7 +9,7 @@
 ## ✨ Key Features
 
 - **🧠 Personalised Agents**: Trained to understand your goals and adapt to your query patterns.
-- **🗣️ Natural Language Search**: No filters. No menus. Just plain language. Example: *“Find backend engineers in Berlin with fintech experience and public emails.”*
+- **🗣️ Natural Language Search**: No filters. No menus. Just plain language. Example: _“Find backend engineers in Berlin with fintech experience and public emails.”_
 - **🤝 Connections Search**: Connect your social media accounts to find people using natural language.
 - **📝 Chat/Excel Mode**: Get results in a chat-like interface or as an Excel sheet delivered to your email.
 - **🔄 Evolving Context**: Every query builds on the last, learning what works and improving over time.
@@ -149,6 +149,7 @@ This project is maintained by a combination of human and AI developers. To ensur
 This application is configured for deployment on platforms like Vercel or Netlify. Ensure all environment variables are set in the deployment environment's settings.
 
 For a production build, run the following command and deploy the `.next` directory:
+
 ```bash
 npm run build
 # or
@@ -242,6 +243,7 @@ function YourComponent() {
 ### Key Tracked Events
 
 The application already tracks critical user journey events, including:
+
 - **Authentication**: `user_signed_in`, `signup_successful`, `logout_initiated`
 - **Chat & Search**: `search_initiated`, `search_completed`, `agent_selected`
 

@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Track signup attempt
       posthog.capture("signup_attempted", { email });
 
-      const response = await apiClient.signUp(email, password, fullName || '');
+      const response = await apiClient.signUp(email, password, fullName || "");
 
       let emailExists = false;
       let invalidEmail = false;
@@ -123,8 +123,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       let serverError = false;
 
       if (!response.success) {
-        const errorMessage = response.message?.toLowerCase() || '';
-        
+        const errorMessage = response.message?.toLowerCase() || "";
+
         if (response.status_code === 409) {
           emailExists = true;
           posthog.capture("signup_error", { reason: "email_exists" });

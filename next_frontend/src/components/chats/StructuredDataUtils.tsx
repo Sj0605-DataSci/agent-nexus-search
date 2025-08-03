@@ -8,7 +8,7 @@ import { useAppSelector } from "@/store";
  */
 export const parseStructuredData = (text: string) => {
   const lines = text.split("\n").filter(line => line.trim());
-  
+
   // Check if we have structured data with colons
   if (lines.length === 0 || !lines.some(line => line.includes(":"))) {
     return { isStructured: false, people: [], columns: [] };
@@ -109,7 +109,7 @@ export const downloadAsCSV = (people: any[], columns: string[]) => {
  * Helper function to render structured data as Excel-style table
  */
 export const renderAsTable = (
-  content: string, 
+  content: string,
   darkMode: boolean,
   messagesContainerRef: React.RefObject<HTMLDivElement | null>,
   hasMoreMessages?: boolean,
