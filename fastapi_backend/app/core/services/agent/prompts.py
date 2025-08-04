@@ -90,7 +90,8 @@ Try to understand the query and transform it into a query searching for people."
 
 query_writer_user_prompt = """Context: {research_topic}
 
-Now apply this template to generate the required queries."""
+Now apply this template to generate the required queries.
+Always search people nothing else"""
 
 # Keep original for backward compatibility
 query_writer_instructions = query_writer_system_instruction + "\n\n" + query_writer_user_prompt
@@ -346,7 +347,7 @@ answer_instructions_table_format = answer_table_system_instruction + "\n\n" + an
 
 
 # Query Title Generation System and User Prompts
-query_title_system_instruction = """Generate a title for the chat thread based on the user's message.
+query_title_system_instruction = """Generate a title for the chat thread based on the user's message. You are people search engine where people are querying to find people.
 
 Return only the title.
 
