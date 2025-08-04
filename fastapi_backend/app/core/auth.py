@@ -161,7 +161,7 @@ class OptionalAuthDependency:
         client = await get_async_supabase_client(request)
         
         # Query the profiles table using Supabase client - select only needed fields
-        response = await client.table("profiles").select("id, email, full_name, created_at, has_connections, user_subscriptions_id").eq("id", str(token_data.user_id)).execute()
+        response = await client.table("profiles").select("id, email, full_name, created_at, has_connections, user_subscriptions_id, linkedin_url").eq("id", str(token_data.user_id)).execute()
         
         # Record profile retrieval time
         profile_time = time.time() - profile_start_time
