@@ -24,7 +24,9 @@ from app.core.services.agent.prompts import (
     reflection_sql_system_instruction,
     reflection_sql_user_prompt,
     answer_table_system_instruction,
-    answer_table_user_prompt
+    answer_table_user_prompt,
+    HR_agent_prompt,
+    Sales_agent_prompt
 )
 from app.models.schemas import PersonDetailsResponse
 import weave
@@ -102,6 +104,13 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         num_results = agent_config.get("number_of_results_returned", 5)  # Default to 5 if missing
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
+        if agent_config["name"] == "HR Assistant":
+            examples = HR_agent_prompt
+        elif agent_config["name"] == "Sales Agent":
+            examples = Sales_agent_prompt
+        else:
+            # Default to HR agent prompt for other agent types
+            examples = HR_agent_prompt
         
         # Log agent config for debugging
         print(f"Agent config in generate_query: {agent_config}")
@@ -117,6 +126,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
                 current_date=current_date,
                 agent_config=agent_config,
                 number_queries=initial_search_query_count,
+                examples=examples
             )
             # Format user prompt
             user_prompt = query_writer_user_prompt.format(
@@ -125,7 +135,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         elif state["world_connections"]=="connections":
             # Format system instruction
             system_instruction = optimised_query_system_instruction.format(
-                number_queries=initial_search_query_count,
+                number_queries=initial_search_query_count
             )
             # Format user prompt
             user_prompt = optimised_query_user_prompt.format(

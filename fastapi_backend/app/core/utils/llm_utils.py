@@ -57,13 +57,23 @@ class GeminiChatModel:
         # Use the include_raw parameter to get both structured output and raw response
         structured_llm = self.model.with_structured_output(schema_type, include_raw=True)
         
-        if isinstance(prompt, str):
+        # Check if we have a system instruction in model_kwargs
+        system_instruction = None
+        if hasattr(self.model, 'model_kwargs') and 'system_instruction' in self.model.model_kwargs:
+            system_instruction = self.model.model_kwargs['system_instruction']
+        
+        # If we have a system instruction, combine it with the user prompt
+        # This is a workaround because system instructions don't work well with structured output
+        if system_instruction and isinstance(prompt, str):
+            combined_prompt = f"{system_instruction}\n\n{prompt}"
+            response = structured_llm.invoke([HumanMessage(content=combined_prompt)])
+        elif isinstance(prompt, str):
             response = structured_llm.invoke([HumanMessage(content=prompt)])
-            # Return the parsed output and usage metadata from raw response
-            return response["parsed"], response["raw"].usage_metadata
         else:
             response = structured_llm.invoke(prompt)
-            return response["parsed"], response["raw"].usage_metadata
+            
+        # Return the parsed output and usage metadata from raw response
+        return response["parsed"], response["raw"].usage_metadata
 
 
 # if __name__ == "__main__":
