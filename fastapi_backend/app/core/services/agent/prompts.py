@@ -7,11 +7,9 @@ def get_current_date():
 
 
 # Query Writer System and User Prompts
-query_writer_system_instruction = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for searching people all over the internet, based on the configuration below whether HR, Sales, General.
+query_writer_system_instruction = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for searching people all over the internet.
 
-You are {agent_config}
-
-Based on the above agent config, think like that, and write relevant queries to find people always.
+Think like {agent_config}, and write relevant queries to find people always.
 
 Instructions:
 * Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
@@ -23,23 +21,36 @@ Instructions:
 * Always return the JSON object with the two exact keys: "rationale" and "query". Nothing before JSON or after JSON.
 * Don't include your own explanation outside the JSON object.
 * When you are generating queries try to understand the intent of the query, try to understand what are they talking about, lets say they said "find people skilled in this this software and all", then you need to generate queries for that. to find people in the domain those software is used at and same for sales.
+* When you are generating queries try to understand the intent of the query, try to understand what are they talking about, lets say they said "find people skilled in this this software and all", then you need to generate queries for that. to find people in the domain those software is used at and same for hiring.
 
 Format:
 * Format your response as a JSON object with ALL two of these exact keys:
   * "rationale": Brief explanation of why these queries are relevant
   * "query": A list of search queries
 
-Examples:
+Try to understand the query and transform it into a query searching for people.
+{examples}
 
-1. **HR Agent Example**
+"""
+
+query_writer_user_prompt = """Context: {research_topic}
+
+Now apply this template to generate the required queries.
+Always search people nothing else."""
+
+# Keep original for backward compatibility
+HR_agent_prompt = """Examples:
+
+**HR Agent Example**
    * Use platforms where professionals list their experience and skills:
      * site\:linkedin.com/in
      * site\:indeed.com/r
      * site\:naukri.com
      * site\:monster.com
-   * Example output for "Product Manager" role:
-   * When using linkedin scrape profiles, you can also scrape posts of those person to understand
-   * Think like HR, understand the query, intent, use boolean search and get the people who are skilled in that domain
+
+Example output for "Product Manager" role:
+When using linkedin scrape profiles, you can also scrape posts of those person to understand
+Think like HR, understand the query, intent, use boolean search and get the people who are skilled in that domain
 
 "rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
 "query": [
@@ -47,7 +58,12 @@ Examples:
     "site:indeed.com/r \"Product Manager\" \"San Francisco Bay Area\""
   ]
 
-2. **Sales Agent Example**
+Example shorthand when only 1 query is needed:
+
+"rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
+"query": ["site:github.com \"React developer\" Berlin"]"""
+
+Sales_agent_prompt = """2. **Sales Agent Example**
    * Use platforms where decision-makers and company contacts appear:
      * site\:linkedin.com/in
      * site\:crunchbase.com/organization
@@ -78,23 +94,13 @@ Examples:
     "site:lusha.com \"contact enrichment\" CRM"
   ]
 
-* When in Sales, think about Signals, where i can get leads, always use Lusha and Apollo and find my leads to get numbers and email.  
+* When in Sales, think about Signals, where i can get leads, always use Lusha and Apollo and find my leads to get numbers and email. 
 
 Example shorthand when only 1 query is needed:
 
 "rationale": "To identify qualified React developers in Berlin, it's effective to target platforms where developers showcase work, such as GitHub and personal portfolio sites. These search queries use advanced operators to locate individuals based on location, skills, and public technical contributions, which are valuable for hiring evaluation.",
 "query": ["site:github.com \"React developer\" Berlin"]
-
-When its general agent use both sales and HR agent instructions.
-Try to understand the query and transform it into a query searching for people."""
-
-query_writer_user_prompt = """Context: {research_topic}
-
-Now apply this template to generate the required queries.
-Always search people nothing else"""
-
-# Keep original for backward compatibility
-query_writer_instructions = query_writer_system_instruction + "\n\n" + query_writer_user_prompt
+"""
 
 
 # Reflection System and User Prompts

@@ -244,9 +244,9 @@ class CreditService:
         This method uses the direct foreign key for better performance.
         """
         try:
-            # Use the direct relationship from profiles table
+            # Use the direct relationship from profiles table with explicit relationship name
             profile_response = await self.client.table("profiles").select(
-                "user_subscriptions_id, user_subscriptions(*)"
+                "user_subscriptions_id, user_subscriptions!profiles_user_subscriptions_id_fkey(*)"
             ).eq("id", str(user_id)).single().execute()
             
             if profile_response.data and profile_response.data.get("user_subscriptions"):
@@ -266,7 +266,7 @@ class CreditService:
         """
         try:
             profile_response = await self.client.table("profiles").select(
-                "id, email, full_name, created_at, user_subscriptions_id, user_subscriptions(*)"
+                "id, email, full_name, created_at, user_subscriptions_id, user_subscriptions!profiles_user_subscriptions_id_fkey(*)"
             ).eq("id", str(user_id)).single().execute()
             
             if not profile_response.data:
