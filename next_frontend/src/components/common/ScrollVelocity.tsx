@@ -147,32 +147,31 @@ export const ScrollVelocity: React.FC<ScrollVelocityProps> = ({
           className={`${scrollerClassName} flex whitespace-nowrap text-center text-xl font-medium tracking-[-0.02em] drop-shadow md:text-[1.4rem] md:leading-[2rem]`}
           style={{ x, ...scrollerStyle }}
         >
-          {spans}ew
+          {spans}
         </motion.div>
       </div>
     );
   }
 
+  const combinedText = texts.join(" ");
+
   return (
     <section>
-      {texts.map((text: string, index: number) => (
-        <VelocityText
-          key={index}
-          className={className}
-          baseVelocity={index % 2 !== 0 ? -velocity : velocity}
-          scrollContainerRef={scrollContainerRef}
-          damping={damping}
-          stiffness={stiffness}
-          numCopies={numCopies}
-          velocityMapping={velocityMapping}
-          parallaxClassName={parallaxClassName}
-          scrollerClassName={scrollerClassName}
-          parallaxStyle={parallaxStyle}
-          scrollerStyle={scrollerStyle}
-        >
-          {text}&nbsp;
-        </VelocityText>
-      ))}
+      <VelocityText
+        className={className}
+        baseVelocity={velocity}
+        scrollContainerRef={scrollContainerRef}
+        damping={damping}
+        stiffness={stiffness}
+        numCopies={numCopies}
+        velocityMapping={velocityMapping}
+        parallaxClassName={parallaxClassName}
+        scrollerClassName={scrollerClassName}
+        parallaxStyle={parallaxStyle}
+        scrollerStyle={scrollerStyle}
+      >
+        {combinedText}&nbsp;
+      </VelocityText>
     </section>
   );
 };

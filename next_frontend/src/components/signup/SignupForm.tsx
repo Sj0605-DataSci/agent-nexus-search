@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useCallback } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -12,12 +11,19 @@ import { FaLinkedin } from "react-icons/fa";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import { apiClient } from "@/integrations/fastapi/client";
-import { useAppSelector } from "@/store";
 import Link from "next/link";
 
 const schema = yup.object().shape({
   name: yup.string().required("Full name is required").min(2, "Name must be at least 2 characters"),
-  email: yup.string().required("Email is required").email("Invalid email"),
+  email: yup
+    .string()
+    .required("Email is required")
+    .email("Invalid email")
+    .test(
+      "no-plus-in-email",
+      "Email addresses with '+' are not allowed",
+      value => !value || !value.includes("+")
+    ),
   password: yup
     .string()
     .required("Password is required")
