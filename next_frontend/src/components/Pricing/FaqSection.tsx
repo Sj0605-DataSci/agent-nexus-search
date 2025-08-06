@@ -14,22 +14,20 @@ const faqData: FaqItemData[] = [
     answer: (
       <>
         <p>
-          Search credits are the currency used to perform searches on our platform.
-          Different search types consume different amounts of credits:
+          Search credits are the currency used to perform searches on our platform. Different search
+          types consume different amounts of credits:
         </p>
         <ul className="mt-4 list-disc pl-6 space-y-2">
           <li>Basic search: 1 credit - Standard search with our General Agent</li>
+          <li>Deep search: 3 credits - More comprehensive results with specialized agents</li>
           <li>
-            Deep search: 3 credits - More comprehensive results with specialized agents
-          </li>
-          <li>
-            Advanced search: 7 credits - Our most powerful search with all agents and
-            extensive data analysis (Enterprise plan only)
+            Advanced search: 7 credits - Our most powerful search with all agents and extensive data
+            analysis (Enterprise plan only)
           </li>
         </ul>
         <p className="mt-4">
-          Credits are automatically deducted when you perform a search, and your remaining
-          balance is displayed in your account dashboard.
+          Credits are automatically deducted when you perform a search, and your remaining balance
+          is displayed in your account dashboard.
         </p>
       </>
     ),
@@ -39,20 +37,19 @@ const faqData: FaqItemData[] = [
     answer: (
       <>
         <p>
-          When you run out of credits, you'll still have access to your account and past
-          search results, but you won't be able to perform new searches until you:
+          When you run out of credits, you'll still have access to your account and past search
+          results, but you won't be able to perform new searches until you:
         </p>
         <ul className="mt-4 list-disc pl-6 space-y-2">
           <li>
-            Wait for your monthly credit allowance to reset at the start of your next
-            billing cycle
+            Wait for your monthly credit allowance to reset at the start of your next billing cycle
           </li>
           <li>Purchase additional credits as an add-on to your current plan</li>
           <li>Upgrade to a higher tier plan with more monthly credits</li>
         </ul>
         <p className="mt-4">
-          Professional and Enterprise plans have the option to enable automatic credit refills
-          to ensure uninterrupted service.
+          Professional and Enterprise plans have the option to enable automatic credit refills to
+          ensure uninterrupted service.
         </p>
       </>
     ),
@@ -61,23 +58,20 @@ const faqData: FaqItemData[] = [
     question: "What's the difference between search types?",
     answer: (
       <>
-        <p>
-          DiscoverMinds offers three search types with increasing depth and capabilities:
-        </p>
+        <p>DiscoverMinds offers three search types with increasing depth and capabilities:</p>
         <ul className="mt-4 list-disc pl-6 space-y-2">
           <li>
-            <strong>Basic search (1 credit):</strong> Quick searches with the General
-            Agent, suitable for most everyday queries.
+            <strong>Basic search (1 credit):</strong> Quick searches with the General Agent,
+            suitable for most everyday queries.
           </li>
           <li>
-            <strong>Deep search (3 credits):</strong> More comprehensive analysis with
-            specialized agents (HR, Sales), better context understanding, and more
-            detailed profiles.
+            <strong>Deep search (3 credits):</strong> More comprehensive analysis with specialized
+            agents (HR, Sales), better context understanding, and more detailed profiles.
           </li>
           <li>
-            <strong>Advanced search (7 credits):</strong> Our most powerful search option
-            with all agents, extensive data analysis, highest quality results, and
-            specialized filtering options (Enterprise plan only).
+            <strong>Advanced search (7 credits):</strong> Our most powerful search option with all
+            agents, extensive data analysis, highest quality results, and specialized filtering
+            options (Enterprise plan only).
           </li>
         </ul>
       </>
@@ -93,17 +87,17 @@ const faqData: FaqItemData[] = [
             <strong>Hunter (Free):</strong> Credits are individual and cannot be shared.
           </li>
           <li>
-            <strong>Professional:</strong> Credits are assigned per user but can be pooled
-            within small teams (up to 5 users).
+            <strong>Professional:</strong> Credits are assigned per user but can be pooled within
+            small teams (up to 5 users).
           </li>
           <li>
-            <strong>Enterprise:</strong> Credits are pooled across your entire organization
-            with admin controls to allocate and monitor usage.
+            <strong>Enterprise:</strong> Credits are pooled across your entire organization with
+            admin controls to allocate and monitor usage.
           </li>
         </ul>
         <p className="mt-4">
-          Enterprise plans include advanced team management features, usage analytics, and
-          the ability to set credit limits for different departments or user groups.
+          Enterprise plans include advanced team management features, usage analytics, and the
+          ability to set credit limits for different departments or user groups.
         </p>
       </>
     ),
@@ -116,9 +110,7 @@ const faqData: FaqItemData[] = [
         <ul className="mt-4 list-disc pl-6 space-y-2">
           <li>Set a credit threshold (e.g., 50 credits remaining)</li>
           <li>Choose a refill amount (e.g., 250 credits)</li>
-          <li>
-            When your balance drops below the threshold, credits are automatically added
-          </li>
+          <li>When your balance drops below the threshold, credits are automatically added</li>
           <li>Your payment method on file is charged at the discounted bulk rate</li>
         </ul>
         <p className="mt-4">
@@ -135,29 +127,33 @@ const faqData: FaqItemData[] = [
         <p>We've added several new features to enhance your search experience:</p>
         <ul className="mt-4 list-disc pl-6 space-y-2">
           <li>
-            <strong>Search within LinkedIn connections:</strong> Find prospects and leads from your own network (Hunter plan and above).
+            <strong>Search within LinkedIn connections:</strong> Find prospects and leads from your
+            own network (Hunter plan and above).
           </li>
           <li>
-            <strong>Customize agent personality:</strong> Tailor the agent's tone and style to match your brand (Hunter plan and above).
+            <strong>Customize agent personality:</strong> Tailor the agent's tone and style to match
+            your brand (Hunter plan and above).
           </li>
           <li>
-            <strong>CSV Export:</strong> Export your search results to CSV format. The number of results you can export at once depends on your plan:
+            <strong>CSV Export:</strong> Export your search results to CSV format. The number of
+            results you can export at once depends on your plan:
             <ul className="mt-2 list-disc pl-6 space-y-1">
-                <li>Hunter: Up to 5 results at a time</li>
-                <li>Professional: Up to 50 results at a time</li>
-                <li>Enterprise: Unlimited results</li>
+              <li>Hunter: Up to 5 results at a time</li>
+              <li>Professional: Up to 50 results at a time</li>
+              <li>Enterprise: Unlimited results</li>
             </ul>
           </li>
           <li>
             <strong>Email Integration:</strong> Get responses and send queries via email.
             <ul className="mt-2 list-disc pl-6 space-y-1">
-                <li>Hunter: Get responses on email</li>
-                <li>Professional: Send queries and get responses on email</li>
-                <li>Enterprise: Full email integration</li>
+              <li>Hunter: Get responses on email</li>
+              <li>Professional: Send queries and get responses on email</li>
+              <li>Enterprise: Full email integration</li>
             </ul>
           </li>
           <li>
-            <strong>Slack Integration:</strong> Integrate with your Slack workspace (Professional plan and above).
+            <strong>Slack Integration:</strong> Integrate with your Slack workspace (Professional
+            plan and above).
           </li>
         </ul>
       </>

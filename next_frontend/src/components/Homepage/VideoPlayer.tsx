@@ -34,8 +34,8 @@ const VideoPlayer = ({ url, className = "" }: VideoPlayerProps) => {
   return (
     <Parallax
       speed={-1}
-      className={`w-full aspect-video rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden group shadow-2xl ${className}`}
-      translateY={[10, -5]}
+      className={`w-full aspect-video bg-gray-50 rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden group shadow-2xl ${className}`}
+      translateY={[5, -2]}
       shouldAlwaysCompleteAnimation
     >
       <div className="relative w-full h-full">

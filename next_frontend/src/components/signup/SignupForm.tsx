@@ -1,5 +1,6 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import BrandLogo from "@/components/BrandLogo";
@@ -43,21 +44,26 @@ const schema = yup.object().shape({
 
 type FormData = yup.InferType<typeof schema>;
 
-const backdropVariants: Variants = {
-  animate: {
-    rotate: [0, 15, -10, 0],
-    scale: [1, 1.08, 0.95, 1],
-    transition: { duration: 15, repeat: Infinity, ease: "easeInOut" },
-  },
-};
-
 export default function SignupForm() {
   const darkMode = false;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [lastSignupData, setLastSignupData] = useState<FormData | null>(null);
   const { width, height } = useWindowSize();
+  const router = useRouter();
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const {
     register,
@@ -70,6 +76,29 @@ export default function SignupForm() {
     reValidateMode: "onSubmit",
   });
 
+  const handleResendEmail = useCallback(async () => {
+    if (lastSignupData && resendTimer === 0) {
+      try {
+        const response = await apiClient.userSignUp(
+          lastSignupData.email,
+          lastSignupData.password,
+          lastSignupData.name,
+          lastSignupData.linkedin_url
+        );
+
+        if (response.success) {
+          setResendTimer(60);
+          showSuccessToast("Verification email resent successfully!");
+        } else {
+          throw new Error(response.message || "Failed to resend email");
+        }
+      } catch (error) {
+        showErrorToast("Failed to resend email. Please try again.");
+        console.error("Resend email error:", error);
+      }
+    }
+  }, [lastSignupData, resendTimer]);
+
   const onSubmit: SubmitHandler<FormData> = useCallback(
     async data => {
       setIsSubmitting(true);
@@ -80,6 +109,11 @@ export default function SignupForm() {
           data.name,
           data.linkedin_url
         );
+
+        if (response.success) {
+          setLastSignupData(data);
+          setResendTimer(60);
+        }
 
         if (!response.success) {
           const msg = response.message?.toLowerCase() || "";
@@ -125,85 +159,106 @@ export default function SignupForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 px-4 py-8 flex items-center justify-center">
-      <AnimatePresence>
-        {isSuccess && (
-          <Confetti
-            width={width}
-            height={height}
-            numberOfPieces={100}
-            recycle={false}
-            gravity={0.2}
-          />
-        )}
-      </AnimatePresence>
-
+      {isSuccess && (
+        <Confetti
+          width={width}
+          height={height}
+          numberOfPieces={100}
+          recycle={false}
+          gravity={0.2}
+        />
+      )}
       <div
-        className={`relative mx-2 md:mx-0 z-10 w-full max-w-md p-4 md:p-8 rounded-3xl shadow-2xl border transition-colors duration-500 ease-in animate-fade-in ${
-          darkMode
-            ? "bg-black/80 border-gray-800 text-white"
-            : "bg-white border-gray-200 text-gray-900"
-        }`}
+        className={`relative mx-2 md:mx-0 z-10 w-full max-w-md p-4 md:p-8 rounded-3xl shadow-2xl border transition-colors duration-500 ease-in animate-fade-in bg-white border-gray-200 text-gray-900`}
       >
         {isSuccess ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-center flex flex-col items-center gap-4 mt-4"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
-              transition={{
-                duration: 0.6,
-                ease: "easeInOut",
-              }}
-              className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shadow-lg"
-            >
-              <svg
-                className="w-6 h-6 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </motion.div>
+          <div className="relative max-w-md mx-auto  bg-white rounded-2xl text-center animate-fade-in-up">
+            <div className="relative w-20 h-20 mx-auto mb-6 animate-scale-in">
+              <div className="absolute inset-0 bg-green-50 rounded-full flex items-center justify-center">
+                <div className="relative w-16 h-16 bg-green-100 rounded-full flex items-center justify-center ">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white ">
+                    <svg
+                      className="w-8 h-8 animate-checkmark"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                        className="animate-draw-checkmark"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-2xl font-bold"
-            >
-              You're all set!
-            </motion.h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 animate-fade-in-up animate-delay-300">
+              You're all set! 🎉
+            </h2>
 
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-gray-500 text-sm"
-            >
-              Check your email to complete your signup journey.
-            </motion.p>
-          </motion.div>
+            <p className="text-gray-600 mb-6 text-base leading-relaxed animate-fade-in-up animate-delay-400">
+              We've sent a verification link to your email.
+              <br />
+              Please check your inbox to complete your signup.
+            </p>
+
+            <div className="space-y-4 animate-fade-in-up animate-delay-500">
+              <div className="inline-flex items-center text-sm text-gray-500">
+                <svg
+                  className="w-4 h-4 mr-2 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Link expires in 24 hours</span>
+              </div>
+
+              <div className="flex flex-col items-center w-full justify-center sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Go to Login
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  disabled={resendTimer > 0}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    resendTimer > 0
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-blue-600 hover:text-blue-700 border border-gray-200 hover:border-blue-300 focus:ring-blue-500"
+                  }`}
+                >
+                  {resendTimer > 0 ? `Resend (${resendTimer}s)` : "Resend Email"}
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             <div>
-              <div className="mb-3">
-                <BrandLogo className="mb-3" />
-                <p className="text-gray-600">Sign in to your account</p>
+              <div className="">
+                <BrandLogo className="mb-1" />
               </div>
-              <h1
-                className={`text-2xl sm:text-3xl font-extrabold mb-3 ${
-                  darkMode ? "text-white" : "text-gray-900"
-                }`}
-              >
+              <h1 className={`text-xl sm:text-xl font-extrabold mb-1 text-gray-700`}>
                 Create Your Account
               </h1>
-              <p className={`text-sm mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+              <p className={`text-sm mb-4 text-gray-700`}>
                 Get started with DiscoverMinds.ai <br />
                 It only takes a minute.
               </p>

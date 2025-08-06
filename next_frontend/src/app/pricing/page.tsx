@@ -2,7 +2,6 @@ import React from "react";
 import Link from "next/link";
 import HomeHeader from "@/components/Homepage/Header";
 import Footer from "@/components/Homepage/Footer";
-import { FaCheck } from "react-icons/fa";
 import FaqSection from "@/components/Pricing/FaqSection";
 
 export const metadata = {
@@ -71,7 +70,7 @@ export default function PricingPage() {
                       <p className="mt-1 text-xs leading-4 text-gray-500">Basic search: 1 credit</p>
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
-                      <span className="group relative inline underline decoration-dotted hover:cursor-help">
+                      <span className="group relative inline underline decoration-dotted ">
                         General Agent only
                       </span>
                     </li>
@@ -132,12 +131,16 @@ export default function PricingPage() {
                       <span className="font-medium">Everything in Hunter, plus:</span>
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
-                      100 search credits/month
-                      <p className="mt-1 text-xs leading-4 text-gray-500">Deep search: 3 credits</p>
+                      400 search credits/month
+                      <p className="mt-1 text-xs leading-4 text-gray-500">
+                        Basic search: 1 credit
+                        <br />
+                        Deep search: 3 credits
+                      </p>
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
-                      <span className="group relative inline underline decoration-dotted hover:cursor-help">
-                        All agents
+                      <span className="group relative inline underline decoration-dotted ">
+                        All agents(General Agent, HR Agent, Sales Agent)
                       </span>
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
@@ -154,6 +157,9 @@ export default function PricingPage() {
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
                       Slack Bot Integrations
+                    </li>
+                    <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
+                      Export History quickly
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
                       Send search query on Mail and get response
@@ -178,8 +184,8 @@ export default function PricingPage() {
                     <p className="text-sm text-gray-500">per user / month</p>
                   </div>
                 </div>
-                <Link href="/signup?plan=enterprise">
-                  <button className="cursor-pointer whitespace-nowrap font-medium leading-6 transition-colors inline-flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 disabled:pointer-events-none bg-gray-800 text-white hover:bg-gray-900 focus-visible:ring-offset-gray-700 focus-visible:ring-gray-400 disabled:opacity-30 w-full md:min-w-[15rem] md:w-fit px-6 py-3 text-base md:text-base rounded-lg">
+                <Link href="/signup">
+                  <button className="cursor-pointer whitespace-nowrap font-medium leading-6 transition-colors inline-flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 disabled:pointer-events-none text-gray-700 hover:text-gray-900 disabled:opacity-30 focus-visible:ring-offset-gray-100 focus-visible:ring-gray-400 w-full md:min-w-[15rem] md:w-fit px-6 py-3 text-base md:text-base shadow-[inset_0_0_0_1px_currentColor] rounded-lg">
                     Select plan
                   </button>
                 </Link>
@@ -199,7 +205,7 @@ export default function PricingPage() {
                       </p>
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
-                      <span className="group relative inline underline decoration-dotted hover:cursor-help">
+                      <span className="group relative inline underline decoration-dotted ">
                         Add-on credits at $40/1000 credits
                       </span>
                     </li>
@@ -230,7 +236,6 @@ export default function PricingPage() {
 
         <FaqSection />
 
-        {/* Compare Plans Section */}
         <section className="py-20 bg-white">
           <div className="mx-auto max-w-6xl px-5">
             <div className="flex flex-col items-center justify-center mb-16">
@@ -265,7 +270,7 @@ export default function PricingPage() {
                   <tr className="border-b border-gray-200">
                     <td className="p-4 font-medium">Search Credits</td>
                     <td className="p-4 text-center">5/day</td>
-                    <td className="p-4 text-center bg-[#EEF3FB]">100/month</td>
+                    <td className="p-4 text-center bg-[#EEF3FB]">400/month</td>
                     <td className="p-4 text-center">2,000/month</td>
                   </tr>
                   <tr className="border-b border-gray-200">

@@ -114,7 +114,7 @@ const HomeHeader: React.FC = () => {
           <BrandLogo className="" />
           <nav className="hidden md:block">
             <ul className="flex items-center gap-6 lg:gap-8">
-              {NAV_LINKS.map((link) => (
+              {NAV_LINKS.map(link => (
                 <li key={link.name}>
                   <Link
                     href={link.href}

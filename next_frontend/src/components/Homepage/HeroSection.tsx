@@ -9,6 +9,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import ScrollVelocity from "../common/ScrollVelocity";
 import LightRays from "./LightRays";
+import WhyChooseUs from "./WhyChooseUs";
 
 interface VideoPlayerProps {
   url: string;
@@ -35,22 +36,6 @@ const HeroSection: React.FC = () => {
     <>
       <ParallaxProvider>
         <section className="bg-background text-primary relative overflow-hidden min-h-screen flex items-center">
-          <div className="absolute inset-0 z-0 opacity-90">
-            <LightRays
-              raysOrigin="top-center"
-              raysColor="#ffffff30"
-              raysSpeed={1.0}
-              lightSpread={1.5}
-              rayLength={1.8}
-              followMouse={true}
-              mouseInfluence={0.2}
-              noiseAmount={0.1}
-              distortion={0.1}
-              saturation={1.5}
-              fadeDistance={1}
-              className="custom-rays"
-            />
-          </div>
           <div className="absolute inset-0 opacity-10">
             <Parallax speed={-20}>
               <div className="absolute top-20 left-10 w-32 h-32 bg-accent-orange/20 rounded-full blur-3xl" />
@@ -63,7 +48,7 @@ const HeroSection: React.FC = () => {
             </Parallax>
           </div>
 
-          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-20 sm:pt-24 lg:pt-28 pb-12 sm:pb-16 lg:pb-20">
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-20 sm:pt-24 lg:pt-28 pb-12 sm:pb-10 lg:pb-10">
             <div className="text-center mb-12 sm:mb-16 lg:mb-20">
               <Parallax speed={-5}>
                 <h1
@@ -108,7 +93,7 @@ const HeroSection: React.FC = () => {
                     className="object-cover transition-all duration-700 group-hover:scale-105"
                   />
 
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/20 to-black/50" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/20 to-black/60" />
 
                   <div className="absolute inset-0 p-4 pt-8 sm:p-6 md:p-8 lg:p-12 xl:p-16 flex items-start justify-start">
                     <div className="w-full max-w-xl sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] text-left">
@@ -170,7 +155,7 @@ const HeroSection: React.FC = () => {
                 </Link>
               </Parallax>
             </div>
-            <div className="mt-10 mb-12 sm:mt-18 sm:mb-20 text-center">
+            <div className="mt-10 mb-12 sm:mt-18 sm:mb-18 text-center">
               <p className="text-sm text-text-secondary mb-3 font-medium">
                 Powered by AI Agents • Real-time Insights • Evolving Intelligence
               </p>
@@ -195,11 +180,17 @@ const HeroSection: React.FC = () => {
                 className="t text-xl font-medium text-primary mt-2"
               />
             </div>
-            <VideoPlayer
-              url="https://www.youtube.com/watch?v=_ZWwTcxK0FI"
-              className="w-full max-w-4xl mx-auto"
-            />
           </div>
+        </section>
+        <section className="bg-gray-50 flex-col flex">
+          <Parallax speed={-5}>
+            <WhyChooseUs />
+          </Parallax>
+
+          <VideoPlayer
+            url="https://www.youtube.com/watch?v=_ZWwTcxK0FI"
+            className="w-full max-w-4xl mx-auto "
+          />
         </section>
       </ParallaxProvider>
     </>
