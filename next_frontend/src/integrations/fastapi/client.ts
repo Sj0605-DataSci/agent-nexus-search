@@ -228,6 +228,31 @@ export const apiClient = {
     }
   },
 
+  async resetPassword(email: string, redirectUrl?: string) {
+    try {
+      const res = await axiosInstance.post("/auth/reset-password", {
+        email,
+        redirect_url: redirectUrl,
+      });
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async updatePassword(newPassword: string, accessToken: string, refreshToken: string) {
+    try {
+      const res = await axiosInstance.post("/auth/update-password", {
+        new_password: newPassword,
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async handleLoginWithStorage(email: string, password: string) {
     try {
       const res = await axiosInstance.post("/auth/login", {

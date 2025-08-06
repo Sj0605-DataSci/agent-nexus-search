@@ -33,6 +33,7 @@ import weave
 from typing import List
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from app.core.utils.cache import invalidate_chat_messages_cache
 
 
 if settings.GOOGLE_API_KEY is None:
@@ -169,6 +170,8 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
+            # Invalidate chat messages cache for this thread
+            invalidate_chat_messages_cache(chat_thread_id)
                 
             input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
             output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
@@ -1059,6 +1062,9 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             "message": message_content,
             "sources_gathered": state["sources_gathered"]
         }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).eq("id", current_message_id).execute()
+        
+        # Invalidate chat messages cache for this thread
+        invalidate_chat_messages_cache(chat_thread_id)
         
         input_tokens_cost = (input_tokens/1000000) * 0.3
         output_tokens_cost = (output_tokens/1000000) * 2.5

@@ -230,6 +230,15 @@ export default function LoginForm() {
             </div>
           </div>
 
+          <div className="flex justify-end">
+            <Link
+              href="/reset-password"
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
           <motion.button
             type="submit"
             disabled={loading}

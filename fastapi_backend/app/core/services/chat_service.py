@@ -13,6 +13,9 @@ from app.core.profiling import profile_async, AsyncTimer
 from app.core.services.email_service import email_service
 from app.core.services.pdf_service import pdf_service
 from pathlib import Path
+from app.core.utils.cache import (
+    invalidate_chat_threads_cache, invalidate_chat_messages_cache
+)
 
 logger = get_structured_logger(__name__)
 
@@ -249,6 +252,9 @@ class ChatService:
                                agent_id=agent_id,
                                chat_thread_id=thread_id,
                                title=title)
+                    
+                    # Invalidate chat threads cache for this user
+                    invalidate_chat_threads_cache(user_id)
                 else:
                     # Thread exists, update it if needed
                     await self.client.table("chat_threads").update({
@@ -261,6 +267,9 @@ class ChatService:
                                agent_id=agent_id,
                                chat_thread_id=thread_id,
                                title=title)
+                    
+                    # Invalidate chat threads cache for this user
+                    invalidate_chat_threads_cache(user_id)
             
             # Perform intent classification
             intent = "search"  # Default to search
@@ -310,6 +319,9 @@ class ChatService:
                     message_id = ""
                     if response and response.data and len(response.data) > 0:
                         message_id = response.data[0].get("id")
+                        
+                        # Invalidate chat messages cache for this thread
+                        invalidate_chat_messages_cache(thread_id)
                         
                         # Log token usage
                         input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]

@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, status, Request
+from typing import Dict
 from app.core.auth import get_current_user
 from app.models.models import Profile
 from app.models.schemas import ProfileResponse, LoginRequest, StandardResponse, StandardJSONResponse, WaitlistRequest
-from app.models.schemas import SignupRequest, RefreshTokenRequest
+from app.models.schemas import SignupRequest, RefreshTokenRequest, ResetPasswordRequest, UpdatePasswordRequest
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
 from app.core.profiling import profile_async, AsyncTimer
 from supabase.client import AsyncClient
+from app.core.config import settings
 
 # Setup structured logging
 logger = get_structured_logger(__name__)
@@ -23,7 +25,7 @@ async def get_login_client():
 
 @router.get("/me", response_model=ProfileResponse)
 @profile_async("auth.get_current_user_info")
-async def get_current_user_info(current_user: Profile = Depends(get_current_user,use_cache=True)):
+async def get_current_user_info(current_user: Profile = Depends(get_current_user)):
     """
     Returns information about the currently authenticated user.
     
@@ -48,7 +50,7 @@ async def verify_token(request: Request):
 
 @router.post("/login")
 @profile_async("auth.login")
-async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
+async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Authenticates a user with email and password and returns profile details + access token.
     
@@ -148,7 +150,7 @@ async def login(login_request: LoginRequest, client: AsyncClient = Depends(get_l
 
 @router.post("/signup", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.signup")
-async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
+async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Creates a new user account with email and password.
     
@@ -241,7 +243,7 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
 
 @router.post("/logout", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.logout")
-async def logout(request: Request, current_user: Profile = Depends(get_current_user,use_cache=True), client: AsyncClient = Depends(get_login_client,use_cache=True)):
+async def logout(request: Request, current_user: Profile = Depends(get_current_user), client: AsyncClient = Depends(get_login_client)):
     """
     Logs out the current user by invalidating their session.
     
@@ -313,7 +315,7 @@ async def logout(request: Request, current_user: Profile = Depends(get_current_u
 
 @router.post("/refresh_token", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.refresh_token")
-async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
+async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Refreshes an expired access token using a valid refresh token.
     
@@ -393,7 +395,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest, client: AsyncClien
 
 @router.post("/join_waitlist", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.join_waitlist")
-async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient = Depends(get_login_client,use_cache=True)):
+async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient = Depends(get_login_client)):
     """
     Adds a user to the waitlist.
     
@@ -516,3 +518,116 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
                 data=None
             ),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@router.post("/reset-password", response_model=StandardResponse[Dict[str, str]], response_class=StandardJSONResponse)
+@profile_async("auth.reset_password")
+async def reset_password(request: ResetPasswordRequest, client: AsyncClient = Depends(get_login_client)):
+    """
+    Initiates password reset by sending a reset email to the user.
+    
+    This endpoint sends a password reset email using Supabase Auth.
+    The user will receive an email with a link to reset their password.
+    """
+    try:
+        # Set default redirect URL if not provided
+        redirect_url = settings.RESET_PASSWORD_FRONTEND_URL
+        
+        # Send password reset email using Supabase Auth
+        response = await client.auth.reset_password_for_email(
+            email=request.email,
+            options={
+                "redirect_to": redirect_url
+            }
+        )
+        
+        logger.info("Password reset email sent successfully",
+                   email=request.email,
+                   redirect_url=redirect_url)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Password reset email sent successfully. Please check your email.",
+            data={"email": request.email}
+        ))
+        
+    except Exception as e:
+        logger.error("Error sending password reset email",
+                    email=request.email,
+                    error=str(e),
+                    exception_type=type(e).__name__)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to send password reset email: {str(e)}",
+            data=None
+        ))
+
+@router.post("/update-password", response_model=StandardResponse[Dict[str, str]], response_class=StandardJSONResponse)
+@profile_async("auth.update_password")
+async def update_password(request: UpdatePasswordRequest, client: AsyncClient = Depends(get_login_client)):
+    """
+    Updates the user's password after they click the reset link.
+    
+    This endpoint should be called after the user clicks the password reset link
+    and provides their new password along with the tokens from the URL.
+    """
+    try:
+        # Set the session using the tokens from the password reset email
+        session_response = await client.auth.set_session(
+            access_token=request.access_token,
+            refresh_token=request.refresh_token
+        )
+        
+        if not session_response.user:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                message="Invalid or expired reset tokens",
+                data=None
+            ))
+        
+        # Update the user's password
+        update_response = await client.auth.update_user({
+            "password": request.new_password
+        })
+        
+        if not update_response.user:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Failed to update password",
+                data=None
+            ))
+        
+        logger.info("Password updated successfully",
+                   user_id=str(update_response.user.id),
+                   email=update_response.user.email)
+        
+        # Invalidate profile cache for this user since password change might affect sessions
+        from app.core.utils.cache import invalidate_profile_cache
+        invalidate_profile_cache(str(update_response.user.id))
+        
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Password updated successfully",
+            data={
+                "user_id": str(update_response.user.id),
+                "email": update_response.user.email
+            }
+        ))
+        
+    except Exception as e:
+        logger.error("Error updating password",
+                    error=str(e),
+                    exception_type=type(e).__name__)
+        
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to update password: {str(e)}",
+            data=None
+        ))
+

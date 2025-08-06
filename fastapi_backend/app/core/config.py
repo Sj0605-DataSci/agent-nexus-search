@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     @property
     def SUPABASE_URL(self) -> str:
         return os.getenv("STAGING_SUPABASE_URL", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_URL", "")
+
+    @property
+    def RESET_PASSWORD_FRONTEND_URL(self) -> str:
+        return os.getenv("STAGING_RESET_PASSWORD_FRONTEND_URL", "") if ENVIRONMENT == "STAGING" else os.getenv("RESET_PASSWORD_FRONTEND_URL", "")    
     
     @property
     def SUPABASE_PROJECT_ID(self) -> str:

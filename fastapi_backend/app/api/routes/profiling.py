@@ -12,7 +12,7 @@ router = APIRouter(prefix="/profiling", tags=["profiling"])
 
 @router.get("/stats", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("routes.profiling.get_stats")
-async def get_profiling_stats(current_user: Profile = Depends(get_current_user,use_cache=True)):
+async def get_profiling_stats(current_user: Profile = Depends(get_current_user)):
     """
     Get statistics for all profiled operations
     
@@ -41,7 +41,7 @@ async def get_profiling_stats(current_user: Profile = Depends(get_current_user,u
 
 @router.post("/reset", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("routes.profiling.reset_stats")
-async def reset_profiling_stats(current_user: Profile = Depends(get_current_user,use_cache=True)):
+async def reset_profiling_stats(current_user: Profile = Depends(get_current_user)):
     """
     Reset all profiling statistics
     
