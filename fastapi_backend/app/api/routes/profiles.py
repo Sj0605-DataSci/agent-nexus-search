@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, invalidate_profile_cache
 from app.db.clients import get_async_supabase_client
 from app.models.models import Profile
 from app.models.schemas import (
@@ -28,7 +28,7 @@ async def get_credit_service():
 @profile_async("routes.profiles.create_profile")
 async def create_profile(
     profile: ProfileCreate,
-    current_user: Profile = Depends(get_current_user,use_cache=True)
+    current_user: Profile = Depends(get_current_user)
 ):
     """
     Create a new user profile.
@@ -76,7 +76,7 @@ async def create_profile(
 @router.get("", response_model=StandardResponse[ProfileResponse], response_class=StandardJSONResponse)
 @profile_async("routes.profiles.get_my_profile")
 async def get_my_profile(
-    current_user: Profile = Depends(get_current_user,use_cache=True)):
+    current_user: Profile = Depends(get_current_user)):
     """Get the current user's profile"""
     try:
         profile_data = {
@@ -117,7 +117,7 @@ async def get_my_profile(
 @profile_async("routes.profiles.update_my_profile")
 async def update_my_profile(
     profile_update: ProfileUpdate,
-    current_user: Profile = Depends(get_current_user,use_cache=True)
+    current_user: Profile = Depends(get_current_user)
 ):
     """Update the current user's profile"""
     try:
@@ -149,6 +149,7 @@ async def update_my_profile(
         updated_profile = await client.table("profiles").select("*").eq("id", current_user.id).single().execute()
         
         if updated_profile.data:
+            invalidate_profile_cache(current_user.id)
             return StandardJSONResponse(StandardResponse(
                 success=True,
                 status_code=status.HTTP_200_OK,
@@ -183,8 +184,8 @@ async def update_my_profile(
 @router.get("/subscription", response_model=StandardResponse[UserSubscriptionResponse], response_class=StandardJSONResponse)
 @profile_async("routes.profiles.get_subscription")
 async def get_my_subscription(
-    current_user: Profile = Depends(get_current_user, use_cache=True),
-    credit_service: CreditService = Depends(get_credit_service, use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    credit_service: CreditService = Depends(get_credit_service)
 ):
     """
     Get the current user's subscription details including credits, tier, and usage stats.
@@ -227,8 +228,8 @@ async def get_my_subscription(
 @profile_async("routes.profiles.get_usage_stats")
 async def get_usage_stats(
     days: int = 30,
-    current_user: Profile = Depends(get_current_user, use_cache=True),
-    credit_service: CreditService = Depends(get_credit_service, use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    credit_service: CreditService = Depends(get_credit_service)
 ):
     """
     Get the current user's usage statistics for the specified number of days.
@@ -274,8 +275,8 @@ async def add_credits(
     credits: int,
     description: str = "Credit purchase",
     reference_id: str = None,
-    current_user: Profile = Depends(get_current_user, use_cache=True),
-    credit_service: CreditService = Depends(get_credit_service, use_cache=True) 
+    current_user: Profile = Depends(get_current_user),
+    credit_service: CreditService = Depends(get_credit_service) 
 ):
     """
     Add credits to the current user's account.
@@ -342,8 +343,8 @@ async def add_credits(
 @profile_async("routes.profiles.upgrade_tier")
 async def upgrade_tier(
     new_tier: str,
-    current_user: Profile = Depends(get_current_user, use_cache=True),
-    credit_service: CreditService = Depends(get_credit_service, use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    credit_service: CreditService = Depends(get_credit_service)
 ):
     """
     Upgrade the current user's tier.

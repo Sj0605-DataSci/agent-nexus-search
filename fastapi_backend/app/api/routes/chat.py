@@ -7,6 +7,10 @@ from typing import Annotated, AsyncGenerator, List, Dict, Any, Optional
 import traceback
 import logging
 from app.core.auth import get_current_user
+from app.core.utils.cache import (
+    get_cached_chat_messages, cache_chat_messages, invalidate_chat_messages_cache,
+    get_cached_message_feedback, cache_message_feedback, invalidate_message_feedback_cache
+)
 from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from pydantic import BaseModel
@@ -36,8 +40,8 @@ async def get_chat_service():
 @router.post("", response_model=StandardResponse[ChatResponse], response_class=StandardJSONResponse, status_code=status.HTTP_200_OK)
 async def process_chat(
     request: ChatRequest,
-    current_user: Profile = Depends(get_current_user,use_cache=True),
-    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Process a chat request and return search results
@@ -91,8 +95,8 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
-    current_user: Profile = Depends(get_current_user,use_cache=True),
-    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ) -> StreamingResponse:
     """
     Stream chat response as Server-Sent Events (SSE) using Redis-based background workers
@@ -157,8 +161,8 @@ async def stream_chat(
 async def get_chat_threads(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    current_user: Profile = Depends(get_current_user,use_cache=True),
-    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Get chat threads for a specific user with pagination
@@ -238,8 +242,8 @@ async def get_messages_for_thread(
     chat_thread_id: str = Path(..., description="ID of the chat thread"),
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    current_user: Profile = Depends(get_current_user,use_cache=True),
-    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Get all messages for a specific chat thread and user
@@ -250,9 +254,34 @@ async def get_messages_for_thread(
     Returns a list of message objects with their content and metadata
     """
     try:
-        # Get messages for the chat thread
+        # Create cache key including pagination info
+        cache_key = f"messages:{chat_thread_id}:{page}:{page_size}"
+        
+        # Try to get from cache first
+        cached_messages = get_cached_chat_messages(cache_key)
+        if cached_messages is not None:
+            logger.info("Chat messages retrieved from cache",
+                       user_id=current_user.id,
+                       chat_thread_id=chat_thread_id,
+                       page=page,
+                       page_size=page_size,
+                       message_count=len(cached_messages))
+            
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Chat messages retrieved from cache",
+                data=cached_messages
+            ))
+        
+        # If not in cache, get from database
         offset = (page - 1) * page_size
         messages = await chat_service.get_messages_for_thread(current_user.id, chat_thread_id, limit=page_size, offset=offset)
+        
+        # Cache the results
+        if messages is not None:
+            cache_chat_messages(cache_key, messages)
+            logger.info("Chat messages cached", cache_key=cache_key)
         
         logger.info("Chat messages retrieved successfully",
                    user_id=current_user.id,
@@ -295,12 +324,32 @@ async def get_messages_for_thread(
 @profile_async("routes.chat.get_feedback_for_thread_message")
 async def get_feedback_for_thread_message(
     message_id: str, 
-    current_user: Profile = Depends(get_current_user,use_cache=True),
-    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     try:
-        # Get feedback for the chat thread
+        # Try to get from cache first
+        cached_feedback = get_cached_message_feedback(message_id)
+        if cached_feedback is not None:
+            logger.info("Feedback retrieved from cache",
+                       user_id=current_user.id,
+                       message_id=message_id,
+                       feedback_count=len(cached_feedback))
+            
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Feedback retrieved from cache",
+                data=cached_feedback
+            ))
+        
+        # If not in cache, get from database
         feedback = await chat_service.get_feedback_for_thread_message(current_user.id, message_id)
+        
+        # Cache the results
+        if feedback is not None:
+            cache_message_feedback(message_id, feedback)
+            logger.info("Feedback cached", message_id=message_id)
         
         logger.info("Feedback retrieved successfully",
                    user_id=current_user.id,
@@ -344,8 +393,8 @@ async def get_feedback_for_thread_message(
 async def patch_feedback_for_thread_message(
     message_id: str, 
     feedback_data: FeedbackData = Body(...),
-    current_user: Profile = Depends(get_current_user,use_cache=True),
-    chat_service: ChatService = Depends(get_chat_service,use_cache=True)
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     try:
         # Log the received feedback data
@@ -361,6 +410,9 @@ async def patch_feedback_for_thread_message(
             message_id, 
             feedback_data.is_positive,
             feedback_data.comment or "")
+        
+        # Invalidate feedback cache for this message
+        invalidate_message_feedback_cache(message_id)
         
         logger.info("Feedback submitted successfully",
                    user_id=current_user.id,

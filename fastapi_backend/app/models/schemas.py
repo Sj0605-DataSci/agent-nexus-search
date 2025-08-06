@@ -222,6 +222,17 @@ class WaitlistRequest(BaseModel):
     beta_tester: Optional[bool] = False
     linkedin_url: Optional[str] = None
 
+class ResetPasswordRequest(BaseModel):
+    """Request schema for initiating password reset"""
+    email: EmailStr = Field(..., description="Email address to send password reset link")
+    redirect_url: Optional[str] = Field(None, description="URL to redirect after password reset")
+
+class UpdatePasswordRequest(BaseModel):
+    """Request schema for updating password after reset"""
+    new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
+    access_token: str = Field(..., description="Access token from password reset email")
+    refresh_token: str = Field(..., description="Refresh token from password reset email")
+
 class PersonDetails(BaseModel):
     """Pydantic model for person details in table format."""
     fname: str = Field(description="First name of the person")
