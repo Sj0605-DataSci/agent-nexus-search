@@ -463,7 +463,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
 
           switch (update.type) {
             case "thread_id":
-              if (update.content && update.content.thread_id && threadId != "new") {
+              if (update.content && update.content.thread_id) {
                 const newThreadId = update.content.thread_id;
                 if (newThreadId !== threadId) {
                   const newUrl = `/chat/${newThreadId}`;
