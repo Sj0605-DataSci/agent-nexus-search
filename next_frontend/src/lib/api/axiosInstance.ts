@@ -13,7 +13,6 @@ const axiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -28,7 +27,6 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request interceptor
 axiosInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {

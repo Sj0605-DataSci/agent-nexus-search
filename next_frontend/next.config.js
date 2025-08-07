@@ -18,16 +18,23 @@ const LOCAL_API = "http://localhost:8000";
 const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
+    instrumentationHook: true,
   },
   images: {
-    domains: ["wznveojncixcptajnjom.supabase.co"],
-  },
-  pwa: {
-    dest: "public",
-    register: true,
-    skipWaiting: true,
-    disable: process.env.NODE_ENV === "development",
-    sw: "/sw.js",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "wznveojncixcptajnjom.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/public-files/**",
+      },
+      {
+        protocol: "https",
+        hostname: "mtxrobrwanikajymnkaf.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/public-files/**",
+      },
+    ],
   },
   async headers() {
     return [{ source: "/:path*", headers: advancedHeaders }];

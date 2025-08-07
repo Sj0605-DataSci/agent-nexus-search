@@ -252,7 +252,6 @@ const StructuredContentRenderer: React.FC<StructuredContentRendererProps> = ({
           borderColor: darkMode ? `hsla(${hue}, 90%, 30%, 0.5)` : borderColor,
         }}
       >
-      
         <span
           className={`relative z-10 text-xs font-semibold ${darkMode ? darkTextColor : textColor}`}
         >

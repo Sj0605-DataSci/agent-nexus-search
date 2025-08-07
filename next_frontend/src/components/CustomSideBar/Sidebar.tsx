@@ -16,39 +16,21 @@ import {
 import { useEffect, useState, useRef, useCallback } from "react";
 import posthog from "posthog-js";
 import { apiClient } from "@/integrations/fastapi/client";
-
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
 import { fetchChatThreads, loadMoreChatThreads, setLoading } from "@/store/chatThreadsSlice";
 import { clearProfile } from "@/store/profileSlice";
-import { setTheme } from "@/store/themeSlice";
 import { Button } from "@/components/ui/button";
-import SidebarItem from "./SidebarItem";
 import ShimmerLoader from "./ShimmerLoader";
 import { ChatThread } from "@/integrations/fastapi/types";
 
-interface ChatMessage {
-  id: string;
-  user_id: string;
-  agent_id: string;
-  main_query: string;
-  message: any;
-  created_at: string;
-}
-
 const Sidebar = () => {
+  const darkMode = false;
   const collapsed = useAppSelector(selectSidebarCollapsed);
-  const darkMode = useAppSelector(state => state.theme.dark);
   const dispatch = useAppDispatch();
   const profile = useAppSelector(state => state.profile.profile);
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    if (!collapsed && darkMode) {
-      dispatch(setTheme("light"));
-    }
-  }, [collapsed, darkMode, dispatch]);
 
   const {
     threads: recentThreads,
@@ -164,10 +146,6 @@ const Sidebar = () => {
           <Link
             href="/chat/new"
             prefetch={true}
-            onClick={e => {
-              e.preventDefault();
-              router.push("/chat/new");
-            }}
             className={`w-full flex items-center mt-1 ${collapsed ? "justify-center p-2" : "justify-between px-3 py-1.5"} 
               ${
                 darkMode
@@ -186,28 +164,29 @@ const Sidebar = () => {
         <nav className="flex-1 overflow-y-auto px-2 py-2">
           <ul className="space-y-1 pb-3">
             {navItems.map(({ href, label, icon }) => (
-              <Link
-                prefetch={true}
-                href={href}
-                className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors
-        ${collapsed ? "justify-center" : "gap-3 pl-2 pr-4"}
-        ${
-          pathname.startsWith(href)
-            ? darkMode
-              ? "bg-indigo-600/20 text-indigo-300"
-              : "bg-indigo-100 text-indigo-700"
-            : darkMode
-              ? "text-gray-400 hover:text-white hover:bg-gray-800/60"
-              : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-        }
-      `}
-                key={href}
-              >
-                <span className="relative group">
-                  <span className="text-lg">{icon}</span>
-                </span>
-                {!collapsed && <span>{label}</span>}
-              </Link>
+              <li key={href}>
+                <Link
+                  prefetch={true}
+                  href={href}
+                  className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
+                    ${collapsed ? "justify-center" : "gap-3 pl-2 pr-4"}
+                    ${
+                      pathname.startsWith(href)
+                        ? darkMode
+                          ? "bg-indigo-600/20 text-indigo-300"
+                          : "bg-indigo-100 text-indigo-700"
+                        : darkMode
+                          ? "text-gray-400 hover:text-white hover:bg-gray-800/60"
+                          : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                    }
+                  `}
+                >
+                  <span className="relative group">
+                    <span className="text-lg">{icon}</span>
+                  </span>
+                  {!collapsed && <span>{label}</span>}
+                </Link>
+              </li>
             ))}
           </ul>
           {profile && (

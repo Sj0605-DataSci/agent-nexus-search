@@ -6,11 +6,7 @@ interface ShimmerLoaderProps {
   darkMode: boolean;
 }
 
-const ShimmerLoader: React.FC<ShimmerLoaderProps> = ({ 
-  count = 4, 
-  collapsed, 
-  darkMode 
-}) => {
+const ShimmerLoader: React.FC<ShimmerLoaderProps> = ({ count = 4, collapsed, darkMode }) => {
   return (
     <ul className="space-y-1 py-1 px-1">
       {[...Array(count)].map((_, index) => (

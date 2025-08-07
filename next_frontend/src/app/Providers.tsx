@@ -16,6 +16,7 @@ import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import posthog from "posthog-js";
+import { ThemeProvider } from "next-themes";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -50,10 +51,6 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
               ]);
             } catch (agentError) {
               console.error("Error fetching agent data:", agentError);
-            }
-
-            if (pathname === "/") {
-              router.push("/chat/new");
             }
           } else {
             throw new Error(profileResult.message || "Failed to fetch profile");
@@ -99,30 +96,41 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ReduxProvider store={store}>
-        <AuthProvider>
-          <ProfileDataFetcher>
-            <PostHogProvider>
-              <AnalyticsProvider>
-                <ToastContainer
-                  position="top-right"
-                  autoClose={5000}
-                  hideProgressBar={false}
-                  closeOnClick
-                  pauseOnHover
-                  limit={4}
-                  draggable
-                  theme="light"
-                />
-                <ServiceWorkerRegistration />
-                <main>{children}</main>
-              </AnalyticsProvider>
-            </PostHogProvider>
-          </ProfileDataFetcher>
-        </AuthProvider>
+        <ThemeProvider attribute="class" forcedTheme="light">
+          <AuthProvider>
+            <ProfileDataFetcher>
+              <PostHogProvider>
+                <AnalyticsProvider>
+                  {isMounted && (
+                    <>
+                      <ToastContainer
+                        position="top-right"
+                        autoClose={5000}
+                        hideProgressBar={false}
+                        closeOnClick
+                        pauseOnHover
+                        limit={4}
+                        draggable
+                        theme="light"
+                      />
+                      <ServiceWorkerRegistration />
+                    </>
+                  )}
+                  <main>{children}</main>
+                </AnalyticsProvider>
+              </PostHogProvider>
+            </ProfileDataFetcher>
+          </AuthProvider>
+        </ThemeProvider>
       </ReduxProvider>
     </QueryClientProvider>
   );

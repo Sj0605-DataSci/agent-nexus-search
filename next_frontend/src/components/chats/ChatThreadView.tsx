@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
 import {
@@ -19,18 +20,11 @@ import {
 } from "react-icons/fi";
 import { BsTextParagraph } from "react-icons/bs";
 import { getTimeBasedGreeting } from "../../utils/timeUtils";
+const FeedbackModal = dynamic(() => import("./FeedbackModal"));
 import Image from "next/image";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
@@ -44,61 +38,62 @@ import StructuredContentRenderer, { isStructuredResearchResult } from "./Structu
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
 import Link from "next/link";
 import OrbAura from "../OrbAura";
-import { ProcessCitationReferences, SourceType } from "../common/Citation";
+import { ProcessCitationReferences } from "../common/Citation";
+import dynamic from "next/dynamic";
 
-type FeedbackType = {
-  messageId: string;
-  isPositive: boolean;
-  comment?: string;
-};
+const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
 
-type MessageType = {
-  id: string;
-  type: "user" | "agent";
-  content: string;
-  timestamp: Date;
-  sources?: SourceType[];
-  sources_gathered?: SourceType[];
-};
+import {
+  ChatSource,
+  SearchMode,
+  FormatType,
+  WorldConnectionsMode,
+  FeedbackType,
+  MessageType,
+} from "@/types/chat";
+import { WorkerMessage } from "@/types/api";
+import { ChatPair, CachedThread, ChatThreadViewProps } from "@/types/chatThreadView";
 
-const ChatThreadView = ({ threadId }: { threadId: string }) => {
+const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const chatWorkerRef = useRef<Worker | null>(null);
   const router = useRouter();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const [query, setQuery] = useState("");
-  const [selectedAgent, setSelectedAgent] = useState("00000000-0000-4000-a000-000000000000");
+  // Initialize state with proper types
+  const [query, setQuery] = useState<string>("");
+  const [selectedAgent, setSelectedAgent] = useState<string>(
+    "00000000-0000-4000-a000-000000000000"
+  );
+  const [format, setFormat] = useState<FormatType>("chat");
+  const [searchMode, setSearchMode] = useState<SearchMode>("basic");
+  const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
+  const [messages, setMessages] = useState<MessageType[]>([]);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
+  const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
+  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
+  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
+  const [chatPairs, setChatPairs] = useState<ChatPair[]>([]);
+  const [messagesOffset, setMessagesOffset] = useState<number>(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(threadId != "new");
+  const [cachedThreads, setCachedThreads] = useState<Record<string, CachedThread>>({});
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const MESSAGES_PER_PAGE = 50;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      setQuery(urlParams.get("q") || "");
-      setSelectedAgent(urlParams.get("agent") || "00000000-0000-4000-a000-000000000000");
+      const urlQuery = urlParams.get("q");
+      const urlAgent = urlParams.get("agent");
+
+      if (urlQuery !== null) setQuery(urlQuery);
+      setSelectedAgent(urlAgent || "00000000-0000-4000-a000-000000000000");
     }
   }, []);
-
-  const [format, setFormat] = useState<"chat" | "table">("chat");
-  const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
-    "world"
-  );
-  const [messages, setMessages] = useState<MessageType[]>([]);
-
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
-  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
-  const [chatPairs, setChatPairs] = useState<any[]>([]);
-  const [messagesOffset, setMessagesOffset] = useState<number>(0);
-  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
-  const MESSAGES_PER_PAGE = 50;
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [cachedThreads, setCachedThreads] = useState<
-    Record<string, { messages: any[]; timestamp: number }>
-  >({});
   const { profile } = useAppSelector(state => state.profile);
 
   const userId = profile?.id;
@@ -123,7 +118,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
 
-  const darkMode = useAppSelector(s => s.theme.dark);
+  const darkMode = false;
   const sidebarCollapsed = useAppSelector(selectSidebarCollapsed);
 
   const dispatch = useAppDispatch();
@@ -221,12 +216,24 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       } else {
       }
       setInitialLoadComplete(true);
-    } catch (error: any) {
-      console.log("[ChatThreadView] fetchMessages error:", error);
+    } catch (error: unknown) {
+      console.error("[ChatThreadView] fetchMessages error:", error);
       let message = "An error occurred while loading this chat thread.";
-      if (error?.response?.status === 404) {
+
+      interface ErrorResponse {
+        response?: {
+          status?: number;
+          data?: {
+            detail?: string;
+          };
+        };
+      }
+
+      const typedError = error as ErrorResponse;
+
+      if (typedError.response?.status === 404) {
         message = "This chat thread was not found.";
-      } else if (error?.response?.status === 403) {
+      } else if (typedError.response?.status === 403) {
         message = "You do not have access to this chat thread.";
       }
       console.log("[ChatThreadView] threadError:", message);
@@ -245,48 +252,64 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   }, []);
 
   useEffect(() => {
-    if (chatPairs.length > 0) {
-      const currentPair = chatPairs[currentMessageIndex];
-      setQuery(currentPair.main_query);
+    const hasDismissed = localStorage.getItem("hasDismissedLinkedInModal");
+    if (profile && !profile.linkedin_url && hasDismissed !== "true") {
+      setLinkedinModalOpen(true);
+    }
+  }, [profile]);
 
-      const userMessage = {
+  useEffect(() => {
+    if (chatPairs.length > 0 && currentMessageIndex < chatPairs.length) {
+      const currentPair = chatPairs[currentMessageIndex];
+      if (currentPair.main_query) {
+        setQuery(String(currentPair.main_query));
+      }
+
+      const userMessage: MessageType = {
         id: `${currentPair.id}-user`,
-        type: "user" as const,
-        content: currentPair.main_query,
-        timestamp: new Date(currentPair.created_at),
+        type: "user",
+        content: String(currentPair.main_query || ""),
+        timestamp: new Date(String(currentPair.created_at)),
       };
 
       let messageContent = currentPair.message;
-      const sourcesData = currentPair.sources_gathered || [];
+      const sourcesData: ChatSource[] = Array.isArray(currentPair.sources_gathered)
+        ? currentPair.sources_gathered
+        : [];
+
       console.log("Sources data from API:", sourcesData);
 
       if (chatWorkerRef.current && typeof messageContent === "object" && messageContent !== null) {
-        const agentMessage = {
-          id: currentPair.id,
-          type: "agent" as const,
+        const agentMessage: MessageType = {
+          id: String(currentPair.id),
+          type: "agent",
           content: "Processing message...",
-          timestamp: new Date(currentPair.updated_at),
+          timestamp: new Date(String(currentPair.updated_at)),
           sources: sourcesData,
         };
 
         setMessages([userMessage, agentMessage]);
-        chatWorkerRef.current.postMessage({
+
+        const workerMessage: WorkerMessage = {
           type: "process_message",
           data: {
-            id: currentPair.id,
+            id: String(currentPair.id),
             content: messageContent,
           },
-        });
-      } else {
-        if (typeof messageContent === "object" && messageContent !== null) {
-          messageContent = JSON.stringify(messageContent, null, 2);
-        }
+        };
 
-        const agentMessage = {
-          id: currentPair.id,
-          type: "agent" as const,
-          content: messageContent,
-          timestamp: new Date(currentPair.updated_at),
+        chatWorkerRef.current.postMessage(workerMessage);
+      } else {
+        const content =
+          typeof messageContent === "object"
+            ? JSON.stringify(messageContent, null, 2)
+            : String(messageContent || "");
+
+        const agentMessage: MessageType = {
+          id: String(currentPair.id),
+          type: "agent",
+          content: content,
+          timestamp: new Date(String(currentPair.updated_at)),
           sources: sourcesData,
         };
 
@@ -315,7 +338,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   }, [showAgentDropdown]);
 
   const handleTagClick = (tag: string) => {
-    setQuery(tag);
+    if (!isStreaming) {
+      // Only update query if not streaming
+      setQuery(tag);
+    }
   };
 
   const handleAgentSelect = (
@@ -342,8 +368,12 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const agentData = agentCards.find(a => a.id === selectedAgent) || agentCards[0];
 
   const handleSearch = async (incoming?: string) => {
+    if (isStreaming) return; // Prevent new searches while streaming
+
     const q = incoming ?? query;
     if (!q.trim()) return;
+
+    setIsStreaming(true); // Set streaming state at the beginning of search
 
     if (chatWorkerRef.current) {
       chatWorkerRef.current.postMessage({
@@ -403,7 +433,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
       let currentContent = "⏳ Searching for information...";
       let fullContent = "";
-      let sources: any[] = [];
+      let sources: ChatSource[] = [];
       let searchQueries: string[] = [];
       let hasExtractedFinalAnswer = false;
       let lastUpdateTime = Date.now();
@@ -433,16 +463,22 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
           switch (update.type) {
             case "thread_id":
-              if (update.content && update.content.thread_id) {
-                const newUrl = `/chat/${update.content.thread_id}`;
-                window.history.replaceState({ path: newUrl }, "", newUrl);
+              if (update.content && update.content.thread_id && threadId != "new") {
+                const newThreadId = update.content.thread_id;
+                if (newThreadId !== threadId) {
+                  const newUrl = `/chat/${newThreadId}`;
+                  window.history.replaceState({ path: newUrl }, "", newUrl);
 
-                dispatch(
-                  addChatThread({
-                    id: update.content.thread_id,
-                    query: q,
-                  })
-                );
+                  dispatch(
+                    addChatThread({
+                      id: newThreadId,
+                      query: q,
+                    })
+                  );
+                } else if (threadId) {
+                  setChatPairs(prev => [...update.content.messages, ...prev]);
+                  setCurrentMessageIndex(prev => prev + 1);
+                }
               }
               break;
 
@@ -597,6 +633,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       );
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
       setQuery("");
     }
   };
@@ -604,10 +641,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSearch();
-
-      posthog.capture("search_input_method", { method: "enter_key" });
+      if (!isStreaming) {
+        // Only process if not already streaming
+        handleSearch();
+        posthog.capture("search_input_method", { method: "enter_key" });
+      }
     } else if (e.key === "Enter" && e.shiftKey) {
+      // Allow new lines with Shift+Enter
     }
   };
 
@@ -660,22 +700,27 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         return;
       }
 
-      const response = await apiClient.sendFeedback({
-        message_id: feedback.messageId,
-        is_positive: feedback.isPositive,
-        comment: feedback.comment || "",
-      });
+      try {
+        const response = await apiClient.sendFeedback({
+          message_id: feedback.messageId,
+          is_positive: feedback.isPositive,
+          comment: feedback.comment || "",
+        });
 
-      if (response && response.success) {
-        showSuccessToast("Feedback submitted successfully");
+        if (response?.success) {
+          showSuccessToast("Feedback submitted successfully");
+        }
+
+        posthog.capture("feedback_submitted", {
+          message_id: feedback.messageId,
+          thread_id: threadId,
+          is_positive: feedback.isPositive,
+          has_comment: !!feedback.comment,
+        });
+      } catch (error) {
+        console.error("Error submitting feedback:", error);
+        showErrorToast("Failed to submit feedback. Please try again.");
       }
-
-      posthog.capture("feedback_submitted", {
-        message_id: feedback.messageId,
-        thread_id: threadId,
-        is_positive: feedback.isPositive,
-        has_comment: !!feedback.comment,
-      });
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || "Failed to submit feedback";
       const statusCode = error?.response?.status || 500;
@@ -697,32 +742,34 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
           messages.length ? "pt-1 pb-1" : "min-h-screen justify-start"
         }`}
       >
-        <div
-          className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
-        >
-          <div className="items-center justify-center h-20 ">
-            {/* {!(messages?.length && messages.length > 0) && <OrbAura />} */}
-          </div>
-          <h1
-            className={`font-bold -mt-3 mb-2 ${darkMode ? "text-white" : "text-gray-900"} ${
-              messages.length ? "text-2xl" : "text-4xl"
-            }`}
+        {threadId === "new" && (
+          <div
+            className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
           >
-            {getPersonalizedGreeting()}
-            <div className="mt-2">
-              <span>What's on </span>
-              <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-bold">
-                your mind?
-              </span>
+            <div className="items-center justify-center h-20 ">
+              {/* {!(messages?.length && messages.length > 0) && <OrbAura />} */}
             </div>
-          </h1>
-          {!messages.length && (
-            <p className="text-gray-600 text-base sm:text-lg mt-6">
-              Our AI filters through millions of profiles to surface truly relevant people, faster
-              and more precisely than traditional platforms.
-            </p>
-          )}
-        </div>
+            <h1
+              className={`font-bold -mt-3 mb-2 ${darkMode ? "text-white" : "text-gray-900"} ${
+                messages.length ? "text-2xl" : "text-4xl"
+              }`}
+            >
+              {getPersonalizedGreeting()}
+              <div className="mt-2">
+                <span>What's on </span>
+                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-bold">
+                  your mind?
+                </span>
+              </div>
+            </h1>
+            {!messages.length && (
+              <p className="text-gray-600 text-base sm:text-lg mt-6">
+                Our AI filters through millions of profiles to surface truly relevant people, faster
+                and more precisely than traditional platforms.
+              </p>
+            )}
+          </div>
+        )}
 
         <div
           className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8"} transition-all duration-500`}
@@ -1002,25 +1049,24 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                 </div>
               </div>
 
-              {/* Search Button */}
               {/* <Button
                 onClick={() => handleSearch()}
                 disabled={!query.trim() || isLoading}
                 className={`rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
                   !query.trim() || isLoading
-                  ? darkMode
-                  ? "bg-gray-800 cursor-not-allowed"
-                  : "bg-gray-300 cursor-not-allowed"
-                  : darkMode
-                  ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
-                  : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
-                  }`}
-                  >
-                  Search
-                  </Button> */}
+                    ? darkMode
+                      ? "bg-gray-800 cursor-not-allowed"
+                      : "bg-gray-300 cursor-not-allowed"
+                    : darkMode
+                      ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
+                      : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
+                }`}
+              >
+                Search
+              </Button> */}
             </div>
           </div>
-          {!(messages.length > 0) && (
+          {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[
                 { category: TagCategories.GENERAL, speed: 0.4 },
@@ -1208,15 +1254,22 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                                   (m.sources && m.sources.length > 0
                                     ? m.sources
                                     : m.sources_gathered) || []
-                                ).map((source: any, index: number) => {
+                                ).map((source: ChatSource | string, index: number) => {
                                   // Normalize source object to handle both formats
-                                  const src = source?.value
-                                    ? source
-                                    : {
-                                        value: source,
-                                        title: `Source ${index + 1}`,
-                                        short_url: `[${index + 1}]`,
-                                      };
+                                  // Create a properly typed source object
+                                  const src: ChatSource =
+                                    typeof source === "string"
+                                      ? {
+                                          value: source,
+                                          title: `Source ${index + 1}`,
+                                          short_url: `[${index + 1}]`,
+                                        }
+                                      : {
+                                          ...source,
+                                          value: source.value || "",
+                                          title: source.title || `Source ${index + 1}`,
+                                          short_url: source.short_url || `[${index + 1}]`,
+                                        };
 
                                   return (
                                     <li
@@ -1339,65 +1392,29 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         </div>
       )}
 
-      <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        <DialogContent
-          className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}
-        >
-          <DialogHeader>
-            <DialogTitle className={darkMode ? "text-white" : "text-gray-900"}>
-              {currentFeedback?.isPositive ? "What was helpful?" : "What went wrong?"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder={
-                currentFeedback?.isPositive
-                  ? "Tell us what was helpful about this response..."
-                  : "Tell us what went wrong with this response..."
-              }
-              value={currentFeedback?.comment || ""}
-              onChange={e =>
-                setCurrentFeedback(prev => (prev ? { ...prev, comment: e.target.value } : null))
-              }
-              className={`min-h-[100px] ${
-                darkMode
-                  ? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                  : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-500"
-              }`}
-            />
-          </div>
-          <DialogFooter className="flex justify-end gap-2">
-            <DialogClose asChild>
-              <Button
-                variant="outline"
-                className={
-                  darkMode
-                    ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                }
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              onClick={() => {
-                if (currentFeedback) {
-                  handleFeedbackSubmit(currentFeedback);
-                  setFeedbackModalOpen(false);
-                  setCurrentFeedback(null);
-                }
-              }}
-              className={
-                darkMode
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
-              }
-            >
-              Submit Feedback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* LinkedIn URL Modal */}
+      {linkedinModalOpen && (
+        <LinkedInUrlModal
+          open={linkedinModalOpen}
+          onOpenChange={isOpen => {
+            setLinkedinModalOpen(isOpen);
+            // If the modal is closed and the profile still lacks a URL, set the flag
+            if (!isOpen && profile && !profile.linkedin_url) {
+              localStorage.setItem("hasDismissedLinkedInModal", "true");
+            }
+          }}
+        />
+      )}
+
+      <FeedbackModal
+        open={feedbackModalOpen}
+        onOpenChange={setFeedbackModalOpen}
+        initialFeedback={currentFeedback}
+        onSubmit={feedback => {
+          handleFeedbackSubmit(feedback);
+          setCurrentFeedback(null);
+        }}
+      />
     </div>
   );
 };

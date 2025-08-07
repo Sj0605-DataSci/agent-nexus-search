@@ -6,7 +6,6 @@ import Link from "next/link";
 
 interface BrandLogoProps {
   variant?: "full" | "text-only";
-  darkMode?: boolean;
   className?: string;
   showLink?: boolean;
   size?: "small" | "medium" | "large";
@@ -14,7 +13,6 @@ interface BrandLogoProps {
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({
   variant = "full",
-  darkMode = false,
   className = "",
   showLink = true,
   size = "medium",
@@ -24,24 +22,27 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     small: {
       iconSize: 20,
       iconContainer: "w-5 h-5",
+      iconClass: "h-5 w-5",
       textSize: "text-xs",
       gap: "gap-1",
     },
     medium: {
       iconSize: 28,
       iconContainer: "w-7 h-7",
+      iconClass: "h-7 w-7",
       textSize: "text-2xl",
       gap: "gap-2",
     },
     large: {
       iconSize: 36,
       iconContainer: "w-9 h-9",
+      iconClass: "h-9 w-9",
       textSize: "text-3xl",
       gap: "gap-3",
     },
   };
 
-  const { iconSize, iconContainer, textSize, gap } = sizeConfig[size];
+  const { iconSize, iconContainer, iconClass, textSize, gap } = sizeConfig[size];
 
   const logoContent = (
     <>
@@ -54,14 +55,14 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             alt="DiscoverMinds Logo"
             width={iconSize}
             height={iconSize}
-            className={`h-${iconSize / 4} w-${iconSize / 4}`}
+            className={iconClass}
           />
         </div>
       )}
       <span
-        className={`${textSize} ${variant === "full" ? "font-bold" : "font-semibold"} ${
-          darkMode ? "text-white" : "text-gray-900"
-        } ${variant === "text-only" && darkMode ? "text-gray-400" : variant === "text-only" ? "text-gray-500" : ""}`}
+        className={`${textSize} ${variant === "full" ? "font-bold" : "font-semibold"} text-gray-900 ${
+          variant === "text-only" ? "text-gray-500" : ""
+        }`}
       >
         DiscoverMinds.ai
       </span>
