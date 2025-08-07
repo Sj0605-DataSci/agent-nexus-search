@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiUser, FiMail, FiPhone, FiLoader } from "react-icons/fi";
 import { FaLinkedin } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/integrations/fastapi/client";
 
 interface InputFieldProps {
   id: string;
@@ -183,36 +184,26 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
     setIsSubmitting(true);
 
     try {
-      const submitFormData = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        submitFormData.append(key, value);
+      const response = await apiClient.joinWaitlist({
+        name: formData.name,
+        email: formData.email,
+        phone_number: formData.phone,
+        linkedin_url: formData.linkedin_url,
       });
 
-      const response = await fetch("/api/waitlist", {
-        method: "POST",
-        body: submitFormData,
-      });
-
-      if (response.redirected) {
-        startTransition(() => {
-          router.push(response.url);
-        });
-        return;
-      }
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 409) {
-          setErrors({ submit: result.error });
-        } else {
-          setErrors({ submit: result.error || "Something went wrong. Please try again." });
+      if (response.success) {
+        setSuccess(true);
+        if (response.data?.invitee_id) {
+          console.log("Successfully joined waitlist with ID:", response.data.invitee_id);
         }
       } else {
-        setSuccess(true);
+        setErrors({ submit: response.message || "Failed to join waitlist. Please try again." });
       }
-    } catch (error) {
-      setErrors({ submit: "Network error. Please check your connection and try again." });
+    } catch (error: any) {
+      console.error("Error joining waitlist:", error);
+      setErrors({
+        submit: error.message || "An error occurred while joining the waitlist. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
