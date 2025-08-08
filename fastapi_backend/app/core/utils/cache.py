@@ -36,6 +36,10 @@ _chat_threads_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()  # User'
 _chat_messages_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()  # Messages for a thread
 _message_feedback_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()  # Feedback for a message
 
+# Subscription-related caches
+_subscription_cache: Dict[str, Tuple[Any, float]] = OrderedDict()  # User subscriptions
+_usage_stats_cache: Dict[str, Tuple[Any, float]] = OrderedDict()  # User usage statistics
+
 # Cache configuration with performance optimizations
 CACHE_CONFIG = {
     "profile": {
@@ -81,9 +85,23 @@ CACHE_CONFIG = {
         "lru_eviction": True
     },
     "message_feedback": {
-        "ttl": 1200,  # Increased to 20 minutes (feedback changes rarely)
+        "ttl": 600,  # 10 minutes (feedback doesn't change often)
         "max_size": 200,
         "cleanup_size": 20,
+        "warm_on_startup": False,
+        "lru_eviction": True
+    },
+    "subscription": {
+        "ttl": 600,  # 10 minutes (subscriptions change less frequently)
+        "max_size": 1000,
+        "cleanup_size": 100,
+        "warm_on_startup": False,
+        "lru_eviction": True
+    },
+    "usage_stats": {
+        "ttl": 300,  # 5 minutes (usage stats change more frequently)
+        "max_size": 500,
+        "cleanup_size": 50,
         "warm_on_startup": False,
         "lru_eviction": True
     }
@@ -249,14 +267,19 @@ def cache_chat_threads(user_id: Union[str, UUID], threads_data: List[Any]) -> No
     else:
         _cleanup_cache(_chat_threads_cache, config["max_size"], config["cleanup_size"])
 
-def invalidate_chat_threads_cache(user_id: Union[str, UUID]) -> bool:
-    """Invalidate cached chat threads for a specific user"""
+def invalidate_chat_threads_cache(user_id: Union[str, UUID]) -> int:
+    """Invalidate all cached chat threads for a specific user (all pages)"""
     user_id_str = str(user_id)
-    if user_id_str in _chat_threads_cache:
-        del _chat_threads_cache[user_id_str]
-        logger.info("Chat threads cache invalidated", user_id=user_id_str)
-        return True
-    return False
+    # Find all cache keys that start with "threads:{user_id}:"
+    keys_to_delete = [key for key in _chat_threads_cache.keys() if key.startswith(f"threads:{user_id_str}:")]
+    
+    for key in keys_to_delete:
+        del _chat_threads_cache[key]
+    
+    if keys_to_delete:
+        logger.info("Chat threads cache invalidated", user_id=user_id_str, entries_removed=len(keys_to_delete))
+    
+    return len(keys_to_delete)
 
 # Chat Messages Cache Functions
 def get_cached_chat_messages(cache_key: str) -> Optional[List[Any]]:
@@ -341,6 +364,80 @@ def invalidate_message_feedback_cache(message_id: Union[str, UUID]) -> bool:
         return True
     return False
 
+# Subscription Cache Functions
+def get_cached_subscription(user_id: Union[str, UUID]) -> Optional[Any]:
+    """Get cached subscription for a user"""
+    user_id_str = str(user_id)
+    if user_id_str in _subscription_cache:
+        subscription, cached_time = _subscription_cache[user_id_str]
+        if _is_cache_valid(cached_time, CACHE_CONFIG["subscription"]["ttl"]):
+            # Move to end to mark as recently used
+            del _subscription_cache[user_id_str]
+            _subscription_cache[user_id_str] = (subscription, cached_time)
+            return subscription
+        else:
+            del _subscription_cache[user_id_str]
+    return None
+
+def cache_subscription(user_id: Union[str, UUID], subscription_data: Any) -> None:
+    """Cache a user subscription"""
+    user_id_str = str(user_id)
+    _subscription_cache[user_id_str] = (subscription_data, time.time())
+    
+    # Cleanup if needed
+    config = CACHE_CONFIG["subscription"]
+    if config["lru_eviction"]:
+        _lru_eviction(_subscription_cache, config["max_size"])
+    else:
+        _cleanup_cache(_subscription_cache, config["max_size"], config["cleanup_size"])
+
+def invalidate_subscription_cache(user_id: Union[str, UUID]) -> bool:
+    """Invalidate cached subscription for a specific user"""
+    user_id_str = str(user_id)
+    if user_id_str in _subscription_cache:
+        del _subscription_cache[user_id_str]
+        logger.info("Subscription cache invalidated", user_id=user_id_str)
+        return True
+    return False
+
+# Usage Stats Cache Functions
+def get_cached_usage_stats(cache_key: str) -> Optional[Any]:
+    """Get cached usage stats (cache_key includes user_id and days)"""
+    if cache_key in _usage_stats_cache:
+        stats, cached_time = _usage_stats_cache[cache_key]
+        if _is_cache_valid(cached_time, CACHE_CONFIG["usage_stats"]["ttl"]):
+            # Move to end to mark as recently used
+            del _usage_stats_cache[cache_key]
+            _usage_stats_cache[cache_key] = (stats, cached_time)
+            return stats
+        else:
+            del _usage_stats_cache[cache_key]
+    return None
+
+def cache_usage_stats(cache_key: str, stats_data: Any) -> None:
+    """Cache usage statistics"""
+    _usage_stats_cache[cache_key] = (stats_data, time.time())
+    
+    # Cleanup if needed
+    config = CACHE_CONFIG["usage_stats"]
+    if config["lru_eviction"]:
+        _lru_eviction(_usage_stats_cache, config["max_size"])
+    else:
+        _cleanup_cache(_usage_stats_cache, config["max_size"], config["cleanup_size"])
+
+def invalidate_usage_stats_cache(user_id: Union[str, UUID]) -> int:
+    """Invalidate all cached usage stats for a specific user"""
+    user_id_str = str(user_id)
+    keys_to_delete = [key for key in _usage_stats_cache.keys() if key.startswith(f"{user_id_str}:")]
+    
+    for key in keys_to_delete:
+        del _usage_stats_cache[key]
+    
+    if keys_to_delete:
+        logger.info("Usage stats cache invalidated", user_id=user_id_str, entries_removed=len(keys_to_delete))
+    
+    return len(keys_to_delete)
+
 # Generic Cache Functions
 def get_cached_item(cache_key: str) -> Optional[Any]:
     """Get any cached item by key"""
@@ -391,6 +488,8 @@ def clear_all_caches() -> Dict[str, int]:
         "chat_threads": len(_chat_threads_cache),
         "chat_messages": len(_chat_messages_cache),
         "message_feedback": len(_message_feedback_cache),
+        "subscriptions": len(_subscription_cache),
+        "usage_stats": len(_usage_stats_cache),
         "generic": len(_generic_cache)
     }
     
@@ -400,6 +499,8 @@ def clear_all_caches() -> Dict[str, int]:
     _chat_threads_cache.clear()
     _chat_messages_cache.clear()
     _message_feedback_cache.clear()
+    _subscription_cache.clear()
+    _usage_stats_cache.clear()
     _generic_cache.clear()
     
     logger.info("All caches cleared", **counts)
@@ -416,6 +517,8 @@ def get_cache_stats() -> Dict[str, Dict[str, Any]]:
         ("chat_threads", _chat_threads_cache),
         ("chat_messages", _chat_messages_cache),
         ("message_feedback", _message_feedback_cache),
+        ("subscription", _subscription_cache),
+        ("usage_stats", _usage_stats_cache),
         ("generic", _generic_cache)
     ]:
         config = CACHE_CONFIG.get(cache_name, CACHE_CONFIG["generic"])
@@ -437,7 +540,8 @@ def invalidate_cache_pattern(pattern: str) -> int:
     
     # Check all cache dictionaries
     for cache_dict in [_profile_cache, _agent_cache, _user_agents_cache, 
-                      _chat_threads_cache, _chat_messages_cache, _message_feedback_cache, _generic_cache]:
+                      _chat_threads_cache, _chat_messages_cache, _message_feedback_cache,
+                      _subscription_cache, _usage_stats_cache, _generic_cache]:
         keys_to_delete = []
         
         for key in cache_dict.keys():

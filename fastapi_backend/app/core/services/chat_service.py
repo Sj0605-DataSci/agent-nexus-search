@@ -669,12 +669,16 @@ class ChatService:
                        message_id=message_id)
             
             # Get user profile and email
-            user_profile = await self.client.table("profiles").select("email, full_name").eq("id", user_id).execute()
+            user_profile = await self.client.table("profiles").select("email, full_name, email_subscription").eq("id", user_id).execute()
             if not user_profile.data or not user_profile.data[0].get("email"):
                 logger.warning("User email not found, cannot send PDF",
                              user_id=user_id)
                 return False
-            
+            user_email_subscription=user_profile.data[0].get("email_subscription", False)
+            if not user_email_subscription:
+                logger.warning("User email subscription not found, cannot send PDF",
+                             user_id=user_id)
+                return False
             user_email = user_profile.data[0]["email"]
             user_name = user_profile.data[0].get("full_name", "")
             

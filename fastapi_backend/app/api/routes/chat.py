@@ -9,7 +9,8 @@ import logging
 from app.core.auth import get_current_user
 from app.core.utils.cache import (
     get_cached_chat_messages, cache_chat_messages, invalidate_chat_messages_cache,
-    get_cached_message_feedback, cache_message_feedback, invalidate_message_feedback_cache
+    get_cached_message_feedback, cache_message_feedback, invalidate_message_feedback_cache,
+    get_cached_chat_threads, cache_chat_threads, invalidate_chat_threads_cache
 )
 from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
@@ -174,6 +175,29 @@ async def get_chat_threads(
     Returns paginated chat thread objects with their IDs and metadata, plus total count
     """
     try:
+        # Create cache key including user_id and pagination info
+        user_id_str = str(current_user.id)
+        cache_key = f"threads:{user_id_str}:{page}:{page_size}"
+        
+        # Try to get from cache first
+        cached_threads = get_cached_chat_threads(cache_key)
+        if cached_threads is not None:
+            logger.info("Chat threads retrieved from cache",
+                       user_id=current_user.id,
+                       page=page,
+                       page_size=page_size,
+                       thread_count=len(cached_threads.get("threads", [])))
+            
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Chat threads retrieved from cache",
+                data=cached_threads
+            ))
+        
+        # If not in cache, get from database
+        logger.info(f"Cache miss for threads {cache_key}, fetching from database")
+        
         # Calculate offset from page and page_size
         offset = (page - 1) * page_size
         
@@ -196,6 +220,10 @@ async def get_chat_threads(
                 "has_previous": page > 1
             }
         }
+        
+        # Cache the results
+        cache_chat_threads(cache_key, pagination_data)
+        logger.info("Chat threads cached", cache_key=cache_key)
         
         logger.info("Chat threads retrieved successfully",
                    user_id=current_user.id,

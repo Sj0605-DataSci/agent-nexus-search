@@ -55,6 +55,7 @@ class Profile(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
     has_connections = Column(Boolean, default=False)
     user_subscriptions_id = Column(UUID(as_uuid=True), ForeignKey("user_subscriptions.id"), nullable=True)
+    email_subscription = Column(Boolean, default=False)
     linkedin_url = Column(Text, nullable=True)
 
     # Relationships

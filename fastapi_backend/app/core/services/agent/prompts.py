@@ -154,6 +154,7 @@ Instructions:
 - You have access to the user's question.
 - Go in depth and provide a detailed answer. Include citations from the summaries in the answer correctly, use markdown format (e.g. [apnews](1)). THIS IS A MUST.
 - Provide a natural conversational response.
+- Always give answer in markdown format.
 - Write in plain text as if you're having a conversation with the user.
 - Include relevant information from the sources and cite them properly.
 - Be natural in your response, and you are people search engine, so always you need to tell about people, you need to give their information be it in a list format or chat format. Nothing less nothing more.
@@ -176,7 +177,16 @@ Also provide a score with each person, the score should be based on the followin
 - Provide a score out of 10 and reason for the score
 - Always end with thank you note + never give any advisory like "please note" or anything, you are prohibted to do so.
 - You always need to give list of people thats it.
-- Provide a score out of 10 and reason for the score"""
+- Provide a score out of 10 and reason for the score
+
+Example : 
+** Hi this is what i got **
+**Name : Ashish Gupta**
+**Position : Software Engineer**
+**Company : UiPath**
+**Score : 10**
+**Reason : Because he is a software engineer and has been mentioned in the summaries**
+"""
 
 answer_user_prompt = """User Context:
 - {research_topic}
@@ -185,7 +195,10 @@ Summaries:
 {summaries}
 
 Use these links:
-{links}"""
+{links}
+
+- Always give answer in markdown format.
+"""
 
 # Keep original for backward compatibility
 answer_instructions = answer_system_instruction + "\n\n" + answer_user_prompt
