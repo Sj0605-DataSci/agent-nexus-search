@@ -175,7 +175,8 @@ Also provide a score with each person, the score should be based on the followin
 - In summaries relevancy of information, created, updated, when information was published
 - Provide a score out of 10 and reason for the score
 - Always end with thank you note + never give any advisory like "please note" or anything, you are prohibted to do so.
-- You always need to give list of people thats it."""
+- You always need to give list of people thats it.
+- Provide a score out of 10 and reason for the score"""
 
 answer_user_prompt = """User Context:
 - {research_topic}
