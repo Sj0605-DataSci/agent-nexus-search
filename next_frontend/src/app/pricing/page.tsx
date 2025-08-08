@@ -13,8 +13,7 @@ export default function PricingPage() {
   return (
     <>
       <HomeHeader />
-      <main>
-        {/* Hero Section */}
+      <div>
         <div className="relative bg-gradient-to-r from-gray-50 to-[#EEF3FB] text-gray-800">
           <div className="pt-28 pb-16 md:pt-36 md:pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
@@ -35,10 +34,8 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Pricing Cards */}
         <div className="relative bg-white flex w-full py-24">
           <div className="grid w-full grid-cols-1 gap-8 px-4 md:mx-auto md:max-w-2xl md:grid-cols-2 xl:max-w-6xl xl:grid-cols-3">
-            {/* Hunter Plan (Free) */}
             <div className="flex h-full min-h-[440px] w-full flex-col gap-10 rounded-xl px-6 py-8 bg-white shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 rounded-bl-full opacity-30"></div>
               <div className="flex w-full flex-col gap-10">
@@ -67,7 +64,11 @@ export default function PricingPage() {
                   <ul className="flex flex-col gap-4 text-gray-700">
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
                       5 search credits/day
-                      <p className="mt-1 text-xs leading-4 text-gray-500">Basic search: 1 credit</p>
+                      <p className="mt-1 text-xs leading-4 text-gray-500">
+                        Basic search: 1 credit
+                        <br />
+                        Deep search: 3 credits
+                      </p>
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
                       <span className="group relative inline underline decoration-dotted ">
@@ -100,7 +101,6 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* Professional Plan */}
             <div className="flex h-full min-h-[440px] w-full flex-col gap-10 rounded-xl px-6 py-8 bg-[#EEF3FB] shadow-sm hover:shadow-md border border-[#D0E0F7] relative overflow-hidden transform hover:-translate-y-1 transition-all duration-300">
               <div className="absolute top-0 right-0 w-24 h-24 bg-[#80A9F9]/20 rounded-bl-full opacity-30"></div>
               <div className="flex w-full flex-col gap-10">
@@ -169,7 +169,6 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* Enterprise Plan */}
             <div className="flex h-full min-h-[440px] w-full flex-col gap-10 rounded-xl px-6 py-8 bg-white shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 rounded-bl-full opacity-30"></div>
               <div className="flex w-full flex-col gap-10">
@@ -374,7 +373,7 @@ export default function PricingPage() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
       <Footer />
     </>
   );

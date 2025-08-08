@@ -2,20 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import "aos/dist/aos.css";
 import BrandLogo from "../BrandLogo";
-
-const DiscovermindsLogo: React.FC = () => {
-  return (
-    <Link
-      href="/"
-      className="flex items-center gap-2  mt-2 sm:gap-2.5 group"
-      aria-label="Discoverminds Home"
-    >
-      <BrandLogo className="mb-3" />
-    </Link>
-  );
-};
 
 interface MobileMenuIconProps {
   isOpen: boolean;
@@ -27,9 +14,6 @@ const MobileMenuIcon = ({ isOpen, onClick }: MobileMenuIconProps) => (
     onClick={onClick}
     className="md:hidden p-2 text-text-secondary hover:text-text-primary transition-colors duration-300"
     aria-label={isOpen ? "Close menu" : "Open menu"}
-    data-aos="fade-left"
-    data-aos-duration="600"
-    data-aos-delay="200"
   >
     <div className="w-5 h-5 flex flex-col justify-center items-center">
       <span
@@ -107,8 +91,7 @@ const HomeHeader: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed left-0 top-0 right-0 z-50 mt-6 backdrop-blur-md bg-background/85 shadow-none
-        }`}
+        className={`fixed left-0 top-0 right-0 z-50 mt-6 backdrop-blur-md bg-background/85 shadow-none`}
       >
         <div className="mx-auto flex h-16 sm:h-[60px] max-w-[1200px] items-center justify-between px-4 sm:px-5 lg:px-6 xl:px-6">
           <BrandLogo className="" />

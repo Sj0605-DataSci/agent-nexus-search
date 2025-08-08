@@ -49,32 +49,17 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
                 dispatch(fetchAgentTemplates()).unwrap(),
                 dispatch(fetchHiredAgents()).unwrap(),
               ]);
-            } catch (agentError) {
-              console.error("Error fetching agent data:", agentError);
-            }
+            } catch (agentError) {}
           } else {
             throw new Error(profileResult.message || "Failed to fetch profile");
           }
         } catch (error) {
-          console.error("Error fetching profile data:", error);
-
           posthog.capture("profile_fetch_error", {
             error: error instanceof Error ? error.message : String(error),
           });
 
           localStorage.removeItem("discover_minds_access_token");
           localStorage.removeItem("discover_minds_refresh_token");
-          router.push("/login");
-        }
-      } else if (!user && !token && !profile) {
-        if (
-          pathname !== "/login" &&
-          pathname !== "/" &&
-          pathname !== "/signup" &&
-          pathname !== "/join-waitlist" &&
-          !pathname.startsWith("/reset-password")
-        ) {
-          // router.push("/join-waitlist");
         }
       } else if (profile && agentsStatus === "idle") {
         try {
