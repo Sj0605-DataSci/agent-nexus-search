@@ -87,7 +87,8 @@ async def get_my_profile(
             "updated_at": current_user.updated_at,
             "has_connections": current_user.has_connections,
             "user_subscriptions_id": current_user.user_subscriptions_id,
-            "linkedin_url": current_user.linkedin_url
+            "linkedin_url": current_user.linkedin_url,
+            "email_subscription": current_user.email_subscription
         }
         
         profile_response = ProfileResponse(**profile_data)
@@ -134,7 +135,9 @@ async def update_my_profile(
         if profile_update.email is not None:
             update_data["email"] = profile_update.email
         if profile_update.linkedin_url is not None:
-            update_data["linkedin_url"] = profile_update.linkedin_url    
+            update_data["linkedin_url"] = profile_update.linkedin_url
+        if profile_update.email_subscription is not None:
+            update_data["email_subscription"] = profile_update.email_subscription    
         
         # Only perform update if there are fields to update
         if update_data:

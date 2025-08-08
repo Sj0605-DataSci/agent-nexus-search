@@ -247,7 +247,7 @@ async def _get_profile_from_db(client, user_id: UUID) -> Optional[Profile]:
     try:
         # Use single query with minimal fields for faster response
         response = await client.table("profiles").select(
-            "id, email, full_name, created_at, has_connections, user_subscriptions_id, linkedin_url"
+            "id, email, full_name, created_at, has_connections, user_subscriptions_id, linkedin_url, email_subscription"
         ).eq("id", user_id_str).limit(1).single().execute()
         
         if response.data:

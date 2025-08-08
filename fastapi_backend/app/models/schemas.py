@@ -139,6 +139,7 @@ class ProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     linkedin_url: Optional[str] = None
+    email_subscription: Optional[bool] = None
     
 
 
@@ -147,6 +148,7 @@ class ProfileResponse(ProfileBase):
     has_connections: Optional[bool] = False
     user_subscriptions_id: Optional[UUID] = None
     linkedin_url: Optional[str] = None
+    email_subscription: Optional[bool] = True
     class Config:
         from_attributes = True
 
