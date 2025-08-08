@@ -21,7 +21,7 @@ class EmailService:
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
         self.email_address = os.getenv("EMAIL_ADDRESS")
         self.email_password = os.getenv("EMAIL_PASSWORD")
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.executor = ThreadPoolExecutor(max_workers=2)  # Reduced from 4 to save memory
         
         # Logo path - try to find the logo in the project
         self.logo_path = self._find_logo_path()

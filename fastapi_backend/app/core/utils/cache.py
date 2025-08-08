@@ -37,38 +37,38 @@ _message_feedback_cache: Dict[str, Tuple[List[Any], float]] = {}  # Feedback for
 CACHE_CONFIG = {
     "profile": {
         "ttl": 300,  # 5 minutes
-        "max_size": 1000,
-        "cleanup_size": 100
+        "max_size": 500,  # Reduced from 1000
+        "cleanup_size": 50  # Reduced from 100
     },
     "agent": {
         "ttl": 600,  # 10 minutes
-        "max_size": 500,
-        "cleanup_size": 50
+        "max_size": 250,  # Reduced from 500
+        "cleanup_size": 25  # Reduced from 50
     },
     "user_agents": {
         "ttl": 300,  # 5 minutes
-        "max_size": 200,
-        "cleanup_size": 20
+        "max_size": 100,  # Reduced from 200
+        "cleanup_size": 10  # Reduced from 20
     },
     "generic": {
         "ttl": 300,  # 5 minutes
-        "max_size": 1000,
-        "cleanup_size": 100
+        "max_size": 500,  # Reduced from 1000
+        "cleanup_size": 50  # Reduced from 100
     },
     "chat_threads": {
         "ttl": 600,  # 10 minutes
-        "max_size": 300,
-        "cleanup_size": 30
+        "max_size": 150,  # Reduced from 300
+        "cleanup_size": 15  # Reduced from 30
     },
     "chat_messages": {
         "ttl": 300,  # 5 minutes
-        "max_size": 500,
-        "cleanup_size": 50
+        "max_size": 250,  # Reduced from 500
+        "cleanup_size": 25  # Reduced from 50
     },
     "message_feedback": {
         "ttl": 600,  # 10 minutes
-        "max_size": 200,
-        "cleanup_size": 20
+        "max_size": 100,  # Reduced from 200
+        "cleanup_size": 10  # Reduced from 20
     }
 }
 

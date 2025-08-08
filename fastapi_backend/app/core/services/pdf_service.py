@@ -20,7 +20,7 @@ class PDFService:
     """Service for generating PDF documents from chat results"""
     
     def __init__(self):
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.executor = ThreadPoolExecutor(max_workers=2)  # Reduced from 4 to save memory
         self.temp_dir = Path(tempfile.gettempdir()) / "discoverminds_pdfs"
         self.temp_dir.mkdir(exist_ok=True)
     
