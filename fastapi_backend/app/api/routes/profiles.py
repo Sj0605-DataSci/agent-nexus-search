@@ -3,6 +3,11 @@ from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.auth import get_current_user, invalidate_profile_cache
 from app.db.clients import get_async_supabase_client
+from app.core.utils.cache import (
+    get_cached_item, cache_item, invalidate_cache_item,
+    get_cached_subscription, cache_subscription, invalidate_subscription_cache,
+    get_cached_usage_stats, cache_usage_stats, invalidate_usage_stats_cache
+)
 from app.models.models import Profile
 from app.models.schemas import (
     ProfileCreate, ProfileUpdate, ProfileResponse, StandardResponse, StandardJSONResponse,
@@ -52,6 +57,12 @@ async def create_profile(
         # Create the profile
         await client.table("profiles").insert(profile.model_dump()).execute()
         
+        # Invalidate any cached profile data for this user
+        invalidate_profile_cache(current_user.id)
+        profile_cache_key = f"profile_data:{str(current_user.id)}"
+        invalidate_cache_item(profile_cache_key)
+        logger.info(f"Invalidated profile cache for user {str(current_user.id)} after creation")
+        
         logger.info("Profile created successfully",
                    user_id=str(current_user.id))
         
@@ -79,6 +90,23 @@ async def get_my_profile(
     current_user: Profile = Depends(get_current_user)):
     """Get the current user's profile"""
     try:
+        # Try to get data from cache first
+        user_id_str = str(current_user.id)
+        profile_cache_key = f"profile_data:{user_id_str}"
+        cached_profile_data = get_cached_item(profile_cache_key)
+        if cached_profile_data is not None:
+            logger.info(f"Returning profile from cache for user {user_id_str}")
+            # Create ProfileResponse from cached data
+            cached_profile_response = ProfileResponse(**cached_profile_data)
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Profile retrieved from cache",
+                data=cached_profile_response
+            ))
+        
+        # If not in cache, create profile response from current_user
+        logger.info(f"Cache miss for user {user_id_str}, using current user data")
         profile_data = {
             "id": str(current_user.id),
             "full_name": current_user.full_name,
@@ -92,6 +120,11 @@ async def get_my_profile(
         }
         
         profile_response = ProfileResponse(**profile_data)
+        
+        # Store serializable data in cache for future requests (not the Pydantic model)
+        profile_cache_key = f"profile_data:{user_id_str}"
+        cache_item(profile_cache_key, profile_data)
+        logger.info(f"Stored profile in cache for user {user_id_str}")
         
         logger.info("Profile retrieved successfully",
                    user_id=str(current_user.id))
@@ -152,7 +185,26 @@ async def update_my_profile(
         updated_profile = await client.table("profiles").select("*").eq("id", current_user.id).single().execute()
         
         if updated_profile.data:
+            # Invalidate both auth cache and profile cache
             invalidate_profile_cache(current_user.id)
+            profile_cache_key = f"profile_data:{str(current_user.id)}"
+            invalidate_cache_item(profile_cache_key)
+            logger.info(f"Invalidated profile cache for user {str(current_user.id)} after update")
+            
+            # Cache the updated profile data
+            updated_profile_data = {
+                "id": str(updated_profile.data["id"]),
+                "full_name": updated_profile.data.get("full_name"),
+                "email": updated_profile.data.get("email"),
+                "created_at": updated_profile.data.get("created_at"),
+                "updated_at": updated_profile.data.get("updated_at"),
+                "has_connections": updated_profile.data.get("has_connections", False),
+                "user_subscriptions_id": updated_profile.data.get("user_subscriptions_id"),
+                "linkedin_url": updated_profile.data.get("linkedin_url"),
+                "email_subscription": updated_profile.data.get("email_subscription", False)
+            }
+            cache_item(profile_cache_key, updated_profile_data)
+            
             return StandardJSONResponse(StandardResponse(
                 success=True,
                 status_code=status.HTTP_200_OK,
@@ -195,7 +247,20 @@ async def get_my_subscription(
     Uses optimized query with direct profile->subscription relationship.
     """
     try:
-        # Use optimized method that leverages the direct foreign key relationship
+        # Try to get data from cache first
+        user_id_str = str(current_user.id)
+        cached_subscription = get_cached_subscription(user_id_str)
+        if cached_subscription is not None:
+            logger.info(f"Returning subscription from cache for user {user_id_str}")
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Subscription retrieved from cache",
+                data=cached_subscription
+            ))
+        
+        # If not in cache, get from database
+        logger.info(f"Cache miss for subscription {user_id_str}, fetching from database")
         subscription = await credit_service.get_user_subscription_optimized(current_user.id)
         
         if not subscription:
@@ -205,6 +270,10 @@ async def get_my_subscription(
                 message="Subscription not found",
                 data=None
             ), status_code=status.HTTP_404_NOT_FOUND)
+        
+        # Store in cache for future requests
+        cache_subscription(user_id_str, subscription)
+        logger.info(f"Stored subscription in cache for user {user_id_str}")
         
         logger.info("Subscription retrieved successfully (optimized)", user_id=str(current_user.id))
         
@@ -246,7 +315,26 @@ async def get_usage_stats(
                 data=None
             ), status_code=status.HTTP_400_BAD_REQUEST)
         
+        # Try to get data from cache first
+        user_id_str = str(current_user.id)
+        cache_key = f"{user_id_str}:{days}"
+        cached_stats = get_cached_usage_stats(cache_key)
+        if cached_stats is not None:
+            logger.info(f"Returning usage stats from cache for user {user_id_str}, days {days}")
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Usage statistics retrieved from cache",
+                data=cached_stats
+            ))
+        
+        # If not in cache, get from database
+        logger.info(f"Cache miss for usage stats {cache_key}, fetching from database")
         usage_stats = await credit_service.get_usage_stats(current_user.id, days)
+        
+        # Store in cache for future requests
+        cache_usage_stats(cache_key, usage_stats)
+        logger.info(f"Stored usage stats in cache for key {cache_key}")
         
         logger.info("Usage stats retrieved successfully", 
                    user_id=str(current_user.id),
@@ -317,6 +405,11 @@ async def add_credits(
                 data=None
             ), status_code=status.HTTP_400_BAD_REQUEST)
         
+        # Invalidate subscription and usage stats caches after credit addition
+        invalidate_subscription_cache(current_user.id)
+        invalidate_usage_stats_cache(current_user.id)
+        logger.info(f"Invalidated subscription and usage stats cache for user {str(current_user.id)} after adding credits")
+        
         logger.info("Credits added successfully", 
                    user_id=str(current_user.id),
                    credits_added=credits,
@@ -375,6 +468,11 @@ async def upgrade_tier(
                 message=result.get("error", "Failed to upgrade tier"),
                 data=None
             ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+        # Invalidate subscription and usage stats caches after tier upgrade
+        invalidate_subscription_cache(current_user.id)
+        invalidate_usage_stats_cache(current_user.id)
+        logger.info(f"Invalidated subscription and usage stats cache for user {str(current_user.id)} after tier upgrade")
         
         logger.info("Tier upgraded successfully", 
                    user_id=str(current_user.id),
