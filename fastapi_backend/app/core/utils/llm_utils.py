@@ -34,12 +34,39 @@ class GeminiChatModel:
     
     @weave.op
     def invoke(self, prompt):
-        return self.model.invoke([HumanMessage(content=prompt)])
+        """Invoke the model with support for system_instruction and flexible prompt types."""
+        # Check if we have a system instruction in model_kwargs
+        system_instruction = None
+        if hasattr(self.model, 'model_kwargs') and 'system_instruction' in self.model.model_kwargs:
+            system_instruction = self.model.model_kwargs['system_instruction']
+
+        # If we have a system instruction, combine it with the user prompt when prompt is a string
+        if system_instruction and isinstance(prompt, str):
+            combined_prompt = f"{system_instruction}\n\n{prompt}"
+            return self.model.invoke([HumanMessage(content=combined_prompt)])
+        elif isinstance(prompt, str):
+            return self.model.invoke([HumanMessage(content=prompt)])
+        else:
+            # Assume prompt is already a list of messages or proper input
+            return self.model.invoke(prompt)
     
     @weave.op
     def stream(self, prompt):
-        """Stream the response from the model"""
-        return self.model.stream([HumanMessage(content=prompt)])
+        """Stream the response from the model with support for system_instruction and flexible prompt types"""
+        # Check if we have a system instruction in model_kwargs
+        system_instruction = None
+        if hasattr(self.model, 'model_kwargs') and 'system_instruction' in self.model.model_kwargs:
+            system_instruction = self.model.model_kwargs['system_instruction']
+
+        # If we have a system instruction, combine it with the user prompt when prompt is a string
+        if system_instruction and isinstance(prompt, str):
+            combined_prompt = f"{system_instruction}\n\n{prompt}"
+            return self.model.stream([HumanMessage(content=combined_prompt)])
+        elif isinstance(prompt, str):
+            return self.model.stream([HumanMessage(content=prompt)])
+        else:
+            # Assume prompt is already a list of messages or proper input
+            return self.model.stream(prompt)
     
     @weave.op
     def with_structured_output(self, schema_type: Type[T], prompt):
