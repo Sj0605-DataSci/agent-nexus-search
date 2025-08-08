@@ -8,10 +8,7 @@ export default function Page() {
   return (
     <>
       <HomeHeader />
-      <main>
-        <HeroSection />
-        {/* <CompanyLogos /> */}
-      </main>
+      <HeroSection />
       <Footer />
     </>
   );

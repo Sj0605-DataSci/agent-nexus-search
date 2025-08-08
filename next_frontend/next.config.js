@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from "@sentry/nextjs";
-import withPWA from "next-pwa";
 
 const advancedHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -19,6 +18,9 @@ const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
     instrumentationHook: true,
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
   },
   images: {
     remotePatterns: [
