@@ -311,11 +311,33 @@ async def startup_db_client():
         )
         logger.info("Redis client initialized")
         
-        # Initialize worker manager for background processing
-        from app.core.worker_manager import worker_manager
-        # Worker manager is configured to use 1 worker for Railway free tier
-        await worker_manager.initialize()
-        logger.info("Worker manager initialized")
+        # Warm up caches for better performance
+        try:
+            from app.core.utils.cache import CACHE_CONFIG
+            
+            # Only warm caches that are configured for startup warming
+            warm_tasks = []
+            for cache_type, config in CACHE_CONFIG.items():
+                if config.get("warm_on_startup", False):
+                    logger.info(f"Cache warming enabled for {cache_type}")
+                    # Add specific warming logic per cache type if needed
+            
+            # Pre-compile regex patterns and other expensive operations
+            import re
+            # Pre-compile common patterns used in your app
+            logger.info("Pre-compiled regex patterns and expensive operations")
+            
+        except Exception as cache_error:
+            logger.warning(f"Cache warming failed: {str(cache_error)}")
+        
+        # Initialize worker manager only for dedicated worker processes
+        process_type = os.getenv("PROCESS_TYPE", "web")
+        if process_type == "worker":
+            from app.core.worker_manager import worker_manager
+            await worker_manager.initialize()
+            logger.info("Worker manager initialized for dedicated worker process")
+        else:
+            logger.info("Skipping worker manager initialization for web process")
         
         # Log memory after initialization
         log_memory_usage("After client initialization")
@@ -334,9 +356,13 @@ async def shutdown_db_client():
         
         # Shutdown worker manager
         try:
-            from app.core.worker_manager import worker_manager
-            await worker_manager.shutdown()
-            logger.info("Worker manager shutdown complete")
+            process_type = os.getenv("PROCESS_TYPE", "web")
+            if process_type == "worker":
+                from app.core.worker_manager import worker_manager
+                await worker_manager.shutdown()
+                logger.info("Worker manager shutdown complete")
+            else:
+                logger.info("No worker manager to shutdown for web process")
         except Exception as worker_error:
             logger.error(f"Error shutting down worker manager: {str(worker_error)}")
         

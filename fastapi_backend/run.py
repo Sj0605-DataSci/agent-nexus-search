@@ -7,6 +7,8 @@ def run_development():
     # Set environment variables for memory optimization
     os.environ.setdefault("MALLOC_ARENA_MAX", "2")
     os.environ.setdefault("PYTHONUNBUFFERED", "1")
+    os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+    os.environ.setdefault("PYTHONHASHSEED", "random")
     os.environ.setdefault("WEB_CONCURRENCY", "2")
     
     # Gunicorn command matching Dockerfile
@@ -18,7 +20,11 @@ def run_development():
         "--bind", "0.0.0.0:8000",
         "--max-requests", "1000",
         "--max-requests-jitter", "100",
-        "--preload",
+        "--worker-connections", "1000",
+        "--keepalive", "5",
+        "--timeout", "120",
+        "--graceful-timeout", "30",
+        "--worker-tmp-dir", "/tmp",  # Use /tmp instead of /dev/shm for dev
         "--reload",  # Enable reload for development
         "--access-logfile", "-",  # Log to stdout
         "--error-logfile", "-"    # Log errors to stdout
