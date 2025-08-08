@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,18 +14,6 @@ import Aurora from "@/components/Aurora";
 import { useAppDispatch } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
 
-const backdropVariants: Variants = {
-  animate: {
-    rotate: [0, 15, -10, 0],
-    scale: [1, 1.05, 0.98, 1],
-    transition: {
-      duration: 10,
-      repeat: Infinity,
-      ease: "easeInOut",
-      repeatType: "loop",
-    },
-  },
-};
 
 export default function LoginForm() {
   const dispatch = useAppDispatch();
@@ -47,15 +34,14 @@ export default function LoginForm() {
 
         const loginResult = await dispatch(loginUser({ email, password })).unwrap();
         if (loginResult.success && loginResult.status_code === 200) {
-          router.replace("/chat/new");
-          showSuccessToast("Welcome back!", "You have successfully signed in.");
-
-          setTimeout(() => {
-            dispatch(fetchProfile())
-              .then(profileResult => {
-                if (profileResult.payload?.success && profileResult.payload?.data) {
-                  const profileData = profileResult.payload.data;
-
+          router.prefetch("/chat/new"); 
+          
+          dispatch(fetchProfile())
+            .then(profileResult => {
+              if (profileResult.payload?.success && profileResult.payload?.data) {
+                const profileData = profileResult.payload.data;
+                
+                setTimeout(() => {
                   posthog.identify(profileData.id, {
                     email: profileData.email,
                     name: profileData.full_name,
@@ -64,14 +50,13 @@ export default function LoginForm() {
                     userId: profileData.id,
                     hasConnections: profileData.has_connections,
                   });
-                }
-              })
-              .catch(error => console.error("Profile fetch error:", error));
-
-            // Promise.all([dispatch(fetchAgentTemplates()), dispatch(fetchHiredAgents())]).catch(
-            //   error => console.error("Agent data fetch error:", error)
-            // );
-          }, 0);
+                }, 0);
+              }
+            })
+            .catch(error => console.error("Profile fetch error:", error));
+          
+          router.replace("/chat/new");
+          showSuccessToast("Welcome back!", "You have successfully signed in.");
         } else {
           showErrorToast(
             "Login failed",

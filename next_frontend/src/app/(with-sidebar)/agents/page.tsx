@@ -142,60 +142,33 @@ const Agents = () => {
   };
 
   return (
-    <div>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className={`absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl animate-pulse ${
-            darkMode ? "bg-blue-600" : "bg-blue-400"
-          }`}
-        />
-        <div
-          className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-20 blur-3xl animate-pulse delay-1000 ${
-            darkMode ? "bg-purple-600" : "bg-purple-400"
-          }`}
-        />
-        {/* <div
-          className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10 blur-3xl animate-pulse delay-500 ${
-            darkMode ? "bg-cyan-600" : "bg-cyan-400"
-          }`}
-        /> */}
-      </div>
-
-      <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
-        <div className="text-center mb-16 relative">
-          <div className="relative inline-block">
-            <h1
-              className={`text-5xl md:text-6xl font-bold mb-6 h-[100px] md:h-[80px] bg-gradient-to-r ${
-                darkMode
-                  ? "from-blue-300 via-purple-300 to-cyan-300"
-                  : "from-blue-600 via-purple-600 to-cyan-600"
-              } bg-clip-text text-transparent`}
-            >
-              AI Agent Command Center
-            </h1>
-            <div
-              className={`absolute -inset-4 bg-gradient-to-r ${
-                darkMode ? "from-blue-500/15 to-purple-500/15" : "from-blue-400/10 to-purple-400/10"
-              } rounded-3xl blur-xl opacity-50`}
-            />
-          </div>
+    <div className="container mx-auto  pt-12 pb-12 sm:pb-16 md:pb-20 relative z-10">
+      <div className="text-center mb-12 sm:mb-16 relative px-2 sm:px-0">
+        <div className="relative mb-4 inline-block max-w-full">
+        
+          <h1
+            className={`text-5xl md:text-6xl font-bold mb-6 h-[100px] md:h-[80px] bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600
+            } bg-clip-text text-transparent`}
+          >
+            AI Agent Command Center
+          </h1>
+          <div
+            className={`absolute -inset-2 sm:-inset-4 bg-gradient-to-r ${
+              darkMode ? "from-blue-500/15 to-purple-500/15" : "from-blue-400/10 to-purple-400/10"
+            } rounded-3xl blur-xl opacity-50`}
+          />
           <p
-            className={`text-xl max-w-3xl mx-auto leading-relaxed ${
+            className={`text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed ${
               darkMode ? "text-gray-200" : "text-gray-600"
-            }`}
+            } px-2 sm:px-0`}
           >
             Fine-tune your AI agents to perfection. Customize personalities, behaviors, and
             communication styles to create the perfect digital workforce for your needs.
           </p>
-          <div
-            className={`w-32 h-1 mx-auto mt-6 rounded-full bg-gradient-to-r ${
-              darkMode ? "from-blue-400 to-purple-400" : "from-blue-500 to-purple-500"
-            }`}
-          />
         </div>
 
         {agentsStatus === "loading" && (
-          <div className="text-center py-20">
+          <div className="text-center py-10">
             <div className="relative inline-block">
               <div
                 className={`animate-spin rounded-full h-16 w-16 border-4 border-transparent ${
@@ -230,7 +203,7 @@ const Agents = () => {
         )}
 
         {hiredIds.length === 0 && agentsStatus !== "loading" && (
-          <div className="text-center py-20 z-10">
+          <div className="text-center py-10 z-10">
             <div className="relative inline-block mb-8">
               <div
                 className={`text-8xl opacity-50 ${darkMode ? "text-gray-500" : "text-gray-400"}`}
@@ -280,9 +253,7 @@ const Agents = () => {
               >
                 <div className="flex items-center mb-6">
                   <div
-                    className={`p-3 rounded-full mr-4 ${
-                      darkMode ? "bg-blue-600/20" : "bg-blue-100"
-                    }`}
+                    className={`p-3 rounded-full mr-4 ${darkMode ? "bg-blue-600/20" : "bg-blue-100"}`}
                   >
                     <svg
                       className={`w-6 h-6 ${darkMode ? "text-blue-300" : "text-blue-600"}`}
@@ -322,12 +293,12 @@ const Agents = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {hiredRaw.map((agentData, index) => (
                     <button
                       key={agentData.template_id}
                       onClick={() => setSelectedAgent(agentData.template_id)}
-                      className={`group relative p-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${
+                      className={`group relative p-3 sm:p-4 rounded-xl transition-all duration-300 transform hover:scale-105 w-full text-left ${
                         selectedAgent === agentData.template_id
                           ? darkMode
                             ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30 border-2 border-blue-500/50"
@@ -395,10 +366,10 @@ const Agents = () => {
             </div>
 
             {currentAgent && currentConfig && (
-              <div className="grid lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1">
+              <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                <div className="lg:w-1/3">
                   <div
-                    className={`sticky top-24 p-8 rounded-2xl border backdrop-blur-sm ${
+                    className={`sticky top-24 p-4 sm:p-6 md:p-8 rounded-2xl border backdrop-blur-sm ${
                       darkMode
                         ? "bg-gradient-to-br from-gray-800/60 via-gray-800/40 to-gray-800/60 border-gray-700/50"
                         : "bg-gradient-to-br from-white/80 via-white/60 to-white/80 border-gray-200/50"
@@ -487,9 +458,9 @@ const Agents = () => {
                   </div>
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:w-2/3">
                   <div
-                    className={`p-8 rounded-2xl border backdrop-blur-sm ${
+                    className={`p-4 sm:p-6 md:p-8 rounded-2xl border backdrop-blur-sm ${
                       darkMode
                         ? "bg-gradient-to-br from-gray-800/60 via-gray-800/40 to-gray-800/60 border-gray-700/50"
                         : "bg-gradient-to-br from-white/80 via-white/60 to-white/80 border-gray-200/50"
@@ -589,7 +560,7 @@ const Agents = () => {
                         </div>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div className="space-y-3">
                           <Label
                             className={`text-base font-semibold flex items-center ${darkMode ? "text-gray-200" : "text-gray-800"}`}
@@ -719,7 +690,7 @@ const Agents = () => {
                           </Select>
                         </div>
 
-                        <div className="space-y-3 md:col-span-2">
+                        <div className="space-y-3 col-span-1 md:col-span-2">
                           <Label
                             className={`text-base font-semibold flex items-center ${darkMode ? "text-gray-200" : "text-gray-800"}`}
                           >
@@ -776,35 +747,34 @@ const Agents = () => {
                           </Select>
                         </div>
                       </div>
-
                       <div
                         className={`pt-6 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                           <div
-                            className={`text-sm ${darkMode ? "text-gray-200" : "text-gray-600"}`}
+                            className={`text-sm text-center sm:text-left ${darkMode ? "text-gray-300" : "text-gray-600"}`}
                           >
                             Changes are saved automatically to your agent profile
                           </div>
                           <Button
                             onClick={saveConfiguration}
                             disabled={saving}
-                            className={`px-8 py-3 text-base font-semibold text-white ${
+                            className={`w-full sm:w-auto px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold text-white transition-all duration-300 shadow-lg hover:shadow-xl ${
                               saving
                                 ? "opacity-50 cursor-not-allowed"
                                 : darkMode
-                                  ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 transform hover:scale-105"
-                                  : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transform hover:scale-105"
-                            } transition-all duration-300 shadow-lg hover:shadow-xl`}
+                                  ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 sm:transform sm:hover:scale-105"
+                                  : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 sm:transform sm:hover:scale-105"
+                            }`}
                           >
                             {saving ? (
                               <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-2 border-white border-t-transparent mr-2" />
                                 Saving...
                               </>
                             ) : (
                               <>
-                                <Save className="h-5 w-5 mr-2" />
+                                <Save className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                                 Save Configuration
                               </>
                             )}
@@ -819,40 +789,16 @@ const Agents = () => {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes fadeSlideIn {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes reverse-spin {
-          from {
-            transform: rotate(360deg);
-          }
-          to {
-            transform: rotate(0deg);
-          }
-        }
-
-        .animate-reverse-spin {
-          animation: reverse-spin 1s linear infinite;
-        }
-      `}</style>
     </div>
   );
 };
 
-const AgentsPage = () => (
-  <Suspense fallback={<LoadingSkeleton />}>
-    <Agents />
-  </Suspense>
-);
+const AgentsPage = () => {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <Agents />
+    </Suspense>
+  );
+};
 
 export default AgentsPage;

@@ -12,23 +12,23 @@ interface MobileMenuIconProps {
 const MobileMenuIcon = ({ isOpen, onClick }: MobileMenuIconProps) => (
   <button
     onClick={onClick}
-    className="md:hidden p-2 text-text-secondary hover:text-text-primary transition-colors duration-300"
+    className="md:hidden p-2 ml-2 text-text-secondary hover:text-text-primary transition-colors duration-300"
     aria-label={isOpen ? "Close menu" : "Open menu"}
   >
-    <div className="w-5 h-5 flex flex-col justify-center items-center">
+    <div className="w-5 h-5 flex flex-col justify-center items-center relative">
       <span
-        className={`block h-0.5 w-5 bg-current transition-all duration-300 ${
-          isOpen ? "rotate-45 translate-y-0.5" : ""
+        className={`block h-0.5 w-5 bg-current absolute transition-all duration-300 ${
+          isOpen ? "rotate-45 translate-y-0" : "transform -translate-y-1"
         }`}
       />
       <span
-        className={`block h-0.5 w-5 bg-current transition-all duration-300 mt-1 ${
-          isOpen ? "opacity-0" : ""
+        className={`block h-0.5 w-5 bg-current absolute transition-all duration-300 ${
+          isOpen ? "opacity-0" : "opacity-100"
         }`}
       />
       <span
-        className={`block h-0.5 w-5 bg-current transition-all duration-300 mt-1 ${
-          isOpen ? "-rotate-45 -translate-y-1.5" : ""
+        className={`block h-0.5 w-5 bg-current absolute transition-all duration-300 ${
+          isOpen ? "-rotate-45 translate-y-0" : "transform translate-y-1"
         }`}
       />
     </div>
