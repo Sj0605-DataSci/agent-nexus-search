@@ -277,6 +277,24 @@ class ChatWorker:
             except Exception as e:
                 logger.error(f"Error removing task from processing: {str(e)}")
                 
+            # Aggressive memory cleanup
+            try:
+                # Clear local variables that might hold large objects
+                if 'chat_service' in locals():
+                    del chat_service
+                if 'client' in locals():
+                    del client
+                    
+                # Force cache cleanup if memory usage is high
+                current_memory = get_memory_usage()
+                if current_memory['rss'] > 600:  # If over 600MB, clean caches
+                    from app.core.utils.cache import clear_all_caches
+                    cleared_count = clear_all_caches()
+                    logger.info(f"Cleared {cleared_count} cache entries due to high memory usage")
+                    
+            except Exception as cleanup_error:
+                logger.error(f"Error during memory cleanup: {str(cleanup_error)}")
+                
             # Force garbage collection after task processing
             force_garbage_collection()
             
@@ -285,7 +303,7 @@ class ChatWorker:
             logger.debug(f"Finished task {request_id} with memory: RSS={end_memory['rss']:.2f}MB (change: {end_memory['rss'] - start_memory['rss']:.2f}MB)")
             
             # Request restart if memory usage is too high
-            if end_memory['rss'] > 400:  # 400MB threshold (below 512MB limit)
+            if end_memory['rss'] > 3*1024:  # 3GB threshold (for 8GB Railway instance)
                 logger.warning(f"Worker memory usage too high: {end_memory['rss']:.2f}MB, requesting restart")
                 self.request_restart = True
 

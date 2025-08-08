@@ -13,62 +13,79 @@ Features:
 - Cache invalidation
 - Performance monitoring
 - Thread-safe operations
+- Cache warming
+- LRU eviction
 """
 
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 from app.core.structured_logger import get_structured_logger
+from collections import OrderedDict
 
 logger = get_structured_logger(__name__)
 
 # Cache storage dictionaries
-_profile_cache: Dict[str, Tuple[Any, float]] = {}
-_agent_cache: Dict[str, Tuple[Any, float]] = {}
-_user_agents_cache: Dict[str, Tuple[List[Any], float]] = {}
-_generic_cache: Dict[str, Tuple[Any, float]] = {}
+_profile_cache: Dict[str, Tuple[Any, float]] = OrderedDict()
+_agent_cache: Dict[str, Tuple[Any, float]] = OrderedDict()
+_user_agents_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()
+_generic_cache: Dict[str, Tuple[Any, float]] = OrderedDict()
 
 # Chat-related caches
-_chat_threads_cache: Dict[str, Tuple[List[Any], float]] = {}  # User's chat threads
-_chat_messages_cache: Dict[str, Tuple[List[Any], float]] = {}  # Messages for a thread
-_message_feedback_cache: Dict[str, Tuple[List[Any], float]] = {}  # Feedback for a message
+_chat_threads_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()  # User's chat threads
+_chat_messages_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()  # Messages for a thread
+_message_feedback_cache: Dict[str, Tuple[List[Any], float]] = OrderedDict()  # Feedback for a message
 
-# Cache configuration
+# Cache configuration with performance optimizations
 CACHE_CONFIG = {
     "profile": {
         "ttl": 300,  # 5 minutes
         "max_size": 1000,
-        "cleanup_size": 100
+        "cleanup_size": 100,
+        "warm_on_startup": True,  # Pre-load frequently accessed profiles
+        "lru_eviction": True      # Use LRU instead of random eviction
     },
     "agent": {
-        "ttl": 600,  # 10 minutes
+        "ttl": 900,  # Increased to 15 minutes (agents change less frequently)
         "max_size": 500,
-        "cleanup_size": 50
+        "cleanup_size": 50,
+        "warm_on_startup": True,
+        "lru_eviction": True
     },
     "user_agents": {
         "ttl": 300,  # 5 minutes
         "max_size": 200,
-        "cleanup_size": 20
+        "cleanup_size": 20,
+        "warm_on_startup": False,  # User-specific, don't pre-warm
+        "lru_eviction": True
     },
     "generic": {
         "ttl": 300,  # 5 minutes
         "max_size": 1000,
-        "cleanup_size": 100
+        "cleanup_size": 100,
+        "warm_on_startup": False,
+        "lru_eviction": True
     },
     "chat_threads": {
-        "ttl": 600,  # 10 minutes
+        "ttl": 900,  # Increased to 15 minutes (threads don't change often)
         "max_size": 300,
-        "cleanup_size": 30
+        "cleanup_size": 30,
+        "warm_on_startup": False,
+        "lru_eviction": True
     },
     "chat_messages": {
-        "ttl": 300,  # 5 minutes
+        "ttl": 600,  # Increased to 10 minutes (messages are immutable)
         "max_size": 500,
-        "cleanup_size": 50
+        "cleanup_size": 50,
+        "warm_on_startup": False,
+        "lru_eviction": True
     },
     "message_feedback": {
-        "ttl": 600,  # 10 minutes
+        "ttl": 1200,  # Increased to 20 minutes (feedback changes rarely)
         "max_size": 200,
-        "cleanup_size": 20
+        "cleanup_size": 20,
+        "warm_on_startup": False,
+        "lru_eviction": True
     }
 }
 
@@ -87,6 +104,16 @@ def _cleanup_cache(cache_dict: Dict[str, Tuple[Any, float]], max_size: int, clea
                    entries_removed=cleanup_size,
                    remaining_entries=len(cache_dict))
 
+def _lru_eviction(cache_dict: Dict[str, Tuple[Any, float]], max_size: int) -> None:
+    """Evict least recently used cache entries when size limit is exceeded"""
+    if len(cache_dict) > max_size:
+        # Remove oldest entries
+        for key in list(cache_dict.keys())[:max_size - len(cache_dict)]:
+            del cache_dict[key]
+        logger.info("LRU eviction performed", 
+                   entries_removed=max_size - len(cache_dict),
+                   remaining_entries=len(cache_dict))
+
 # Profile Cache Functions
 def get_cached_profile(user_id: Union[str, UUID]) -> Optional[Any]:
     """Get cached profile for a user"""
@@ -94,6 +121,9 @@ def get_cached_profile(user_id: Union[str, UUID]) -> Optional[Any]:
     if user_id_str in _profile_cache:
         profile, cached_time = _profile_cache[user_id_str]
         if _is_cache_valid(cached_time, CACHE_CONFIG["profile"]["ttl"]):
+            # Move to end to mark as recently used
+            del _profile_cache[user_id_str]
+            _profile_cache[user_id_str] = (profile, cached_time)
             return profile
         else:
             del _profile_cache[user_id_str]
@@ -106,7 +136,10 @@ def cache_profile(user_id: Union[str, UUID], profile_data: Any) -> None:
     
     # Cleanup if needed
     config = CACHE_CONFIG["profile"]
-    _cleanup_cache(_profile_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_profile_cache, config["max_size"])
+    else:
+        _cleanup_cache(_profile_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_profile_cache(user_id: Union[str, UUID]) -> bool:
     """Invalidate cached profile for a specific user"""
@@ -124,6 +157,9 @@ def get_cached_agent(agent_id: Union[str, UUID]) -> Optional[Any]:
     if agent_id_str in _agent_cache:
         agent, cached_time = _agent_cache[agent_id_str]
         if _is_cache_valid(cached_time, CACHE_CONFIG["agent"]["ttl"]):
+            # Move to end to mark as recently used
+            del _agent_cache[agent_id_str]
+            _agent_cache[agent_id_str] = (agent, cached_time)
             return agent
         else:
             del _agent_cache[agent_id_str]
@@ -136,7 +172,10 @@ def cache_agent(agent_id: Union[str, UUID], agent_data: Any) -> None:
     
     # Cleanup if needed
     config = CACHE_CONFIG["agent"]
-    _cleanup_cache(_agent_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_agent_cache, config["max_size"])
+    else:
+        _cleanup_cache(_agent_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_agent_cache(agent_id: Union[str, UUID]) -> bool:
     """Invalidate cached agent for a specific agent ID"""
@@ -154,6 +193,9 @@ def get_cached_user_agents(user_id: Union[str, UUID]) -> Optional[List[Any]]:
     if user_id_str in _user_agents_cache:
         agents, cached_time = _user_agents_cache[user_id_str]
         if _is_cache_valid(cached_time, CACHE_CONFIG["user_agents"]["ttl"]):
+            # Move to end to mark as recently used
+            del _user_agents_cache[user_id_str]
+            _user_agents_cache[user_id_str] = (agents, cached_time)
             return agents
         else:
             del _user_agents_cache[user_id_str]
@@ -166,7 +208,10 @@ def cache_user_agents(user_id: Union[str, UUID], agents_data: List[Any]) -> None
     
     # Cleanup if needed
     config = CACHE_CONFIG["user_agents"]
-    _cleanup_cache(_user_agents_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_user_agents_cache, config["max_size"])
+    else:
+        _cleanup_cache(_user_agents_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_user_agents_cache(user_id: Union[str, UUID]) -> bool:
     """Invalidate cached agent list for a specific user"""
@@ -184,6 +229,9 @@ def get_cached_chat_threads(user_id: Union[str, UUID]) -> Optional[List[Any]]:
     if user_id_str in _chat_threads_cache:
         threads, cached_time = _chat_threads_cache[user_id_str]
         if _is_cache_valid(cached_time, CACHE_CONFIG["chat_threads"]["ttl"]):
+            # Move to end to mark as recently used
+            del _chat_threads_cache[user_id_str]
+            _chat_threads_cache[user_id_str] = (threads, cached_time)
             return threads
         else:
             del _chat_threads_cache[user_id_str]
@@ -196,7 +244,10 @@ def cache_chat_threads(user_id: Union[str, UUID], threads_data: List[Any]) -> No
     
     # Cleanup if needed
     config = CACHE_CONFIG["chat_threads"]
-    _cleanup_cache(_chat_threads_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_chat_threads_cache, config["max_size"])
+    else:
+        _cleanup_cache(_chat_threads_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_chat_threads_cache(user_id: Union[str, UUID]) -> bool:
     """Invalidate cached chat threads for a specific user"""
@@ -213,6 +264,9 @@ def get_cached_chat_messages(cache_key: str) -> Optional[List[Any]]:
     if cache_key in _chat_messages_cache:
         messages, cached_time = _chat_messages_cache[cache_key]
         if _is_cache_valid(cached_time, CACHE_CONFIG["chat_messages"]["ttl"]):
+            # Move to end to mark as recently used
+            del _chat_messages_cache[cache_key]
+            _chat_messages_cache[cache_key] = (messages, cached_time)
             return messages
         else:
             del _chat_messages_cache[cache_key]
@@ -224,7 +278,10 @@ def cache_chat_messages(cache_key: str, messages_data: List[Any]) -> None:
     
     # Cleanup if needed
     config = CACHE_CONFIG["chat_messages"]
-    _cleanup_cache(_chat_messages_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_chat_messages_cache, config["max_size"])
+    else:
+        _cleanup_cache(_chat_messages_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_chat_messages_cache(chat_thread_id: Union[str, UUID]) -> int:
     """Invalidate all cached messages for a specific chat thread"""
@@ -255,6 +312,9 @@ def get_cached_message_feedback(message_id: Union[str, UUID]) -> Optional[List[A
     if message_id_str in _message_feedback_cache:
         feedback, cached_time = _message_feedback_cache[message_id_str]
         if _is_cache_valid(cached_time, CACHE_CONFIG["message_feedback"]["ttl"]):
+            # Move to end to mark as recently used
+            del _message_feedback_cache[message_id_str]
+            _message_feedback_cache[message_id_str] = (feedback, cached_time)
             return feedback
         else:
             del _message_feedback_cache[message_id_str]
@@ -267,7 +327,10 @@ def cache_message_feedback(message_id: Union[str, UUID], feedback_data: List[Any
     
     # Cleanup if needed
     config = CACHE_CONFIG["message_feedback"]
-    _cleanup_cache(_message_feedback_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_message_feedback_cache, config["max_size"])
+    else:
+        _cleanup_cache(_message_feedback_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_message_feedback_cache(message_id: Union[str, UUID]) -> bool:
     """Invalidate cached feedback for a specific message"""
@@ -284,6 +347,9 @@ def get_cached_item(cache_key: str) -> Optional[Any]:
     if cache_key in _generic_cache:
         item, cached_time = _generic_cache[cache_key]
         if _is_cache_valid(cached_time, CACHE_CONFIG["generic"]["ttl"]):
+            # Move to end to mark as recently used
+            del _generic_cache[cache_key]
+            _generic_cache[cache_key] = (item, cached_time)
             return item
         else:
             del _generic_cache[cache_key]
@@ -302,7 +368,10 @@ def cache_item(cache_key: str, data: Any, ttl: Optional[int] = None) -> None:
     
     # Cleanup if needed
     config = CACHE_CONFIG["generic"]
-    _cleanup_cache(_generic_cache, config["max_size"], config["cleanup_size"])
+    if config["lru_eviction"]:
+        _lru_eviction(_generic_cache, config["max_size"])
+    else:
+        _cleanup_cache(_generic_cache, config["max_size"], config["cleanup_size"])
 
 def invalidate_cache_item(cache_key: str) -> bool:
     """Invalidate any cached item by key"""

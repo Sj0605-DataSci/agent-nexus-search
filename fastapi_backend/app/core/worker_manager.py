@@ -38,18 +38,28 @@ class WorkerManager:
         if self._initialized:
             return
             
-        # Determine number of workers based on available CPU cores
+        # Determine number of workers based on available CPU cores and deployment type
         cpu_count = os.cpu_count() or 1
         
-        # For Railway free tier with limited resources, use only 1 worker
-        # Adjust this logic based on your deployment environment
-        self.num_chat_workers = min(cpu_count, 1)  # Limit to 1 chat worker for resource constraints
-        self.num_connection_workers = 1  # Only need 1 connection worker
+        # Check if running as dedicated worker process
+        process_type = os.getenv("PROCESS_TYPE", "web")
+        
+        if process_type == "worker":
+            # Dedicated worker process - can use more resources
+            self.num_chat_workers = min(cpu_count // 2, 4)  # Use half the cores, max 4
+            self.num_connection_workers = 1  # Only need 1 connection worker
+            logger.info("Running as dedicated worker process")
+        else:
+            # Running alongside web process - use minimal resources
+            self.num_chat_workers = 1  # Minimal for web process
+            self.num_connection_workers = 1
+            logger.info("Running alongside web process")
         
         logger.info("Initializing worker manager",
                    num_chat_workers=self.num_chat_workers,
                    num_connection_workers=self.num_connection_workers,
-                   cpu_count=cpu_count)
+                   cpu_count=cpu_count,
+                   process_type=process_type)
         
         # Create and start chat workers
         for _ in range(self.num_chat_workers):

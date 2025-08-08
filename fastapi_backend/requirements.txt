@@ -1,5 +1,8 @@
 fastapi
 uvicorn
+uvloop
+httptools
+gunicorn
 sqlalchemy
 # Downgrade pydantic to v1 for compatibility with langchain
 pydantic

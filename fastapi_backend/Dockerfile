@@ -27,11 +27,17 @@ USER myuser
 # Copy application
 COPY --chown=myuser . .
 
+# Environment variables for memory optimization
 ENV PORT=8000
 ENV HOST=0.0.0.0
+ENV MALLOC_ARENA_MAX=2
+ENV PYTHONUNBUFFERED=1
+ENV PROCESS_TYPE=web
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONHASHSEED=random
 
 # Expose port
 EXPOSE 8000
 
-# Run application
-CMD uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000}
+# Run application with memory optimizations
+CMD gunicorn app.main:app -w ${WEB_CONCURRENCY:-2} -k uvicorn.workers.UvicornWorker --bind ${HOST:-0.0.0.0}:${PORT:-8000} --max-requests 1000 --max-requests-jitter 100 --worker-connections 1000 --timeout 120 --graceful-timeout 30 --worker-tmp-dir /tmp --access-logfile - --error-logfile -
