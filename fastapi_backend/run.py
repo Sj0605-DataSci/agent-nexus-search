@@ -21,7 +21,6 @@ def run_development():
         "--max-requests", "1000",
         "--max-requests-jitter", "100",
         "--worker-connections", "1000",
-        "--keepalive", "5",
         "--timeout", "120",
         "--graceful-timeout", "30",
         "--worker-tmp-dir", "/tmp",  # Use /tmp instead of /dev/shm for dev

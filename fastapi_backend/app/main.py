@@ -330,14 +330,10 @@ async def startup_db_client():
         except Exception as cache_error:
             logger.warning(f"Cache warming failed: {str(cache_error)}")
         
-        # Initialize worker manager only for dedicated worker processes
-        process_type = os.getenv("PROCESS_TYPE", "web")
-        if process_type == "worker":
-            from app.core.worker_manager import worker_manager
-            await worker_manager.initialize()
-            logger.info("Worker manager initialized for dedicated worker process")
-        else:
-            logger.info("Skipping worker manager initialization for web process")
+        # Initialize worker manager for background tasks
+        from app.core.worker_manager import worker_manager
+        await worker_manager.initialize()
+        logger.info("Worker manager initialized")
         
         # Log memory after initialization
         log_memory_usage("After client initialization")
@@ -356,13 +352,9 @@ async def shutdown_db_client():
         
         # Shutdown worker manager
         try:
-            process_type = os.getenv("PROCESS_TYPE", "web")
-            if process_type == "worker":
-                from app.core.worker_manager import worker_manager
-                await worker_manager.shutdown()
-                logger.info("Worker manager shutdown complete")
-            else:
-                logger.info("No worker manager to shutdown for web process")
+            from app.core.worker_manager import worker_manager
+            await worker_manager.shutdown()
+            logger.info("Worker manager shutdown complete")
         except Exception as worker_error:
             logger.error(f"Error shutting down worker manager: {str(worker_error)}")
         
