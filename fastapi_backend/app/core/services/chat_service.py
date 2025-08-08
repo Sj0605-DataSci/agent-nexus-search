@@ -20,7 +20,7 @@ from app.core.utils.cache import (
 logger = get_structured_logger(__name__)
 
 wandb.login(key=settings.WANDB_API_KEY)
-weave.init("Deep-Search")
+weave.init("discover-minds/Deep-Search")
 
 class ChatService:
     """Service for handling agent template operations"""
@@ -203,7 +203,7 @@ class ChatService:
                 return
             op = weave.get_current_call()
             op_id = op.id
-            weave_url = f"https://wandb.ai/sanyam0605/deep-search/r/call/{op_id}" if op_id else None
+            weave_url = f"https://wandb.ai/discover-minds/Deep-Search/weave/calls/{op_id}" if op_id else None
             
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)
