@@ -103,6 +103,8 @@ export default function SignupForm() {
     async data => {
       setIsSubmitting(true);
       try {
+        router.prefetch("/login");
+
         const response = await apiClient.userSignUp(
           data.email,
           data.password,
@@ -113,46 +115,43 @@ export default function SignupForm() {
         if (response.success) {
           setLastSignupData(data);
           setResendTimer(60);
+
+          setTimeout(() => {
+            showSuccessToast("Signup mail sent successfully! Check your email.");
+            setIsSuccess(true);
+            reset();
+          }, 0);
+
+          return;
         }
 
-        if (!response.success) {
-          const msg = response.message?.toLowerCase() || "";
-          if (
-            (response.status_code === 400 && msg.includes("already registered")) ||
-            msg.includes("already exists")
-          ) {
-            showErrorToast(
-              "This email is already registered. Please use a different email or try logging in."
-            );
-            return;
-          } else if (response.status_code === 400 && msg.includes("security purposes")) {
-            showErrorToast(
-              "You can only request signup again after a short wait. Please try again soon."
-            );
-            return;
-          } else if (msg.includes("weak password")) {
-            showErrorToast("Your password is too weak. Use at least 6 characters.");
-            return;
-          } else if (msg.includes("invalid email")) {
-            showErrorToast("Please enter a valid email address.");
-            return;
-          } else {
-            showErrorToast(response.message || "Signup failed. Please try again.");
-            return;
-          }
+        const msg = response.message?.toLowerCase() || "";
+        if (
+          (response.status_code === 400 && msg.includes("already registered")) ||
+          msg.includes("already exists")
+        ) {
+          showErrorToast(
+            "This email is already registered. Please use a different email or try logging in."
+          );
+        } else if (response.status_code === 400 && msg.includes("security purposes")) {
+          showErrorToast(
+            "You can only request signup again after a short wait. Please try again soon."
+          );
+        } else if (msg.includes("weak password")) {
+          showErrorToast("Your password is too weak. Use at least 6 characters.");
+        } else if (msg.includes("invalid email")) {
+          showErrorToast("Please enter a valid email address.");
+        } else {
+          showErrorToast(response.message || "Signup failed. Please try again.");
         }
-
-        showSuccessToast("Signup mail sent successfully! Check your email.");
-        setIsSuccess(true);
-        reset();
       } catch (err: any) {
-        console.log("Signup exception", err);
+        console.error("Signup exception", err);
         showErrorToast(err.message || "Something went wrong. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [reset]
+    [reset, router]
   );
 
   const isButtonDisabled = isSubmitting || !isDirty;
@@ -228,7 +227,11 @@ export default function SignupForm() {
               <div className="flex flex-col items-center w-full justify-center sm:flex-row gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => router.push("/login")}
+                  onClick={() => {
+                    // Prefetch and navigate immediately
+                    router.prefetch("/login");
+                    router.push("/login");
+                  }}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
                   Go to Login

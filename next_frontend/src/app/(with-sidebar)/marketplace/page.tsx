@@ -22,7 +22,6 @@ const Marketplace = () => {
   const hiredAgentsRaw = useAppSelector(selectHired);
   const hiredTemplateId = hiredAgentsRaw.map(h => h.template_id);
 
-  const darkMode = false;
   const templates = useAppSelector(selectTemplates);
   const getAgentDetails = (category: string) => {
     switch (category.toLowerCase()) {
@@ -143,50 +142,22 @@ const Marketplace = () => {
   }
 
   return (
-    <>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className={`absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl ${
-            darkMode ? "bg-blue-600" : "bg-blue-400"
-          }`}
-        />
-        <div
-          className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-20 blur-3xl ${
-            darkMode ? "bg-purple-600" : "bg-purple-400"
-          }`}
-        />
-        <div
-          className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10 blur-3xl ${
-            darkMode ? "bg-cyan-600" : "bg-cyan-400"
-          }`}
-        />
-      </div>
-
-      <div className=" mx-auto px-4 pt-24 pb-16 ">
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto px-4 pt-24 pb-16">
         <div className="text-center relative">
           <div className="relative inline-block">
-            <h1
-              className={`text-5xl md:text-6xl font-bold mb-6 h-[100px] md:h-[80px] bg-gradient-to-r ${
-                darkMode
-                  ? "from-blue-400 via-purple-400 to-cyan-400"
-                  : "from-blue-600 via-purple-600 to-cyan-600"
-              } bg-clip-text text-transparent`}
-            >
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 h-[100px] md:h-[80px] bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
               AI Agent Marketplace
             </h1>
           </div>
         </div>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2
-              className={`text-3xl font-bold mb-4 ${darkMode ? "text-gray-100" : "text-gray-900"}`}
-            >
+            <h2 className="text-3xl font-bold mb-4 text-gray-900">
               Choose Your Perfect AI Assistant
             </h2>
             <div
-              className={`w-24 h-1 mx-auto rounded-full bg-gradient-to-r ${
-                darkMode ? "from-blue-400 to-purple-400" : "from-blue-500 to-purple-500"
-              }`}
+              className={`w-24 h-1 mx-auto rounded-full bg-gradient-to-r from-blue-500 to-purple-500`}
             />
           </div>
 
@@ -196,9 +167,7 @@ const Marketplace = () => {
                 {Array.from({ length: 9 }).map((_, i) => (
                   <div
                     key={i}
-                    className={`border rounded-lg ${
-                      darkMode ? "border-gray-700" : "border-gray-300"
-                    }`}
+                    className="border rounded-lg border-gray-300"
                   />
                 ))}
               </div>
@@ -227,7 +196,7 @@ const Marketplace = () => {
                   onHireAgent={handleHireAgent}
                   onUnhireAgent={handleUnhireAgent}
                   loading={loading}
-                  darkMode={darkMode}
+                  darkMode={false}
                   showMobileWarning={false}
                   showTooltip={true}
                   scaleOnHover={1.05}
@@ -243,15 +212,11 @@ const Marketplace = () => {
 
           {marketplaceAgents.length === 0 && (
             <div className="text-center py-16">
-              <div className={`text-6xl mb-4 opacity-50`}>🤖</div>
-              <h3
-                className={`text-2xl font-semibold mb-2 ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
+              <div className="text-6xl mb-4 opacity-50">🤖</div>
+              <h3 className="text-2xl font-semibold mb-2 text-gray-700">
                 No agents available
               </h3>
-              <p className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+              <p className="text-gray-600">
                 Check back later for new AI agents
               </p>
             </div>
@@ -260,12 +225,7 @@ const Marketplace = () => {
         {hiredTemplateId.length > 0 && (
           <div className="max-w-5xl mx-auto mt-16">
             <div
-              className={`relative p-8 rounded-2xl border backdrop-blur-sm overflow-hidden ${
-                darkMode
-                  ? "bg-gradient-to-br from-blue-900/30 via-purple-900/20 to-blue-900/30 border-blue-800/50"
-                  : "bg-gradient-to-br from-blue-50/80 via-purple-50/60 to-blue-50/80 border-blue-200/50"
-              }`}
-            >
+              className="relative p-8 rounded-2xl border backdrop-blur-sm overflow-hidden bg-gradient-to-br from-blue-50/80 via-purple-50/60 to-blue-50/80 border-blue-200/50">
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(59,130,246,0.5),transparent_50%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_75%,rgba(147,51,234,0.5),transparent_50%)]" />
@@ -275,9 +235,7 @@ const Marketplace = () => {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-4">
                     <div
-                      className={`p-3 rounded-full bg-gradient-to-r ${
-                        darkMode ? "from-green-600 to-emerald-600" : "from-green-500 to-emerald-500"
-                      }`}
+                      className="p-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
                     >
                       <svg
                         className="w-6 h-6 text-white"
@@ -294,12 +252,10 @@ const Marketplace = () => {
                       </svg>
                     </div>
                     <div>
-                      <h3
-                        className={`text-2xl font-bold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}
-                      >
+                      <h3 className="text-2xl font-bold mb-1 text-gray-900">
                         Your AI Team
                       </h3>
-                      <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                      <p className="text-sm text-gray-600">
                         Managing your hired agents
                       </p>
                     </div>
@@ -307,26 +263,18 @@ const Marketplace = () => {
 
                   <div className="flex items-center space-x-4">
                     <div className="text-center">
-                      <div
-                        className={`text-2xl font-bold ${
-                          darkMode ? "text-green-400" : "text-green-500"
-                        }`}
-                      >
+                      <div className="text-2xl font-bold text-green-500">
                         {hiredTemplateId.length}
                       </div>
-                      <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      <div className="text-xs text-gray-500">
                         Active
                       </div>
                     </div>
                     <div className="text-center">
-                      <div
-                        className={`text-2xl font-bold ${
-                          darkMode ? "text-blue-400" : "text-blue-500"
-                        }`}
-                      >
+                      <div className="text-2xl font-bold text-blue-500">
                         24/7
                       </div>
-                      <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      <div className="text-xs text-gray-500">
                         Available
                       </div>
                     </div>
@@ -334,9 +282,7 @@ const Marketplace = () => {
                 </div>
 
                 <p
-                  className={`mb-6 text-lg leading-relaxed ${
-                    darkMode ? "text-gray-300" : "text-gray-700"
-                  }`}
+                  className="mb-6 text-lg leading-relaxed text-gray-700"
                 >
                   You have successfully hired {hiredTemplateId.length} AI agent
                   {hiredTemplateId.length > 1 ? "s" : ""}. Configure their personalities, settings,
@@ -350,7 +296,7 @@ const Marketplace = () => {
                     bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 
                     transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 
-                    focus-visible:ring-blue-500 ${darkMode ? "focus-visible:ring-offset-gray-900" : ""}`}
+                    focus-visible:ring-blue-500`}
                   >
                     <svg
                       className="w-5 h-5 mr-2"
@@ -370,55 +316,41 @@ const Marketplace = () => {
                 </div>
 
                 <div
-                  className={`grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t ${
-                    darkMode ? "border-gray-700" : "border-gray-200"
-                  }`}
+                  className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-gray-200"
                 >
                   <div className="text-center">
-                    <div
-                      className={`text-lg font-semibold ${
-                        darkMode ? "text-green-400" : "text-green-500"
-                      }`}
-                    >
+                    <div className="text-lg font-semibold text-green-500">
                       100%
                     </div>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <div className="text-xs text-gray-500">
                       Uptime
                     </div>
                   </div>
                   <div className="text-center">
-                    <div
-                      className={`text-lg font-semibold ${
-                        darkMode ? "text-blue-400" : "text-blue-500"
-                      }`}
-                    >
+                    <div className="text-lg font-semibold text-blue-500">
                       5/10
                     </div>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <div className="text-xs text-gray-500">
                       Requests
                     </div>
                   </div>
                   <div className="text-center">
                     <div
-                      className={`text-lg font-semibold ${
-                        darkMode ? "text-purple-400" : "text-purple-500"
-                      }`}
+                      className="text-lg font-semibold text-purple-500"
                     >
                       &lt;1s
                     </div>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <div className="text-xs text-gray-500">
                       Response
                     </div>
                   </div>
                   <div className="text-center">
                     <div
-                      className={`text-lg font-semibold ${
-                        darkMode ? "text-cyan-400" : "text-cyan-500"
-                      }`}
+                      className="text-lg font-semibold text-cyan-500"
                     >
                       24/7
                     </div>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <div className="text-xs text-gray-500">
                       Support
                     </div>
                   </div>
@@ -430,11 +362,7 @@ const Marketplace = () => {
 
         <div className="text-center mt-20 pb-8">
           <div
-            className={`inline-flex items-center px-6 py-3 rounded-full backdrop-blur-sm border ${
-              darkMode
-                ? "bg-gray-800/30 border-gray-700/50 text-gray-300"
-                : "bg-white/30 border-gray-300/50 text-gray-700"
-            }`}
+            className="inline-flex items-center px-6 py-3 rounded-full backdrop-blur-sm border bg-white/30 border-gray-300/50 text-gray-700"
           >
             <span className="text-sm">Need a custom agent?</span>
             <button className="ml-2 text-blue-500 hover:text-blue-600 font-medium underline">
@@ -443,20 +371,7 @@ const Marketplace = () => {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-    </>
+    </div>
   );
 };
 
