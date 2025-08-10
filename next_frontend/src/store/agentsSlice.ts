@@ -21,7 +21,7 @@ const initialState: AgentsState = {
 export const loadAgents = createAsyncThunk("agents/loadAll", async () => {
   // 👉 fetch straight from your existing apiClient
   const [templates, hired] = await Promise.all([
-    apiClient.getAgentTemplates(),
+    apiClient.fetchAgentTemplates(),
     apiClient.getHiredAgents(),
   ]);
   return { templates, hired };

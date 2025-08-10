@@ -14,7 +14,6 @@ import Aurora from "@/components/Aurora";
 import { useAppDispatch } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
 
-
 export default function LoginForm() {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -22,7 +21,6 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const darkMode = false;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -34,13 +32,13 @@ export default function LoginForm() {
 
         const loginResult = await dispatch(loginUser({ email, password })).unwrap();
         if (loginResult.success && loginResult.status_code === 200) {
-          router.prefetch("/chat/new"); 
-          
+          router.prefetch("/chat/new");
+
           dispatch(fetchProfile())
             .then(profileResult => {
               if (profileResult.payload?.success && profileResult.payload?.data) {
                 const profileData = profileResult.payload.data;
-                
+
                 setTimeout(() => {
                   posthog.identify(profileData.id, {
                     email: profileData.email,
@@ -54,7 +52,7 @@ export default function LoginForm() {
               }
             })
             .catch(error => console.error("Profile fetch error:", error));
-          
+
           router.replace("/chat/new");
           showSuccessToast("Welcome back!", "You have successfully signed in.");
         } else {
@@ -80,14 +78,10 @@ export default function LoginForm() {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
-        darkMode
-          ? "bg-gradient-to-tr from-black via-gray-900 to-gray-800"
-          : "bg-gradient-to-br from-blue-50 to-purple-50"
-      }`}
+      className={`min-h-screen flex items-center justify-center transition-colors duration-500 bg-gradient-to-br from-blue-50 to-purple-50`}
     >
       <div
-        className={`absolute top-0 left-0 z-0 w-full h-[30vh] min-h-[280px] transition-opacity duration-300 ${darkMode ? "opacity-100" : "opacity-0"}`}
+        className={`absolute top-0 left-0 z-0 w-full h-[30vh] min-h-[280px] transition-opacity duration-300 opacity-0`}
         style={{
           width: "100%",
           overflow: "hidden",
@@ -103,9 +97,7 @@ export default function LoginForm() {
         />
       </div>
       <div
-        className={`relative w-full max-w-md mx-2 p-8 sm:p-10 rounded-3xl shadow-2xl border transition-colors duration-500 ${
-          darkMode ? "bg-black/80 border-gray-800" : "bg-white/90 border-white/20 backdrop-blur-md"
-        }`}
+        className={`relative w-full max-w-md mx-2 p-8 sm:p-10 rounded-3xl shadow-2xl border transition-colors duration-500 bg-white/90 border-white/20 backdrop-blur-md`}
       >
         <div className="mb-6">
           <BrandLogo className="mb-3" />
@@ -126,11 +118,7 @@ export default function LoginForm() {
                 placeholder="you@email.com"
                 required
                 autoComplete="email"
-                className={`pl-10 ${
-                  darkMode
-                    ? "bg-gray-900/80 placeholder-gray-500 border-gray-800 text-white"
-                    : "bg-white placeholder-gray-400 border-gray-300 text-gray-900"
-                }`}
+                className={`pl-10 bg-white placeholder-gray-400 border-gray-300 text-gray-900`}
               />
               <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
@@ -149,11 +137,7 @@ export default function LoginForm() {
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
-                className={`pl-10 pr-10 ${
-                  darkMode
-                    ? "bg-gray-900/80 placeholder-gray-500 border-gray-800 text-white"
-                    : "bg-white placeholder-gray-400 border-gray-300 text-gray-900"
-                }`}
+                className={`pl-10 pr-10 bg-white placeholder-gray-400 border-gray-300 text-gray-900`}
               />
               <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <button
@@ -186,21 +170,15 @@ export default function LoginForm() {
             whileTap={{ scale: loading ? 1 : 0.97 }}
             className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
               loading
-                ? darkMode
-                  ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : darkMode
-                  ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-lg"
-                  : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
             }`}
           >
             {loading ? "Signing in..." : "Sign In"}
           </motion.button>
 
           <p className="text-center text-sm">
-            <span className={darkMode ? "text-gray-500" : "text-gray-600"}>
-              Don't have an account?{" "}
-            </span>
+            <span className="text-gray-600">Don't have an account? </span>
             <Link
               prefetch={true}
               href="/signup"

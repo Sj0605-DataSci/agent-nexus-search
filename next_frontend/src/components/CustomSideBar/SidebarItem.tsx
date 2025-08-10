@@ -6,10 +6,9 @@ interface SidebarItemProps {
   icon: React.ReactNode;
   active: boolean;
   collapsed: boolean;
-  darkMode: boolean;
 }
 
-const SidebarItem = ({ href, label, icon, active, collapsed, darkMode }: SidebarItemProps) => {
+const SidebarItem = ({ href, label, icon, active, collapsed }: SidebarItemProps) => {
   return (
     <li>
       <Link
@@ -19,12 +18,8 @@ const SidebarItem = ({ href, label, icon, active, collapsed, darkMode }: Sidebar
           ${collapsed ? "justify-center" : "gap-3 pl-2 pr-4"}
           ${
             active
-              ? darkMode
-                ? "bg-indigo-600/20 text-indigo-300"
-                : "bg-indigo-100 text-indigo-700"
-              : darkMode
-                ? "text-gray-400 hover:text-white hover:bg-gray-800/60"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+              ? "bg-indigo-100 text-indigo-700"
+              : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
           }
         `}
       >
