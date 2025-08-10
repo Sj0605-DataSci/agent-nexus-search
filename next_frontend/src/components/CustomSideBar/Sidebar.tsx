@@ -92,7 +92,7 @@ const Sidebar = () => {
   }, [pathname]);
 
   useEffect(() => {
-    const handleEscape = (e: { key: string; }) => {
+    const handleEscape = (e: { key: string }) => {
       if (e.key === "Escape") {
         setIsMobileSidebarOpen(false);
       }
@@ -173,7 +173,7 @@ const Sidebar = () => {
   };
 
   const MobileHeader = () => (
-    <header 
+    <header
       className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-sm border-b border-gray-200/80 shadow-sm"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -185,12 +185,12 @@ const Sidebar = () => {
           variant="ghost"
           size="icon"
           className="h-12 w-12 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100"
-          aria-label={isMobileSidebarOpen ? 'Close menu' : 'Open menu'}
+          aria-label={isMobileSidebarOpen ? "Close menu" : "Open menu"}
         >
           {isMobileSidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </Button>
-        <Link 
-          href="/chat/new" 
+        <Link
+          href="/chat/new"
           className="flex items-center justify-center h-12 px-4 -mr-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 active:bg-indigo-50 rounded-lg transition-colors"
         >
           New Chat
@@ -204,7 +204,10 @@ const Sidebar = () => {
   }
 
   const SidebarContent: React.FC<SidebarContentProps> = ({ isMobile = false }) => (
-    <div className="flex flex-col h-full overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div
+      className="flex flex-col h-full overflow-y-auto overscroll-contain"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
       <div
         className={`flex items-center justify-between pl-2 py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
       >
@@ -291,7 +294,7 @@ const Sidebar = () => {
             )}
             <div className="rounded-md mb-1">
               {initialLoading ? (
-                <ShimmerLoader collapsed={collapsed && !isMobile} count={10} />
+                <ShimmerLoader collapsed={collapsed && !isMobile} count={10} darkMode={false} />
               ) : recentThreads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-4 px-2 text-gray-500">
                   {!collapsed || isMobile ? (
@@ -470,42 +473,42 @@ const Sidebar = () => {
       <MobileHeader />
 
       {isMobileSidebarOpen && (
-        <div 
+        <div
           className="md:hidden fixed inset-0 z-50 transition-opacity duration-250 ease-in-out"
           onClick={handleOverlayClick}
         >
-          <div 
+          <div
             className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-250 ease-in-out ${
-              isClosing ? 'opacity-0' : 'opacity-100'
+              isClosing ? "opacity-0" : "opacity-100"
             }`}
           />
 
-          <aside 
+          <aside
             ref={sidebarRef}
             className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-2xl transform transition-transform duration-250 ease-in-out ${
-              isClosing ? '-translate-x-full' : 'translate-x-0'
+              isClosing ? "-translate-x-full" : "translate-x-0"
             }`}
             style={{
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehavior: 'contain',
-              touchAction: 'pan-y',
-              willChange: 'transform',
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+              touchAction: "pan-y",
+              willChange: "transform",
             }}
-        >
-          <SidebarContent isMobile={true} />
+          >
+            <SidebarContent isMobile={true} />
           </aside>
         </div>
       )}
 
       <aside
         className={`hidden md:block fixed md:static overflow-y-auto max-h-screen inset-y-0 left-0 z-40 ${
-          collapsed ? 'w-16' : 'w-64'
+          collapsed ? "w-16" : "w-64"
         } transition-all duration-200 flex-col
         border-r shadow-lg bg-white/95 backdrop-blur-sm border-gray-200/80 text-gray-900`}
         style={{
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain',
-          touchAction: 'pan-y',
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+          touchAction: "pan-y",
         }}
       >
         <SidebarContent isMobile={false} />

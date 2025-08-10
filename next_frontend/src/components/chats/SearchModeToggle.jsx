@@ -6,7 +6,7 @@ export default function SearchModeToggle({ searchMode, setSearchMode, disabled =
       <button
         onClick={() => !disabled && setSearchMode(isDeep ? "basic" : "deep")}
         disabled={disabled}
-        className={`relative flex items-center px-0.5 py-[2px] sm:px-1 sm:py-[3px] w-20 sm:w-26 rounded-full transition-all duration-200 ease-in-out text-[10px] sm:text-xs
+        className={`relative flex items-center px-0.5 py-[2px] sm:px-1 sm:py-[3px] w-20 sm:w-26 rounded-full transition-all duration-200 text-[10px] sm:text-xs
             ${
               isDeep
                 ? "bg-purple-100 border border-purple-200"
@@ -14,7 +14,7 @@ export default function SearchModeToggle({ searchMode, setSearchMode, disabled =
             } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         <span
-          className={`absolute top-0 left-0 h-full w-1/2 rounded-full transition-all duration-200 ease-in-out z-0
+          className={`absolute top-0 left-0 h-full w-1/2 rounded-full transition-all duration-200 z-0
             ${isDeep ? "translate-x-full bg-purple-500" : "translate-x-0 bg-blue-500"}`}
         />
 

@@ -5,8 +5,9 @@ import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { ChatNavigationControls } from "./ChatNavigationControls";
 import { AgentDropdown } from "./AgentDropdown";
 import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
-import { FiSearch, FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
+import { FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
 import { BsTextParagraph } from "react-icons/bs";
+import { SearchQueryDisplay } from "./SearchQueryDisplay";
 import SourcesList from "./SourcesList";
 import { getTimeBasedGreeting } from "../../utils/timeUtils";
 import posthog from "posthog-js";
@@ -25,6 +26,7 @@ import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
 import OrbAura from "../OrbAura";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
+import MessagePlaceholder from "./MessagePlaceholder";
 
 const FeedbackModal = dynamic(() => import("./FeedbackModal"));
 const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
@@ -51,6 +53,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string>(
     "00000000-0000-4000-a000-000000000000"
   );
+  console.log("threadId", threadId);
   const [format, setFormat] = useState<FormatType>("table");
   const [searchMode, setSearchMode] = useState<SearchMode>("basic");
   const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
@@ -182,7 +185,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       if (cacheAge < 5 * 60 * 1000) {
         setChatPairs(cachedMessages);
         setCurrentMessageIndex(cachedMessages.length - 1);
-        setIsLoading(false); 
+        setIsLoading(false);
         return;
       }
     }
@@ -269,8 +272,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       const sourcesData: ChatSource[] = Array.isArray(currentPair.sources_gathered)
         ? currentPair.sources_gathered
         : [];
-
-      console.log("Sources data from API:", sourcesData);
 
       if (chatWorkerRef.current && typeof messageContent === "object" && messageContent !== null) {
         const agentMessage: MessageType = {
@@ -366,7 +367,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     const q = incoming ?? query;
     if (!q.trim()) return;
 
-    // Optimistically update UI for new search
     if (threadId !== "new") {
       const newChatPair: ChatPair = {
         id: `temp-${Date.now()}`,
@@ -513,7 +513,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                     chatWorkerRef.current.postMessage({
                       type: "process_message",
                       data: {
-                        id: newLoadingMessageId,
+                        id:
+                          update.content.chat_thread_id ||
+                          update.content.thread_id ||
+                          newLoadingMessageId,
                         content: currentContent,
                       },
                     });
@@ -577,7 +580,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               currentContent = `❌ Error: ${errorMessage}`;
               updateMessageContent(currentContent);
 
-              console.error("Stream error:", update.content);
 
               posthog.capture("stream_error", {
                 query: q,
@@ -589,21 +591,36 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             case "done":
               if (fullContent) {
                 updateMessageContent(fullContent);
+                setQuery(update.content.query);
                 if (chatWorkerRef.current) {
                   chatWorkerRef.current.postMessage({
                     type: "process_message",
-                    data: { id: newLoadingMessageId, content: fullContent },
+                    data: {
+                      id: update.content.chat_thread_id || update.content.thread_id,
+                      content: fullContent,
+                    },
                   });
+                }
+                if (update.content && update.content.chat_thread_id && threadId === "new") {
+                  const newThreadId = update.content.chat_thread_id;
+                  if (newThreadId !== threadId) {
+                    const newUrl = `/chat/${newThreadId}`;
+                    window.history.replaceState({ path: newUrl }, "", newUrl);
+                  }
                 }
               }
 
-              if (sources.length > 0) {
-                console.log("Sources gathered:", sources);
-
-                setMessages(m =>
-                  m.map(msg => (msg.id === newLoadingMessageId ? { ...msg, sources } : msg))
-                );
-              }
+              setMessages(m => {
+                if (m.length === 0) return m;
+                const lastIndex = m.length - 1;
+                const updatedMessages = [...m];
+                updatedMessages[lastIndex] = {
+                  ...updatedMessages[lastIndex],
+                  id: update.content.message_id|| updatedMessages[lastIndex].id,
+                  ...(sources.length > 0 && { sources })
+                };
+                return updatedMessages;
+              });
 
               setShowSearchQueries(false);
 
@@ -654,7 +671,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     } finally {
       setIsStreaming(false);
       setIsLoading(false);
-      setQuery("");
       setShowSearchQueries(false);
     }
   };
@@ -752,105 +768,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
     }
   };
-  const SearchQueryDisplay = () => {
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    if (!showSearchQueries && streamingSearchQueries.length === 0 && !isStreaming) return null;
-
-    return (
-      <div className="mb-4 rounded-lg border border-gray-200  p-3 overflow-hidden transition-all duration-300">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-sm text-gray-600 ">
-            <FiSearch className="h-4 w-4 text-purple-500" />
-            <span className="font-medium">Searching with:</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* {isStreaming && (
-              <div className="flex items-center gap-1">
-                <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></div>
-                <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse delay-100"></div>
-                <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse delay-200"></div>
-              </div>
-            )} */}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="ml-2 p-1 rounded-full hover:bg-gray-200 -700 transition-colors"
-              aria-label={isCollapsed ? "Expand search queries" : "Collapse search queries"}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-4 w-4 text-gray-500  transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div
-          className={`relative pl-6 mt-3 transition-all duration-300 ${isCollapsed ? "h-0 opacity-0 overflow-hidden" : "opacity-100"}`}
-        >
-          <div className="absolute left-[9px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-purple-500 to-blue-500"></div>
-
-          {isStreaming && streamingSearchQueries.length === 0 && (
-            <div className="py-2 text-sm text-gray-500  flex items-center relative">
-              <div className="absolute -left-[6px] h-4 w-4 rounded-full bg-purple-500 animate-pulse"></div>
-              <div className="ml-4 flex items-center">
-                <span>Preparing search queries...</span>
-              </div>
-            </div>
-          )}
-
-          {streamingSearchQueries.length > 0 && (
-            <div className="will-change-transform">
-              <ul className="space-y-4 mb-3">
-                {streamingSearchQueries.map((query, index) => (
-                  <li key={`query-${index}`} className="flex items-start transform-gpu">
-                    <div className="absolute -left-[6px] h-4 w-4 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 border-2 border-white "></div>
-
-                    <div className="ml-4 bg-white  rounded-lg p-2 shadow-sm border border-gray-100  w-full">
-                      <span className="text-sm text-gray-800  font-medium">{query}</span>
-                    </div>
-                  </li>
-                ))}
-
-                {isStreaming && (
-                  <li className="flex items-start transform-gpu">
-                    <div className="absolute -left-[6px] h-4 w-4 rounded-full bg-blue-500 animate-pulse"></div>
-                    <div className="ml-4 flex items-center py-2">
-                      <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse mr-1"></div>
-                      <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse delay-100 mr-1"></div>
-                      <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse delay-200"></div>
-                    </div>
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {isCollapsed && streamingSearchQueries.length > 0 && (
-          <div className="text-xs text-gray-500  mt-1 pl-2">
-            {streamingSearchQueries.length} search queries {isStreaming ? "(streaming)" : ""}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div>
       <div
-        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "md:ml-5" : "md:ml-12"} md:px-4 pt-8 flex flex-col ${
-          messages.length ? "pt-1 pb-1" : "min-h-screen justify-start"
-        }`}
+        className={` relative z-10 ${sidebarCollapsed ? "md:ml-5" : "md:ml-12"} md:px-4 pt-8 flex flex-col`}
       >
         {threadId === "new" && messages.length === 0 && !isStreaming && (
           <div className={`transition-all duration-500 text-center mb-8`}>
@@ -873,11 +795,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           </div>
         )}
         <div
-          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0 transition-all duration-500`}
+          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
           <div className="relative flex justify-center w-full px-2 sm:px-0">
             <div
-              className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg transition-all duration-200 focus-within:shadow-xl w-full max-w-3xl border border-gray-200 bg-white hover:border-gray-300"
+              className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg focus-within:shadow-xl w-full max-w-3xl border border-gray-200 bg-white hover:border-gray-300"
               style={{ backdropFilter: "blur(10px)" }}
             >
               <SearchInputField
@@ -952,29 +874,32 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               setIsLoading(true);
               fetchMessages(true);
             }}
+            canNavigateNext={false}
+            canNavigatePrevious={false}
           />
         </div>
       </div>
-
+      {!(threadId === "new" || isStreaming) && messages.length === 0 ? (
+        <div className="flex w-full h-full">
+          <MessagePlaceholder />
+        </div>
+      ) : (
+        <></>
+      )}
       {messages && messages.length > 0 && (
-        <div className="w-full mt-2">
+        <div className="w-full">
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
           </div>
 
           <div className="space-y-6">
             {messages.map(m => {
-              // Debug log to check sources
-              if (m.type === "agent" && m.sources) {
-                console.log(`Message ${m.id} has ${m.sources.length} sources:`, m.sources);
-              }
-
               return (
                 m.type === "agent" && (
                   <>
                     <div
                       key={m.id}
-                      className="rounded-xl p-6 transition-shadow bg-white border border-gray-200 shadow-sm hover:shadow-md"
+                      className="rounded-xl p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div className="flex items-start">
                         <div
@@ -985,7 +910,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                           </div>
                         </div>
                         <div className="flex-1">
-                          {isStreaming && <SearchQueryDisplay />}
+                          {isStreaming && (
+                            <SearchQueryDisplay
+                              showSearchQueries={showSearchQueries}
+                              streamingSearchQueries={streamingSearchQueries}
+                              isStreaming={isStreaming}
+                            />
+                          )}
                           {m.sources && m.sources.length > 0 ? (
                             <div className="mb-4 border-b border-gray-200">
                               <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
@@ -996,7 +927,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                       activeTab === "content"
                                         ? "text-blue-600 border-blue-600 font-semibold"
                                         : "text-gray-500 border-transparent hover:text-gray-600"
-                                    } transition-all duration-200`}
+                                    } duration-200`}
                                   >
                                     <BsTextParagraph className="w-4 h-4 mr-2" />
                                     Content
@@ -1009,7 +940,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                       activeTab === "sources"
                                         ? "text-blue-600 border-blue-600 font-semibold"
                                         : "text-gray-500 border-transparent hover:text-gray-600"
-                                    } transition-all duration-200`}
+                                    } duration-200`}
                                   >
                                     <FiLink className="w-4 h-4 mr-2" />
                                     Sources
@@ -1027,7 +958,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                               <div className="text-gray-700">
                                 {m.content === null ? (
                                   <div className="flex items-center">
-                                    <div className=" mr-2">
+                                    <div className="mr-2">
                                       <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
                                     </div>
                                     <p className="italic">
@@ -1035,14 +966,17 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                     </p>
                                   </div>
                                 ) : format === "table" &&
-                                  parseStructuredData(m.content).isStructured ? (
-                                  renderAsTable(
-                                    m.content,
-                                    false,
-                                    messagesContainerRef,
-                                    hasMoreMessages,
-                                    loadMoreMessages
-                                  )
+                                  parseStructuredData(m.content).isStructured &&
+                                  /(fname|lname|link)/i.test(m.content) ? (
+                                  <div className="flex w-full">
+                                    {renderAsTable(
+                                      m.content,
+                                      false,
+                                      messagesContainerRef,
+                                      hasMoreMessages,
+                                      loadMoreMessages
+                                    )}
+                                  </div>
                                 ) : (
                                   <StyledMarkdown
                                     content={m.content}

@@ -10,7 +10,7 @@ export default function WorldConnectionsToggle({
     <div className="relative group" title="Global Search">
       <button
         disabled
-        className={`relative flex items-center px-0.5 py-[2px] sm:px-1 sm:py-[3px] w-28 sm:w-46 rounded-full transition-all duration-200 ease-in-out text-[10px] sm:text-xs
+        className={`relative flex items-center px-0.5 py-[2px] sm:px-1 sm:py-[3px] w-28 sm:w-46 rounded-full text-[10px] sm:text-xs
           border ${
             isConnections
               ? "bg-blue-100 border-blue-200"
@@ -19,7 +19,7 @@ export default function WorldConnectionsToggle({
           cursor-not-allowed opacity-60`}
       >
         <span
-          className={`absolute top-0 left-0 h-full w-1/2 rounded-full transition-all duration-200 ease-in-out z-0
+          className={`absolute top-0 left-0 h-full w-1/2 rounded-full z-0
             ${
               isConnections
                 ? "translate-x-0 bg-blue-500"

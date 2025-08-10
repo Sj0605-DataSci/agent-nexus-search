@@ -21,7 +21,7 @@ export interface AgentTemplate {
   description?: string;
   created_at: string;
   updated_at: string;
-  image_urls?: string;
+  image_urls: string;
   can_hire_unhire?: boolean;
 }
 
