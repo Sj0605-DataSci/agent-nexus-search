@@ -32,7 +32,6 @@ const isAuthenticated = () => {
 };
 
 const Sidebar = () => {
-  const darkMode = false;
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const dispatch = useAppDispatch();
   const profile = useAppSelector(state => state.profile.profile);
@@ -93,7 +92,7 @@ const Sidebar = () => {
   }, [pathname]);
 
   useEffect(() => {
-    const handleEscape = e => {
+    const handleEscape = (e: { key: string; }) => {
       if (e.key === "Escape") {
         setIsMobileSidebarOpen(false);
       }
@@ -292,7 +291,7 @@ const Sidebar = () => {
             )}
             <div className="rounded-md mb-1">
               {initialLoading ? (
-                <ShimmerLoader collapsed={collapsed && !isMobile} darkMode={darkMode} count={10} />
+                <ShimmerLoader collapsed={collapsed && !isMobile} count={10} />
               ) : recentThreads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-4 px-2 text-gray-500">
                   {!collapsed || isMobile ? (

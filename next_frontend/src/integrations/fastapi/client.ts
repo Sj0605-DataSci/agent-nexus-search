@@ -1,6 +1,7 @@
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 import { handleAxiosError } from "@/lib/api/handleAxiosError";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AgentTemplate,
   AgentTemplateCreate,
@@ -19,15 +20,6 @@ import {
 } from "./types";
 
 export const apiClient = {
-  // Agent Templates
-  async getAgentTemplates(): Promise<AgentTemplate[]> {
-    try {
-      const res = await axiosInstance.get("/agent_templates");
-      return res.data?.data;
-    } catch (error) {
-      throw new Error(handleAxiosError(error as any));
-    }
-  },
 
   async fetchAgentTemplates() {
     try {

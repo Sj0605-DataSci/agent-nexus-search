@@ -45,7 +45,6 @@ const schema = yup.object().shape({
 type FormData = yup.InferType<typeof schema>;
 
 export default function SignupForm() {
-  const darkMode = false;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -281,11 +280,7 @@ export default function SignupForm() {
                             : "Password"
                       }
                       {...register(field as keyof FormData)}
-                      className={`w-full pl-10 ${field === "password" ? "pr-10" : "pr-4"} py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
-                        darkMode
-                          ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
-                          : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
-                      }`}
+                      className={`w-full pl-10 ${field === "password" ? "pr-10" : "pr-4"} py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500`}
                     />
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                       {field === "name" ? (
@@ -323,11 +318,7 @@ export default function SignupForm() {
                     type="text"
                     placeholder="LinkedIn Profile URL "
                     {...register("linkedin_url")}
-                    className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 ${
-                      darkMode
-                        ? "bg-gray-900 text-white border-gray-700 placeholder-gray-500 focus:ring-indigo-500"
-                        : "bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500"
-                    }`}
+                    className={`w-full pl-10 pr-4 py-3 rounded-lg border outline-none transition-all duration-300 focus:ring-2 bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500`}
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center">
                     <FaLinkedin size={18} color="[#99a1af]" />
