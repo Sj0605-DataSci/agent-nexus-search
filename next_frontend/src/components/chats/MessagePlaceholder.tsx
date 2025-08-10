@@ -56,12 +56,12 @@ const MessagePlaceholder = () => {
 
             <div className="w-full hidden xl:block">
               <div className="flex w-full text-left text-xs font-medium text-gray-500 uppercase tracking-wider mb-4 px-2">
-                <div className="w-1/6 h-4 bg-gray-200 rounded"></div>
-                <div className="w-1/6 h-4 bg-gray-200 rounded ml-4"></div>
-                <div className="w-1/6 h-4 bg-gray-200 rounded ml-4"></div>
-                <div className="w-1/6 h-4 bg-gray-200 rounded ml-4"></div>
-                <div className="w-1/12 h-4 bg-gray-200 rounded ml-4"></div>
-                <div className="w-1/4 h-4 bg-gray-200 rounded ml-4"></div>
+                <div className="w-1/6 h-6 bg-gray-200 rounded"></div>
+                <div className="w-1/6 h-6 bg-gray-200 rounded ml-4"></div>
+                <div className="w-1/6 h-6 bg-gray-200 rounded ml-4"></div>
+                <div className="w-1/6 h-6 bg-gray-200 rounded ml-4"></div>
+                <div className="w-1/12 h-6 bg-gray-200 rounded ml-4"></div>
+                <div className="w-1/4 h-6 bg-gray-200 rounded ml-4"></div>
               </div>
               <div className="divide-y divide-gray-200">
                 {[...Array(5)].map((_, i) => (

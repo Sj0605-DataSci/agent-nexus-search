@@ -8,7 +8,7 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastMa
 import { useAppDispatch, useAppSelector } from "@/store";
 import Link from "next/link";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
-import { loadAgents, selectHired } from "@/store/agentsSlice";
+import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import AgentMarketplaceCard from "@/components/AgentMarketplace/AgentMarketplaceCard";
 import AgentMarketPlaceLoading from "@/components/AgentMarketplace/AgentMarketPlaceLoading";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import { AgentTemplate } from "@/integrations/fastapi/types";
 interface MarketplaceAgent {
   id: string;
   name: string;
-  agentImageUrl: string[];
+  agentImageUrl: string;
   description: string;
   category: string;
   avatar: string;
@@ -26,6 +26,43 @@ interface MarketplaceAgent {
   users: number;
   features: string[];
 }
+const getAgentDetails = (category: string) => {
+  switch (category.toLowerCase()) {
+    case "hr":
+      return {
+        features: [
+          "Talent sourcing & candidate matching",
+          "Resume screening & analysis",
+          "Interview scheduling & coordination",
+          "Employee onboarding assistance",
+        ],
+        description:
+          "Streamline recruitment with our HR Agent. Source candidates, analyze resumes, coordinate interviews, and manage onboarding while maintaining personalized communication.",
+      };
+    case "sales":
+      return {
+        features: [
+          "Lead qualification & prioritization",
+          "Personalized outreach campaigns",
+          "Meeting scheduling & follow-ups",
+          "Sales pipeline management",
+        ],
+        description:
+          "Supercharge sales with our Sales Agent. Identify prospects, create personalized outreach, automate follow-ups, and provide insights to close deals faster.",
+      };
+    default: // General agent
+      return {
+        features: [
+          "Multi-source people search",
+          "Contact information verification",
+          "Professional background analysis",
+          "Network visualization & mapping",
+        ],
+        description:
+          "Discover the right people with our General Agent. Search data sources, verify contacts, analyze backgrounds, and visualize networks efficiently.",
+      };
+  }
+};
 
 const Marketplace = () => {
   const [loading, setLoading] = useState<string | null>(null);
@@ -33,84 +70,17 @@ const Marketplace = () => {
   const dispatch = useAppDispatch();
   const hiredAgentsRaw = useAppSelector(selectHired);
   const hiredTemplateId = hiredAgentsRaw.map(h => h.template_id);
+  const profile = useAppSelector(state => state.profile.profile);
 
-  // Use React Query to fetch agent templates with 3s stale time
-  const { 
-    data: templates = [], 
-    isLoading, 
-    error 
-  } = useQuery<AgentTemplate[]>({
-    queryKey: apiClient.queryKeys.agentTemplates,
-    queryFn: apiClient.fetchAgentTemplates,
-    staleTime: 3000 // 3 seconds
-  });
-
-  // Show loading state if templates are loading
-  if (isLoading) {
-    return <AgentMarketPlaceLoading />;
-  }
-
-  // Show error state if there was an error
-  if (error) {
-    showErrorToast("Failed to load agents", "Please try again later.");
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-red-500">Failed to load agents</h2>
-          <p className="text-gray-600 mt-2">Please try again later or contact support.</p>
-        </div>
-      </div>
-    );
-  }
-  const getAgentDetails = (category: string) => {
-    switch (category.toLowerCase()) {
-      case "hr":
-        return {
-          features: [
-            "Talent sourcing & candidate matching",
-            "Resume screening & analysis",
-            "Interview scheduling & coordination",
-            "Employee onboarding assistance",
-          ],
-          description:
-            "Streamline recruitment with our HR Agent. Source candidates, analyze resumes, coordinate interviews, and manage onboarding while maintaining personalized communication.",
-        };
-      case "sales":
-        return {
-          features: [
-            "Lead qualification & prioritization",
-            "Personalized outreach campaigns",
-            "Meeting scheduling & follow-ups",
-            "Sales pipeline management",
-          ],
-          description:
-            "Supercharge sales with our Sales Agent. Identify prospects, create personalized outreach, automate follow-ups, and provide insights to close deals faster.",
-        };
-      default: // General agent
-        return {
-          features: [
-            "Multi-source people search",
-            "Contact information verification",
-            "Professional background analysis",
-            "Network visualization & mapping",
-          ],
-          description:
-            "Discover the right people with our General Agent. Search data sources, verify contacts, analyze backgrounds, and visualize networks efficiently.",
-        };
-    }
-  };
+  const agentsStatus = useAppSelector(selectAgentsStatus);
+  const templates = useAppSelector(selectTemplates);
 
   const marketplaceAgents: MarketplaceAgent[] = templates.map((t: AgentTemplate) => {
     const details = getAgentDetails(t.category);
-    // Ensure agentImageUrl is always an array of strings
-    const imageUrls = Array.isArray(t.image_urls) 
-      ? t.image_urls 
-      : (typeof t.image_urls === 'string' ? [t.image_urls] : []);
-      
     return {
       id: t.id,
       name: t.name,
-      agentImageUrl: imageUrls,
+      agentImageUrl: t.image_urls,
       description: t.description ?? details.description,
       category: t.category,
       avatar: getAgentAvatar(t.category),
@@ -121,19 +91,15 @@ const Marketplace = () => {
     };
   });
 
-  const { user } = useAuth();
-  const router = useRouter();
-
-  // Load hired agents when component mounts
-  useEffect(() => {
-    dispatch(loadAgents());
-  }, [dispatch]);
+  if (agentsStatus === "idle" || !(templates?.length > 0) || marketplaceAgents.length === 0) {
+    return <AgentMarketPlaceLoading />;
+  }
 
   const isAgentHired = (id: string) => hiredTemplateId.includes(id);
 
   const handleHireAgent = async (agentId: string) => {
-    if (!user) {
-      showInfoToast("Auth required", "Please sign in to hire agents.");
+    if (!profile) {
+      showErrorToast("Authentication required", "Please sign in to hire agents.");
       return;
     }
 
@@ -147,12 +113,12 @@ const Marketplace = () => {
     try {
       await apiClient.hireAgent({
         template_id: agentId,
-        user_id: user.id,
         name: agent.name,
         personality: "helpful",
         tone: "professional",
         response_length: "medium",
         expertise: "general",
+        user_id: profile.id, // Add user ID from profile
       });
       showSuccessToast("Agent hired", "The agent has been added to your team.");
 
@@ -166,10 +132,6 @@ const Marketplace = () => {
   };
 
   const handleUnhireAgent = async (agentId: string) => {
-    if (!user) {
-      showInfoToast("Authentication required", "Please sign in to manage agents.");
-      return;
-    }
     setLoading(`unhire-${agentId}`);
     try {
       await apiClient.unhireAgentByTemplateId(agentId);

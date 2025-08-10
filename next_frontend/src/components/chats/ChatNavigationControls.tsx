@@ -21,7 +21,7 @@ export function ChatNavigationControls({
   onNext,
   onRefresh,
 }: ChatNavigationControlsProps) {
-  if (totalItems <= 1) return null;
+  if (totalItems <= 1) return <div className="p-3"/>;
 
   return (
     <div className="flex justify-center items-center gap-3 mt-6">
