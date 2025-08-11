@@ -264,7 +264,7 @@ async def cors_debug_middleware(request: Request, call_next):
                    cors_headers=cors_headers)
         
         # Log if origin is not in allowed origins
-        allowed_origins = ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://test-discoverminds.ai", "https://test-discoverminds.ai/", "https://test-web.discoverminds.ai/", "https://test-web.discoverminds.ai"]
+        allowed_origins = ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://www.test-web.discoverminds.ai/","https://www.test-web.discoverminds.ai/","https://test-web.discoverminds.ai/","https://test-web.discoverminds.ai"]
         if origin not in allowed_origins and origin != "No Origin":
             logger.warning("Potential CORS issue detected",
                           origin=origin,
