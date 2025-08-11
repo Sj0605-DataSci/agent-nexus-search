@@ -22,8 +22,7 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
         process = psutil.Process()
         initial_memory = process.memory_info().rss / (1024 * 1024)
         
-        logger.critical("EMERGENCY MEMORY CLEANUP INITIATED", 
-                       initial_memory_mb=round(initial_memory, 2))
+        print(f"EMERGENCY MEMORY CLEANUP INITIATED - Initial memory: {initial_memory:.2f}MB")
         
         # 1. Clear all application caches immediately
         cache_stats = get_cache_stats()
@@ -36,8 +35,9 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
             collected = gc.collect()
             gc_results.append(collected)
         
-        # 3. Use memory optimizer emergency cleanup
-        cleanup_result = await force_cleanup("emergency")
+        # 3. Simple memory cleanup without using memory optimizer to avoid logging conflicts
+        import sys
+        sys.modules.clear()  # Clear module cache
         
         # 4. Get final memory
         final_memory = process.memory_info().rss / (1024 * 1024)
@@ -51,16 +51,17 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
             "cache_items_cleared": total_cache_items,
             "cache_stats_before": cache_stats,
             "gc_collections": gc_results,
-            "cleanup_result": cleanup_result,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "note": "Emergency cleanup bypassed memory optimizer to avoid logging conflicts"
         }
         
-        logger.critical("EMERGENCY MEMORY CLEANUP COMPLETED", **result)
+        print(f"EMERGENCY MEMORY CLEANUP COMPLETED - Memory freed: {memory_freed:.2f}MB")
         return result
         
     except Exception as e:
-        logger.error("Emergency memory cleanup failed", error_msg=str(e))
-        raise HTTPException(status_code=500, detail=f"Emergency cleanup failed: {str(e)}")
+        error_msg = str(e)
+        print(f"Emergency memory cleanup failed: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Emergency cleanup failed: {error_msg}")
 
 @router.post("/memory-cleanup")
 async def emergency_memory_cleanup() -> Dict[str, Any]:

@@ -4,7 +4,6 @@ Addresses multiple memory leak sources and provides proactive cleanup
 """
 import asyncio
 import gc
-import logging
 import os
 import psutil
 import time
@@ -12,12 +11,9 @@ import threading
 from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
 
-from app.core.structured_logger import get_structured_logger
 from app.core.utils.cache import (
     clear_all_caches, get_cache_stats, _aggressive_cache_cleanup
 )
-
-logger = get_structured_logger(__name__)
 
 class MemoryOptimizer:
     """Comprehensive memory optimization and leak prevention"""
@@ -59,7 +55,7 @@ class MemoryOptimizer:
                 "available_mb": psutil.virtual_memory().available / (1024 * 1024)
             }
         except Exception as e:
-            logger.error("Failed to get memory usage", error_msg=str(e))
+            print(f"Failed to get memory usage: {str(e)}")
             return {"rss_mb": 0, "vms_mb": 0, "percent": 0, "available_mb": 0}
     
     async def perform_cleanup(self, level: str = "standard") -> Dict[str, Any]:
@@ -108,11 +104,7 @@ class MemoryOptimizer:
                 memory_freed = initial_memory["rss_mb"] - final_memory["rss_mb"]
                 cleanup_time = time.time() - start_time
                 
-                logger.info("Memory cleanup completed",
-                           cleanup_level=level,
-                           memory_freed_mb=round(memory_freed, 2),
-                           cleanup_time_ms=round(cleanup_time * 1000, 2),
-                           actions=cleanup_actions)
+                print(f"Memory cleanup completed - Level: {level}, Memory freed: {memory_freed:.2f}MB")
                 
                 return {
                     "success": True,
@@ -124,7 +116,7 @@ class MemoryOptimizer:
                 }
                 
             except Exception as e:
-                logger.error("Error during memory cleanup", cleanup_level=level, error_msg=str(e))
+                print(f"Error during memory cleanup - Level: {level}, Error: {str(e)}")
                 return {
                     "success": False,
                     "level": level,
@@ -147,22 +139,16 @@ class MemoryOptimizer:
         if current_memory >= self.emergency_threshold:
             cleanup_level = "emergency"
             self.stats["memory_warnings"] += 1
-            logger.critical("Emergency memory threshold exceeded",
-                           memory_mb=round(current_memory, 2),
-                           threshold_mb=self.emergency_threshold)
+            print(f"Emergency memory threshold exceeded: {current_memory:.2f}MB > {self.emergency_threshold}MB")
         
         elif current_memory >= self.critical_threshold:
             cleanup_level = "aggressive"
             self.stats["memory_warnings"] += 1
-            logger.warning("Critical memory threshold exceeded",
-                          memory_mb=round(current_memory, 2),
-                          threshold_mb=self.critical_threshold)
+            print(f"Critical memory threshold exceeded: {current_memory:.2f}MB > {self.critical_threshold}MB")
         
         elif current_memory >= self.warning_threshold:
             cleanup_level = "standard"
-            logger.warning("Memory warning threshold exceeded",
-                          memory_mb=round(current_memory, 2),
-                          threshold_mb=self.warning_threshold)
+            print(f"Memory warning threshold exceeded: {current_memory:.2f}MB > {self.warning_threshold}MB")
         
         # Perform cleanup if needed
         if cleanup_level:
@@ -176,10 +162,7 @@ class MemoryOptimizer:
             return
         
         self.monitoring_active = True
-        logger.info("Starting memory monitoring",
-                   warning_threshold=self.warning_threshold,
-                   critical_threshold=self.critical_threshold,
-                   emergency_threshold=self.emergency_threshold)
+        print(f"Starting memory monitoring - Warning: {self.warning_threshold}MB, Critical: {self.critical_threshold}MB, Emergency: {self.emergency_threshold}MB")
         
         self.monitoring_task = asyncio.create_task(self._monitoring_loop())
     
@@ -194,7 +177,7 @@ class MemoryOptimizer:
             except asyncio.CancelledError:
                 pass
         
-        logger.info("Memory monitoring stopped")
+        print("Memory monitoring stopped")
     
     async def _monitoring_loop(self):
         """Main monitoring loop"""
@@ -209,26 +192,21 @@ class MemoryOptimizer:
                 
                 # Periodic aggressive cleanup regardless of memory usage
                 if (current_time - last_aggressive_cleanup) > self.aggressive_cleanup_interval:
-                    logger.info("Performing periodic aggressive cleanup")
+                    print("Performing periodic aggressive cleanup")
                     await self.perform_cleanup("aggressive")
                     last_aggressive_cleanup = current_time
                 
                 # Log memory statistics periodically
                 if self.stats["cleanups_performed"] % 10 == 0:
                     memory_usage = self.get_memory_usage()
-                    logger.info("Memory monitoring statistics",
-                               current_memory_mb=round(memory_usage["rss_mb"], 2),
-                               peak_memory_mb=round(self.stats["peak_memory_mb"], 2),
-                               cleanups_performed=self.stats["cleanups_performed"],
-                               memory_warnings=self.stats["memory_warnings"],
-                               emergency_cleanups=self.stats["emergency_cleanups"])
+                    print(f"Memory monitoring stats - Current: {memory_usage['rss_mb']:.2f}MB, Peak: {self.stats['peak_memory_mb']:.2f}MB, Cleanups: {self.stats['cleanups_performed']}")
                 
                 await asyncio.sleep(self.check_interval)
                 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error("Error in memory monitoring loop", error_msg=str(e))
+                print(f"Error in memory monitoring loop: {str(e)}")
                 await asyncio.sleep(self.check_interval)
     
     def get_stats(self) -> Dict[str, Any]:
@@ -261,17 +239,11 @@ async def memory_monitored_operation(operation_name: str):
         operation_time = time.time() - start_time
         memory_delta = end_memory["rss_mb"] - start_memory["rss_mb"]
         
-        logger.info("Memory-monitored operation completed",
-                   operation=operation_name,
-                   memory_delta_mb=round(memory_delta, 2),
-                   operation_time_ms=round(operation_time * 1000, 2),
-                   final_memory_mb=round(end_memory["rss_mb"], 2))
+        print(f"Memory-monitored operation completed - {operation_name}: Memory delta: {memory_delta:.2f}MB, Time: {operation_time*1000:.2f}ms")
         
         # Trigger cleanup if memory increased significantly
         if memory_delta > 50:  # 50MB increase
-            logger.warning("Significant memory increase detected, triggering cleanup",
-                          operation=operation_name,
-                          memory_increase_mb=round(memory_delta, 2))
+            print(f"Significant memory increase detected ({memory_delta:.2f}MB), triggering cleanup")
             await memory_optimizer.perform_cleanup("standard")
 
 # Convenience functions
