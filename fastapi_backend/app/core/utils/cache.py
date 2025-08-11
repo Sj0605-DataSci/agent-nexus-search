@@ -22,6 +22,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 from app.core.structured_logger import get_structured_logger
 from collections import OrderedDict
+import threading
+import psutil
+import os
 
 logger = get_structured_logger(__name__)
 
@@ -107,12 +110,83 @@ CACHE_CONFIG = {
     }
 }
 
+# Add memory monitoring for cache cleanup
+_cache_cleanup_lock = threading.Lock()
+_last_memory_check = 0
+MEMORY_CHECK_INTERVAL = 30  # Check memory every 30 seconds
+MEMORY_CLEANUP_THRESHOLD_MB = 500  # Cleanup caches if process uses > 500MB
+
+def _get_process_memory_mb() -> float:
+    """Get current process memory usage in MB"""
+    try:
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / (1024 * 1024)
+    except:
+        return 0
+
+def _should_cleanup_memory() -> bool:
+    """Check if we should cleanup caches based on memory usage"""
+    global _last_memory_check
+    current_time = time.time()
+    
+    # Only check memory every MEMORY_CHECK_INTERVAL seconds
+    if current_time - _last_memory_check < MEMORY_CHECK_INTERVAL:
+        return False
+    
+    _last_memory_check = current_time
+    memory_mb = _get_process_memory_mb()
+    
+    if memory_mb > MEMORY_CLEANUP_THRESHOLD_MB:
+        logger.warning("High memory usage detected, triggering cache cleanup",
+                      memory_mb=round(memory_mb, 2),
+                      threshold_mb=MEMORY_CLEANUP_THRESHOLD_MB)
+        return True
+    
+    return False
+
+def _aggressive_cache_cleanup():
+    """Aggressively cleanup all caches when memory is high"""
+    with _cache_cleanup_lock:
+        total_cleared = 0
+        
+        # Clear 50% of each cache
+        for cache_name, cache_dict in [
+            ("profiles", _profile_cache),
+            ("agents", _agent_cache),
+            ("user_agents", _user_agents_cache),
+            ("chat_threads", _chat_threads_cache),
+            ("chat_messages", _chat_messages_cache),
+            ("message_feedback", _message_feedback_cache),
+            ("subscription", _subscription_cache),
+            ("usage_stats", _usage_stats_cache),
+            ("generic", _generic_cache)
+        ]:
+            if cache_dict:
+                cache_size = len(cache_dict)
+                items_to_remove = cache_size // 2  # Remove 50%
+                
+                if items_to_remove > 0:
+                    # Remove oldest items
+                    for _ in range(items_to_remove):
+                        if cache_dict:
+                            cache_dict.popitem(last=False)  # Remove oldest
+                    
+                    total_cleared += items_to_remove
+                    logger.info(f"Aggressive cleanup: cleared {items_to_remove} items from {cache_name} cache")
+        
+        logger.info("Aggressive cache cleanup completed", total_items_cleared=total_cleared)
+
 def _is_cache_valid(cached_time: float, ttl: int) -> bool:
     """Check if cache entry is still valid based on TTL"""
     return time.time() - cached_time < ttl
 
 def _cleanup_cache(cache_dict: Dict[str, Tuple[Any, float]], max_size: int, cleanup_size: int) -> None:
     """Clean up old cache entries when size limit is exceeded"""
+    # Check if we should do memory-based cleanup first
+    if _should_cleanup_memory():
+        _aggressive_cache_cleanup()
+        return
+    
     if len(cache_dict) > max_size:
         # Sort by timestamp and remove oldest entries
         sorted_items = sorted(cache_dict.items(), key=lambda x: x[1][1])

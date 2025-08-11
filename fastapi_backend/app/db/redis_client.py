@@ -35,7 +35,12 @@ class RedisClient:
                 logger.info(f"Initializing Redis with URL: {url.replace('redis://', '').split('@')[0]}...@...")
                 self._pool = redis.ConnectionPool.from_url(
                     url,
-                    decode_responses=True
+                    decode_responses=True,
+                    max_connections=20,  # Limit connection pool size
+                    retry_on_timeout=True,
+                    socket_keepalive=True,
+                    socket_keepalive_options={},
+                    health_check_interval=30
                 )
             else:
                 self._pool = redis.ConnectionPool(
@@ -43,10 +48,15 @@ class RedisClient:
                     port=port,
                     db=db,
                     password=password,
-                    decode_responses=True  # Changed to True for JSON serialization
+                    decode_responses=True,  # Changed to True for JSON serialization
+                    max_connections=20,  # Limit connection pool size
+                    retry_on_timeout=True,
+                    socket_keepalive=True,
+                    socket_keepalive_options={},
+                    health_check_interval=30
                 )
             self._initialized = True
-            logger.info(f"Redis connection pool initialized successfully")
+            logger.info(f"Redis connection pool initialized successfully with max_connections=20")
         except Exception as e:
             logger.error(f"Failed to initialize Redis connection pool: {str(e)}")
             raise
@@ -56,6 +66,18 @@ class RedisClient:
         if not self._initialized:
             await self.initialize()
         return redis.Redis(connection_pool=self._pool)
+    
+    async def close(self):
+        """Close the Redis connection pool"""
+        if self._pool:
+            try:
+                await self._pool.disconnect()
+                logger.info("Redis connection pool closed")
+            except Exception as e:
+                logger.error(f"Error closing Redis connection pool: {str(e)}")
+            finally:
+                self._pool = None
+                self._initialized = False
     
     def _json_serializer(self, obj):
         """Custom JSON serializer to handle special types"""
