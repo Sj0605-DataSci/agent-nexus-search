@@ -10,13 +10,13 @@ from typing import Dict, Any
 from app.core.structured_logger import get_structured_logger
 from app.core.utils.cache import clear_all_caches, get_cache_stats
 from app.core.memory_optimizer import memory_optimizer, force_cleanup
+import time
 
 logger = get_structured_logger(__name__)
 router = APIRouter(prefix="/emergency", tags=["emergency"])
 
-@router.post("/memory-cleanup")
-async def emergency_memory_cleanup() -> Dict[str, Any]:
-    """Emergency memory cleanup - use when memory usage is critical"""
+async def _perform_emergency_cleanup() -> Dict[str, Any]:
+    """Internal function to perform emergency cleanup"""
     try:
         # Get initial memory
         process = psutil.Process()
@@ -27,7 +27,7 @@ async def emergency_memory_cleanup() -> Dict[str, Any]:
         
         # 1. Clear all application caches immediately
         cache_stats = get_cache_stats()
-        total_cache_items = sum(cache_stats.values())
+        total_cache_items = sum(stats["size"] for stats in cache_stats.values())
         clear_all_caches()
         
         # 2. Force aggressive garbage collection multiple times
@@ -49,9 +49,10 @@ async def emergency_memory_cleanup() -> Dict[str, Any]:
             "final_memory_mb": round(final_memory, 2),
             "memory_freed_mb": round(memory_freed, 2),
             "cache_items_cleared": total_cache_items,
+            "cache_stats_before": cache_stats,
             "gc_collections": gc_results,
             "cleanup_result": cleanup_result,
-            "timestamp": psutil.time.time()
+            "timestamp": time.time()
         }
         
         logger.critical("EMERGENCY MEMORY CLEANUP COMPLETED", **result)
@@ -60,6 +61,16 @@ async def emergency_memory_cleanup() -> Dict[str, Any]:
     except Exception as e:
         logger.error("Emergency memory cleanup failed", error=str(e))
         raise HTTPException(status_code=500, detail=f"Emergency cleanup failed: {str(e)}")
+
+@router.post("/memory-cleanup")
+async def emergency_memory_cleanup() -> Dict[str, Any]:
+    """Emergency memory cleanup - use when memory usage is critical"""
+    return await _perform_emergency_cleanup()
+
+@router.get("/memory-cleanup-now")
+async def emergency_memory_cleanup_get() -> Dict[str, Any]:
+    """Emergency memory cleanup via GET - for browser access"""
+    return await _perform_emergency_cleanup()
 
 @router.get("/memory-status")
 async def get_memory_status() -> Dict[str, Any]:
