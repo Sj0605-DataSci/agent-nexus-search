@@ -39,26 +39,26 @@ const HeroSection: React.FC = () => {
       desc: "Find the perfect candidates using natural language queries",
       icon: "🔍",
     },
-    {
-      title: "Smart Filters",
-      desc: "Automatically extract and apply relevant filters from your search",
-      icon: "🎯",
-    },
+    // {
+    //   title: "Smart Filters",
+    //   desc: "Automatically extract and apply relevant filters from your search",
+    //   icon: "🎯",
+    // },
     {
       title: "Context-Aware",
       desc: "Understands complex queries and maintains conversation context",
       icon: "🧠",
     },
-    {
-      title: "Real-Time Insights",
-      desc: "Get instant analysis of candidate profiles and fit",
-      icon: "📊",
-    },
-    {
-      title: "Seamless Integration",
-      desc: "Connect with your existing HR tools and workflows",
-      icon: "🔗",
-    },
+    // {
+    //   title: "Real-Time Insights",
+    //   desc: "Get instant analysis of candidate profiles and fit",
+    //   icon: "📊",
+    // },
+    // {
+    //   title: "Seamless Integration",
+    //   desc: "Connect with your existing HR tools and workflows",
+    //   icon: "🔗",
+    // },
     {
       title: "Data Privacy First",
       desc: "Enterprise-grade security and compliance built-in",
