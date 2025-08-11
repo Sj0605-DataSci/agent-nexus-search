@@ -117,7 +117,7 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { href: "/marketplace", label: "Marketplace", icon: <FiShoppingBag /> },
+    // { href: "/marketplace", label: "Marketplace", icon: <FiShoppingBag /> },
     { href: "/agents", label: "Agents", icon: <FiUsers /> },
   ];
 

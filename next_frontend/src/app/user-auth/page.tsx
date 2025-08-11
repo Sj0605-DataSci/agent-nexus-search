@@ -16,6 +16,8 @@ import { useAppDispatch } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { useAuth } from "@/hooks/useAuth";
+import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
+import BrandLogo from "@/components/BrandLogo";
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 48 48">
@@ -51,70 +53,75 @@ const AuthComponent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-        <div className="p-8">
-          <div className="relative flex justify-between items-center mb-8">
-            {formToShow != "reset" && formToShow != "hidetoggle" && (
-              <div className="relative bg-gray-200 p-1 rounded-full flex items-center w-[170px]">
-                {["Sign up", "Sign in"].map((item, index) => {
-                  const isActive =
-                    (formToShow === "signup" && index === 0) ||
-                    (formToShow === "signin" && index === 1);
-                  return (
-                    <div
-                      key={item}
-                      onClick={() => setFormToShow(index === 0 ? "signup" : "signin")}
-                      className="relative w-1/2 text-center text-sm font-semibold py-2 cursor-pointer"
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="active-pill"
-                          className="absolute inset-0 bg-white rounded-full shadow-md"
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        />
-                      )}
-                      <span
-                        className={`relative z-10 transition-colors ${isActive ? "text-gray-900" : "text-gray-500"}`}
-                      >
-                        {item}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <button
-              onClick={() =>
-                formToShow === "hidetoggle" ? () => setFormToShow("signin") : router.push("/")
-              }
-              className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            >
-              <X size={20} className="text-gray-500" />
-            </button>
-          </div>
+    <div className="min-h-screen bg-gray-50 font-sans">
+      <div className="grid grid-cols-1 md:grid-cols-2 h-screen">
+        <div className="flex justify-center p-4 md:mt-12 sm:p-6 lg:p-8">
+          <div className="w-full max-w-md">
+            <BrandLogo className="mb-3" size="large" />
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={formToShow}
-              variants={formVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-            >
-              {(formToShow === "signup" || formToShow === "hidetoggle") && (
-                <SignUpForm successSignupSubmission={() => setFormToShow("hidetoggle")} />
+            <div className="relative flex justify-between items-center mb-8">
+              {formToShow != "reset" && formToShow != "hidetoggle" && (
+                <div className="relative bg-gray-200 p-1 rounded-full flex items-center w-[170px]">
+                  {["Sign up", "Sign in"].map((item, index) => {
+                    const isActive =
+                      (formToShow === "signup" && index === 0) ||
+                      (formToShow === "signin" && index === 1);
+                    return (
+                      <div
+                        key={item}
+                        onClick={() => setFormToShow(index === 0 ? "signup" : "signin")}
+                        className="relative w-1/2 text-center text-sm font-semibold py-2 cursor-pointer"
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="active-pill"
+                            className="absolute inset-0 bg-white rounded-full shadow-md"
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          />
+                        )}
+                        <span
+                          className={`relative z-10 transition-colors ${isActive ? "text-gray-900" : "text-gray-500"}`}
+                        >
+                          {item}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-              {formToShow === "signin" && (
-                <SignInForm onForgotPassword={() => setFormToShow("reset")} />
-              )}
-              {formToShow === "reset" && (
-                <ResetPasswordForm onBackToSignIn={() => setFormToShow("signin")} />
-              )}
-            </motion.div>
-          </AnimatePresence>
+              <button
+                onClick={() =>
+                  formToShow === "hidetoggle" ? () => setFormToShow("signin") : router.push("/")
+                }
+                className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={formToShow}
+                variants={formVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{ duration: 0.3 }}
+              >
+                {(formToShow === "signup" || formToShow === "hidetoggle") && (
+                  <SignUpForm successSignupSubmission={() => setFormToShow("hidetoggle")} />
+                )}
+                {formToShow === "signin" && (
+                  <SignInForm onForgotPassword={() => setFormToShow("reset")} />
+                )}
+                {formToShow === "reset" && (
+                  <ResetPasswordForm onBackToSignIn={() => setFormToShow("signin")} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
+        <AuthBrandingPanel />
       </div>
     </div>
   );
@@ -396,7 +403,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
       const loginResult = await dispatch(loginUser(data)).unwrap();
 
       if (loginResult.success && loginResult.status_code === 200) {
-        router.prefetch("/chat/new");
+        router.replace("/chat/new");
         dispatch(fetchProfile()).then(profileResult => {
           if (profileResult.payload?.success && profileResult.payload?.data) {
             const profileData = profileResult.payload.data;
@@ -412,7 +419,6 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
             }, 0);
           }
         });
-        router.replace("/chat/new");
         showSuccessToast("Welcome back!");
       } else {
         showErrorToast(loginResult.message || "Please check your credentials and try again.");
