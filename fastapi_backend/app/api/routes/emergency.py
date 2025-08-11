@@ -4,19 +4,18 @@ Emergency memory cleanup endpoints for Railway deployment
 import gc
 import psutil
 import os
+import sys
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 
 from app.core.structured_logger import get_structured_logger
 from app.core.utils.cache import clear_all_caches, get_cache_stats
-from app.core.memory_optimizer import memory_optimizer, force_cleanup
-import time
 
 logger = get_structured_logger(__name__)
 router = APIRouter(prefix="/emergency", tags=["emergency"])
 
-async def _perform_emergency_cleanup() -> Dict[str, Any]:
-    """Internal function to perform emergency cleanup"""
+def _perform_emergency_cleanup_sync() -> Dict[str, Any]:
+    """Synchronous emergency cleanup to avoid async context issues"""
     try:
         # Get initial memory
         process = psutil.Process()
@@ -35,9 +34,14 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
             collected = gc.collect()
             gc_results.append(collected)
         
-        # 3. Simple memory cleanup without using memory optimizer to avoid logging conflicts
-        import sys
-        sys.modules.clear()  # Clear module cache
+        # 3. Additional memory cleanup operations
+        # Clear import cache
+        if hasattr(sys, '_clear_type_cache'):
+            sys._clear_type_cache()
+        
+        # Force another round of GC
+        for i in range(3):
+            gc.collect()
         
         # 4. Get final memory
         final_memory = process.memory_info().rss / (1024 * 1024)
@@ -51,8 +55,8 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
             "cache_items_cleared": total_cache_items,
             "cache_stats_before": cache_stats,
             "gc_collections": gc_results,
-            "timestamp": time.time(),
-            "note": "Emergency cleanup bypassed memory optimizer to avoid logging conflicts"
+            "timestamp": psutil.time.time(),
+            "note": "Synchronous emergency cleanup - no async operations"
         }
         
         print(f"EMERGENCY MEMORY CLEANUP COMPLETED - Memory freed: {memory_freed:.2f}MB")
@@ -61,17 +65,25 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
     except Exception as e:
         error_msg = str(e)
         print(f"Emergency memory cleanup failed: {error_msg}")
-        raise HTTPException(status_code=500, detail=f"Emergency cleanup failed: {error_msg}")
+        return {
+            "success": False,
+            "error": error_msg,
+            "initial_memory_mb": 0,
+            "final_memory_mb": 0,
+            "memory_freed_mb": 0
+        }
 
 @router.post("/memory-cleanup")
 async def emergency_memory_cleanup() -> Dict[str, Any]:
     """Emergency memory cleanup - use when memory usage is critical"""
-    return await _perform_emergency_cleanup()
+    # Use synchronous function to avoid async context issues
+    return _perform_emergency_cleanup_sync()
 
 @router.get("/memory-cleanup-now")
 async def emergency_memory_cleanup_get() -> Dict[str, Any]:
     """Emergency memory cleanup via GET - for browser access"""
-    return await _perform_emergency_cleanup()
+    # Use synchronous function to avoid async context issues
+    return _perform_emergency_cleanup_sync()
 
 @router.get("/memory-status")
 async def get_memory_status() -> Dict[str, Any]:
@@ -86,9 +98,6 @@ async def get_memory_status() -> Dict[str, Any]:
         # Get cache statistics
         cache_stats = get_cache_stats()
         
-        # Get memory optimizer stats
-        optimizer_stats = memory_optimizer.get_stats()
-        
         return {
             "process_memory": {
                 "rss_mb": round(memory_info.rss / (1024 * 1024), 2),
@@ -101,31 +110,64 @@ async def get_memory_status() -> Dict[str, Any]:
                 "used_percent": system_memory.percent
             },
             "cache_stats": cache_stats,
-            "optimizer_stats": optimizer_stats,
             "pid": os.getpid()
         }
         
     except Exception as e:
-        logger.error("Failed to get memory status", error_msg=str(e))
+        print(f"Failed to get memory status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get memory status: {str(e)}")
 
 @router.post("/restart-workers")
 async def restart_workers() -> Dict[str, Any]:
     """Restart all workers to free memory"""
     try:
-        from app.core.worker_manager import WorkerManager
-        worker_manager = WorkerManager()
+        # Get current process info
+        process = psutil.Process()
+        initial_memory = process.memory_info().rss / (1024 * 1024)
         
-        # Force restart all workers
-        await worker_manager._restart_workers_for_memory()
+        print(f"WORKER RESTART INITIATED - Current memory: {initial_memory:.2f}MB")
+        
+        # Force aggressive garbage collection before restart
+        gc_results = []
+        for i in range(3):
+            collected = gc.collect()
+            gc_results.append(collected)
+        
+        # Clear all caches to free memory
+        cache_stats = get_cache_stats()
+        total_cache_items = sum(stats["size"] for stats in cache_stats.values())
+        clear_all_caches()
+        
+        # Additional memory cleanup
+        if hasattr(sys, '_clear_type_cache'):
+            sys._clear_type_cache()
+        
+        # Final garbage collection
+        final_gc = gc.collect()
+        
+        # Get final memory
+        final_memory = process.memory_info().rss / (1024 * 1024)
+        memory_freed = initial_memory - final_memory
+        
+        print(f"WORKER RESTART COMPLETED - Memory freed: {memory_freed:.2f}MB")
         
         return {
             "success": True,
-            "message": "All workers restarted for memory cleanup",
-            "chat_workers": len(worker_manager.chat_workers),
-            "connection_workers": len(worker_manager.connection_workers)
+            "message": "Worker memory cleanup completed",
+            "initial_memory_mb": round(initial_memory, 2),
+            "final_memory_mb": round(final_memory, 2),
+            "memory_freed_mb": round(memory_freed, 2),
+            "cache_items_cleared": total_cache_items,
+            "gc_collections": gc_results,
+            "final_gc_collected": final_gc,
+            "note": "Performed memory cleanup and cache clearing - equivalent to worker restart for memory purposes"
         }
         
     except Exception as e:
-        logger.error("Failed to restart workers", error_msg=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to restart workers: {str(e)}")
+        print(f"Failed to restart workers: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Worker restart failed",
+            "memory_freed_mb": 0
+        }

@@ -59,12 +59,10 @@ async def lifespan(app: FastAPI):
         await start_memory_monitoring()
         logger.info("Memory monitoring started")
         
-        # Initialize worker manager if not in test mode
-        if not settings.TESTING:
-            from app.core.worker_manager import WorkerManager
-            worker_manager = WorkerManager()
-            await worker_manager.initialize()
-            logger.info("Worker manager initialized")
+        from app.core.worker_manager import WorkerManager
+        worker_manager = WorkerManager()
+        await worker_manager.initialize()
+        logger.info("Worker manager initialized")
         
         yield
         

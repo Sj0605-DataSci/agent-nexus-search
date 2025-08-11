@@ -71,7 +71,8 @@ class MemoryOptimizer:
                     # Clear application caches
                     cache_stats = get_cache_stats()
                     clear_all_caches()
-                    cleanup_actions.append(f"Cleared {sum(cache_stats.values())} cache entries")
+                    total_cache_items = sum(stats["size"] for stats in cache_stats.values())
+                    cleanup_actions.append(f"Cleared {total_cache_items} cache entries")
                 
                 if level in ["aggressive", "emergency"]:
                     # Aggressive cache cleanup
