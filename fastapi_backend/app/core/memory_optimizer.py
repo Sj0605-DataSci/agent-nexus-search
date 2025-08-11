@@ -59,7 +59,7 @@ class MemoryOptimizer:
                 "available_mb": psutil.virtual_memory().available / (1024 * 1024)
             }
         except Exception as e:
-            logger.error("Failed to get memory usage", error=str(e))
+            logger.error("Failed to get memory usage", error_msg=str(e))
             return {"rss_mb": 0, "vms_mb": 0, "percent": 0, "available_mb": 0}
     
     async def perform_cleanup(self, level: str = "standard") -> Dict[str, Any]:
@@ -124,11 +124,11 @@ class MemoryOptimizer:
                 }
                 
             except Exception as e:
-                logger.error("Error during memory cleanup", level=level, error=str(e))
+                logger.error("Error during memory cleanup", level=level, error_msg=str(e))
                 return {
                     "success": False,
                     "level": level,
-                    "error": str(e),
+                    "error_msg": str(e),
                     "actions": cleanup_actions
                 }
     
@@ -228,7 +228,7 @@ class MemoryOptimizer:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error("Error in memory monitoring loop", error=str(e))
+                logger.error("Error in memory monitoring loop", error_msg=str(e))
                 await asyncio.sleep(self.check_interval)
     
     def get_stats(self) -> Dict[str, Any]:

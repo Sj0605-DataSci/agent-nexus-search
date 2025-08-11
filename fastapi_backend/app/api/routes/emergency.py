@@ -59,7 +59,7 @@ async def _perform_emergency_cleanup() -> Dict[str, Any]:
         return result
         
     except Exception as e:
-        logger.error("Emergency memory cleanup failed", error=str(e))
+        logger.error("Emergency memory cleanup failed", error_msg=str(e))
         raise HTTPException(status_code=500, detail=f"Emergency cleanup failed: {str(e)}")
 
 @router.post("/memory-cleanup")
@@ -105,7 +105,7 @@ async def get_memory_status() -> Dict[str, Any]:
         }
         
     except Exception as e:
-        logger.error("Failed to get memory status", error=str(e))
+        logger.error("Failed to get memory status", error_msg=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get memory status: {str(e)}")
 
 @router.post("/restart-workers")
@@ -126,5 +126,5 @@ async def restart_workers() -> Dict[str, Any]:
         }
         
     except Exception as e:
-        logger.error("Failed to restart workers", error=str(e))
+        logger.error("Failed to restart workers", error_msg=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to restart workers: {str(e)}")
