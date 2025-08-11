@@ -109,7 +109,7 @@ class MemoryOptimizer:
                 cleanup_time = time.time() - start_time
                 
                 logger.info("Memory cleanup completed",
-                           level=level,
+                           cleanup_level=level,
                            memory_freed_mb=round(memory_freed, 2),
                            cleanup_time_ms=round(cleanup_time * 1000, 2),
                            actions=cleanup_actions)
@@ -124,7 +124,7 @@ class MemoryOptimizer:
                 }
                 
             except Exception as e:
-                logger.error("Error during memory cleanup", level=level, error_msg=str(e))
+                logger.error("Error during memory cleanup", cleanup_level=level, error_msg=str(e))
                 return {
                     "success": False,
                     "level": level,
