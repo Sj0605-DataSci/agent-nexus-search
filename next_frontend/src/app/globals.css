@@ -185,6 +185,34 @@ body {
   }
 }
 
+.particles-container {
+  pointer-events: none;
+}
+
+/* Add subtle floating animation to all feature cards */
+.feature-card {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Add a subtle glow effect on hover */
+.glow-on-hover {
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-on-hover:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
 @keyframes fadeSlideIn {
   from {
     opacity: 0;

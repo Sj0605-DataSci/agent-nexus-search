@@ -178,7 +178,7 @@ export default function ResetPasswordForm() {
 
             <div className="mt-8 pt-6 border-t border-gray-100">
               <button
-                onClick={() => router.push("/login")}
+                onClick={() => router.push("/user-auth")}
                 className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
               >
                 <FaArrowLeft className="mr-2" />
@@ -262,7 +262,7 @@ export default function ResetPasswordForm() {
 
         <div className="mt-6 pt-6 border-t border-gray-100 text-center">
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/user-auth")}
             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
           >
             <FaArrowLeft className="mr-2" />

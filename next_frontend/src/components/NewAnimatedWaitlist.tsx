@@ -216,7 +216,7 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
 
       <div className="absolute top-4 right-4 z-20 flex items-center space-x-3">
         <Link
-          href="/login"
+          href="/user-auth"
           className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors px-2 py-1"
         >
           Login

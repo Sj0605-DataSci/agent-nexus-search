@@ -132,7 +132,7 @@ const Sidebar = () => {
 
       dispatch(clearProfile());
       posthog.reset();
-      router.push("/login");
+      router.push("/user-auth");
     }
   };
 
@@ -445,7 +445,7 @@ const Sidebar = () => {
           ) : (
             <div className={`flex ${collapsed && !isMobile ? "flex-col" : "items-center"} gap-2`}>
               <Button
-                onClick={() => router.push("/login")}
+                onClick={() => router.push("/user-auth")}
                 variant="ghost"
                 className={`${collapsed && !isMobile ? "p-2" : "px-3 py-2"} flex items-center justify-center`}
                 title="Login"

@@ -31,7 +31,7 @@ function withAuth<P extends object>(Wrapped: ComponentType<P>) {
 
       const timer = setTimeout(() => {
         if (!token && !profile) {
-          router.replace("/login");
+          router.replace("/user-auth");
         }
       }, 100);
 

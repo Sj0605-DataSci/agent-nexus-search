@@ -8,8 +8,10 @@ import { Parallax, ParallaxProvider } from "react-scroll-parallax";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import ScrollVelocity from "../common/ScrollVelocity";
-import LightRays from "./LightRays";
+import ScrollReveal from "../common/ScrollReveal";
 import WhyChooseUs from "./WhyChooseUs";
+import { PageTransition, Reveal, Stagger } from "../common/Animations";
+import { motion } from "framer-motion";
 
 interface VideoPlayerProps {
   url: string;
@@ -31,6 +33,38 @@ const HeroSection: React.FC = () => {
       disable: "mobile",
     });
   }, []);
+  const features = [
+    {
+      title: "AI-Powered Search",
+      desc: "Find the perfect candidates using natural language queries",
+      icon: "🔍",
+    },
+    {
+      title: "Smart Filters",
+      desc: "Automatically extract and apply relevant filters from your search",
+      icon: "🎯",
+    },
+    {
+      title: "Context-Aware",
+      desc: "Understands complex queries and maintains conversation context",
+      icon: "🧠",
+    },
+    {
+      title: "Real-Time Insights",
+      desc: "Get instant analysis of candidate profiles and fit",
+      icon: "📊",
+    },
+    {
+      title: "Seamless Integration",
+      desc: "Connect with your existing HR tools and workflows",
+      icon: "🔗",
+    },
+    {
+      title: "Data Privacy First",
+      desc: "Enterprise-grade security and compliance built-in",
+      icon: "🛡️",
+    },
+  ];
 
   return (
     <>
@@ -76,6 +110,7 @@ const HeroSection: React.FC = () => {
                 </p>
               </Parallax>
             </div>
+
             <div className="relative w-full max-w-6xl mx-auto">
               <Parallax
                 speed={-2}
@@ -182,6 +217,120 @@ const HeroSection: React.FC = () => {
             </div>
           </div>
         </section>
+        <section className="relative py-24 overflow-hidden bg-gradient-to-b from-gray-50 to-white">
+          {/* Animated Particles Background */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="particles-container absolute inset-0">
+              {[...Array(15)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full bg-gradient-to-r from-blue-200 to-indigo-200"
+                  style={{
+                    width: Math.random() * 10 + 5 + "px",
+                    height: Math.random() * 10 + 5 + "px",
+                    left: Math.random() * 100 + "%",
+                    top: Math.random() * 100 + "%",
+                  }}
+                  animate={{
+                    y: [0, Math.random() * 100 - 50],
+                    x: [0, Math.random() * 100 - 50],
+                    opacity: [0.2, 0.6, 0.2],
+                  }}
+                  transition={{
+                    duration: Math.random() * 10 + 10,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="relative container mx-auto px-4 z-10">
+            <Reveal>
+              <h2 className="text-4xl md:text-6xl font-bold text-center mb-6 bg-clip-text text-transparent bg-gray-800">
+                Smarter Talent Discovery
+              </h2>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <p className="text-lg md:text-xl text-center text-gray-600 mb-20 max-w-3xl mx-auto leading-relaxed">
+                Transform how you find and connect with top talent using AI-powered search
+              </p>
+            </Reveal>
+
+            <div className="mt-16">
+              <Stagger
+                items={features}
+                as={motion.div}
+                className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
+                childAs={motion.div}
+                childClassName="group relative"
+                staggerDelay={0.08}
+                render={(feature, index) => (
+                  <motion.div
+                    key={index}
+                    className="h-full p-0.5 rounded-3xl bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200"
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                    whileHover={{
+                      y: -10,
+                      transition: { duration: 0.3 },
+                    }}
+                  >
+                    <div className="h-full p-8 bg-white/90 backdrop-blur-sm rounded-[22px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden">
+                      <motion.div
+                        className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-3xl text-blue-600"
+                        whileHover={{
+                          scale: 1.1,
+                          rotate: 5,
+                          transition: { duration: 0.3 },
+                        }}
+                      >
+                        {feature.icon}
+                      </motion.div>
+                      <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:bg-clip-text group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600 transition-all duration-500">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed mb-6">{feature.desc}</p>
+
+                      <motion.div
+                        className="absolute bottom-6 left-8 right-8 h-0.5 bg-gradient-to-r from-transparent via-gray-200 to-transparent"
+                        initial={{ width: "0%" }}
+                        whileInView={{ width: "100%" }}
+                        transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
+                        viewport={{ once: true }}
+                      />
+
+                      <motion.div
+                        className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600"
+                        initial={{ opacity: 0, scale: 0 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
+                        viewport={{ once: true }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              />
+            </div>
+          </div>
+        </section>
+        <div className="max-w-4xl pb-20 mx-auto px-4">
+          <ScrollReveal
+            baseOpacity={0}
+            enableBlur={true}
+            baseRotation={1}
+            blurStrength={10}
+            containerClassName="text-center"
+          >
+            Discover the power of intelligent search that understands context, not just keywords.
+            Find exactly who you're looking for with natural language queries that feel like human
+            conversation.
+          </ScrollReveal>
+        </div>
         <section className="bg-gray-50 flex-col flex">
           <Parallax speed={-5}>
             <WhyChooseUs />
