@@ -772,11 +772,18 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         )
         
     # Use Gemini client with system instruction
-    llm = GeminiChatModel(
-        model="gemini-2.5-pro",
-        temperature=0,
-        system_instruction=system_instruction
-    )
+    if settings.ENVIRONMENT == "STAGING":
+        llm = GeminiChatModel(
+            model="gemini-2.5-flash",
+            temperature=0,
+            system_instruction=system_instruction
+        )
+    elif settings.ENVIRONMENT == "PRODUCTION":
+        llm = GeminiChatModel(
+            model="gemini-2.5-pro",
+            temperature=0,
+            system_instruction=system_instruction
+        )
     response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ReflectionOutput) 
     
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
@@ -982,11 +989,18 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     current_message_id = state.get("current_message_id", "")
 
     # Use Gemini client with system instruction
-    llm = GeminiChatModel(
-        model="gemini-2.5-pro",
-        temperature=0,
-        system_instruction=system_instruction
-    )
+    if settings.ENVIRONMENT == "STAGING":
+        llm = GeminiChatModel(
+            model="gemini-2.5-flash",
+            temperature=0,
+            system_instruction=system_instruction
+        )
+    elif settings.ENVIRONMENT == "PRODUCTION":
+        llm = GeminiChatModel(
+            model="gemini-2.5-pro",
+            temperature=0,
+            system_instruction=system_instruction
+        )
     result_table, usage_metadata_table = await llm.with_structured_output(prompt=user_prompt_table, schema_type=PersonDetailsResponse)
     usage_metadata = usage_metadata_table
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
