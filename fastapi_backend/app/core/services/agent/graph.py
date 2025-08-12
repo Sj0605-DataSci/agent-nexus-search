@@ -15,8 +15,6 @@ from app.core.services.agent.prompts import (
     query_writer_user_prompt,
     reflection_system_instruction,
     reflection_user_prompt,
-    answer_system_instruction,
-    answer_user_prompt,
     optimised_query_system_instruction,
     optimised_query_user_prompt,
     sql_query_system_instruction,
@@ -25,8 +23,6 @@ from app.core.services.agent.prompts import (
     reflection_sql_user_prompt,
     answer_table_system_instruction,
     answer_table_user_prompt,
-    HR_agent_prompt,
-    Sales_agent_prompt
 )
 from app.models.schemas import PersonDetailsResponse
 import weave
@@ -143,7 +139,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         )
     
     # Generate the search queries
-        response, usage_metadata = llm.with_structured_output(schema_type=QueryWriterOutput, prompt=user_prompt)
+        response, usage_metadata = await llm.with_structured_output(schema_type=QueryWriterOutput, prompt=user_prompt)
         
         # Convert to expected format
         search_queries = []
@@ -563,7 +559,7 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         )
     
         # Generate the search queries
-        response = llm.invoke(user_prompt)
+        response = await llm.ainvoke(user_prompt)
         usage_metadata = response.usage_metadata
 
         input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
@@ -781,7 +777,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
         temperature=0,
         system_instruction=system_instruction
     )
-    response, usage_metadata = llm.with_structured_output(prompt=user_prompt, schema_type=ReflectionOutput) 
+    response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ReflectionOutput) 
     
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
     output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
@@ -950,33 +946,8 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     
     # Format the prompt
     current_date = get_current_date()
-    if state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "chat":
-        # Format system instruction
-        system_instruction = answer_system_instruction.format(
-            agent_config=state["agent_config"],
-            current_date=current_date,
-            format=state.get("format", "table")
-        )
-        # Format user prompt
-        user_prompt = answer_user_prompt.format(
-            research_topic=get_research_topic(state["messages"]),
-            summaries=str(state["web_research_result"]),
-            links=state["sources_gathered"]
-        )
-    elif state["intent"] == "search" and state["world_connections"] == "connections" and state["format"] == "chat":
-        # Format system instruction
-        system_instruction = answer_system_instruction.format(
-            agent_config=state["agent_config"],
-            current_date=current_date,
-            format=state.get("format", "table")
-        )
-        # Format user prompt
-        user_prompt = answer_user_prompt.format(
-            research_topic=get_research_topic(state["messages"]),
-            summaries=str(state["web_research_result"]),
-            links=state["sources_gathered"]
-        )
-    elif state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "table":
+
+    if state["intent"] == "search" and state["world_connections"] == "world" and state["format"] == "table":
         # Format system instruction
         system_instruction = answer_table_system_instruction.format(
             agent_config=state["agent_config"],
@@ -1012,28 +983,18 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
 
     # Use Gemini client with system instruction
     llm = GeminiChatModel(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-pro",
         temperature=0,
         system_instruction=system_instruction
     )
-    if state["format"] == "table":
-        result_table, usage_metadata_table = llm.with_structured_output(prompt=user_prompt_table, schema_type=PersonDetailsResponse)
-    else:
-        result = llm.invoke(user_prompt)
-
-    if state["format"] == "table":
-        usage_metadata = usage_metadata_table
-        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
-    else:
-        usage_metadata = result.usage_metadata
-        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+    result_table, usage_metadata_table = await llm.with_structured_output(prompt=user_prompt_table, schema_type=PersonDetailsResponse)
+    usage_metadata = usage_metadata_table
+    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
     
-    if state["format"] == "table":
-        # Convert PersonDetailsResponse to a string format
-        formatted_content = ""
-        for person in result_table.content:
+    # Convert PersonDetailsResponse to a string format
+    formatted_content = ""
+    for person in result_table.content:
             formatted_content += f"FName : {person.fname}\n"
             formatted_content += f"LName : {person.lname}\n"
             formatted_content += f"Social links : {', '.join(person.social_links)}\n"
@@ -1042,9 +1003,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
             formatted_content += f"Score : {person.score}\n"
             formatted_content += f"Reason : {person.reason}\n"
         
-        final_message = AIMessage(content=formatted_content.strip())
-    else:
-        final_message = AIMessage(content=result.content)
+    final_message = AIMessage(content=formatted_content.strip())
     
     message_content = final_message.content
     
@@ -1069,7 +1028,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id,
                 "message_id": current_message_id,
-                "model": "gemini-2.5-flash",
+                "model": "gemini-2.5-pro",
                 "node": "finalize_answer",
                 "weave_url": state["weave_url"],
                 "model_input_tokens": float(input_tokens), 
@@ -1079,12 +1038,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
         }).execute()
     except Exception as e:
         print(f"Error inserting data into Supabase: {e}")
-        # Continue with the flow even if database operation fails
-        
-    # For the return value, we need to ensure we're returning a proper message object
-    # If we're in chat format, return the original message
-    # If we're in table format and successfully parsed JSON, return the original message too
-    # The frontend will handle displaying the content appropriately based on format
+
     return {
         "messages": [final_message],
         "sources_gathered": state["sources_gathered"],

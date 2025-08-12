@@ -11,7 +11,7 @@ from app.core.services.credit_service import CreditService
 from app.core.utils.llm_utils import GeminiChatModel
 from app.models.chat import IntentClassification
 from app.core.services.agent.prompts import query_title_generation
-from app.models.schemas import TitleGeneratorOutput
+from app.models.schemas import TitleAndIntentGeneratorOutput
 from app.core.structured_logger import get_structured_logger
 from app.core.profiling import profile_async, AsyncTimer
 from app.core.services.email_service import email_service
@@ -281,10 +281,16 @@ class ChatService:
                 thread_id = str(uuid.uuid4())
                 
             # Generate a title for the thread
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
+            system_instruction = "You are {agent_config} and you are a people search engine."
+            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0,system_instruction=system_instruction)
             title_gen_prompt = query_title_generation.format(latest_message=latest_message)
-            response_title, _ = llm.with_structured_output(schema_type=TitleGeneratorOutput, prompt=title_gen_prompt)
+            response_title, usage_metadata = await llm.with_structured_output(schema_type=TitleAndIntentGeneratorOutput, prompt=title_gen_prompt)
             title = response_title.title
+            intent = response_title.intent
+            direct_answer_response = response_title.direct_answer_response
+            print("Title:", title)
+            print("Intent:", intent)
+            print("Direct Answer Response:", direct_answer_response)
                 
             # Create the thread in the database
             # Check if thread already exists
@@ -322,36 +328,6 @@ class ChatService:
                 
                 # Invalidate chat threads cache for this user
                 invalidate_chat_threads_cache(user_id)
-            
-            # Perform intent classification
-            intent = "search"  # Default to search
-            if latest_message:
-                llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
-                
-                # Create a prompt for intent classification
-                prompt_content = f"""
-                    Classify the user's message intent. Is this a greeting, general question, or search query?
-                    
-                    User message: "{latest_message}"
-                    
-                    If this is a greeting (like hello, hi) or a simple question that doesn't require web search,
-                    respond with "direct_answer".
-                    
-                    If this is a search query or requires looking up information, respond with "search".
-                    
-                    Just respond with either "direct_answer" or "search" - nothing else.
-                    """
-                
-                # Get the classification
-                response, usage_metadata = llm.with_structured_output(schema_type=IntentClassification, prompt=prompt_content)
-                intent = response.answer
-
-                # Log the intent classification
-                logger.info("Intent classified",
-                           user_id=user_id,
-                           agent_id=agent_id,
-                           intent=intent,
-                           chat_thread_id=thread_id)
                 
             # Initialize message_id variable
             message_id = ""
@@ -364,6 +340,7 @@ class ChatService:
                     "chat_thread_id": thread_id, 
                     "sub_queries": "", 
                     "main_query": latest_message,
+                    "message": direct_answer_response,
                     "weave_url": weave_url,
                     "format": format,
                     "search_mode":search_mode,
@@ -389,7 +366,7 @@ class ChatService:
                         "chat_thread_id": thread_id,
                         "message_id": message_id,
                         "model": "gemini-2.5-flash",
-                        "node": "intent_classifier",
+                        "node": "title_intent_direct_response_generator",
                         "model_input_tokens": float(input_tokens), 
                         "model_output_tokens": float(output_tokens), 
                         "model_cost_dollar": float(cost_dollar),
@@ -409,30 +386,11 @@ class ChatService:
             }
             yield thinking_event
             
-            # Generate thread_id if needed
-            if thread_id == "new":
-                thread_id = str(uuid.uuid4())
-            
             thread_id_event = {
                 "type": "thread_id", 
                 "content": {"thread_id": thread_id}
             }
             yield thread_id_event
-            
-            # Send credit info early
-            credit_info_event = {
-                "type": "credit_info",
-                "content": {
-                    "message": "🔍 Processing request...",
-                    "credits_used": 0,
-                    "search_mode": search_mode if intent == "search" else "direct_answer",
-                    "tier": limit_check.get("tier", "unknown")
-                }
-            }
-            yield credit_info_event
-            
-            # Add small delay to ensure events are processed in order
-            await asyncio.sleep(0.1)
             
             # Convert string messages to HumanMessage objects if needed
             formatted_messages = []
@@ -454,69 +412,42 @@ class ChatService:
             
             # If intent is direct_answer, generate a direct response without search
             if intent == "direct_answer":
-                # Create a prompt for direct answer based on agent config and latest message
-                llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0.2)
                 
-                # Build a prompt based on agent config and the latest message
-                direct_answer_prompt = f"""
-                You are a helpful assistant with the following configuration:
-                {agent_config}
+                # Consume credits for direct answer (similar to search but different mode)
+                consumption_result = await credit_service.consume_search_credits(
+                    user_id=user_id,
+                    search_mode=search_mode,
+                    thread_id=thread_id,
+                    message_id=message_id,
+                    query=latest_message
+                )
                 
-                Please respond directly to the following user message:
-                "{latest_message}"
-                
-                Provide a concise and helpful response without conducting any web searches.
-                """
-                
-                # Generate the direct answer
-                response_message = llm.invoke(direct_answer_prompt)
-                direct_answer = response_message.content
-                usage_metadata = response_message.usage_metadata
-                
-                # Record the response in the database
-                try:
-                    await self.client.table("chat_messages").update({
-                        "message": direct_answer,
-                    }).eq("id", message_id).execute()
-                    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-                    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
-                        
-                    cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
-                    cost_rupees = cost_dollar * 85.86
-                    await self.client.table("chat_costs").insert({
-                        "user_id": user_id, 
-                        "agent_id": agent_id, 
-                        "chat_thread_id": thread_id,
-                        "message_id": message_id,
-                        "model": "gemini-2.5-flash",
-                        "node": "direct_answer",
-                        "model_input_tokens": float(input_tokens), 
-                        "model_output_tokens": float(output_tokens), 
-                        "model_cost_dollar": float(cost_dollar),
-                        "model_cost_rupees": float(cost_rupees),
-                        "weave_url": weave_url,
-                        }).execute()
-                except Exception as e:
-                    logger.error(f"Error recording direct answer: {e}",
-                                user_id=user_id,
-                                agent_id=agent_id,
-                                chat_thread_id=thread_id)
+                if not consumption_result.get("success", False):
+                    # Failed to consume credits
+                    yield {
+                        "type": "error",
+                        "content": {
+                            "message": f"❌ Failed to process direct answer: {consumption_result.get('error', 'Unknown error')}",
+                            "search_mode": search_mode
+                        }
+                    }
+                    return
                 
                 # Stream the direct answer to the client
                 yield {
                     "type": "token",
-                    "content": direct_answer,
+                    "content": direct_answer_response,
                     "node": "direct_answer",
                     "tags": []
                     }
                 
-                # Get user subscription for credit info
+                # Get updated user subscription for final credit info
                 user_subscription = await credit_service.get_user_subscription_optimized(user_id)
                 credit_info = {
                     "credits_remaining": user_subscription.credits if user_subscription else 0,
                     "tier": user_subscription.tier if user_subscription else "free",
-                    "credits_used": 0,  # No credits used for direct answers
-                    "search_mode": "direct_answer"
+                    "credits_used": consumption_result.get("credits_used", 0),
+                    "search_mode": search_mode
                 }
                 
                 # Send completion signal

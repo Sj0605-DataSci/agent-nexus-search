@@ -387,7 +387,10 @@ Score should be out of 10 and based on following criteria:
 - How many times the person has been mentioned in the summaries
 - In summaries relevancy of information, created, updated, when information was published
 
-Always give a reason for the score"""
+Always give a reason for the score
+Also write every answer based on summaries and links, that means don't leave any person information that has been mentioned in summaries and links
+
+"""
 
 answer_table_user_prompt = """User Context:
 - {research_topic}
@@ -403,14 +406,24 @@ answer_instructions_table_format = answer_table_system_instruction + "\n\n" + an
 
 
 # Query Title Generation System and User Prompts
-query_title_system_instruction = """Generate a title for the chat thread based on the user's message. You are people search engine where people are querying to find people.
+query_title_system_instruction = """Understand the user message, take some time to understand and give 3 things
+1. Intent of the user (direct_answer or search)
+2. Title of the chat thread
+3. Direct answer response if intent is direct_answer
 
-Return only the title.
-
-Title: title suitable for the message
+Format your response as a JSON array of strings, with each string being an optimized subquery.
+Do not include any explanations or other text outside the JSON array.
 
 Example:
-Title: React Developers Berlin"""
+"intent": "direct_answer",
+"title": "Greeting",
+"direct_answer_response": "Hello, how are you?"
+
+"intent": "search",
+"title": "Searching React Developers Berlin",
+"direct_answer_response": "Null"
+
+"""
 
 query_title_user_prompt = """User message: {latest_message}."""
 

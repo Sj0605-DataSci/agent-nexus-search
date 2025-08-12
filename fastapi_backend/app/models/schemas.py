@@ -249,6 +249,8 @@ class PersonDetailsResponse(BaseModel):
     """Pydantic model for response containing one or more person details."""
     content: List[PersonDetails] = Field(description="List of person details")
 
-class TitleGeneratorOutput(BaseModel):
-    """Pydantic model for title generator output."""
+class TitleAndIntentGeneratorOutput(BaseModel):
+    """Pydantic model for title and intent generator output."""
     title: str = Field(description="Title of the chat thread")
+    intent: str = Field(description="Intent of the chat thread")
+    direct_answer_response: Optional[str] = Field(default=None, description="Direct answer response if intent is direct_answer")
