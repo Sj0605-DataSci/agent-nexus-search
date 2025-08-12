@@ -826,6 +826,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                   />
                   <WorldConnectionsToggle
                     worldConnectionsMode={worldConnectionsMode}
+                    disabled={
+                      !profile?.has_connections ||
+                      isStreaming ||
+                      (chatPairs.length > 0 &&
+                        currentMessageIndex < chatPairs.length &&
+                        chatPairs[currentMessageIndex].main_query === query &&
+                        query.trim() !== "")
+                    }
                     setWorldConnectionsMode={(mode: "connections" | "world") => {
                       posthog.capture("world_connections_mode_changed", { mode });
                       setWorldConnectionsMode(mode);
