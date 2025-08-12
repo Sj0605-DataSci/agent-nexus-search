@@ -72,19 +72,23 @@ class UserSubscription(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     profile_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
-    tier = Column(Text, nullable=False, default='free')
-    credits = Column(Integer, nullable=False, default=10)
+    tier = Column(Text, nullable=False, default='hunter')  # Changed from 'free' to 'hunter'
+    credits = Column(Integer, nullable=False, default=5)  # Default credits for hunter tier
     total_credits_purchased = Column(Integer, nullable=False, default=0)
     
-    # Daily Search Limits and Tracking
-    daily_searches_allowed = Column(Integer, nullable=False, default=5)
+    # Credit Management (New credit-only system)
+    credit_reset_period = Column(Text, nullable=False, default='daily')  # 'daily', 'monthly', 'unlimited'
+    last_credit_reset = Column(Date, nullable=True, default=date.today)
+    monthly_credits_allocated = Column(Integer, nullable=False, default=5)  # Credits per reset period
+    is_unlimited = Column(Boolean, nullable=False, default=False)  # Unlimited credits flag
+    
+    # Legacy Search Limits (kept for backward compatibility, not used in credit-only system)
+    daily_searches_allowed = Column(Integer, nullable=False, default=999999)
     daily_searches_used = Column(Integer, nullable=False, default=0)
     last_search_date = Column(Date, nullable=True, default=date.today)
-    
-    # Search Type Limits (for different tiers)
-    deep_searches_allowed = Column(Integer, nullable=False, default=1)
+    deep_searches_allowed = Column(Integer, nullable=False, default=999999)
     deep_searches_used = Column(Integer, nullable=False, default=0)
-    basic_searches_allowed = Column(Integer, nullable=False, default=5)
+    basic_searches_allowed = Column(Integer, nullable=False, default=999999)
     basic_searches_used = Column(Integer, nullable=False, default=0)
     
     # Subscription Management

@@ -7,6 +7,8 @@ import os
 from typing import List, Dict, Any
 import signal
 import psutil
+import gc
+import time
 
 from app.core.worker import ChatWorker
 from app.core.connection_worker import ConnectionWorker
@@ -29,8 +31,10 @@ class WorkerManager:
             cls._instance.chat_workers = []
             cls._instance.connection_workers = []
             cls._instance._initialized = False
-            import time
             cls._instance.start_time = time.time()
+            cls._instance.worker_memory_threshold = 800  # MB per worker before restart
+            cls._instance.last_memory_check = 0
+            cls._instance.memory_check_interval = 60  # Check every 60 seconds
         return cls._instance
     
     async def initialize(self):
@@ -141,6 +145,13 @@ class WorkerManager:
         """Monitor workers and restart if needed"""
         while True:
             try:
+                current_time = time.time()
+                
+                # Check memory usage periodically
+                if current_time - self.last_memory_check > self.memory_check_interval:
+                    await self._check_worker_memory()
+                    self.last_memory_check = current_time
+                
                 # Check if we need to start more workers
                 if len(self.chat_workers) < self.num_chat_workers:
                     logger.warning("Chat worker count below target, starting new worker",
@@ -154,52 +165,89 @@ class WorkerManager:
                                   target_count=self.num_connection_workers)
                     await self._start_connection_worker()
                 
-                # Check each chat worker's health
-                for i, worker_info in enumerate(self.chat_workers):
-                    worker = worker_info["worker"]
-                    task = worker_info["task"]
-                    
-                    # Check if task is done or worker is not running
-                    if task.done() or not worker.running:
-                        logger.warning("Chat worker not running, restarting",
-                                     worker_id=worker.worker_id,
-                                     task_done=task.done(),
-                                     worker_running=worker.running)
-                        await self._stop_chat_worker(i)
-                        await self._start_chat_worker()
-                        break  # Break since we modified the list
-                        
-                    # Check if worker requested restart due to high memory
-                    if hasattr(worker, 'request_restart') and worker.request_restart:
-                        logger.warning("Chat worker requested restart, complying",
-                                     worker_id=worker.worker_id,
-                                     restart_reason="high_memory")
-                        await self._stop_chat_worker(i)
-                        await self._start_chat_worker()
-                        break  # Break since we modified the list
-                        
-                # Check each connection worker's health
-                for i, worker_info in enumerate(self.connection_workers):
-                    worker = worker_info["worker"]
-                    task = worker_info["task"]
-                    
-                    # Check if task is done or worker is not running
-                    if task.done() or not worker.running:
-                        logger.warning("Connection worker not running, restarting",
-                                     worker_id=worker.worker_id,
-                                     task_done=task.done(),
-                                     worker_running=worker.running)
-                        await self._stop_connection_worker(i)
-                        await self._start_connection_worker()
-                        break  # Break since we modified the list
-            except Exception as e:
-                logger.exception("Error in worker monitoring",
-                               exception_type=type(e).__name__,
-                               error_message=str(e))
+                # Check for dead workers and restart them
+                await self._check_dead_workers()
                 
-            # Check every 30 seconds
-            await asyncio.sleep(30)
-    
+                await asyncio.sleep(30)  # Check every 30 seconds
+                
+            except Exception as e:
+                logger.error("Error in worker monitoring", error=str(e), exc_info=True)
+                await asyncio.sleep(60)  # Wait longer on error
+
+    async def _check_worker_memory(self):
+        """Check memory usage of workers and restart if necessary"""
+        try:
+            process = psutil.Process()
+            memory_mb = process.memory_info().rss / (1024 * 1024)
+            
+            logger.info("Worker memory check", 
+                       total_memory_mb=round(memory_mb, 2),
+                       chat_workers=len(self.chat_workers),
+                       connection_workers=len(self.connection_workers))
+            
+            # If total memory is high, restart workers to free memory
+            if memory_mb > self.worker_memory_threshold:
+                logger.warning("High memory usage detected, restarting workers",
+                             memory_mb=round(memory_mb, 2),
+                             threshold_mb=self.worker_memory_threshold)
+                
+                await self._restart_workers_for_memory()
+                
+                # Force garbage collection
+                gc.collect()
+                
+        except Exception as e:
+            logger.error("Error checking worker memory", error=str(e))
+
+    async def _restart_workers_for_memory(self):
+        """Restart workers to free memory"""
+        try:
+            # Restart chat workers one by one to avoid service interruption
+            workers_to_restart = min(len(self.chat_workers), 2)  # Restart max 2 at a time
+            
+            for i in range(workers_to_restart):
+                if self.chat_workers:
+                    logger.info(f"Restarting chat worker {i} for memory cleanup")
+                    await self._stop_chat_worker(0)  # Stop first worker
+                    await asyncio.sleep(2)  # Brief pause
+                    await self._start_chat_worker()  # Start new worker
+            
+            # Restart connection workers if needed
+            if len(self.connection_workers) > 0:
+                logger.info("Restarting connection worker for memory cleanup")
+                await self._stop_connection_worker(0)
+                await asyncio.sleep(2)
+                await self._start_connection_worker()
+                
+        except Exception as e:
+            logger.error("Error restarting workers for memory", error=str(e))
+
+    async def _check_dead_workers(self):
+        """Check for dead workers and restart them"""
+        # Check chat workers
+        dead_chat_workers = []
+        for i, worker_info in enumerate(self.chat_workers):
+            task = worker_info["task"]
+            if task.done():
+                dead_chat_workers.append(i)
+        
+        # Remove dead workers (in reverse order to maintain indices)
+        for i in reversed(dead_chat_workers):
+            logger.warning("Found dead chat worker, removing", worker_index=i)
+            await self._stop_chat_worker(i)
+        
+        # Check connection workers
+        dead_connection_workers = []
+        for i, worker_info in enumerate(self.connection_workers):
+            task = worker_info["task"]
+            if task.done():
+                dead_connection_workers.append(i)
+        
+        # Remove dead workers (in reverse order to maintain indices)
+        for i in reversed(dead_connection_workers):
+            logger.warning("Found dead connection worker, removing", worker_index=i)
+            await self._stop_connection_worker(i)
+
     async def shutdown(self):
         """Shutdown all workers"""
         if not self._initialized:

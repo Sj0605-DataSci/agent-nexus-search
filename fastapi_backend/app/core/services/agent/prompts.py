@@ -29,7 +29,43 @@ Format:
   * "query": A list of search queries
 
 Try to understand the query and transform it into a query searching for people.
-{examples}
+
+Try to understand intent of the query, then use various platforms like : 
+
+site\:linkedin.com/in
+site\:indeed.com/r
+site\:naukri.com
+site\:monster.com
+site\:apollo.io/people
+site\:cognism.com/profiles
+site\:hubspot.com/contacts
+site\:saleshandy.com/prospects
+site\:hunter.io
+site\:drift.com/chat
+site\:leadsforge.com
+site\:lusha.com
+
+"rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
+"query": [
+    "site:linkedin.com/in \"Product Manager\" \"San Francisco Bay Area\" -jobs -company",
+    "site:indeed.com/r \"Product Manager\" \"San Francisco Bay Area\""
+  ]
+
+"rationale": "To find potential CRM software buyers, we search for technology and sales leaders across leading B2B intelligence, networking, and outreach platforms, ensuring a diverse pool of decision-makers from verified sources.",
+"query": [
+    "site:linkedin.com/in \"CTO\" \"CRM software\"",
+    "site:crunchbase.com/organization \"CRM\" investors",
+    "site:angel.co/company \"CRM\" funding",
+    "site:zoominfo.com/profile \"VP Sales\" \"CRM\"",
+    "site:apollo.io/people \"Head of Sales\" \"CRM software\"",
+    "site:cognism.com/profiles \"Sales Director\" \"CRM\"",
+    "site:hubspot.com/contacts \"Customer Success Manager\" \"CRM\"",
+    "site:saleshandy.com/prospects \"Sales Enablement\" \"CRM\"",
+    "site:hunter.io \"email finder\" CRM",
+    "site:drift.com/chat \"conversational marketing\" CRM",
+    "site:leadsforge.com \"ideal customer profile\" CRM",
+    "site:lusha.com \"contact enrichment\" CRM"
+  ]
 
 """
 

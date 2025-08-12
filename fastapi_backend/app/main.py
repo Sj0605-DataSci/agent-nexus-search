@@ -16,17 +16,21 @@ from app.db.clients import get_async_supabase_client
 from fastapi.responses import JSONResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from app.db.redis_client import redis_client
+from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monitoring
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.profiling import Timer, record_request_time
 
 from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling
+from app.api.routes import emergency
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
 
 # Set up structured logging
 from app.core.structured_logger import setup_structured_logging, get_structured_logger
 from app.core.config import settings
+from contextlib import asynccontextmanager
+
 
 # Setup structured logging based on environment
 setup_structured_logging(
@@ -35,10 +39,66 @@ setup_structured_logging(
 )
 logger = get_structured_logger(__name__)
 
+# Create FastAPI app with lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
+    logger.info("Starting application...")
+    
+    try:
+        # Initialize Redis client
+        await redis_client.initialize(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD,
+            url=settings.REDIS_URL if settings.REDIS_URL else None
+        )
+        logger.info("Redis client initialized")
+        
+        # Start memory monitoring
+        await start_memory_monitoring()
+        logger.info("Memory monitoring started")
+        
+        from app.core.worker_manager import WorkerManager
+        worker_manager = WorkerManager()
+        await worker_manager.initialize()
+        logger.info("Worker manager initialized")
+        
+        yield
+        
+    except Exception as e:
+        logger.error("Error during application startup", error=str(e), exc_info=True)
+        # Don't crash the app, but log the error allow app to start even if Redis is not available
+        yield
+    
+    finally:
+        # Shutdown procedures
+        logger.info("Shutting down application...")
+        
+        try:
+            # Stop memory monitoring
+            await stop_memory_monitoring()
+            logger.info("Memory monitoring stopped")
+            
+            # Shutdown worker manager
+            if not settings.TESTING:
+                from app.core.worker_manager import WorkerManager
+                worker_manager = WorkerManager()
+                await worker_manager.shutdown()
+                logger.info("Worker manager shutdown")
+            
+            # Close Redis connection pool
+            await redis_client.close()
+            logger.info("Redis client closed")
+            
+        except Exception as e:
+            logger.error("Error during application shutdown", error=str(e))
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="FastAPI backend for Agent Search application",
     version="0.1.0",
+    lifespan=lifespan
 )
 
 # Add request timing middleware
@@ -164,7 +224,7 @@ class DBConnectionProfilingMiddleware(BaseHTTPMiddleware):
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/","https://test-web.discoverminds.ai/","https://test-web.discoverminds.ai"],  # Include localhost development URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://www.test-web.discoverminds.ai", "https://www.test-web.discoverminds.ai/", "https://test-web.discoverminds.ai", "https://test-web.discoverminds.ai/"],  # Include localhost development URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -202,7 +262,18 @@ async def cors_debug_middleware(request: Request, call_next):
                    cors_headers=cors_headers)
         
         # Log if origin is not in allowed origins
-        allowed_origins = ["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/"]
+        allowed_origins = [
+            "http://localhost:3000", 
+            "http://localhost:3001", 
+            "https://www.discoverminds.ai", 
+            "https://www.discoverminds.ai/", 
+            "https://discoverminds.ai", 
+            "https://discoverminds.ai/",
+            "https://www.test-web.discoverminds.ai",  
+            "https://www.test-web.discoverminds.ai/",
+            "https://test-web.discoverminds.ai",
+            "https://test-web.discoverminds.ai/"
+        ]
         if origin not in allowed_origins and origin != "No Origin":
             logger.warning("Potential CORS issue detected",
                           origin=origin,
@@ -270,13 +341,14 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(auth.router, prefix="/api", tags=["auth"])
+app.include_router(profiles.router, prefix="/api", tags=["profiles"])
 app.include_router(agent_templates.router, prefix="/api", tags=["agent_templates"])
 app.include_router(hired_agents.router, prefix="/api", tags=["hired_agents"])
-app.include_router(profiles.router, prefix="/api", tags=["profiles"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(worker_status.router, prefix="/api", tags=["worker"])
 app.include_router(connections_processing.router, prefix="/api", tags=["connections_processing"])
 app.include_router(profiling.router, prefix="/api", tags=["profiling"])
+app.include_router(emergency.router)  # Emergency memory cleanup
 
 @app.get("/")
 async def root():
@@ -331,7 +403,8 @@ async def startup_db_client():
             logger.warning(f"Cache warming failed: {str(cache_error)}")
         
         # Initialize worker manager for background tasks
-        from app.core.worker_manager import worker_manager
+        from app.core.worker_manager import WorkerManager
+        worker_manager = WorkerManager()
         await worker_manager.initialize()
         logger.info("Worker manager initialized")
         
@@ -352,7 +425,8 @@ async def shutdown_db_client():
         
         # Shutdown worker manager
         try:
-            from app.core.worker_manager import worker_manager
+            from app.core.worker_manager import WorkerManager
+            worker_manager = WorkerManager()
             await worker_manager.shutdown()
             logger.info("Worker manager shutdown complete")
         except Exception as worker_error:

@@ -447,7 +447,7 @@ async def upgrade_tier(
     This endpoint would typically be called after a successful subscription payment.
     """
     try:
-        valid_tiers = ["free", "pro", "enterprise"]
+        valid_tiers = ["Hunter", "Pro", "Enterprise","Community"]
         if new_tier not in valid_tiers:
             return StandardJSONResponse(StandardResponse(
                 success=False,

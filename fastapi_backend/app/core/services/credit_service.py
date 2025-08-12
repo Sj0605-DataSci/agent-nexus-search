@@ -38,7 +38,8 @@ class CreditService:
     
     async def check_search_limit(self, user_id: UUID, search_mode: str) -> Dict[str, Any]:
         """
-        Check if user can perform a search based on their tier and current usage.
+        Check if user can perform a search based on their credit balance only.
+        Credit-only system: no daily search limits, only credit availability.
         
         Args:
             user_id: User's profile ID
@@ -48,7 +49,6 @@ class CreditService:
             Dict with can_search, credits_needed, error message, etc.
         """
         try:
-            
             # Get user subscription
             subscription_response = await self.client.table("user_subscriptions").select("*").eq("profile_id", str(user_id)).single().execute()
             
@@ -62,22 +62,15 @@ class CreditService:
             
             subscription = subscription_response.data
             
-            # Reset daily counters if needed
-            today = date.today().isoformat()
-            if subscription.get("last_search_date") != today:
-                await self.client.table("user_subscriptions").update({
-                    "daily_searches_used": 0,
-                    "basic_searches_used": 0,
-                    "deep_searches_used": 0,
-                    "last_search_date": today
-                }).eq("profile_id", str(user_id)).execute()
-                
-                # Refresh subscription data
-                subscription_response = await self.client.table("user_subscriptions").select("*").eq("profile_id", str(user_id)).single().execute()
-                subscription = subscription_response.data
+            # Reset credits if needed based on tier and reset period
+            await self._reset_credits_if_needed(user_id, subscription)
+            
+            # Refresh subscription data after potential reset
+            subscription_response = await self.client.table("user_subscriptions").select("*").eq("profile_id", str(user_id)).single().execute()
+            subscription = subscription_response.data
             
             # Get tier configuration
-            tier_response = await self.client.table("tier_configs").select("*").eq("tier", subscription["tier"]).single().execute()
+            tier_response = await self.client.table("tier_configs").select("*").eq("Tier", subscription["tier"]).single().execute()
             
             if not tier_response.data:
                 return {
@@ -92,34 +85,28 @@ class CreditService:
             # Determine credits needed
             credits_needed = tier_config["basic_search_credit_cost"] if search_mode == "basic" else tier_config["deep_search_credit_cost"]
             
-            # Check limits
-            can_search = False
-            error_message = ""
+            # Check if user has unlimited credits
+            if subscription.get("is_unlimited", False):
+                return {
+                    "can_search": True,
+                    "credits_needed": credits_needed,
+                    "credits_available": subscription["credits"],
+                    "tier": subscription["tier"],
+                    "is_unlimited": True,
+                    "error": ""
+                }
             
-            if search_mode == "basic":
-                if subscription["basic_searches_used"] >= tier_config["daily_basic_searches"]:
-                    error_message = "Daily basic search limit reached"
-                elif subscription["credits"] < credits_needed:
-                    error_message = "Insufficient credits"
-                else:
-                    can_search = True
-            else:  # deep search
-                if subscription["deep_searches_used"] >= tier_config["daily_deep_searches"]:
-                    error_message = "Daily deep search limit reached"
-                elif subscription["credits"] < credits_needed:
-                    error_message = "Insufficient credits"
-                else:
-                    can_search = True
+            # Credit-only check: only verify if user has enough credits
+            can_search = subscription["credits"] >= credits_needed
+            error_message = "" if can_search else f"Insufficient credits. Need {credits_needed}, have {subscription['credits']}"
             
             return {
                 "can_search": can_search,
                 "credits_needed": credits_needed,
                 "credits_available": subscription["credits"],
-                "daily_searches_used": subscription["daily_searches_used"],
-                "daily_searches_allowed": subscription["daily_searches_allowed"],
-                "basic_searches_used": subscription["basic_searches_used"],
-                "deep_searches_used": subscription["deep_searches_used"],
                 "tier": subscription["tier"],
+                "credit_reset_period": subscription.get("credit_reset_period", "daily"),
+                "is_unlimited": subscription.get("is_unlimited", False),
                 "error": error_message
             }
             
@@ -141,7 +128,7 @@ class CreditService:
         query: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Consume credits for a search and update usage counters.
+        Consume credits for a search. Credit-only system - no daily counters.
         
         Args:
             user_id: User's profile ID
@@ -154,7 +141,6 @@ class CreditService:
             Dict with success status, credits_used, remaining_credits
         """
         try:
-            
             # Get user subscription and tier config
             subscription_response = await self.client.table("user_subscriptions").select("*").eq("profile_id", str(user_id)).single().execute()
             
@@ -164,23 +150,22 @@ class CreditService:
             subscription = subscription_response.data
             
             # Get tier configuration
-            tier_response = await self.client.table("tier_configs").select("*").eq("tier", subscription["tier"]).single().execute()
+            tier_response = await self.client.table("tier_configs").select("*").eq("Tier", subscription["tier"]).single().execute()
             tier_config = tier_response.data
             
             # Determine credits to use
             credits_used = tier_config["basic_search_credit_cost"] if search_mode == "basic" else tier_config["deep_search_credit_cost"]
             
-            # Update user subscription
+            # For unlimited users, don't deduct credits but still track usage
+            if subscription.get("is_unlimited", False):
+                credits_used = 0  # Don't deduct credits for unlimited users
+            
+            # Update user subscription (credit-only system)
+            new_credit_balance = subscription["credits"] - credits_used
             update_data = {
-                "credits": subscription["credits"] - credits_used,
-                "daily_searches_used": subscription["daily_searches_used"] + 1,
+                "credits": new_credit_balance,
                 "updated_at": datetime.now().isoformat()
             }
-            
-            if search_mode == "basic":
-                update_data["basic_searches_used"] = subscription["basic_searches_used"] + 1
-            else:
-                update_data["deep_searches_used"] = subscription["deep_searches_used"] + 1
             
             await self.client.table("user_subscriptions").update(update_data).eq("profile_id", str(user_id)).execute()
             
@@ -198,22 +183,24 @@ class CreditService:
             
             search_usage_response = await self.client.table("search_usage").insert(search_usage_data).execute()
             
-            # Record credit transaction
-            transaction_data = {
-                "user_id": str(user_id),
-                "transaction_type": "usage",
-                "credits": -credits_used,
-                "description": f"{search_mode} search",
-                "reference_id": search_usage_response.data[0]["id"] if search_usage_response.data else None,
-                "created_at": datetime.now().isoformat()
-            }
-            
-            await self.client.table("credit_transactions").insert(transaction_data).execute()
+            # Record credit transaction (only if credits were actually used)
+            if credits_used > 0:
+                transaction_data = {
+                    "user_id": str(user_id),
+                    "transaction_type": "usage",
+                    "credits": -credits_used,
+                    "description": f"{search_mode} search",
+                    "reference_id": search_usage_response.data[0]["id"] if search_usage_response.data else None,
+                    "created_at": datetime.now().isoformat()
+                }
+                
+                await self.client.table("credit_transactions").insert(transaction_data).execute()
             
             return {
                 "success": True,
                 "credits_used": credits_used,
-                "remaining_credits": subscription["credits"] - credits_used
+                "remaining_credits": new_credit_balance,
+                "is_unlimited": subscription.get("is_unlimited", False)
             }
             
         except Exception as e:
@@ -357,11 +344,11 @@ class CreditService:
         subscription_end: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """
-        Upgrade user's tier and adjust limits.
+        Upgrade user's tier and adjust credit allocation.
         
         Args:
             user_id: User's profile ID
-            new_tier: New tier ('free', 'pro', 'enterprise')
+            new_tier: New tier ('hunter', 'pro', 'enterprise', 'community')
             subscription_start: Subscription start date
             subscription_end: Subscription end date
             
@@ -369,9 +356,8 @@ class CreditService:
             Dict with success status and new tier info
         """
         try:
-            
             # Get tier configuration
-            tier_response = await self.client.table("tier_configs").select("*").eq("tier", new_tier).single().execute()
+            tier_response = await self.client.table("tier_configs").select("*").eq("Tier", new_tier).single().execute()
             
             if not tier_response.data:
                 return {"success": False, "error": f"Invalid tier: {new_tier}"}
@@ -387,13 +373,18 @@ class CreditService:
             subscription = subscription_response.data
             old_tier = subscription["tier"]
             
-            # Update subscription
+            # Determine new credit settings based on tier
+            credit_settings = self._get_tier_credit_settings(new_tier, tier_config)
+            
+            # Update subscription with credit-only system
             update_data = {
                 "tier": new_tier,
-                "daily_searches_allowed": tier_config["daily_basic_searches"] + tier_config["daily_deep_searches"],
-                "basic_searches_allowed": tier_config["daily_basic_searches"],
-                "deep_searches_allowed": tier_config["daily_deep_searches"],
-                "updated_at": datetime.now().isoformat()
+                "credit_reset_period": credit_settings["reset_period"],
+                "monthly_credits_allocated": credit_settings["credits_allocated"],
+                "is_unlimited": credit_settings["is_unlimited"],
+                "credits": credit_settings["initial_credits"],
+                "last_credit_reset": date.today().isoformat(),
+                "updated_at": datetime.now().isoformat(),
             }
             
             if subscription_start:
@@ -407,10 +398,7 @@ class CreditService:
                 "success": True,
                 "old_tier": old_tier,
                 "new_tier": new_tier,
-                "new_limits": {
-                    "basic_searches": tier_config["daily_basic_searches"],
-                    "deep_searches": tier_config["daily_deep_searches"]
-                }
+                "credit_settings": credit_settings
             }
             
         except Exception as e:
@@ -459,3 +447,103 @@ class CreditService:
         except Exception as e:
             logger.error(f"Error getting usage stats: {str(e)}", exc_info=True)
             return {"error": f"Error getting usage stats: {str(e)}"}
+    
+    def _get_tier_credit_settings(self, tier: str, tier_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get credit settings for a specific tier.
+        
+        Args:
+            tier: Tier name
+            tier_config: Tier configuration from database
+            
+        Returns:
+            Dict with credit settings
+        """
+        features = tier_config.get("features", {})
+        
+        if tier == "Hunter":
+            return {
+                "reset_period": "daily",
+                "credits_allocated": 5,
+                "is_unlimited": False,
+                "initial_credits": 5
+            }
+        elif tier == "Pro":
+            return {
+                "reset_period": "monthly",
+                "credits_allocated": 1000,
+                "is_unlimited": False,
+                "initial_credits": 1000
+            }
+        elif tier in ["Enterprise", "Community"]:
+            return {
+                "reset_period": "unlimited",
+                "credits_allocated": 999999,
+                "is_unlimited": True,
+                "initial_credits": 999999
+            }
+        else:
+            # Default to hunter tier settings
+            return {
+                "reset_period": "daily",
+                "credits_allocated": 5,
+                "is_unlimited": False,
+                "initial_credits": 5
+            }
+    
+    async def _reset_credits_if_needed(self, user_id: UUID, subscription: Dict[str, Any]) -> bool:
+        """
+        Reset user credits if needed based on their tier and reset period.
+        
+        Args:
+            user_id: User's profile ID
+            subscription: Current subscription data
+            
+        Returns:
+            bool: True if credits were reset, False otherwise
+        """
+        try:
+            reset_period = subscription.get("credit_reset_period", "daily")
+            last_reset = subscription.get("last_credit_reset")
+            
+            if reset_period == "unlimited" or subscription.get("is_unlimited", False):
+                # Ensure unlimited users always have max credits
+                if subscription["credits"] < 999999:
+                    await self.client.table("user_subscriptions").update({
+                        "credits": 999999,
+                        "updated_at": datetime.now().isoformat()
+                    }).eq("profile_id", str(user_id)).execute()
+                    return True
+                return False
+            
+            today = date.today()
+            should_reset = False
+            
+            if reset_period == "daily":
+                # Reset if last reset was not today
+                should_reset = not last_reset or last_reset != today.isoformat()
+            elif reset_period == "monthly":
+                # Reset if last reset was not this month
+                if not last_reset:
+                    should_reset = True
+                else:
+                    last_reset_date = date.fromisoformat(last_reset)
+                    should_reset = (last_reset_date.year != today.year or 
+                                  last_reset_date.month != today.month)
+            
+            if should_reset:
+                credits_to_allocate = subscription.get("monthly_credits_allocated", 5)
+                await self.client.table("user_subscriptions").update({
+                    "credits": credits_to_allocate,
+                    "last_credit_reset": today.isoformat(),
+                    "updated_at": datetime.now().isoformat()
+                }).eq("profile_id", str(user_id)).execute()
+                
+                logger.info(f"Reset credits for user {user_id}: {credits_to_allocate} credits ({reset_period} reset)")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error resetting credits: {str(e)}", exc_info=True)
+            return False
