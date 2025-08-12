@@ -2,6 +2,10 @@ from typing import Dict, Any, List, Union
 from app.core.services.agent.graph import graph
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
+import uuid
+import json
+import time
+import asyncio
 from app.core.config import settings
 from app.core.services.credit_service import CreditService
 from app.core.utils.llm_utils import GeminiChatModel
@@ -16,6 +20,7 @@ from pathlib import Path
 from app.core.utils.cache import (
     invalidate_chat_threads_cache, invalidate_chat_messages_cache
 )
+from app.db.redis_client import redis_client
 
 logger = get_structured_logger(__name__)
 
@@ -44,6 +49,50 @@ class ChatService:
         elif client is not None:
             self.client = client
     
+    async def get_initial_stream_events(self, request_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve initial stream events for late-connecting clients
+        
+        Args:
+            request_id: The unique request ID for the stream
+            
+        Returns:
+            List of initial events in order
+        """
+        try:
+            redis_client_instance = await redis_client.get_client()
+            
+            # Get events from Redis sorted set
+            events_data = await redis_client_instance.zrange(
+                f"stream:{request_id}:events", 
+                0, -1, 
+                withscores=False
+            )
+            
+            # Parse JSON events
+            events = []
+            for event_json in events_data:
+                try:
+                    event = json.loads(event_json)
+                    events.append(event)
+                except json.JSONDecodeError:
+                    logger.warning("Failed to parse stream event", 
+                                  request_id=request_id,
+                                  event_data=event_json)
+                    continue
+            
+            logger.info("Retrieved initial stream events",
+                       request_id=request_id,
+                       events_count=len(events))
+            
+            return events
+            
+        except Exception as e:
+            logger.error("Failed to retrieve initial stream events",
+                        request_id=request_id,
+                        error=str(e))
+            return []
+
     @profile_async("chat_service.get_agent_config")
     async def get_agent_config(self, user_id: str, agent_id: str) -> Dict[str, Any]:
         """
@@ -227,6 +276,10 @@ class ChatService:
                 else:
                     latest_message = last_message.content if hasattr(last_message, "content") else ""
                 
+            # Generate thread_id if needed (before any database operations)
+            if thread_id == "new":
+                thread_id = str(uuid.uuid4())
+                
             # Generate a title for the thread
             llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0)
             title_gen_prompt = query_title_generation.format(latest_message=latest_message)
@@ -234,42 +287,41 @@ class ChatService:
             title = response_title.title
                 
             # Create the thread in the database
-            if thread_id != "new":
-                # Check if thread already exists
-                existing_thread = await self.client.table("chat_threads").select("id").eq("id", thread_id).execute()
+            # Check if thread already exists
+            existing_thread = await self.client.table("chat_threads").select("id").eq("id", thread_id).execute()
+            
+            if not existing_thread.data:
+                # Thread doesn't exist, create it
+                await self.client.table("chat_threads").insert({
+                    "user_id": user_id, 
+                    "id": thread_id,
+                    "title": title,
+                    "weave_url": weave_url
+                }).execute()
                 
-                if not existing_thread.data:
-                    # Thread doesn't exist, create it
-                    await self.client.table("chat_threads").insert({
-                        "user_id": user_id, 
-                        "id": thread_id,
-                        "title": title,
-                        "weave_url": weave_url
-                    }).execute()
-                    
-                    logger.info("Created new chat thread",
-                               user_id=user_id,
-                               agent_id=agent_id,
-                               chat_thread_id=thread_id,
-                               title=title)
-                    
-                    # Invalidate chat threads cache for this user
-                    invalidate_chat_threads_cache(user_id)
-                else:
-                    # Thread exists, update it if needed
-                    await self.client.table("chat_threads").update({
-                        "title": title,
-                        "weave_url": weave_url
-                    }).eq("id", thread_id).execute()
-                    
-                    logger.info("Updated existing chat thread",
-                               user_id=user_id,
-                               agent_id=agent_id,
-                               chat_thread_id=thread_id,
-                               title=title)
-                    
-                    # Invalidate chat threads cache for this user
-                    invalidate_chat_threads_cache(user_id)
+                logger.info("Created new chat thread",
+                           user_id=user_id,
+                           agent_id=agent_id,
+                           chat_thread_id=thread_id,
+                           title=title)
+                
+                # Invalidate chat threads cache for this user
+                invalidate_chat_threads_cache(user_id)
+            else:
+                # Thread exists, update it if needed
+                await self.client.table("chat_threads").update({
+                    "title": title,
+                    "weave_url": weave_url
+                }).eq("id", thread_id).execute()
+                
+                logger.info("Updated existing chat thread",
+                           user_id=user_id,
+                           agent_id=agent_id,
+                           chat_thread_id=thread_id,
+                           title=title)
+                
+                # Invalidate chat threads cache for this user
+                invalidate_chat_threads_cache(user_id)
             
             # Perform intent classification
             intent = "search"  # Default to search
@@ -301,52 +353,86 @@ class ChatService:
                            intent=intent,
                            chat_thread_id=thread_id)
                 
-                # Record the message in the database
-                try:
-                    response = await self.client.table("chat_messages").insert({
+            # Initialize message_id variable
+            message_id = ""
+            
+            # Record the message in the database
+            try:
+                response = await self.client.table("chat_messages").insert({
+                    "user_id": user_id, 
+                    "agent_id": agent_id, 
+                    "chat_thread_id": thread_id, 
+                    "sub_queries": "", 
+                    "main_query": latest_message,
+                    "weave_url": weave_url,
+                    "format": format,
+                    "search_mode":search_mode,
+                    "world_connections":world_connections
+                }).execute()
+                
+                # Extract the message ID from the response
+                if response and response.data and len(response.data) > 0:
+                    message_id = response.data[0].get("id")
+                    
+                    # Invalidate chat messages cache for this thread
+                    invalidate_chat_messages_cache(thread_id)
+                    
+                    # Log token usage
+                    input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
+                    output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
+                    
+                    cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+                    cost_rupees = cost_dollar * 85.86
+                    await self.client.table("chat_costs").insert({
                         "user_id": user_id, 
                         "agent_id": agent_id, 
-                        "chat_thread_id": thread_id, 
-                        "sub_queries": "", 
-                        "main_query": latest_message,
+                        "chat_thread_id": thread_id,
+                        "message_id": message_id,
+                        "model": "gemini-2.5-flash",
+                        "node": "intent_classifier",
+                        "model_input_tokens": float(input_tokens), 
+                        "model_output_tokens": float(output_tokens), 
+                        "model_cost_dollar": float(cost_dollar),
+                        "model_cost_rupees": float(cost_rupees),
                         "weave_url": weave_url,
-                        "format": format,
-                        "search_mode":search_mode,
-                        "world_connections":world_connections
                     }).execute()
-                    
-                    # Extract the message ID from the response
-                    message_id = ""
-                    if response and response.data and len(response.data) > 0:
-                        message_id = response.data[0].get("id")
-                        
-                        # Invalidate chat messages cache for this thread
-                        invalidate_chat_messages_cache(thread_id)
-                        
-                        # Log token usage
-                        input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
-                        output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
-                        
-                        cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
-                        cost_rupees = cost_dollar * 85.86
-                        await self.client.table("chat_costs").insert({
-                            "user_id": user_id, 
-                            "agent_id": agent_id, 
-                            "chat_thread_id": thread_id,
-                            "message_id": message_id,
-                            "model": "gemini-2.5-flash",
-                            "node": "intent_classifier",
-                            "model_input_tokens": float(input_tokens), 
-                            "model_output_tokens": float(output_tokens), 
-                            "model_cost_dollar": float(cost_dollar),
-                            "model_cost_rupees": float(cost_rupees),
-                            "weave_url": weave_url,
-                        }).execute()
-                except Exception as e:
-                    logger.error(f"Error recording message: {e}",
-                                user_id=user_id,
-                                agent_id=agent_id,
-                                chat_thread_id=thread_id)
+            except Exception as e:
+                logger.error(f"Error recording message: {e}",
+                            user_id=user_id,
+                            agent_id=agent_id,
+                            chat_thread_id=thread_id)
+            
+            # Send guaranteed initial events for ALL intents (both direct_answer and search)
+            thinking_event = {
+                "type": "thinking",
+                "content": {"message": "Thinking..."}
+            }
+            yield thinking_event
+            
+            # Generate thread_id if needed
+            if thread_id == "new":
+                thread_id = str(uuid.uuid4())
+            
+            thread_id_event = {
+                "type": "thread_id", 
+                "content": {"thread_id": thread_id}
+            }
+            yield thread_id_event
+            
+            # Send credit info early
+            credit_info_event = {
+                "type": "credit_info",
+                "content": {
+                    "message": "🔍 Processing request...",
+                    "credits_used": 0,
+                    "search_mode": search_mode if intent == "search" else "direct_answer",
+                    "tier": limit_check.get("tier", "unknown")
+                }
+            }
+            yield credit_info_event
+            
+            # Add small delay to ensure events are processed in order
+            await asyncio.sleep(0.1)
             
             # Convert string messages to HumanMessage objects if needed
             formatted_messages = []
@@ -447,6 +533,8 @@ class ChatService:
                     }
                 }
             elif intent == "search":
+                # Initial events already sent above for all intents
+                
                 # Create initial state based on search mode and world connections
                 if search_mode == "basic" and world_connections == "world":
                     initial_state = {

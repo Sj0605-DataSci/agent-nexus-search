@@ -80,12 +80,10 @@ async def lifespan(app: FastAPI):
             await stop_memory_monitoring()
             logger.info("Memory monitoring stopped")
             
-            # Shutdown worker manager
-            if not settings.TESTING:
-                from app.core.worker_manager import WorkerManager
-                worker_manager = WorkerManager()
-                await worker_manager.shutdown()
-                logger.info("Worker manager shutdown")
+            from app.core.worker_manager import WorkerManager
+            worker_manager = WorkerManager()
+            await worker_manager.shutdown()
+            logger.info("Worker manager shutdown")
             
             # Close Redis connection pool
             await redis_client.close()
