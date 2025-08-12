@@ -264,31 +264,78 @@ optimised_query_instructions = optimised_query_system_instruction + "\n\n" + opt
 
 
 # SQL Query System and User Prompts
-sql_query_system_instruction = """You are an expert at converting natural language queries into SQL.
+sql_query_system_instruction = """You are an expert SQL query generator for a connections database.
 
-I have a database table called 'connections' with these exact columns:
-- first_name
-- last_name
-- linkedin_url
-- email_address
-- headline
-- company
-- position
-- connected_on
-- extra_info
-- user_id
+IMPORTANT: Use ONLY these exact column names from the connections table:
+- first_name (text)
+- last_name (text) 
+- linkedin_url (text)
+- email_address (text)
+- company (text)
+- position (text)
+- connected_on (date)
+- headline (text)
+- source (text)
+- user_id (uuid)
+- created_at (timestamp)
 
-ONLY use columns company, position, user_id, linkedin_url, first_name, last_name
-Return ONLY the SQL query without any explanations or markdown formatting.
-The query should select all columns (*) and limit to {number_of_results_returned} results.
+SEARCH PATTERNS:
+1. For person names: Use first_name and last_name
+2. For companies: Use company column
+3. For job titles/roles: Use position column
+4. For professional info: Use headline column
 
-Example:
-SELECT * FROM connections WHERE company = 'Google' AND position = 'Software Engineer' AND user_id = '{user_id}' LIMIT 2 ;"""
+EXAMPLE CORRECT QUERIES:
+
+For "Find Ashish Gupta at Instaservice":
+```sql
+SELECT * FROM connections 
+WHERE user_id = '{user_id}'
+AND (
+    (first_name ILIKE '%Ashish%' AND last_name ILIKE '%Gupta%')
+    OR (first_name ILIKE '%Gupta%' AND last_name ILIKE '%Ashish%')
+    OR headline ILIKE '%Ashish Gupta%'
+)
+AND (
+    company ILIKE '%Instaservice%'
+    OR position ILIKE '%Instaservice%'
+    OR headline ILIKE '%Instaservice%'
+)
+ORDER BY 
+    CASE WHEN first_name ILIKE 'Ashish' AND last_name ILIKE 'Gupta' THEN 1 ELSE 2 END,
+    CASE WHEN company ILIKE '%Instaservice%' THEN 1 ELSE 2 END
+LIMIT 50;
+```
+
+RULES:
+- Always include user_id = '{user_id}' filter
+- Use ILIKE for case-insensitive matching
+- Use % wildcards for partial matches
+- Order results by relevance
+- Limit results to reasonable numbers (50-100)
+- NO MySQL syntax (no MATCH/AGAINST)
+- NO non-existent columns (name, bio, skills, etc.)
+
+Generate PostgreSQL-compatible queries only."""
 
 sql_query_user_prompt = """This is the user id of the user: {user_id}
 
-Convert this search query into a SQL query that will find relevant profiles:
-"{subquery}" """
+Convert this search query into a SQL query that will find relevant connections from the connections table:
+"{subquery}"
+
+IMPORTANT REMINDERS:
+- Query the 'connections' table (NOT 'profiles')
+- Use exact column names: first_name, last_name, company, position, headline, user_id
+- Always filter by user_id = '{user_id}'
+- Use PostgreSQL ILIKE syntax (NOT MySQL MATCH/AGAINST)
+- Return only valid PostgreSQL SQL
+
+Example for "Find John Smith at Google":
+SELECT * FROM connections 
+WHERE user_id = '{user_id}'
+AND (first_name ILIKE '%John%' AND last_name ILIKE '%Smith%')
+AND company ILIKE '%Google%'
+LIMIT 50;"""
 
 # Keep original for backward compatibility
 sql_query_instructions = sql_query_system_instruction + "\n\n" + sql_query_user_prompt
