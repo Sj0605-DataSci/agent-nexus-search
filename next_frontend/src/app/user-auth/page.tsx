@@ -365,7 +365,7 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
           {isSubmitting ? "Creating Account..." : "Create an account"}
         </button>
       </form>
-      <SocialSignIn />
+      {/* <SocialSignIn /> */}
       <p className="text-center text-xs text-gray-400 mt-3">
         By creating an account, you agree to our{" "}
         <a href="#" className="font-semibold text-gray-500">
@@ -486,7 +486,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
           {isSubmitting ? "Signing in..." : "Sign in"}
         </button>
       </form>
-      <SocialSignIn />
+      {/* <SocialSignIn /> */}
     </div>
   );
 };
