@@ -8,15 +8,15 @@ import { useAppSelector } from "@/store";
  */
 export const parseStructuredData = (text: string) => {
   const lines = text.split("\n").filter(line => line.trim());
-  
+
   // Check if we have structured data with colons
   if (lines.length === 0 || !lines.some(line => line.includes(":"))) {
     return { isStructured: false, people: [], columns: [] };
   }
 
-  const people: any[] = [];
-  const columns = ["FName", "LName", "Social Links", "Email", "Phone No", "Score", "Reason"];
-  let currentPerson: any = {};
+  const people: Array<Record<string, string>> = [];
+  const columns = ["FName", "LName", "Social Links", "Email", "Score", "Reason"];
+  let currentPerson: Record<string, string> = {};
 
   for (const line of lines) {
     if (line.includes(":")) {
@@ -26,19 +26,19 @@ export const parseStructuredData = (text: string) => {
 
       // Normalize key names to match our columns
       let normalizedKey = "";
-      if (key.toLowerCase().includes("fname") || key.toLowerCase().includes("first")) {
+      const lowerKey = key.toLowerCase();
+
+      if (lowerKey.includes("fname") || lowerKey.includes("first")) {
         normalizedKey = "FName";
-      } else if (key.toLowerCase().includes("lname") || key.toLowerCase().includes("last")) {
+      } else if (lowerKey.includes("lname") || lowerKey.includes("last")) {
         normalizedKey = "LName";
-      } else if (key.toLowerCase().includes("social") || key.toLowerCase().includes("link")) {
+      } else if (lowerKey.includes("social") || lowerKey.includes("link")) {
         normalizedKey = "Social Links";
-      } else if (key.toLowerCase().includes("email")) {
+      } else if (lowerKey.includes("email")) {
         normalizedKey = "Email";
-      } else if (key.toLowerCase().includes("phone")) {
-        normalizedKey = "Phone No";
-      } else if (key.toLowerCase().includes("score")) {
+      } else if (lowerKey.includes("score")) {
         normalizedKey = "Score";
-      } else if (key.toLowerCase().includes("reason")) {
+      } else if (lowerKey.includes("reason")) {
         normalizedKey = "Reason";
       }
 
@@ -66,32 +66,54 @@ export const parseStructuredData = (text: string) => {
   };
 };
 
-/**
- * Helper function to convert table data to CSV and download
- */
-export const downloadAsCSV = (people: any[], columns: string[]) => {
-  if (people.length === 0) return;
+const sortPeople = (people: Array<Record<string, string>>) => {
+  return [...people].sort((a, b) => {
+    const hasEmailA = a.Email && a.Email !== "null" && a.Email !== "N/A" && a.Email.trim() !== "";
+    const hasEmailB = b.Email && b.Email !== "null" && b.Email !== "N/A" && b.Email.trim() !== "";
 
-  // Create CSV content
+    if (hasEmailA && !hasEmailB) return -1;
+    if (!hasEmailA && hasEmailB) return 1;
+
+    const scoreA = parseFloat(a.Score || "0") || 0;
+    const scoreB = parseFloat(b.Score || "0") || 0;
+    return scoreB - scoreA;
+  });
+};
+
+export const downloadAsCSV = (people: Array<Record<string, string>>, columns: string[]) => {
+  if (!people?.length) {
+    console.warn("No data to export");
+    return;
+  }
+
+  const sortedPeople = sortPeople(people);
+
   const csvContent = [
-    // Header row
     columns.join(","),
-    // Data rows
-    ...people.map(person =>
+    ...sortedPeople.map(person =>
       columns
         .map(column => {
-          const value = person[column] || "N/A";
-          // Escape quotes and wrap in quotes if contains comma or quote
-          const escapedValue = value.toString().replace(/"/g, '""');
-          return escapedValue.includes(",") ||
+          let value = person[column];
+          if (value === undefined || value === null || value === "null" || value === "N/A") {
+            value = "";
+          }
+
+          const strValue = String(value).trim();
+          const escapedValue = strValue.replace(/"/g, '""');
+
+          if (
+            escapedValue.includes(",") ||
             escapedValue.includes('"') ||
-            escapedValue.includes("\n")
-            ? `"${escapedValue}"`
-            : escapedValue;
+            escapedValue.includes("\n") ||
+            escapedValue.includes("\r")
+          ) {
+            return `"${escapedValue}"`;
+          }
+          return escapedValue;
         })
         .join(",")
     ),
-  ].join("\n");
+  ].join("\r\n");
 
   // Create and download file
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -105,25 +127,137 @@ export const downloadAsCSV = (people: any[], columns: string[]) => {
   document.body.removeChild(link);
 };
 
-/**
- * Helper function to render structured data as Excel-style table
- */
+const renderSocialLink = (link: string) => {
+  if (!link) return null;
+
+  const trimmed = link.trim();
+  if (!trimmed) return null;
+
+  let icon = "🔗";
+  let displayText = trimmed;
+
+  try {
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    displayText = url.hostname.replace("www.", "");
+
+    if (url.hostname.includes("linkedin.com")) icon = "💼";
+    else if (url.hostname.includes("github.com")) icon = "🐙";
+    else if (url.hostname.includes("stackoverflow.com")) icon = "🔍";
+  } catch (e) {
+    console.warn("Invalid URL:", trimmed);
+  }
+
+  return (
+    <a
+      key={trimmed}
+      href={trimmed.startsWith("http") ? trimmed : `https://${trimmed}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-500 hover:underline flex items-center gap-1.5 text-sm"
+      title={trimmed}
+    >
+      <span>{icon}</span>
+      <span className="truncate max-w-[120px] sm:max-w-none">{displayText}</span>
+    </a>
+  );
+};
+
+interface Person {
+  FName?: string;
+  LName?: string;
+  "Social Links"?: string;
+  Email?: string;
+  Score?: string;
+  Reason?: string;
+  [key: string]: string | undefined;
+}
+
+const PersonCard = ({
+  person,
+  columns,
+  darkMode,
+  index,
+}: {
+  person: Person;
+  columns: string[];
+  darkMode: boolean;
+  index: number;
+}) => (
+  <div
+    className={`p-4 mb-4 rounded-lg shadow-sm ${
+      darkMode ? "bg-gray-800" : "bg-white border border-gray-200"
+    }`}
+  >
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium text-base">
+          {person.FName} {person.LName}
+        </h3>
+        {person.Score && (
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              parseFloat(person.Score) >= 8
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+            }`}
+          >
+            Score: {person.Score}
+          </span>
+        )}
+      </div>
+
+      {columns.map(col => {
+        if (["FName", "LName", "Score"].includes(col)) return null;
+        const value = person[col];
+        if (!value || value === "null") return null;
+
+        return (
+          <div key={col} className="text-sm">
+            <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">
+              {col}
+            </div>
+            {col === "Social Links" ? (
+              <div className="flex flex-wrap gap-2">
+                {value
+                  .split(",")
+                  .map(link => link.trim())
+                  .filter(link => link)
+                  .map((link, i) => (
+                    <React.Fragment key={i}>{renderSocialLink(link)}</React.Fragment>
+                  ))}
+              </div>
+            ) : col === "Reason" ? (
+              <div
+                className={`p-2 rounded text-sm ${
+                  darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-50 text-gray-700"
+                }`}
+              >
+                {value}
+              </div>
+            ) : (
+              <div className="break-words">{value}</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
 export const renderAsTable = (
-  content: string, 
+  content: string,
   darkMode: boolean,
   messagesContainerRef: React.RefObject<HTMLDivElement | null>,
   hasMoreMessages?: boolean,
   loadMoreMessages?: () => void
 ) => {
   const { people, columns } = parseStructuredData(content);
+  if (people.length === 0) return <div className="whitespace-pre-wrap">{content}</div>;
 
-  if (people.length === 0) {
-    return <div className="whitespace-pre-wrap">{content}</div>;
-  }
+  const sortedPeople = sortPeople(people);
 
   return (
-    <div>
-      {/* Download button */}
+    <div className="w-full">
       <div className="mb-4 flex justify-end">
         <Button
           onClick={() => downloadAsCSV(people, columns)}
@@ -140,81 +274,76 @@ export const renderAsTable = (
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesContainerRef}>
-        {hasMoreMessages && loadMoreMessages && (
-          <div className="flex justify-center mb-4">
-            <button
-              onClick={loadMoreMessages}
-              className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+      <div className="flex w-full overflow-y-auto">
+        <div className="block xl:hidden space-y-3 px-2">
+          {sortedPeople.map((person, i) => (
+            <PersonCard key={i} person={person} columns={columns} darkMode={darkMode} index={i} />
+          ))}
+        </div>
+
+        <div className="hidden xl:flex flex-1 min-w-0">
+          <div className="overflow-x-auto w-full">
+            <table
+              className={`min-w-full divide-y ${darkMode ? "divide-gray-700 text-gray-300" : "divide-gray-200 text-gray-700"}`}
             >
-              Load Older Messages
-            </button>
-          </div>
-        )}
-        <div className="overflow-x-auto">
-          <table
-            className={`min-w-full divide-y divide-gray-200 ${darkMode ? "text-gray-300" : "text-gray-700"}`}
-          >
-            <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
-              <tr>
-                {columns.map((column, index) => (
-                  <th
-                    key={index}
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  >
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-              {people.map((person, personIndex) => (
-                <tr
-                  key={personIndex}
-                  className={
-                    personIndex % 2 === 0
-                      ? darkMode
-                        ? "bg-gray-900"
-                        : "bg-white"
-                      : darkMode
-                        ? "bg-gray-800"
-                        : "bg-gray-50"
-                  }
-                >
-                  {columns.map((column, columnIndex) => (
-                    <td
-                      key={columnIndex}
-                      className="px-4 py-4 whitespace-normal text-sm break-words"
+              <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
+                <tr>
+                  {columns.map((col, i) => (
+                    <th
+                      key={i}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"
                     >
-                      {person[column] ? (
-                        person[column] === "null" || person[column] === "N/A" ? (
-                          <span className="text-gray-400">N/A</span>
-                        ) : column === "Social Links" ? (
-                          person[column].split(",").map((link: string, i: number) => (
-                            <div key={i} className="mb-1">
-                              <a
-                                href={link.trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:underline text-xs"
-                              >
-                                {link.trim()}
-                              </a>
-                            </div>
-                          ))
-                        ) : (
-                          <span className="text-sm">{person[column]}</span>
-                        )
-                      ) : (
-                        <span className="text-gray-400">N/A</span>
-                      )}
-                    </td>
+                      {col}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
+                {sortedPeople.map((person, i) => (
+                  <tr
+                    key={i}
+                    className={
+                      i % 2 === 0
+                        ? darkMode
+                          ? "bg-gray-900"
+                          : "bg-white"
+                        : darkMode
+                          ? "bg-gray-800"
+                          : "bg-gray-50"
+                    }
+                  >
+                    {columns.map((col, j) => (
+                      <td key={j} className="px-4 py-3 text-sm">
+                        {!person[col] || person[col] === "null" ? (
+                          <span className="text-gray-400">N/A</span>
+                        ) : col === "Social Links" ? (
+                          <div className="flex flex-col gap-1.5">
+                            {person[col]
+                              .split(",")
+                              .map(link => link.trim())
+                              .filter(link => link)
+                              .map((link, i) => (
+                                <React.Fragment key={i}>{renderSocialLink(link)}</React.Fragment>
+                              ))}
+                          </div>
+                        ) : col === "Reason" ? (
+                          <div
+                            className={`p-2 rounded text-sm max-w-[400px] max-h-[200px] overflow-y-auto ${
+                              darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-50 text-gray-700"
+                            }`}
+                          >
+                            {person[col]}
+                          </div>
+                        ) : (
+                          <div className="break-words">{person[col]}</div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

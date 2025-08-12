@@ -6,7 +6,7 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Disable Sentry in development mode
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 Sentry.init({
   // Disable Sentry in development mode

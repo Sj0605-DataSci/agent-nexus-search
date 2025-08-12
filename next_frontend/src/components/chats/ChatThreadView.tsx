@@ -1,36 +1,18 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
+import { ChatNavigationControls } from "./ChatNavigationControls";
+import { AgentDropdown } from "./AgentDropdown";
 import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
-import {
-  FiSearch,
-  FiCheck,
-  FiChevronDown,
-  FiChevronLeft,
-  FiChevronRight,
-  FiThumbsUp,
-  FiThumbsDown,
-  FiClock,
-  FiLink,
-  FiExternalLink,
-  FiInfo,
-  FiRefreshCw,
-} from "react-icons/fi";
+import { FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
 import { BsTextParagraph } from "react-icons/bs";
+import { SearchQueryDisplay } from "./SearchQueryDisplay";
+import SourcesList from "./SourcesList";
 import { getTimeBasedGreeting } from "../../utils/timeUtils";
-import Image from "next/image";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
+import SearchInputField from "./SearchInputField";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
@@ -40,65 +22,73 @@ import SearchModeToggle from "./SearchModeToggle";
 import WorldConnectionsToggle from "./WorldConnectionsToggle";
 import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
-import StructuredContentRenderer, { isStructuredResearchResult } from "./StructuredContentRenderer";
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
-import Link from "next/link";
 import OrbAura from "../OrbAura";
-import { ProcessCitationReferences, SourceType } from "../common/Citation";
+import dynamic from "next/dynamic";
+import StyledMarkdown from "../common/StyledMarkdown";
+import MessagePlaceholder from "./MessagePlaceholder";
 
-type FeedbackType = {
-  messageId: string;
-  isPositive: boolean;
-  comment?: string;
-};
+const FeedbackModal = dynamic(() => import("./FeedbackModal"));
+const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
 
-type MessageType = {
-  id: string;
-  type: "user" | "agent";
-  content: string;
-  timestamp: Date;
-  sources?: SourceType[];
-  sources_gathered?: SourceType[];
-};
+import {
+  ChatSource,
+  SearchMode,
+  FormatType,
+  WorldConnectionsMode,
+  FeedbackType,
+  MessageType,
+} from "@/types/chat";
+import { WorkerMessage } from "@/types/api";
+import { ChatPair, CachedThread, ChatThreadViewProps } from "@/types/chatThreadView";
 
-const ChatThreadView = ({ threadId }: { threadId: string }) => {
+const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const chatWorkerRef = useRef<Worker | null>(null);
   const router = useRouter();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const [query, setQuery] = useState("");
-  const [selectedAgent, setSelectedAgent] = useState("00000000-0000-4000-a000-000000000000");
+  const [query, setQuery] = useState<string>("");
+  const [selectedAgent, setSelectedAgent] = useState<string>(
+    "00000000-0000-4000-a000-000000000000"
+  );
+  console.log("threadId", threadId);
+  const [format, setFormat] = useState<FormatType>("table");
+  const [searchMode, setSearchMode] = useState<SearchMode>("basic");
+  const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
+  const [messages, setMessages] = useState<MessageType[]>([]);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
+  const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
+  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
+  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
+  const [chatPairs, setChatPairs] = useState<ChatPair[]>([]);
+  const [messagesOffset, setMessagesOffset] = useState<number>(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(threadId != "new");
+  const [cachedThreads, setCachedThreads] = useState<Record<string, CachedThread>>({});
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [streamingSearchQueries, setStreamingSearchQueries] = useState<string[]>([]);
+  const [showSearchQueries, setShowSearchQueries] = useState<boolean>(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<Record<string, boolean>>({});
+
+  const MESSAGES_PER_PAGE = 50;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      setQuery(urlParams.get("q") || "");
-      setSelectedAgent(urlParams.get("agent") || "00000000-0000-4000-a000-000000000000");
+      const urlTitle = urlParams.get("title");
+
+      if (urlTitle !== null) {
+        setQuery(urlTitle);
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("title");
+        window.history.replaceState({}, "", newUrl.toString());
+      }
     }
   }, []);
-
-  const [format, setFormat] = useState<"chat" | "table">("chat");
-  const [searchMode, setSearchMode] = useState<"basic" | "deep">("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<"connections" | "world">(
-    "world"
-  );
-  const [messages, setMessages] = useState<MessageType[]>([]);
-
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
-  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
-  const [chatPairs, setChatPairs] = useState<any[]>([]);
-  const [messagesOffset, setMessagesOffset] = useState<number>(0);
-  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
-  const MESSAGES_PER_PAGE = 50;
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [cachedThreads, setCachedThreads] = useState<
-    Record<string, { messages: any[]; timestamp: number }>
-  >({});
   const { profile } = useAppSelector(state => state.profile);
 
   const userId = profile?.id;
@@ -106,6 +96,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const loadMoreMessages = async () => {
     if (!threadId || !hasMoreMessages) return;
 
+    setIsLoading(true);
     try {
       const messagesResponse = await apiClient.getChatMessages(threadId);
 
@@ -118,12 +109,13 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       }
     } catch (error) {
       console.error("Error loading more messages:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
 
-  const darkMode = useAppSelector(s => s.theme.dark);
   const sidebarCollapsed = useAppSelector(selectSidebarCollapsed);
 
   const dispatch = useAppDispatch();
@@ -190,20 +182,15 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
     if (cachedThreads[threadId] && initialLoadComplete && !forceRefresh) {
       const { messages: cachedMessages, timestamp } = cachedThreads[threadId];
       const cacheAge = Date.now() - timestamp;
-      // Use cached data if it's less than 5 minutes old
       if (cacheAge < 5 * 60 * 1000) {
         setChatPairs(cachedMessages);
         setCurrentMessageIndex(cachedMessages.length - 1);
-        return;
-      }
-    }
-
-    setIsLoading(true);
-    try {
-      if (!userId) {
         setIsLoading(false);
         return;
       }
+    }
+    setIsLoading(true);
+    try {
       const messagesResponse = await apiClient.getChatMessages(threadId);
       setMessagesOffset(MESSAGES_PER_PAGE);
       setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
@@ -218,15 +205,26 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             timestamp: Date.now(),
           },
         }));
-      } else {
       }
       setInitialLoadComplete(true);
-    } catch (error: any) {
-      console.log("[ChatThreadView] fetchMessages error:", error);
+    } catch (error: unknown) {
+      console.error("[ChatThreadView] fetchMessages error:", error);
       let message = "An error occurred while loading this chat thread.";
-      if (error?.response?.status === 404) {
+
+      interface ErrorResponse {
+        response?: {
+          status?: number;
+          data?: {
+            detail?: string;
+          };
+        };
+      }
+
+      const typedError = error as ErrorResponse;
+
+      if (typedError.response?.status === 404) {
         message = "This chat thread was not found.";
-      } else if (error?.response?.status === 403) {
+      } else if (typedError.response?.status === 403) {
         message = "You do not have access to this chat thread.";
       }
       console.log("[ChatThreadView] threadError:", message);
@@ -238,55 +236,74 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   };
 
   useEffect(() => {
-    fetchMessages();
+    if (threadId && threadId !== "new") {
+      setIsLoading(true);
+      setTimeout(() => {
+        fetchMessages();
+      }, 100);
+    }
     return () => {
       setInitialLoadComplete(false);
     };
-  }, []);
+  }, [threadId]);
 
   useEffect(() => {
-    if (chatPairs.length > 0) {
-      const currentPair = chatPairs[currentMessageIndex];
-      setQuery(currentPair.main_query);
+    const hasDismissed = localStorage.getItem("hasDismissedLinkedInModal");
+    if (profile && !profile.linkedin_url && hasDismissed !== "true") {
+      setLinkedinModalOpen(true);
+    }
+  }, [profile]);
 
-      const userMessage = {
+  useEffect(() => {
+    if (chatPairs.length > 0 && currentMessageIndex < chatPairs.length) {
+      const currentPair = chatPairs[currentMessageIndex];
+      if (currentPair.main_query) {
+        setQuery(String(currentPair.main_query));
+      }
+
+      const userMessage: MessageType = {
         id: `${currentPair.id}-user`,
-        type: "user" as const,
-        content: currentPair.main_query,
-        timestamp: new Date(currentPair.created_at),
+        type: "user",
+        content: String(currentPair.main_query || ""),
+        timestamp: new Date(String(currentPair.created_at)),
       };
 
       let messageContent = currentPair.message;
-      const sourcesData = currentPair.sources_gathered || [];
-      console.log("Sources data from API:", sourcesData);
+      const sourcesData: ChatSource[] = Array.isArray(currentPair.sources_gathered)
+        ? currentPair.sources_gathered
+        : [];
 
       if (chatWorkerRef.current && typeof messageContent === "object" && messageContent !== null) {
-        const agentMessage = {
-          id: currentPair.id,
-          type: "agent" as const,
+        const agentMessage: MessageType = {
+          id: String(currentPair.id),
+          type: "agent",
           content: "Processing message...",
-          timestamp: new Date(currentPair.updated_at),
+          timestamp: new Date(String(currentPair.updated_at)),
           sources: sourcesData,
         };
 
         setMessages([userMessage, agentMessage]);
-        chatWorkerRef.current.postMessage({
+
+        const workerMessage: WorkerMessage = {
           type: "process_message",
           data: {
-            id: currentPair.id,
+            id: String(currentPair.id),
             content: messageContent,
           },
-        });
-      } else {
-        if (typeof messageContent === "object" && messageContent !== null) {
-          messageContent = JSON.stringify(messageContent, null, 2);
-        }
+        };
 
-        const agentMessage = {
-          id: currentPair.id,
-          type: "agent" as const,
-          content: messageContent,
-          timestamp: new Date(currentPair.updated_at),
+        chatWorkerRef.current.postMessage(workerMessage);
+      } else {
+        const content =
+          typeof messageContent === "object"
+            ? JSON.stringify(messageContent, null, 2)
+            : String(messageContent || "");
+
+        const agentMessage: MessageType = {
+          id: String(currentPair.id),
+          type: "agent",
+          content: content,
+          timestamp: new Date(String(currentPair.updated_at)),
           sources: sourcesData,
         };
 
@@ -315,7 +332,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   }, [showAgentDropdown]);
 
   const handleTagClick = (tag: string) => {
-    setQuery(tag);
+    if (!isStreaming) {
+      // Only update query if not streaming
+      setQuery(tag);
+    }
   };
 
   const handleAgentSelect = (
@@ -342,8 +362,25 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
   const agentData = agentCards.find(a => a.id === selectedAgent) || agentCards[0];
 
   const handleSearch = async (incoming?: string) => {
+    if (isStreaming) return;
+
     const q = incoming ?? query;
     if (!q.trim()) return;
+
+    if (threadId !== "new") {
+      const newChatPair: ChatPair = {
+        id: `temp-${Date.now()}`,
+        main_query: q,
+        message: "⏳ Searching for information...",
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      setChatPairs(prev => [...prev, newChatPair]);
+      setCurrentMessageIndex(chatPairs.length);
+    }
+
+    setIsStreaming(true);
+    setIsLoading(true);
 
     if (chatWorkerRef.current) {
       chatWorkerRef.current.postMessage({
@@ -361,29 +398,22 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       thread_id: threadId,
     });
 
-    const userMessageId = Date.now().toString();
-    setMessages(m => [
-      ...m,
-      {
-        id: userMessageId,
-        type: "user",
-        content: q,
-        timestamp: new Date(),
-      },
-    ]);
+    const userMessage: MessageType = {
+      id: `user-${Date.now()}`,
+      type: "user",
+      content: q,
+      timestamp: new Date(),
+    };
 
-    setIsLoading(true);
+    const newLoadingMessageId = `agent-${Date.now()}`;
+    const agentMessage: MessageType = {
+      id: newLoadingMessageId,
+      type: "agent",
+      content: "⏳ Searching for information...",
+      timestamp: new Date(),
+    };
 
-    const newLoadingMessageId = (Date.now() + 1).toString();
-    setMessages(m => [
-      ...m,
-      {
-        id: newLoadingMessageId,
-        type: "agent",
-        content: "⏳ Searching for information...",
-        timestamp: new Date(),
-      },
-    ]);
+    setMessages([userMessage, agentMessage]);
 
     try {
       if (!userId) {
@@ -403,8 +433,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
       let currentContent = "⏳ Searching for information...";
       let fullContent = "";
-      let sources: any[] = [];
+      let sources: ChatSource[] = [];
       let searchQueries: string[] = [];
+      setStreamingSearchQueries([]);
+      setShowSearchQueries(false);
       let hasExtractedFinalAnswer = false;
       let lastUpdateTime = Date.now();
       let updateDebounceMs = 100;
@@ -429,20 +461,29 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         worldConnectionsMode,
         threadId,
         (update: any) => {
-          console.log("Streaming update:", update);
-
           switch (update.type) {
             case "thread_id":
               if (update.content && update.content.thread_id) {
-                const newUrl = `/chat/${update.content.thread_id}`;
-                window.history.replaceState({ path: newUrl }, "", newUrl);
+                const newThreadId = update.content.thread_id;
+                if (newThreadId !== threadId) {
+                  const newUrl = `/chat/${newThreadId}`;
+                  window.history.replaceState({ path: newUrl }, "", newUrl);
 
-                dispatch(
-                  addChatThread({
-                    id: update.content.thread_id,
-                    query: q,
-                  })
-                );
+                  dispatch(
+                    addChatThread({
+                      id: newThreadId,
+                      query: q,
+                    })
+                  );
+                } else if (threadId && update.content.messages) {
+                  setChatPairs(prev => {
+                    const newMessages = Array.isArray(update.content.messages)
+                      ? update.content.messages
+                      : [];
+                    return [...newMessages, ...prev];
+                  });
+                  setCurrentMessageIndex(prev => prev + 1);
+                }
               }
               break;
 
@@ -464,6 +505,7 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                   fullContent = tokenContent;
                   currentContent = fullContent;
                   hasExtractedFinalAnswer = true;
+                  setShowSearchQueries(false);
                 }
 
                 if (format === "chat" || format === "table") {
@@ -471,7 +513,10 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
                     chatWorkerRef.current.postMessage({
                       type: "process_message",
                       data: {
-                        id: newLoadingMessageId,
+                        id:
+                          update.content.chat_thread_id ||
+                          update.content.thread_id ||
+                          newLoadingMessageId,
                         content: currentContent,
                       },
                     });
@@ -485,6 +530,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             case "search_query":
               if (update.content && update.content.query) {
                 searchQueries.push(update.content.query);
+                setStreamingSearchQueries(prev => [...prev, update.content.query]);
+                setShowSearchQueries(true);
                 if (!hasExtractedFinalAnswer) {
                   currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
                   updateMessageContent(currentContent);
@@ -494,7 +541,11 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
             case "source":
               if (update.content) {
-                sources.push(update.content);
+                if (Array.isArray(update.content.sources)) {
+                  sources.push(...update.content.sources);
+                } else {
+                  sources.push(update.content);
+                }
 
                 if (!hasExtractedFinalAnswer) {
                   currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
@@ -529,7 +580,6 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               currentContent = `❌ Error: ${errorMessage}`;
               updateMessageContent(currentContent);
 
-              console.error("Stream error:", update.content);
 
               posthog.capture("stream_error", {
                 query: q,
@@ -541,15 +591,38 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
             case "done":
               if (fullContent) {
                 updateMessageContent(fullContent);
+                setQuery(update.content.query);
+                if (chatWorkerRef.current) {
+                  chatWorkerRef.current.postMessage({
+                    type: "process_message",
+                    data: {
+                      id: update.content.chat_thread_id || update.content.thread_id,
+                      content: fullContent,
+                    },
+                  });
+                }
+                if (update.content && update.content.chat_thread_id && threadId === "new") {
+                  const newThreadId = update.content.chat_thread_id;
+                  if (newThreadId !== threadId) {
+                    const newUrl = `/chat/${newThreadId}`;
+                    window.history.replaceState({ path: newUrl }, "", newUrl);
+                  }
+                }
               }
 
-              if (sources.length > 0) {
-                console.log("Sources gathered:", sources);
+              setMessages(m => {
+                if (m.length === 0) return m;
+                const lastIndex = m.length - 1;
+                const updatedMessages = [...m];
+                updatedMessages[lastIndex] = {
+                  ...updatedMessages[lastIndex],
+                  id: update.content.message_id|| updatedMessages[lastIndex].id,
+                  ...(sources.length > 0 && { sources })
+                };
+                return updatedMessages;
+              });
 
-                setMessages(m =>
-                  m.map(msg => (msg.id === newLoadingMessageId ? { ...msg, sources } : msg))
-                );
-              }
+              setShowSearchQueries(false);
 
               posthog.capture("search_completed", {
                 query: q,
@@ -596,17 +669,20 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         )
       );
     } finally {
+      setIsStreaming(false);
       setIsLoading(false);
-      setQuery("");
+      setShowSearchQueries(false);
     }
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isStreaming) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSearch();
-
-      posthog.capture("search_input_method", { method: "enter_key" });
+      if (!isStreaming) {
+        handleSearch();
+        posthog.capture("search_input_method", { method: "enter_key" });
+      }
     } else if (e.key === "Enter" && e.shiftKey) {
     }
   };
@@ -638,6 +714,8 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
       feedback: isPositive ? "positive" : "negative",
     });
 
+    setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
+
     if (isPositive) {
       handleFeedbackSubmit({
         messageId,
@@ -656,376 +734,124 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
 
   const handleFeedbackSubmit = async (feedback: FeedbackType) => {
     try {
-      if (!userId) {
-        return;
+      try {
+        const response = await apiClient.sendFeedback({
+          message_id: feedback.messageId,
+          is_positive: feedback.isPositive,
+          comment: feedback.comment || "",
+        });
+
+        if (response?.success) {
+          showSuccessToast("Feedback submitted successfully");
+          setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: true }));
+        }
+
+        posthog.capture("feedback_submitted", {
+          message_id: feedback.messageId,
+          thread_id: threadId,
+          is_positive: feedback.isPositive,
+          has_comment: !!feedback.comment,
+        });
+      } catch (error) {
+        console.error("Error submitting feedback:", error);
+        showErrorToast("Failed to submit feedback. Please try again.");
+        setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
       }
-
-      const response = await apiClient.sendFeedback({
-        message_id: feedback.messageId,
-        is_positive: feedback.isPositive,
-        comment: feedback.comment || "",
-      });
-
-      if (response && response.success) {
-        showSuccessToast("Feedback submitted successfully");
-      }
-
-      posthog.capture("feedback_submitted", {
-        message_id: feedback.messageId,
-        thread_id: threadId,
-        is_positive: feedback.isPositive,
-        has_comment: !!feedback.comment,
-      });
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || "Failed to submit feedback";
       const statusCode = error?.response?.status || 500;
-
       showErrorToast("Failed to submit feedback", `Status: ${statusCode}`);
-
       posthog.capture("feedback_submission_failed", {
         message_id: feedback.messageId,
         thread_id: threadId,
         error: error instanceof Error ? error.message : String(error),
       });
+      setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
     }
   };
 
   return (
     <div>
       <div
-        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? "ml-5" : "ml-12"} px-4 pt-8  flex flex-col ${
-          messages.length ? "pt-1 pb-1" : "min-h-screen justify-start"
-        }`}
+        className={` relative z-10 ${sidebarCollapsed ? "md:ml-5" : "md:ml-12"} md:px-4 pt-8 flex flex-col`}
       >
-        <div
-          className={`transition-all duration-500 text-center ${messages.length ? "py-4" : "mb-8"}`}
-        >
-          <div className="items-center justify-center h-20 ">
-            {/* {!(messages?.length && messages.length > 0) && <OrbAura />} */}
+        {threadId === "new" && messages.length === 0 && !isStreaming && (
+          <div className={`transition-all duration-500 text-center mb-8`}>
+            <div className="items-center justify-center h-20 "></div>
+            <h1 className={`font-bold -mt-3 mb-2 text-gray-900 text-2xl md:text-4xl`}>
+              {getPersonalizedGreeting()}
+              <div className="mt-2">
+                <span>What's on </span>
+                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-bold">
+                  your mind?
+                </span>
+              </div>
+            </h1>
+            {!messages.length && (
+              <p className="text-gray-600 text-sm md:text-lg mt-6">
+                Our AI filters through millions of profiles to surface truly relevant people, faster
+                and more precisely than traditional platforms.
+              </p>
+            )}
           </div>
-          <h1
-            className={`font-bold -mt-3 mb-2 ${darkMode ? "text-white" : "text-gray-900"} ${
-              messages.length ? "text-2xl" : "text-4xl"
-            }`}
-          >
-            {getPersonalizedGreeting()}
-            <div className="mt-2">
-              <span>What's on </span>
-              <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-bold">
-                your mind?
-              </span>
-            </div>
-          </h1>
-          {!messages.length && (
-            <p className="text-gray-600 text-base sm:text-lg mt-6">
-              Our AI filters through millions of profiles to surface truly relevant people, faster
-              and more precisely than traditional platforms.
-            </p>
-          )}
-        </div>
-
+        )}
         <div
-          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8"} transition-all duration-500`}
+          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
-          <div className="relative flex justify-center">
+          <div className="relative flex justify-center w-full px-2 sm:px-0">
             <div
-              className={`flex items-center flex-col rounded-2xl px-6 py-4 shadow-lg transition-all duration-200 focus-within:shadow-xl w-full max-w-3xl ${
-                darkMode
-                  ? "border border-gray-700 bg-gray-900/80 hover:border-gray-600"
-                  : "border border-gray-200 bg-white hover:border-gray-300"
-              }`}
+              className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg focus-within:shadow-xl w-full max-w-3xl border border-gray-200 bg-white hover:border-gray-300"
               style={{ backdropFilter: "blur(10px)" }}
             >
-              <div className=" flex flex-row w-full items-center">
-                <FiSearch
-                  className={`h-5 w-5 mr-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                />
-                <Textarea
-                  placeholder="Search for people by skills, experience, or interests… (Shift+Enter for new line)"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  ref={textareaRef}
-                  onKeyDown={onKey}
-                  rows={1}
-                  className={`
-                    flex bg-transparent text-base resize-none
-                    border-0 focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0
-                    min-h-[40px] max-h-[120px]
-                    ${darkMode ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-500"}
-                  `}
-                />
-              </div>
-              <div className=" flex flex-row justify-between w-full mt-2">
-                <div className="flex items-center gap-2 mr-2">
-                  <div className="flex space-x-2">
-                    <SearchModeToggle
-                      searchMode={searchMode}
-                      darkMode={darkMode}
-                      setSearchMode={(mode: "basic" | "deep") => {
-                        posthog.capture("search_mode_changed", { mode });
-                        setSearchMode(mode);
-                      }}
-                    />
-                    <FormatToggle
-                      format={format}
-                      darkMode={darkMode}
-                      setFormat={(mode: "chat" | "table") => {
-                        posthog.capture("format_changed", { mode });
-                        setFormat(mode);
-                      }}
-                    />
-                    <WorldConnectionsToggle
-                      worldConnectionsMode={worldConnectionsMode}
-                      darkMode={darkMode}
-                      setWorldConnectionsMode={(mode: "connections" | "world") => {
-                        posthog.capture("world_connections_mode_changed", { mode });
-                        setWorldConnectionsMode(mode);
-                      }}
-                    />
-                  </div>
+              <SearchInputField
+                query={query}
+                setQuery={setQuery}
+                textareaRef={textareaRef}
+                onKey={onKey}
+                isStreaming={isStreaming}
+              />
+              <div className="flex flex-col sm:flex-row justify-between w-full mt-2 gap-2 sm:gap-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SearchModeToggle
+                    searchMode={searchMode}
+                    disabled={
+                      isStreaming ||
+                      (chatPairs.length > 0 &&
+                        currentMessageIndex < chatPairs.length &&
+                        chatPairs[currentMessageIndex].main_query === query &&
+                        query.trim() !== "")
+                    }
+                    setSearchMode={(mode: "basic" | "deep") => {
+                      posthog.capture("search_mode_changed", { mode });
+                      setSearchMode(mode);
+                    }}
+                  />
+                  <WorldConnectionsToggle
+                    worldConnectionsMode={worldConnectionsMode}
+                    setWorldConnectionsMode={(mode: "connections" | "world") => {
+                      posthog.capture("world_connections_mode_changed", { mode });
+                      setWorldConnectionsMode(mode);
+                    }}
+                  />
                 </div>
 
-                <div className="relative z-[100]">
-                  <Button
-                    variant="ghost"
-                    ref={toggleBtnRef}
-                    onClick={() => setShowAgentDropdown(s => !s)}
-                    disabled={agentsStatus === "loading"}
-                    className={`
-                      flex items-center gap-2 rounded-full px-4 py-1 border mr-3 
-                      transition-all duration-200 shadow-sm hover:shadow h-[26px]
-                      ${agentsStatus === "loading" ? "cursor-not-allowed opacity-60" : ""}
-                      ${
-                        darkMode
-                          ? "border-gray-700/60 bg-gray-800/80 text-gray-200 hover:bg-gray-700/90"
-                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      }
-                    `}
-                  >
-                    {agentsStatus === "loading" ? (
-                      <>
-                        <span className="block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                        <span className="text-sm font-medium">Loading...</span>
-                      </>
-                    ) : (
-                      <>
-                        {agentData?.agentImageUrl ? (
-                          <div className="relative w-4 h-4 rounded-full overflow-hidden">
-                            <Image
-                              src={agentData.agentImageUrl}
-                              alt={`${agentData.name} avatar`}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <span className="flex items-center justify-center w-4 h-4 text-md">
-                            {agentData?.avatar}
-                          </span>
-                        )}
-                        <span className="text-[12px] font-medium">{agentData?.name}</span>
-                        <FiChevronDown
-                          className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showAgentDropdown ? "rotate-180" : ""}`}
-                        />
-                      </>
-                    )}
-                  </Button>
-
-                  {showAgentDropdown && (
-                    <div
-                      ref={dropdownRef}
-                      className={`absolute right-0 top-full mt-2 w-[240px] rounded-xl shadow-xl z-[500] overflow-hidden
-                    transform transition-all duration-200 origin-top-right
-                    animate-in fade-in slide-in-from-top-5 zoom-in-95
-                    ${
-                      darkMode
-                        ? "bg-gray-900 border border-gray-700/70"
-                        : "bg-white border border-gray-200"
-                    }`}
-                    >
-                      <div
-                        className={`px-4 py-3 border-b ${darkMode ? "border-gray-700/70" : "border-gray-200"}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <p
-                            className={`text-sm font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}
-                          >
-                            Select Agent
-                          </p>
-                          <div
-                            className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-600"}`}
-                          >
-                            {agentCards.length} agents
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
-                        {agentsStatus === "loading" ? (
-                          <div className="p-6 flex flex-col items-center justify-center gap-2">
-                            <span className="block h-6 w-6 rounded-full border-2 border-current border-t-transparent animate-spin text-blue-500" />
-                            <p className="text-sm text-gray-500">Loading your agents...</p>
-                          </div>
-                        ) : agentCards.length === 0 ? (
-                          <div className="p-6 text-center">
-                            <p
-                              className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
-                            >
-                              No agents available
-                            </p>
-                            <Link
-                              href="/marketplace"
-                              className={`mt-2 inline-block text-sm font-medium ${darkMode ? "text-blue-400" : "text-blue-600"}`}
-                            >
-                              Visit marketplace
-                            </Link>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="pt-1">
-                              {agentCards.filter(a => a.hired).length > 0 && (
-                                <div
-                                  className={`px-4 py-1.5 text-xs font-medium ${darkMode ? "text-gray-500" : "text-gray-400"}`}
-                                >
-                                  Your agents
-                                </div>
-                              )}
-                              {agentCards
-                                .filter(a => a.hired)
-                                .map(a => (
-                                  <button
-                                    type="button"
-                                    key={a.id}
-                                    onClick={e => handleAgentSelect(e, a.id, a.hired)}
-                                    className={`w-full flex items-center justify-between px-4 py-1 text-left transition-colors text-sm
-                                      ${
-                                        agentData?.id === a.id
-                                          ? darkMode
-                                            ? "bg-gray-800/80"
-                                            : "bg-gray-100/80"
-                                          : darkMode
-                                            ? "hover:bg-gray-800/40"
-                                            : "hover:bg-gray-50"
-                                      }
-                                      ${darkMode ? "text-gray-300" : "text-gray-900"}
-                                    `}
-                                  >
-                                    <span className="flex items-center gap-3">
-                                      {a?.agentImageUrl ? (
-                                        <div className="relative w-7 h-7 rounded-full overflow-hidden">
-                                          <Image
-                                            src={a.agentImageUrl}
-                                            alt={`${a.name} avatar`}
-                                            fill
-                                            className="object-cover"
-                                          />
-                                        </div>
-                                      ) : (
-                                        <span
-                                          className={`flex items-center justify-center w-7 h-7 text-xl rounded-full
-                                          ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}
-                                        >
-                                          {a?.avatar}
-                                        </span>
-                                      )}
-                                      <span className="font-medium ">{a?.name}</span>
-                                    </span>
-                                    {agentData?.id === a.id && (
-                                      <FiCheck className="h-5 w-5 text-blue-500" />
-                                    )}
-                                  </button>
-                                ))}
-                            </div>
-
-                            {agentCards.filter(a => !a.hired).length > 0 && (
-                              <>
-                                <div
-                                  className={`pt-1 pb-2 border-t ${darkMode ? "border-gray-800" : "border-gray-100"}`}
-                                >
-                                  <div
-                                    className={`px-4 py-1.5 text-xs font-medium ${darkMode ? "text-gray-500" : "text-gray-400"}`}
-                                  >
-                                    Available to hire
-                                  </div>
-                                  {agentCards
-                                    .filter(a => !a.hired)
-                                    .map(a => (
-                                      <button
-                                        type="button"
-                                        key={a.id}
-                                        onClick={e => handleAgentSelect(e, a.id, a.hired)}
-                                        className={`w-full flex items-center justify-between px-4 py-1 text-left transition-colors text-sm
-                                          ${darkMode ? "hover:bg-gray-800/40 text-gray-400" : "hover:bg-gray-50 text-gray-600"}
-                                        `}
-                                      >
-                                        <span className="flex items-center gap-3">
-                                          {a?.agentImageUrl ? (
-                                            <div className="relative w-7 h-7 rounded-full overflow-hidden">
-                                              <Image
-                                                src={a.agentImageUrl}
-                                                alt={`${a.name} avatar`}
-                                                fill
-                                                className="object-cover"
-                                              />
-                                            </div>
-                                          ) : (
-                                            <span
-                                              className={`flex items-center justify-center w-7 h-7 text-xl rounded-full
-                                              ${darkMode ? "bg-gray-800/50" : "bg-gray-100"}`}
-                                            >
-                                              {a?.avatar}
-                                            </span>
-                                          )}
-                                          <span>{a?.name}</span>
-                                        </span>
-                                        <span
-                                          className={`text-xs px-2.5 py-1 rounded-full font-medium
-                                            ${
-                                              darkMode
-                                                ? "bg-blue-900/30 text-blue-300 border border-blue-800/30"
-                                                : "bg-blue-50 text-blue-600 border border-blue-100"
-                                            }
-                                          `}
-                                        >
-                                          Hire
-                                        </span>
-                                      </button>
-                                    ))}
-                                </div>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-2 sm:mt-0 w-full sm:w-auto">
+                  <AgentDropdown
+                    agentsStatus={agentsStatus}
+                    isStreaming={isStreaming}
+                    agentData={agentData}
+                    agentCards={agentCards}
+                    onAgentSelect={handleAgentSelect}
+                  />
                 </div>
               </div>
-
-              {/* Search Button */}
-              {/* <Button
-                onClick={() => handleSearch()}
-                disabled={!query.trim() || isLoading}
-                className={`rounded-full px-6 py-2 text-white font-semibold transition-all duration-200 ${
-                  !query.trim() || isLoading
-                  ? darkMode
-                  ? "bg-gray-800 cursor-not-allowed"
-                  : "bg-gray-300 cursor-not-allowed"
-                  : darkMode
-                  ? "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:to-indigo-600"
-                  : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 hover:to-indigo-600"
-                  }`}
-                  >
-                  Search
-                  </Button> */}
             </div>
           </div>
-          {!(messages.length > 0) && (
+          {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[
-                { category: TagCategories.GENERAL, speed: 0.4 },
-                { category: TagCategories.SALES, speed: 0.8 },
-                { category: TagCategories.HR, speed: 0.5 },
+                { category: TagCategories.GENERAL, speed: 0.3 },
+                { category: TagCategories.SALES, speed: 0.5 },
+                { category: TagCategories.HR, speed: 0.4 },
               ].map((item, index) => (
                 <TagCarousel
                   key={index}
@@ -1036,302 +862,169 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
               ))}
             </div>
           )}
-          {chatPairs.length > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-6">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
-                disabled={currentMessageIndex === 0}
-                className={`rounded-full transition-colors ${
-                  darkMode
-                    ? "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-                    : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <FiChevronLeft className="h-5 w-5" />
-              </Button>
-              <span
-                className={`text-sm font-medium tabular-nums ${
-                  darkMode ? "text-gray-400" : "text-gray-600"
-                }`}
-              >
-                {currentMessageIndex + 1} of {chatPairs.length}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() =>
-                  setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))
-                }
-                disabled={currentMessageIndex === chatPairs.length - 1}
-                className={`rounded-full transition-colors ${
-                  darkMode
-                    ? "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-                    : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <FiChevronRight className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setInitialLoadComplete(false);
-                  fetchMessages(true);
-                }}
-                className={`ml-2 rounded-full transition-colors ${
-                  darkMode
-                    ? "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-                    : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-                }`}
-                title="Refresh thread"
-              >
-                <FiRefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+          <ChatNavigationControls
+            currentIndex={currentMessageIndex}
+            totalItems={chatPairs.length}
+            isStreaming={isStreaming || isLoading}
+            onPrevious={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
+            onNext={() => setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))}
+            onRefresh={() => {
+              if (isStreaming || isLoading) return;
+              setInitialLoadComplete(false);
+              setIsLoading(true);
+              fetchMessages(true);
+            }}
+            canNavigateNext={false}
+            canNavigatePrevious={false}
+          />
         </div>
       </div>
-      {messages?.length && messages.length > 0 && (
-        <div className="w-full mt-2">
-          <div className="mb-4">
-            <h2 className={`text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
-              Results
-            </h2>
+      {!(threadId === "new" || isStreaming) && messages.length === 0 ? (
+        <div className="flex w-full h-full">
+          <MessagePlaceholder />
+        </div>
+      ) : (
+        <></>
+      )}
+      {messages && messages.length > 0 && (
+        <div className="w-full">
+          <div className="mb-4 flex justify-between items-center">
+            <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
           </div>
 
           <div className="space-y-6">
             {messages.map(m => {
-              // Debug log to check sources
-              if (m.type === "agent" && m.sources) {
-                console.log(`Message ${m.id} has ${m.sources.length} sources:`, m.sources);
-              }
-
               return (
                 m.type === "agent" && (
-                  <div
-                    key={m.id}
-                    className={`rounded-xl p-6 transition-shadow ${
-                      darkMode
-                        ? "bg-gray-900/70 border border-gray-700 shadow-md hover:shadow-lg"
-                        : "bg-white border border-gray-200 shadow-sm hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-start">
-                      <div
-                        className={`rounded-full  mr-4 justify-center items-center h-12 w-12 bg-blue-50`}
-                      >
-                        <div className={`h-12 w-12 text-blue-600`}>
-                          <OrbAura />
+                  <>
+                    <div
+                      key={m.id}
+                      className="rounded-xl p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-start">
+                        <div
+                          className={`rounded-full hidden md:flex  mr-4 justify-center items-center h-12 w-12 bg-blue-50`}
+                        >
+                          <div className={`h-12 w-12 text-blue-600`}>
+                            <OrbAura />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex-1">
-                        {m.sources && m.sources.length > 0 ? (
-                          <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
-                            <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-                              <li className="mr-2">
-                                <button
-                                  onClick={() => setActiveTab("content")}
-                                  className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
-                                    activeTab === "content"
-                                      ? `${darkMode ? "text-blue-500 border-blue-500 font-semibold" : "text-blue-600 border-blue-600 font-semibold"}`
-                                      : `${darkMode ? "text-gray-400 border-transparent hover:text-gray-300" : "text-gray-500 border-transparent hover:text-gray-600"}`
-                                  } transition-all duration-200`}
-                                >
-                                  <BsTextParagraph className="w-4 h-4 mr-2" />
-                                  Content
-                                </button>
-                              </li>
-                              <li className="mr-2">
-                                <button
-                                  onClick={() => setActiveTab("sources")}
-                                  className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
-                                    activeTab === "sources"
-                                      ? `${darkMode ? "text-blue-500 border-blue-500 font-semibold" : "text-blue-600 border-blue-600 font-semibold"}`
-                                      : `${darkMode ? "text-gray-400 border-transparent hover:text-gray-300" : "text-gray-500 border-transparent hover:text-gray-600"}`
-                                  } transition-all duration-200`}
-                                >
-                                  <FiLink className="w-4 h-4 mr-2" />
-                                  Sources
-                                  <span
-                                    className={`ml-2 px-2 py-0.5 text-xs rounded-full ${darkMode ? "bg-blue-900/50 text-blue-300" : "bg-blue-100 text-blue-700"}`}
+                        <div className="flex-1">
+                          {isStreaming && (
+                            <SearchQueryDisplay
+                              showSearchQueries={showSearchQueries}
+                              streamingSearchQueries={streamingSearchQueries}
+                              isStreaming={isStreaming}
+                            />
+                          )}
+                          {m.sources && m.sources.length > 0 ? (
+                            <div className="mb-4 border-b border-gray-200">
+                              <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+                                <li className="mr-2">
+                                  <button
+                                    onClick={() => setActiveTab("content")}
+                                    className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
+                                      activeTab === "content"
+                                        ? "text-blue-600 border-blue-600 font-semibold"
+                                        : "text-gray-500 border-transparent hover:text-gray-600"
+                                    } duration-200`}
                                   >
-                                    {m.sources.length}
-                                  </span>
-                                </button>
-                              </li>
-                            </ul>
-                          </div>
-                        ) : null}
-
-                        {(!m.sources || m.sources.length === 0 || activeTab === "content") && (
-                          <div className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                            {m.content === null ? (
-                              <div className="flex items-center">
-                                <div className=" mr-2">
-                                  <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                                </div>
-                                <p className="italic">Query seems empty, Please Search again.</p>
-                              </div>
-                            ) : format === "table" &&
-                              parseStructuredData(m.content).isStructured ? (
-                              renderAsTable(
-                                m.content,
-                                darkMode,
-                                messagesContainerRef,
-                                hasMoreMessages,
-                                loadMoreMessages
-                              )
-                            ) : isStructuredResearchResult(m.content) ? (
-                              <StructuredContentRenderer content={m.content} darkMode={darkMode} />
-                            ) : (
-                              ProcessCitationReferences(m.content, m.sources || [])
-                            )}
-                          </div>
-                        )}
-
-                        {((m.sources && m.sources.length > 0) ||
-                          (m.sources_gathered && m.sources_gathered.length > 0)) &&
-                          activeTab === "sources" && (
-                            <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} mt-2`}>
-                              <div className="mb-3 flex items-center">
-                                <FiInfo className="w-4 h-4 mr-2 text-blue-500" />
-                                <span className="text-sm text-opacity-80">
-                                  {m.sources?.length || m.sources_gathered?.length
-                                    ? `${m.sources?.length || m.sources_gathered?.length} ${(m.sources?.length || m.sources_gathered?.length) === 1 ? "source" : "sources"} used to generate this response`
-                                    : "No sources available"}
-                                </span>
-                              </div>
-                              <ul className="space-y-3">
-                                {(
-                                  (m.sources && m.sources.length > 0
-                                    ? m.sources
-                                    : m.sources_gathered) || []
-                                ).map((source: any, index: number) => {
-                                  // Normalize source object to handle both formats
-                                  const src = source?.value
-                                    ? source
-                                    : {
-                                        value: source,
-                                        title: `Source ${index + 1}`,
-                                        short_url: `[${index + 1}]`,
-                                      };
-
-                                  return (
-                                    <li
-                                      key={index}
-                                      className={`p-4 rounded-lg ${
-                                        darkMode
-                                          ? "bg-gray-800/50 hover:bg-gray-800/70"
-                                          : "bg-gray-100/70 hover:bg-gray-100"
-                                      } transition-colors duration-150 border ${
-                                        darkMode ? "border-gray-700" : "border-gray-200"
-                                      }`}
-                                    >
-                                      <div className="flex items-start">
-                                        <div
-                                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mr-3 ${
-                                            darkMode
-                                              ? "bg-blue-900/50 text-blue-300"
-                                              : "bg-blue-100 text-blue-700"
-                                          }`}
-                                        >
-                                          <span className="text-xs font-medium">
-                                            {src.short_url || `[${index + 1}]`}
-                                          </span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <h4
-                                            className={`text-sm font-medium ${
-                                              darkMode ? "text-gray-200" : "text-gray-800"
-                                            } line-clamp-2`}
-                                            title={src.title || "Untitled Source"}
-                                          >
-                                            {src.title || "Untitled Source"}
-                                          </h4>
-                                          <div className="flex items-center justify-between mt-2">
-                                            <a
-                                              href={src.value || "#"}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className={`text-xs flex items-center ${
-                                                darkMode
-                                                  ? "text-blue-400 hover:text-blue-300"
-                                                  : "text-blue-600 hover:text-blue-500"
-                                              } hover:underline truncate max-w-[70%]`}
-                                              title={src.value}
-                                            >
-                                              {src.short_url || `Source ${index + 1}`}
-                                              <FiExternalLink className="ml-1 w-3 h-3 flex-shrink-0" />
-                                            </a>
-                                            <a
-                                              href={src.value || "#"}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className={`ml-2 px-2 py-1 text-xs rounded ${
-                                                darkMode
-                                                  ? "bg-blue-900/30 text-blue-300 hover:bg-blue-900/50"
-                                                  : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                                              } transition-colors duration-150 flex items-center whitespace-nowrap`}
-                                            >
-                                              <FiExternalLink className="mr-1 w-3 h-3" />
-                                              Visit
-                                            </a>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </li>
-                                  );
-                                })}
-                                {!m.sources?.length && !m.sources_gathered?.length && (
-                                  <li className="p-4 text-center text-gray-500">
-                                    No sources available
-                                  </li>
-                                )}
+                                    <BsTextParagraph className="w-4 h-4 mr-2" />
+                                    Content
+                                  </button>
+                                </li>
+                                <li className="mr-2">
+                                  <button
+                                    onClick={() => setActiveTab("sources")}
+                                    className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
+                                      activeTab === "sources"
+                                        ? "text-blue-600 border-blue-600 font-semibold"
+                                        : "text-gray-500 border-transparent hover:text-gray-600"
+                                    } duration-200`}
+                                  >
+                                    <FiLink className="w-4 h-4 mr-2" />
+                                    Sources
+                                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+                                      {m.sources.length}
+                                    </span>
+                                  </button>
+                                </li>
                               </ul>
                             </div>
+                          ) : null}
+
+                          {(!m.sources || m.sources.length === 0 || activeTab === "content") &&
+                            !isStreaming && (
+                              <div className="text-gray-700">
+                                {m.content === null ? (
+                                  <div className="flex items-center">
+                                    <div className="mr-2">
+                                      <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                                    </div>
+                                    <p className="italic">
+                                      Query seems empty, Please Search again.
+                                    </p>
+                                  </div>
+                                ) : format === "table" &&
+                                  parseStructuredData(m.content).isStructured &&
+                                  /(fname|lname|link)/i.test(m.content) ? (
+                                  <div className="flex w-full">
+                                    {renderAsTable(
+                                      m.content,
+                                      false,
+                                      messagesContainerRef,
+                                      hasMoreMessages,
+                                      loadMoreMessages
+                                    )}
+                                  </div>
+                                ) : (
+                                  <StyledMarkdown
+                                    content={m.content}
+                                    sources={m.sources || m.sources_gathered}
+                                  />
+                                )}
+                              </div>
+                            )}
+
+                          {activeTab === "sources" && (
+                            <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
                           )}
 
-                        <div className="mt-4 flex justify-between items-center">
-                          <span
-                            title={getFullTimestamp(m.timestamp)}
-                            className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} hover:${darkMode ? "text-gray-300" : "text-gray-600"} transition-colors cursor-default flex items-center`}
-                          >
-                            <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
-                            {formatTimestamp(m.timestamp)}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {/* Only show feedback buttons when not loading (streaming is complete) and for agent messages */}
-                            {!isLoading && m.type === "agent" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
-                                  onClick={() => handleFeedback(m.id, true)}
-                                >
-                                  <FiThumbsUp
-                                    className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-green-500`}
-                                  />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={`rounded-full h-8 w-8 ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
-                                  onClick={() => handleFeedback(m.id, false)}
-                                >
-                                  <FiThumbsDown
-                                    className={`h-4 w-4 ${darkMode ? "text-gray-400" : "text-gray-500"} hover:text-red-500`}
-                                  />
-                                </Button>
-                              </>
-                            )}
+                          <div className="mt-4 flex justify-between items-center">
+                            <span
+                              title={getFullTimestamp(m.timestamp)}
+                              className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"
+                            >
+                              <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
+                              {formatTimestamp(m.timestamp)}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {!isLoading && m.type === "agent" && !feedbackSubmitted[m.id] && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-full h-8 w-8 hover:bg-gray-100"
+                                    onClick={() => handleFeedback(m.id, true)}
+                                  >
+                                    <FiThumbsUp className="h-4 w-4 text-gray-500 hover:text-green-500" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-full h-8 w-8 hover:bg-gray-100"
+                                    onClick={() => handleFeedback(m.id, false)}
+                                  >
+                                    <FiThumbsDown className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </>
                 )
               );
             })}
@@ -1339,65 +1032,28 @@ const ChatThreadView = ({ threadId }: { threadId: string }) => {
         </div>
       )}
 
-      <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        <DialogContent
-          className={`sm:max-w-md ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white"}`}
-        >
-          <DialogHeader>
-            <DialogTitle className={darkMode ? "text-white" : "text-gray-900"}>
-              {currentFeedback?.isPositive ? "What was helpful?" : "What went wrong?"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder={
-                currentFeedback?.isPositive
-                  ? "Tell us what was helpful about this response..."
-                  : "Tell us what went wrong with this response..."
-              }
-              value={currentFeedback?.comment || ""}
-              onChange={e =>
-                setCurrentFeedback(prev => (prev ? { ...prev, comment: e.target.value } : null))
-              }
-              className={`min-h-[100px] ${
-                darkMode
-                  ? "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                  : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-500"
-              }`}
-            />
-          </div>
-          <DialogFooter className="flex justify-end gap-2">
-            <DialogClose asChild>
-              <Button
-                variant="outline"
-                className={
-                  darkMode
-                    ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                }
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              onClick={() => {
-                if (currentFeedback) {
-                  handleFeedbackSubmit(currentFeedback);
-                  setFeedbackModalOpen(false);
-                  setCurrentFeedback(null);
-                }
-              }}
-              className={
-                darkMode
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
-              }
-            >
-              Submit Feedback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {linkedinModalOpen && (
+        <LinkedInUrlModal
+          open={linkedinModalOpen}
+          onOpenChange={isOpen => {
+            setLinkedinModalOpen(isOpen);
+            // If the modal is closed and the profile still lacks a URL, set the flag
+            if (!isOpen && profile && !profile.linkedin_url) {
+              localStorage.setItem("hasDismissedLinkedInModal", "true");
+            }
+          }}
+        />
+      )}
+
+      <FeedbackModal
+        open={feedbackModalOpen}
+        onOpenChange={setFeedbackModalOpen}
+        initialFeedback={currentFeedback}
+        onSubmit={feedback => {
+          handleFeedbackSubmit(feedback);
+          setCurrentFeedback(null);
+        }}
+      />
     </div>
   );
 };

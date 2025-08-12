@@ -21,7 +21,7 @@ export const Citation = ({ index, sources }: { index: number; sources: SourceTyp
             <FiBookmark className="w-3 h-3 mr-1" />[{index}]
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-md p-3 text-sm">
+        <TooltipContent side="top" className="max-w-md p-3 bg-gray-50 text-sm">
           <div className="font-medium mb-1">{source.title || "Source Reference"}</div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
             {source.value}

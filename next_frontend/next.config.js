@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from "@sentry/nextjs";
-import withPWA from "next-pwa";
 
 const advancedHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -18,16 +17,26 @@ const LOCAL_API = "http://localhost:8000";
 const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
+    instrumentationHook: true,
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
   },
   images: {
-    domains: ["wznveojncixcptajnjom.supabase.co"],
-  },
-  pwa: {
-    dest: "public",
-    register: true,
-    skipWaiting: true,
-    disable: process.env.NODE_ENV === "development",
-    sw: "/sw.js",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "wznveojncixcptajnjom.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/public-files/**",
+      },
+      {
+        protocol: "https",
+        hostname: "mtxrobrwanikajymnkaf.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/public-files/**",
+      },
+    ],
   },
   async headers() {
     return [{ source: "/:path*", headers: advancedHeaders }];

@@ -18,30 +18,28 @@ const initialState: ProfileState = {
 };
 
 export const fetchProfile = createAsyncThunk(
-  'profile/fetchProfile',
+  "profile/fetchProfile",
   async (_, { rejectWithValue }) => {
     try {
       const response = await apiClient.fetchProfile();
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch profile');
+      return rejectWithValue(error.message || "Failed to fetch profile");
     }
   }
 );
 
 export const loginUser = createAsyncThunk(
-  'profile/loginUser',
+  "profile/loginUser",
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
       const response = await apiClient.handleLoginWithStorage(email, password);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+      return rejectWithValue(error.message || "Login failed");
     }
   }
 );
-
-
 
 const profileSlice = createSlice({
   name: "profile",
@@ -51,9 +49,9 @@ const profileSlice = createSlice({
       state.profile = null;
       state.error = null;
       state.isAuthenticated = false;
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('discover_minds_access_token');
-        localStorage.removeItem('discover_minds_refresh_token');
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("discover_minds_access_token");
+        localStorage.removeItem("discover_minds_refresh_token");
       }
     },
     setProfileData: (state, action: PayloadAction<UserProfile>) => {
@@ -66,9 +64,9 @@ const profileSlice = createSlice({
       state.loading = action.payload;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(fetchProfile.pending, (state) => {
+      .addCase(fetchProfile.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -78,14 +76,14 @@ const profileSlice = createSlice({
           state.profile = action.payload.data;
           state.isAuthenticated = true;
         } else {
-          state.error = action.payload.message || 'Failed to fetch profile';
+          state.error = action.payload.message || "Failed to fetch profile";
         }
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string || 'Failed to fetch profile';
+        state.error = (action.payload as string) || "Failed to fetch profile";
       })
-      .addCase(loginUser.pending, (state) => {
+      .addCase(loginUser.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -94,14 +92,14 @@ const profileSlice = createSlice({
         if (action.payload.success && action.payload.status_code === 200) {
           state.isAuthenticated = true;
         } else {
-          state.error = action.payload.message || 'Login failed';
+          state.error = action.payload.message || "Login failed";
         }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string || 'Login failed';
+        state.error = (action.payload as string) || "Login failed";
       });
-  }
+  },
 });
 
 export const { clearProfile, setProfileData, setLoadingState } = profileSlice.actions;

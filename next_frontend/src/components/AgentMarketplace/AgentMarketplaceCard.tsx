@@ -1,5 +1,5 @@
 import type { SpringOptions } from "framer-motion";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { capitalizeText } from "@/utils/globalconstant";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Star, Users, CheckCircle, Sparkles, Zap, Crown } from "lucide-react";
@@ -96,17 +96,20 @@ export default function AgentMarketplaceCard({
   onHireAgent,
   onUnhireAgent,
   loading = null,
-  containerHeight = "450px",
-  containerWidth = "380px",
-  cardHeight = "420px",
-  cardWidth = "360px",
+  containerHeight = "auto",
+  containerWidth = "100%",
+  cardHeight = "auto",
+  cardWidth = "100%",
   scaleOnHover = 1.04,
   rotateAmplitude = 6,
-  showMobileWarning = true,
+  showMobileWarning = false,
   showTooltip = true,
   darkMode = false,
 }: AgentMarketplaceCardProps) {
   const ref = useRef<HTMLElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Motion values
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useSpring(useMotionValue(0), springValues);
@@ -119,13 +122,25 @@ export default function AgentMarketplaceCard({
     damping: 30,
     mass: 0.8,
   });
+
   const [lastY, setLastY] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const CategoryIcon = getCategoryIcon(agent.category);
   const gradientClass = getCategoryGradient(agent.category, darkMode);
 
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   function handleMouse(e: React.MouseEvent<HTMLElement>) {
-    if (!ref.current) return;
+    if (!ref.current || isMobile) return;
 
     const rect = ref.current.getBoundingClientRect();
     const offsetX = e.clientX - rect.left - rect.width / 2;
@@ -146,6 +161,7 @@ export default function AgentMarketplaceCard({
   }
 
   function handleMouseEnter() {
+    if (isMobile) return;
     setIsHovering(true);
     scale.set(scaleOnHover);
     opacity.set(1);
@@ -153,6 +169,7 @@ export default function AgentMarketplaceCard({
   }
 
   function handleMouseLeave() {
+    if (isMobile) return;
     setIsHovering(false);
     opacity.set(0);
     glowOpacity.set(0);
@@ -179,73 +196,48 @@ export default function AgentMarketplaceCard({
   return (
     <figure
       ref={ref}
-      className="relative w-full h-full [perspective:1000px] flex flex-col items-center justify-center group"
+      className={`relative w-full ${
+        isMobile ? "h-auto" : "h-full [perspective:1000px]"
+      } flex flex-col items-center justify-center group`}
       style={{
-        height: containerHeight,
+        height: isMobile ? "auto" : containerHeight,
         width: containerWidth,
       }}
       onMouseMove={handleMouse}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {showMobileWarning && (
-        <div className="absolute top-4 text-center text-sm block sm:hidden z-50">
-          <div className="bg-black/80 text-white px-3 py-1 rounded-full text-xs">
-            Best viewed on desktop
-          </div>
-        </div>
-      )}
-
       <motion.div
-        className={`absolute inset-0 rounded-[20px] bg-gradient-to-br ${gradientClass} blur-xl opacity-0`}
-        style={{
-          width: cardWidth,
-          height: cardHeight,
-          opacity: glowOpacity,
-        }}
-      />
-
-      <motion.div
-        className={`relative [transform-style:preserve-3d] rounded-[20px] border backdrop-blur-sm overflow-hidden transition-all duration-300 ${
+        className={`relative ${
+          isMobile ? "" : "[transform-style:preserve-3d]"
+        } rounded-xl sm:rounded-2xl border backdrop-blur-sm overflow-hidden transition-all duration-300 w-full ${
           darkMode
-            ? "bg-gray-900/80 border-gray-700/50 shadow-2xl"
-            : "bg-white/90 border-gray-200/50 shadow-xl"
+            ? "bg-gray-900/80 border-gray-700/50 shadow-lg sm:shadow-2xl"
+            : "bg-white/90 border-gray-200/50 shadow-lg sm:shadow-xl"
         }`}
         style={{
           width: cardWidth,
-          height: cardHeight,
-          rotateX,
-          rotateY,
-          scale,
+          height: isMobile ? "auto" : cardHeight,
+          rotateX: isMobile ? 0 : rotateX,
+          rotateY: isMobile ? 0 : rotateY,
+          scale: isMobile ? 1 : scale,
+          minHeight: isMobile ? "400px" : "auto",
         }}
       >
         <div className={`absolute inset-0 bg-gradient-to-br ${gradientClass} opacity-50`} />
 
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
-          <motion.div
-            className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(255,255,255,0.1)_49%,rgba(255,255,255,0.1)_51%,transparent_52%)]"
-            animate={{
-              backgroundPosition: isHovering ? ["0% 0%", "100% 100%"] : "0% 0%",
-            }}
-            transition={{
-              duration: 2,
-              repeat: isHovering ? Infinity : 0,
-              ease: "linear",
-            }}
-          />
-        </div>
 
-        <div className="relative z-10 p-6 h-full flex flex-col">
+        <div className="relative z-10 p-4 sm:p-6 h-full flex flex-col">
+          {/* Header Section */}
           <motion.div
-            className="flex items-start space-x-4 mb-4"
+            className="flex items-start space-x-3 sm:space-x-4 mb-4"
             style={{
-              transform: "translateZ(30px)",
+              transform: isMobile ? "none" : "translateZ(30px)",
             }}
           >
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               {agent.agentImageUrl ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden mb-2">
+                <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden">
                   <Image
                     src={agent.agentImageUrl}
                     alt={`${agent.name} avatar`}
@@ -254,12 +246,13 @@ export default function AgentMarketplaceCard({
                   />
                 </div>
               ) : (
-                <div className="text-5xl mb-2">{agent.avatar}</div>
+                <div className="text-3xl sm:text-5xl">{agent.avatar}</div>
               )}
             </div>
+
             <div className="flex-1 min-w-0">
               <h3
-                className={`text-xl font-bold mb-2 truncate ${
+                className={`text-lg sm:text-xl font-bold mb-2 truncate ${
                   darkMode ? "text-gray-100" : "text-gray-800"
                 }`}
               >
@@ -271,16 +264,19 @@ export default function AgentMarketplaceCard({
                   darkMode
                     ? "bg-gray-800/80 text-gray-200 border-gray-600/50"
                     : "bg-gray-100/80 text-gray-700 border-gray-300/50"
-                } backdrop-blur-sm flex items-center max-w-[90px] gap-1 justify-center `}
+                } backdrop-blur-sm flex items-center gap-1 text-xs sm:text-sm px-2 py-1`}
               >
                 <CategoryIcon className="h-3 w-3" />
-                {capitalizeText(agent.category)}
+                <span className="hidden sm:inline">{capitalizeText(agent.category)}</span>
+                <span className="sm:hidden">{agent.category.split(" ")[0]}</span>
               </Badge>
             </div>
+
+            {/* Status indicator */}
             <motion.div
-              className="flex items-center justify-between mb-6"
+              className="flex items-center justify-center"
               style={{
-                transform: "translateZ(25px)",
+                transform: isMobile ? "none" : "translateZ(25px)",
               }}
             >
               {isHired && (
@@ -290,40 +286,38 @@ export default function AgentMarketplaceCard({
                   className="flex items-center gap-1 text-green-500"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  <span className="text-xs font-medium">Active</span>
+                  <span className="text-xs font-medium hidden sm:inline">Active</span>
                 </motion.div>
               )}
             </motion.div>
-            {/* <div className="text-right">
-              <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                {agent.price}
-              </div>
-              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>per month</div>
-            </div> */}
           </motion.div>
 
+          {/* Description */}
           <motion.div
-            className="mb-4 flex-1 min-h-[84px] "
+            className="mb-4 flex-1 min-h-[100px] "
             style={{
-              transform: "translateZ(25px)",
+              transform: isMobile ? "none" : "translateZ(25px)",
             }}
           >
             <p
-              className={`text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-sm leading-relaxed line-clamp-3 sm:line-clamp-none ${
+                darkMode ? "text-gray-300" : "text-gray-600"
+              }`}
             >
               {agent.description}
             </p>
           </motion.div>
 
+          {/* Features */}
           {agent.features.length > 0 && (
             <motion.div
-              className="mb-4"
+              className="mb-4 sm:mb-6"
               style={{
-                transform: "translateZ(20px)",
+                transform: isMobile ? "none" : "translateZ(20px)",
               }}
             >
               <h4
-                className={`text-sm font-semibold mb-3 flex items-center gap-2 ${
+                className={`text-sm font-semibold mb-2 sm:mb-3 flex items-center gap-2 ${
                   darkMode ? "text-gray-200" : "text-gray-700"
                 }`}
               >
@@ -331,7 +325,7 @@ export default function AgentMarketplaceCard({
                 Key Features
               </h4>
               <div className="grid grid-cols-1 gap-2">
-                {agent.features.slice(0, 3).map((feature, index) => (
+                {agent.features.slice(0, isMobile ? 2 : 3).map((feature, index) => (
                   <motion.div
                     key={index}
                     className={`text-xs flex items-center gap-2 p-2 rounded-lg ${
@@ -347,20 +341,29 @@ export default function AgentMarketplaceCard({
                     </span>
                   </motion.div>
                 ))}
+                {isMobile && agent.features.length > 2 && (
+                  <div
+                    className={`text-xs text-center py-1 ${
+                      darkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    +{agent.features.length - 2} more features
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
 
           <motion.div
-            className="mt-6"
+            className="mt-auto"
             style={{
-              transform: "translateZ(35px)",
+              transform: isMobile ? "none" : "translateZ(35px)",
             }}
           >
             {isHired ? (
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg"
+                  className="flex-1  min-h-[40px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg text-sm h-9 sm:h-10"
                   variant="outline"
                   disabled
                   size="sm"
@@ -376,7 +379,7 @@ export default function AgentMarketplaceCard({
                           variant="secondary"
                           size="sm"
                           disabled
-                          className={`shadow-lg cursor-not-allowed transition-colors duration-300 ${
+                          className={`shadow-lg cursor-not-allowed transition-colors duration-300 text-sm h-9 sm:h-10 sm:flex-none ${
                             darkMode
                               ? "bg-gray-800/80 text-gray-400 border border-gray-700/50 hover:bg-gray-700/80"
                               : "bg-gray-100/80 text-gray-500 border border-gray-300/50 hover:bg-gray-200/80"
@@ -386,7 +389,11 @@ export default function AgentMarketplaceCard({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent
-                        className={`rounded-lg border px-3 py-2 text-sm shadow-lg ${darkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-white text-gray-700 border-gray-200"}`}
+                        className={`rounded-lg border px-3 py-2 text-sm shadow-lg ${
+                          darkMode
+                            ? "bg-gray-800 text-gray-200 border-gray-700"
+                            : "bg-white text-gray-700 border-gray-200"
+                        }`}
                       >
                         <p>This is a core agent and cannot be removed.</p>
                       </TooltipContent>
@@ -398,7 +405,7 @@ export default function AgentMarketplaceCard({
                     size="sm"
                     onClick={handleUnhire}
                     disabled={loading === `unhire-${agent.id}`}
-                    className={`shadow-lg hover:shadow-xl transition-all duration-300 ${
+                    className={`shadow-lg hover:shadow-xl transition-all duration-300 text-sm h-9 sm:h-10 sm:flex-none ${
                       darkMode
                         ? "bg-red-900/60 text-red-300 border border-red-700/40 hover:bg-red-800/70 hover:text-red-200"
                         : "bg-red-500/60 text-white border border-red-400/30 hover:bg-red-600"
@@ -422,7 +429,7 @@ export default function AgentMarketplaceCard({
               </div>
             ) : (
               <Button
-                className="w-full bg-gradient-to-r h-[40px] from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
+                className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-sm h-10 sm:h-11"
                 onClick={handleHire}
                 disabled={loading === agent.id}
                 size="sm"
@@ -434,12 +441,14 @@ export default function AgentMarketplaceCard({
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                       className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
                     />
-                    Hiring...
+                    <span className="hidden sm:inline">Hiring...</span>
+                    <span className="sm:hidden">...</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4" />
-                    Hire Agent
+                    <span className="hidden sm:inline">Hire Agent</span>
+                    <span className="sm:hidden">Hire</span>
                   </div>
                 )}
               </Button>
@@ -447,15 +456,19 @@ export default function AgentMarketplaceCard({
           </motion.div>
         </div>
 
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12"
-          initial={{ x: "-100%" }}
-          animate={{ x: isHovering ? "100%" : "-100%" }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-        />
+        {/* Shine effect - only on desktop */}
+        {!isMobile && (
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12"
+            initial={{ x: "-100%" }}
+            animate={{ x: isHovering ? "100%" : "-100%" }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+          />
+        )}
       </motion.div>
 
-      {showTooltip && (
+      {/* Tooltip - only show on desktop */}
+      {showTooltip && !isMobile && (
         <motion.div
           className="pointer-events-none absolute left-0 top-0 rounded-lg bg-black/90 backdrop-blur-sm text-white px-3 py-2 text-xs opacity-0 z-50 border border-white/10"
           style={{
