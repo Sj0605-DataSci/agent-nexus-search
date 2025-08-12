@@ -734,6 +734,11 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     """
     if hasattr(state, "model_dump"):
         state = state.model_dump()
+    
+    if settings.ENVIRONMENT == "STAGING":
+        model = "gemini-2.5-flash"
+    else:
+        model = "gemini-2.5-pro"    
 
     supabase_client = await get_async_supabase_client()
     configurable = Configuration.from_runnable_config(config)
@@ -771,16 +776,8 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
             summaries="\n\n---\n\n".join(str(summaries))
         )
         
-    # Use Gemini client with system instruction
-    if settings.ENVIRONMENT == "STAGING":
-        llm = GeminiChatModel(
-            model="gemini-2.5-flash",
-            temperature=0,
-            system_instruction=system_instruction
-        )
-    elif settings.ENVIRONMENT == "PRODUCTION":
-        llm = GeminiChatModel(
-            model="gemini-2.5-pro",
+    llm = GeminiChatModel(
+            model=model,
             temperature=0,
             system_instruction=system_instruction
         )
@@ -789,14 +786,18 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
     output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
 
-    if input_tokens <= 200000:
-        input_tokens_cost = (input_tokens/1000000) * 1.25
-    else:
-        input_tokens_cost = (input_tokens/1000000) * 2.5
-    if output_tokens <= 200000:
-        output_tokens_cost = (output_tokens/1000000) * 10
-    else:
-        output_tokens_cost = (output_tokens/1000000) * 15
+    if model == "gemini-2.5-flash":
+        input_tokens_cost = (input_tokens/1000000) * 0.15
+        output_tokens_cost = (output_tokens/1000000) * 0.60
+    elif model == "gemini-2.5-pro":
+        if input_tokens <= 200000:
+            input_tokens_cost = (input_tokens/1000000) * 1.25
+        else:
+            input_tokens_cost = (input_tokens/1000000) * 2.5
+        if output_tokens <= 200000:
+            output_tokens_cost = (output_tokens/1000000) * 10
+        else:
+            output_tokens_cost = (output_tokens/1000000) * 15
     
     cost_dollar=input_tokens_cost + output_tokens_cost
     cost_rupees = cost_dollar * 85.86
@@ -805,7 +806,7 @@ async def reflection(state: OverallState, config: RunnableConfig) -> ReflectionS
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id,
                 "message_id": current_message_id,
-                "model": "gemini-2.5-flash",
+                "model": model,
                 "node": "reflection",
                 "weave_url": state["weave_url"],
                 "model_input_tokens": float(input_tokens), 
@@ -925,6 +926,10 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     # Fix citation numbering - renumber sources_gathered to have sequential citations
     sources_gathered = state.get("sources_gathered", [])
     renumbered_sources = []
+    if settings.ENVIRONMENT == "STAGING":
+        model = "gemini-2.5-flash"
+    else:
+        model = "gemini-2.5-pro"
     
     for idx, source in enumerate(sources_gathered):
         # Create a new source with sequential numbering
@@ -989,18 +994,11 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     current_message_id = state.get("current_message_id", "")
 
     # Use Gemini client with system instruction
-    if settings.ENVIRONMENT == "STAGING":
-        llm = GeminiChatModel(
-            model="gemini-2.5-flash",
-            temperature=0,
-            system_instruction=system_instruction
-        )
-    elif settings.ENVIRONMENT == "PRODUCTION":
-        llm = GeminiChatModel(
-            model="gemini-2.5-pro",
-            temperature=0,
-            system_instruction=system_instruction
-        )
+    llm = GeminiChatModel(
+        model=model,
+        temperature=0,
+        system_instruction=system_instruction
+    )
     result_table, usage_metadata_table = await llm.with_structured_output(prompt=user_prompt_table, schema_type=PersonDetailsResponse)
     usage_metadata = usage_metadata_table
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
@@ -1030,9 +1028,19 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
         
         # Invalidate chat messages cache for this thread
         invalidate_chat_messages_cache(chat_thread_id)
-        
-        input_tokens_cost = (input_tokens/1000000) * 0.3
-        output_tokens_cost = (output_tokens/1000000) * 2.5
+
+        if model == "gemini-2.5-flash":
+            input_tokens_cost = (input_tokens/1000000) * 0.15
+            output_tokens_cost = (output_tokens/1000000) * 0.60
+        elif model == "gemini-2.5-pro":
+            if input_tokens <= 200000:
+                input_tokens_cost = (input_tokens/1000000) * 1.25
+            else:
+                input_tokens_cost = (input_tokens/1000000) * 2.5
+            if output_tokens <= 200000:
+                output_tokens_cost = (output_tokens/1000000) * 10
+            else:
+                output_tokens_cost = (output_tokens/1000000) * 15
         
         cost_dollar=input_tokens_cost + output_tokens_cost
         cost_rupees = cost_dollar * 85.86
@@ -1042,7 +1050,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
                 "agent_id": agent_id, 
                 "chat_thread_id": chat_thread_id,
                 "message_id": current_message_id,
-                "model": "gemini-2.5-pro",
+                "model": model,
                 "node": "finalize_answer",
                 "weave_url": state["weave_url"],
                 "model_input_tokens": float(input_tokens), 
