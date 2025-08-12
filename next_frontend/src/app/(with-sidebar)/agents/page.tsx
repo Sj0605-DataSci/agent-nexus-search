@@ -144,28 +144,32 @@ const Agents = () => {
 
   return (
     <div className="container mx-auto  pt-12 pb-12 sm:pb-16 md:pb-20 relative z-10">
-      <div className="text-center mb-12 sm:mb-16 relative px-2 sm:px-0">
-        <div className="relative mb-4 inline-block max-w-full">
-        
-          <h1
-            className={`text-5xl md:text-6xl font-bold mb-6 h-[100px] md:h-[80px] bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600
-            } bg-clip-text text-transparent`}
-          >
-            AI Agent Command Center
-          </h1>
-          <div
-            className={`absolute -inset-2 sm:-inset-4 bg-gradient-to-r ${
-              darkMode ? "from-blue-500/15 to-purple-500/15" : "from-blue-400/10 to-purple-400/10"
-            } rounded-3xl blur-xl opacity-50`}
-          />
-          <p
-            className={`text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed ${
-              darkMode ? "text-gray-200" : "text-gray-600"
-            } px-2 sm:px-0`}
-          >
-            Fine-tune your AI agents to perfection. Customize personalities, behaviors, and
-            communication styles to create the perfect digital workforce for your needs.
-          </p>
+      <div className="text-center mb-8 sm:mb-12 relative px-2 sm:px-0">
+        <div className="relative mb-3 inline-block max-w-full">
+          <div className="flex flex-col items-center">
+            <h1
+              className={`text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600
+              bg-clip-text text-transparent leading-tight px-2 text-center`}
+            >
+              Customise the search
+            </h1>
+            <div
+              className={`absolute -inset-2 bg-gradient-to-r ${
+                darkMode ? "from-blue-500/15 to-purple-500/15" : "from-blue-400/10 to-purple-400/10"
+              } rounded-3xl blur-xl opacity-50`}
+            />
+          </div>
+
+          <div className="mt-4 max-w-3xl mx-auto">
+            <p
+              className={`text-sm sm:text-base max-w-2xl mx-auto leading-relaxed ${
+                darkMode ? "text-gray-200" : "text-gray-600"
+              } px-2 sm:px-0 text-center`}
+            >
+              Customize intelligent agents that adapt to your search patterns and find the right
+              people across global and personal networks.
+            </p>
+          </div>
         </div>
 
         {agentsStatus === "loading" && (
@@ -457,7 +461,10 @@ const Agents = () => {
                       </div>
                     </div>
                     {selectedAgent && (
-                      <DocumentUploader agentId={hiredRaw.find(a => a.template_id === selectedAgent)?.id || ''} darkMode={darkMode} />
+                      <DocumentUploader
+                        agentId={hiredRaw.find(a => a.template_id === selectedAgent)?.id || ""}
+                        darkMode={darkMode}
+                      />
                     )}
                   </div>
                 </div>
