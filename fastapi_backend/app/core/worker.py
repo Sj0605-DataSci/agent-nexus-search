@@ -132,28 +132,6 @@ class ChatWorker:
             search_mode = task.get("search_mode", "basic")
             world_connections = task.get("world_connections", "world")
             thread_id = task.get("thread_id", "")
-
-            await asyncio.sleep(0.2)
-            
-            # Send initial thinking state
-            thinking_update = StreamingChatUpdate(
-                type="thinking",
-                content={"message": "Thinking..."}
-            )
-            await client.publish(channel, thinking_update.model_dump_json())
-
-            await asyncio.sleep(0.2)
-
-            if thread_id == "new":
-                thread_id = str(uuid.uuid4())
-            else:
-                thread_id = thread_id     
-
-            thread_id_update = StreamingChatUpdate(
-                type="thread_id",
-                content={"thread_id": thread_id}
-            )
-            await client.publish(channel, thread_id_update.model_dump_json())
             
             # Process the chat request and stream results
             async for update in chat_service.stream_chat(
@@ -166,7 +144,23 @@ class ChatWorker:
                 thread_id
             ):
                 # Convert the update to a StreamingChatUpdate
-                if update["type"] == "token":
+                if update["type"] == "thinking":
+                    # For thinking updates
+                    thinking_update = StreamingChatUpdate(
+                        type="thinking",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, thinking_update.model_dump_json())
+                    
+                elif update["type"] == "thread_id":
+                    # For thread_id updates
+                    thread_id_update = StreamingChatUpdate(
+                        type="thread_id",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, thread_id_update.model_dump_json())
+                    
+                elif update["type"] == "token":
                     # For token updates
                     token_update = StreamingChatUpdate(
                         type="token",

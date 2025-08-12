@@ -21,6 +21,7 @@ import Image from "next/image";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
 import { capitalizeText } from "@/utils/globalconstant";
+import DocumentUploader from "@/components/agents/DocumentUploader";
 
 import React, { Suspense } from "react";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
@@ -245,7 +246,7 @@ const Agents = () => {
 
         {hiredIds.length > 0 && agentsStatus !== "loading" && (
           <div className="max-w-7xl mx-auto">
-            <div className="mb-12">
+            {/* <div className="mb-12">
               <div
                 className={`p-6 rounded-2xl backdrop-blur-sm border ${
                   darkMode ? "bg-gray-800/40 border-gray-700/50" : "bg-white/60 border-gray-200/50"
@@ -363,7 +364,7 @@ const Agents = () => {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {currentAgent && currentConfig && (
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -455,6 +456,9 @@ const Agents = () => {
                         ))}
                       </div>
                     </div>
+                    {selectedAgent && (
+                      <DocumentUploader agentId={hiredRaw.find(a => a.template_id === selectedAgent)?.id || ''} darkMode={darkMode} />
+                    )}
                   </div>
                 </div>
 

@@ -43,7 +43,7 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { name: "Pricing", href: "/pricing" },
-  { name: "Get Started", href: "/signup", isButton: true },
+  { name: "Get Started", href: "/user-auth", isButton: true },
 ];
 
 const HomeHeader: React.FC = () => {

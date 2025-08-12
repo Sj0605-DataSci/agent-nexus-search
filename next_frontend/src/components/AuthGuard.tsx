@@ -14,8 +14,8 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== "/login" && pathname !== "/signup") {
-      router.push("/login");
+    if (!loading && !user && pathname !== "/user-auth" && pathname !== "/signup") {
+      router.push("/user-auth");
     }
   }, [user, loading, pathname, router]);
 

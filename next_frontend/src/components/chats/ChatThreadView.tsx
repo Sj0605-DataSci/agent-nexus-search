@@ -849,9 +849,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[
-                { category: TagCategories.GENERAL, speed: 0.4 },
-                { category: TagCategories.SALES, speed: 0.8 },
-                { category: TagCategories.HR, speed: 0.5 },
+                { category: TagCategories.GENERAL, speed: 0.3 },
+                { category: TagCategories.SALES, speed: 0.5 },
+                { category: TagCategories.HR, speed: 0.4 },
               ].map((item, index) => (
                 <TagCarousel
                   key={index}

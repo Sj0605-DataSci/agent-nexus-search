@@ -23,6 +23,7 @@ interface AuthContextType {
   }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -193,6 +194,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      posthog.capture("google_signin_initiated");
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error("Google Sign-In Error:", error.message);
+        posthog.capture("google_signin_error", { reason: error.message });
+      }
+    } catch (error: any) {
+      console.error("Google Sign-In Exception:", error.message);
+      posthog.capture("google_signin_error", { reason: "exception", message: error.message });
+    }
+  };
+
   const signOut = async () => {
     try {
       posthog.capture("logout_initiated");
@@ -221,6 +242,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       signUp,
       signIn,
       signOut,
+      signInWithGoogle,
     }),
     [effectiveUser, session, loading, profile]
   );

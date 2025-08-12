@@ -71,7 +71,7 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const unauthenticatedEndpoints = ["/login", "/signup"];
+    const unauthenticatedEndpoints = ["/login", "user-auth", "/signup"];
     const isUnauthenticatedEndpoint = unauthenticatedEndpoints.some(path =>
       originalRequest.url?.includes(path)
     );

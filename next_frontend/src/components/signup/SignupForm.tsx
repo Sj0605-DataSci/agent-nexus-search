@@ -45,7 +45,6 @@ const schema = yup.object().shape({
 type FormData = yup.InferType<typeof schema>;
 
 export default function SignupForm() {
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
