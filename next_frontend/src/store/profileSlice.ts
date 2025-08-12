@@ -41,6 +41,18 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+export const updateUserProfile = createAsyncThunk(
+  "profile/updateProfile",
+  async (data: { email_subscription: boolean }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.updateProfile(data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const profileSlice = createSlice({
   name: "profile",
   initialState,
@@ -59,6 +71,15 @@ const profileSlice = createSlice({
       state.loading = false;
       state.error = null;
       state.isAuthenticated = true;
+    },
+    setProfileFromAPI: (state, action: PayloadAction<UserProfile>) => {
+      state.profile = action.payload;
+      state.isAuthenticated = true;
+    },
+    updateSubscriptionOptimistic: (state, action: PayloadAction<boolean>) => {
+      if (state.profile) {
+        state.profile.email_subscription = action.payload;
+      }
     },
     setLoadingState: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -81,7 +102,17 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || "Failed to fetch profile";
+        state.error = action.payload as string;
+      })
+      .addCase(updateUserProfile.fulfilled, (state) => {
+        state.error = null;
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        if (state.profile) {
+          // Revert the optimistic update
+          state.profile.email_subscription = !state.profile.email_subscription;
+        }
+        state.error = (action.payload as string) || "Failed to update profile";
       })
       .addCase(loginUser.pending, state => {
         state.loading = true;

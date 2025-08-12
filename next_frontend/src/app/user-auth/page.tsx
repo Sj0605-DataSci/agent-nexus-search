@@ -404,6 +404,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
 
       if (loginResult.success && loginResult.status_code === 200) {
         router.replace("/chat/new");
+
         dispatch(fetchProfile()).then(profileResult => {
           if (profileResult.payload?.success && profileResult.payload?.data) {
             const profileData = profileResult.payload.data;
@@ -419,7 +420,6 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
             }, 0);
           }
         });
-        showSuccessToast("Welcome back!");
       } else {
         showErrorToast(loginResult.message || "Please check your credentials and try again.");
         posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });

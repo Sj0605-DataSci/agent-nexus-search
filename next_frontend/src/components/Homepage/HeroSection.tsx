@@ -35,34 +35,19 @@ const HeroSection: React.FC = () => {
   }, []);
   const features = [
     {
-      title: "AI-Powered Search",
-      desc: "Find the perfect candidates using natural language queries",
+      title: "Better People Search",
+      desc: "Natural language queries with an intelligent agent that learns from your searches",
       icon: "🔍",
     },
-    // {
-    //   title: "Smart Filters",
-    //   desc: "Automatically extract and apply relevant filters from your search",
-    //   icon: "🎯",
-    // },
     {
-      title: "Context-Aware",
-      desc: "Understands complex queries and maintains conversation context",
-      icon: "🧠",
+      title: "Personal People Search",
+      desc: "Search across your own networks as easily as the global web",
+      icon: "🌐",
     },
-    // {
-    //   title: "Real-Time Insights",
-    //   desc: "Get instant analysis of candidate profiles and fit",
-    //   icon: "📊",
-    // },
-    // {
-    //   title: "Seamless Integration",
-    //   desc: "Connect with your existing HR tools and workflows",
-    //   icon: "🔗",
-    // },
     {
-      title: "Data Privacy First",
-      desc: "Enterprise-grade security and compliance built-in",
-      icon: "🛡️",
+      title: "Verified Results",
+      desc: "Get enriched, verified contact details and insights ready to act on",
+      icon: "✅",
     },
   ];
 
@@ -250,12 +235,12 @@ const HeroSection: React.FC = () => {
           <div className="relative container mx-auto px-4 z-10">
             <Reveal>
               <h2 className="text-4xl md:text-6xl font-bold text-center mb-6 bg-clip-text text-transparent bg-gray-800">
-                Smarter Talent Discovery
+                Deep, Adaptive Search
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
               <p className="text-lg md:text-xl text-center text-gray-600 mb-20 max-w-3xl mx-auto leading-relaxed">
-                Transform how you find and connect with top talent using AI-powered search
+                Search that evolves with you, understands your intent, and helps you discover people naturally
               </p>
             </Reveal>
 

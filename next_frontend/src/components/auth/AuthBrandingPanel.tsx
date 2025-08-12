@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import CardSwap, { Card } from "@/components/auth/CardSwap";
 
 const AuthBrandingPanel = () => {
@@ -41,8 +41,8 @@ const AuthBrandingPanel = () => {
             <div>
               <h3 className="text-xl font-bold mb-3 text-indigo-400">Unlock Your Potential</h3>
               <p className="text-gray-300">
-                "From resume tips to interview prep, the resources available helped me land my
-                dream job faster than I ever thought possible."
+                "From resume tips to interview prep, the resources available helped me land my dream
+                job faster than I ever thought possible."
               </p>
             </div>
             <div className="mt-4">

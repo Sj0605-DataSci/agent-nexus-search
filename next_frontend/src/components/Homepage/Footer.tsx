@@ -1,6 +1,6 @@
 import Link from "next/link";
 import BrandLogo from "../BrandLogo";
-import { Twitter, Linkedin, Github } from 'lucide-react';
+import { Twitter, Linkedin, Github } from "lucide-react";
 
 const footerLinks = {
   product: [
@@ -10,9 +10,13 @@ const footerLinks = {
   ],
   //Info: Adding # for now
   company: [
+    {
+      name: "Contact",
+      href: "mailto:founders@discoverminds.ai",
+      tooltip: "Email us at founders@discoverminds.ai",
+    },
     { name: "About Us", href: "#" },
-    { name: "Contact", href: "#" },
-    { name: "Careers", href: "#" },
+    { name: "Careers", href: "https://www.linkedin.com/company/discover-minds/jobs/" },
   ],
   legal: [
     { name: "Privacy Policy", href: "/privacy-policy" },
@@ -28,13 +32,15 @@ export default function Footer() {
           <div className="md:col-span-2">
             <BrandLogo />
             <p className="text-gray-500 mt-4 max-w-xs">
-              AI-powered platform to accelerate your career and find your dream job.
+              The first context-aware, agent-powered search engine for people.
             </p>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Product</h3>
+            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
+              Product
+            </h3>
             <ul className="mt-4 space-y-2">
-              {footerLinks.product.map((link) => (
+              {footerLinks.product.map(link => (
                 <li key={link.name}>
                   <Link href={link.href} className="text-base text-gray-500 hover:text-gray-900">
                     {link.name}
@@ -44,12 +50,32 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Company</h3>
+            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
+              Company
+            </h3>
             <ul className="mt-4 space-y-2">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-base text-gray-500 hover:text-gray-900">
+              {footerLinks.company.map(link => (
+                <li key={link.name} className="relative group">
+                  <Link
+                    href={link.href}
+                    className="text-base text-gray-500 hover:text-gray-900"
+                    target={
+                      link.href.startsWith("http") || link.href.startsWith("mailto:")
+                        ? "_blank"
+                        : undefined
+                    }
+                    rel={
+                      link.href.startsWith("http") || link.href.startsWith("mailto:")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                  >
                     {link.name}
+                    {link.tooltip && (
+                      <span className="absolute left-0 -top-8 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        {link.tooltip}
+                      </span>
+                    )}
                   </Link>
                 </li>
               ))}
@@ -58,7 +84,7 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Legal</h3>
             <ul className="mt-4 space-y-2">
-              {footerLinks.legal.map((link) => (
+              {footerLinks.legal.map(link => (
                 <li key={link.name}>
                   <Link href={link.href} className="text-base text-gray-500 hover:text-gray-900">
                     {link.name}
@@ -70,13 +96,28 @@ export default function Footer() {
         </div>
         <div className="mt-12 border-t border-gray-200 pt-8 flex flex-col sm:flex-row items-center justify-between">
           <div className="flex space-x-6">
-            <a href="#" className="text-gray-400 hover:text-gray-500"><Twitter size={20} /></a>
-            <a href="#" className="text-gray-400 hover:text-gray-500"><Github size={20} /></a>
-            <a href="#" className="text-gray-400 hover:text-gray-500"><Linkedin size={20} /></a>
+            <a
+              href="https://x.com/Discover_Minds"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <Twitter size={20} />
+            </a>
+            <a
+              href="https://www.linkedin.com/company/discover-minds"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <Linkedin size={20} />
+            </a>
           </div>
           <div className="flex flex-col items-center sm:items-end mt-4 sm:mt-0">
-             <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} DiscoverMinds. All rights reserved.</p>
-             <span className="flex items-center gap-x-1.5 text-sm text-gray-400 mt-1">
+            <p className="text-sm text-gray-500">
+              &copy; {new Date().getFullYear()} DiscoverMinds. All rights reserved.
+            </p>
+            <span className="flex items-center gap-x-1.5 text-sm text-gray-400 mt-1">
               Made with <span className="text-red-500">❤️</span> in India
             </span>
           </div>
