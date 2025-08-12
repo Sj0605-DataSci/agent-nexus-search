@@ -42,16 +42,40 @@ function UploadConnectionsContent() {
       setErrorMessage("");
 
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
-
-      const { data: fileData, error: uploadError } = await supabase.storage
-        .from("connection-files")
-        .upload(fileName, file);
-
-      if (uploadError) {
-        console.error("Storage upload error:", uploadError);
-        throw new Error(`File upload failed: ${uploadError.message}`);
+      
+      // Get JWT token from localStorage (same as your working curl)
+      const token = localStorage.getItem("discover_minds_access_token");
+      if (!token) {
+        throw new Error("No authentication token found");
       }
 
+      // Use direct fetch API with proper authentication (like your working curl)
+      const formData = new FormData();
+      formData.append('cacheControl', '3600');
+      formData.append('', file); // Empty name field like in your curl
+
+      const uploadResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/connection-files/${fileName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+          },
+          body: formData,
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error("Storage upload error:", errorText);
+        throw new Error(`File upload failed: ${uploadResponse.status} ${errorText}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log("Upload successful:", uploadResult);
+
+      // Get public URL
       const { data: urlData } = await supabase.storage
         .from("connection-files")
         .getPublicUrl(fileName);

@@ -69,8 +69,21 @@ class GeminiChatModel:
 
     @weave.op
     async def ainvoke(self, messages: List[BaseMessage]) -> AIMessage:
-        return await self.model.ainvoke(messages)
+        system_instruction = None
+        if hasattr(self.model, 'model_kwargs') and 'system_instruction' in self.model.model_kwargs:
+            system_instruction = self.model.model_kwargs['system_instruction']
         
+        # If we have a system instruction, combine it with the user prompt
+        # This is a workaround because system instructions don't work well with structured output
+        if system_instruction and isinstance(messages, str):
+            combined_prompt = f"{system_instruction}\n\n{messages}"
+            response = await self.model.ainvoke(combined_prompt)
+        elif isinstance(messages, str):
+            response = await self.model.ainvoke(messages)
+        else:
+            response = await self.model.ainvoke(messages)
+        
+        return response
 
 
 # if __name__ == "__main__":

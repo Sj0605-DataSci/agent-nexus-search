@@ -521,6 +521,11 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         state = state.model_dump()
 
     supabase_client = await get_async_supabase_client()
+    if settings.ENVIRONMENT == "STAGING":
+        model = "gemini-2.5-flash"
+    else:
+        model = "gemini-2.5-pro" 
+
     
     user_id = state["user_id"]
     agent_id = state["agent_config"]["id"]  
@@ -537,7 +542,7 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
     
     # Create LLM with system instruction
     llm = GeminiChatModel(
-        model="gemini-2.5-flash",
+        model=model,
         temperature=0,
         system_instruction=system_instruction
     )
@@ -565,14 +570,27 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
         input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
         output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
         
-        cost_dollar=(input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+        if model == "gemini-2.5-flash":
+            input_tokens_cost = (input_tokens/1000000) * 0.15
+            output_tokens_cost = (output_tokens/1000000) * 0.60
+        elif model == "gemini-2.5-pro":
+            if input_tokens <= 200000:
+                input_tokens_cost = (input_tokens/1000000) * 1.25
+            else:
+                input_tokens_cost = (input_tokens/1000000) * 2.5
+            if output_tokens <= 200000:
+                output_tokens_cost = (output_tokens/1000000) * 10
+            else:
+                output_tokens_cost = (output_tokens/1000000) * 15
+        
+        cost_dollar = input_tokens_cost + output_tokens_cost
         cost_rupees = cost_dollar * 85.86
         await supabase_client.table("chat_costs").insert({
                     "user_id": user_id, 
                     "agent_id": agent_id, 
                     "chat_thread_id": chat_thread_id,
                     "message_id": message_id,
-                    "model": "gemini-2.5-flash",
+                    "model": model,
                     "node": "sql_query_generation",
                     "weave_url": state["weave_url"],    
                     "model_input_tokens": float(input_tokens), 
