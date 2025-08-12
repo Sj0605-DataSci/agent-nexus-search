@@ -155,7 +155,7 @@ class ProfileResponse(ProfileBase):
 
 # User Subscription Schemas
 class UserSubscriptionBase(BaseModel):
-    tier: str = "hunter"  # Changed from 'free' to 'hunter'
+    tier: str = "Hunter"  # Changed from 'free' to 'hunter'
     credits: int = 5  # Default credits for hunter tier
     total_credits_purchased: int = 0
     credit_reset_period: str = "daily"  # 'daily', 'monthly', or 'unlimited'
@@ -165,14 +165,6 @@ class UserSubscriptionBase(BaseModel):
     subscription_start_date: Optional[datetime] = None
     subscription_end_date: Optional[datetime] = None
     auto_renew: bool = False
-    # Legacy fields - kept for backward compatibility but not used in credit-only system
-    daily_searches_allowed: int = 999999  # Set high since we only use credits
-    daily_searches_used: int = 0  # Will be deprecated
-    last_search_date: Optional[date] = None  # Will be deprecated
-    deep_searches_allowed: int = 999999  # Set high since we only use credits
-    deep_searches_used: int = 0  # Will be deprecated
-    basic_searches_allowed: int = 999999  # Set high since we only use credits
-    basic_searches_used: int = 0  # Will be deprecated
 
 
 class UserSubscriptionCreate(UserSubscriptionBase):
