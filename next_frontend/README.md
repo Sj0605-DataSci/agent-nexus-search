@@ -1,19 +1,101 @@
-# Discoverminds.ai — Deep Search for People
+# 🔍 DiscoverMinds.ai — Better People Search. Personal People Search.
 
-> A search engine that evolves with you. One that understands your intent, learns from your feedback, and helps you discover people: naturally and intelligently.
+## Overview
 
-**Discoverminds.ai** is the first context-aware, agent-powered search engine for people, built for HR, sales, recruiting, founders, and anyone who needs to find the right person, fast.
+Traditional search engines and databases weren't built for finding people.
+
+They don't understand your intent. They don't evolve with you. And they certainly don't know your networks.
+
+**DiscoverMinds.ai** changes that.
+
+> Imagine typing into a search bar and having an intelligent agent — one that knows your goals — help you find the right people, globally or within your own networks, instantly.
+> 
+
+No more outdated databases. No more guessing filters. Just **deep, adaptive, and personal search for people.**
 
 ---
 
-## ✨ Key Features
+## Two Pillars of DiscoverMinds.ai
 
-- **🧠 Personalised Agents**: Trained to understand your goals and adapt to your query patterns.
-- **🗣️ Natural Language Search**: No filters. No menus. Just plain language. Example: _“Find backend engineers in Berlin with fintech experience and public emails.”_
-- **🤝 Connections Search**: Connect your social media accounts to find people using natural language.
-- **📝 Chat/Excel Mode**: Get results in a chat-like interface or as an Excel sheet delivered to your email.
-- **🔄 Evolving Context**: Every query builds on the last, learning what works and improving over time.
-- **🧬 Semantic Understanding**: Deep language models parse intent, not just keywords.
+### **1. Better People Search**
+
+Why rely on static databases or generic search engines that don't understand you?
+
+With DiscoverMinds.ai, your search bar has an **agent built in** — listening to your intent, refining results through context, and helping you find the right people anywhere in the world.
+
+**What makes it better:**
+
+- Natural language queries — no complex filters
+- An intelligent agent that learns from your searches
+- Verified global results with contact details and insights
+- Contextual relevance ranking based on your goals
+
+---
+
+### **2. Personal People Search**
+
+Global search is powerful — but sometimes, you already have the right people in your orbit. The challenge? Your connections are **scattered**.
+
+DiscoverMinds.ai lets you **connect your socials and communication platforms** — LinkedIn, Twitter, Gmail, Slack, and more — to make them searchable in one place.
+
+**What makes it personal:**
+
+- Search across your own networks as easily as the global web
+- Combine global reach with local context
+- Uncover hidden connections and opportunities you already have
+- One interface for all your professional and community contacts
+
+---
+
+## How It Works
+
+1. **Type your query in natural language**
+    
+    *"Find fintech investors I've emailed before who are based in Singapore."*
+    
+2. **Choose your search scope**
+    - **Global**: Search the entire world
+    - **Personal**: Search across your connected networks
+    - Or combine both
+3. **Get enriched, verified results**
+    - Contact info, roles, activity, and more — ready to act on
+4. **Refine through feedback**
+    - Every search trains your personal agent to understand you better
+
+---
+
+## Why It's Different
+
+❌ Old databases are static and incomplete
+
+❌ Search engines are broad but not deep
+
+❌ Social platforms lock your network inside silos
+
+✅ DiscoverMinds.ai combines **global reach** with **personal context** — powered by an evolving agent that understands your intent.
+
+---
+
+## Use Cases
+
+- **Recruiters**: *"Show me senior AI engineers in Europe with public repos, across my networks and globally."*
+- **Sales Teams**: *"Find VPs of Operations in SaaS companies I've messaged before on LinkedIn."*
+- **Founders & Investors**: *"Discover climate-tech founders worldwide who've recently raised."*
+- **Community Managers**: *"Search Slack, Gmail, and LinkedIn for members working in healthtech."*
+
+---
+
+## The Vision
+
+We believe the future of people discovery is both **global** and **personal**.
+
+At **DiscoverMinds.ai**, we're building:
+
+- Search that understands you and adapts to you
+- Search that unifies your connections across platforms
+- Search that feels like a conversation with someone who knows your goals
+
+> Better people search. Personal people search. All in one place.
 
 ---
 
@@ -257,7 +339,7 @@ Analytics data, funnels, and user behavior can be viewed on your [PostHog dashbo
 
 ## 🏆 Engineering Practices for Scalability & Reliability
 
-To ensure our codebase remains scalable, reliable, and bug-free, we adhere to the following industry-standard practices:
+To ensure our codebase remains scalable,dont andd any kind of comments and remove all the console logs if getting added by AI ,reliable, and bug-free, we adhere to the following industry-standard practices:
 
 - **Testing Strategy**:
   - **Unit & Integration Tests**: We use Jest and React Testing Library to test individual components and their interactions. All new features must be accompanied by meaningful tests.

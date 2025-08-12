@@ -580,7 +580,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               currentContent = `❌ Error: ${errorMessage}`;
               updateMessageContent(currentContent);
 
-
               posthog.capture("stream_error", {
                 query: q,
                 agent_id: selectedAgent,
@@ -601,13 +600,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                     },
                   });
                 }
-                if (update.content && update.content.chat_thread_id && threadId === "new") {
-                  const newThreadId = update.content.chat_thread_id;
-                  if (newThreadId !== threadId) {
-                    const newUrl = `/chat/${newThreadId}`;
-                    window.history.replaceState({ path: newUrl }, "", newUrl);
-                  }
-                }
+                // if (update.content && update.content.chat_thread_id && threadId === "new") {
+                //   const newThreadId = update.content.chat_thread_id;
+                //   if (newThreadId !== threadId) {
+                //     const newUrl = `/chat/${newThreadId}`;
+                //     window.history.replaceState({ path: newUrl }, "", newUrl);
+                //   }
+                // }
               }
 
               setMessages(m => {
@@ -616,8 +615,8 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                 const updatedMessages = [...m];
                 updatedMessages[lastIndex] = {
                   ...updatedMessages[lastIndex],
-                  id: update.content.message_id|| updatedMessages[lastIndex].id,
-                  ...(sources.length > 0 && { sources })
+                  id: update.content.message_id || updatedMessages[lastIndex].id,
+                  ...(sources.length > 0 && { sources }),
                 };
                 return updatedMessages;
               });
@@ -831,16 +830,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                       posthog.capture("world_connections_mode_changed", { mode });
                       setWorldConnectionsMode(mode);
                     }}
-                  />
-                </div>
-
-                <div className="mt-2 sm:mt-0 w-full sm:w-auto">
-                  <AgentDropdown
-                    agentsStatus={agentsStatus}
-                    isStreaming={isStreaming}
-                    agentData={agentData}
-                    agentCards={agentCards}
-                    onAgentSelect={handleAgentSelect}
                   />
                 </div>
               </div>

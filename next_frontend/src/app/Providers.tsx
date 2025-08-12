@@ -17,6 +17,7 @@ import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import posthog from "posthog-js";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "react-hot-toast";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -92,6 +93,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <ReduxProvider store={store}>
         <ThemeProvider attribute="class" forcedTheme="light">
           <AuthProvider>
+            <Toaster position="top-center" reverseOrder={false} />
             <ProfileDataFetcher>
               <PostHogProvider>
                 <AnalyticsProvider>

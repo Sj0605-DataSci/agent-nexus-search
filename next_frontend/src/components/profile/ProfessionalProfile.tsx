@@ -1,152 +1,169 @@
 "use client";
 
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Mail } from "lucide-react";
+import { AppDispatch, RootState } from "@/store";
+import { updateUserProfile } from "@/store/profileSlice";
+import { useToast } from "@/components/ui/use-toast";
+import { useAnalytics } from "@/hooks/useAnalytics";
+
 import { FiLinkedin } from "react-icons/fi";
 import { ExternalLink, Edit2, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/integrations/fastapi/types";
 import LinkedInUrlModal from "@/components/profile/LinkedInUrlModal";
+import toast from "react-hot-toast";
+import { LinkedInSection } from "./LinkedInSection";
 
 interface ProfessionalProfileProps {
-  profile: UserProfile;
-
   onConnectionsClick: () => void;
 }
 
-export default function ProfessionalProfile({
-  profile,
-  onConnectionsClick,
-}: ProfessionalProfileProps) {
+const ProfileSkeleton = () => (
+  <div className="space-y-4 animate-pulse">
+    <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+    <div className="p-4 rounded-lg border bg-white border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gray-200"></div>
+          <div className="h-6 bg-gray-200 rounded w-32"></div>
+        </div>
+        <div className="h-6 w-11 bg-gray-200 rounded-full"></div>
+      </div>
+      <div className="mt-2 h-4 bg-gray-200 rounded w-3/4 ml-12"></div>
+    </div>
+    <div className="h-8 bg-gray-200 rounded w-1/2 mt-4"></div>
+    <div className="p-4 rounded-lg border bg-white border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+          <div className="h-6 bg-gray-200 rounded w-24"></div>
+        </div>
+        <div className="h-8 w-24 bg-gray-200 rounded"></div>
+      </div>
+      <div className="mt-2 p-3 rounded-md bg-gray-50">
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+      </div>
+    </div>
+    <div className="p-4 rounded-lg border bg-white border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-6 w-6 bg-gray-200 rounded"></div>
+          <div className="h-6 bg-gray-200 rounded w-40"></div>
+        </div>
+        <div className="h-8 w-32 bg-gray-200 rounded"></div>
+      </div>
+    </div>
+  </div>
+);
+
+export default function ProfessionalProfile({ onConnectionsClick }: ProfessionalProfileProps) {
+  const { profile, loading } = useSelector((state: RootState) => state.profile);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
+  const { capture } = useAnalytics();
+
+  if (loading) {
+    return <ProfileSkeleton />;
+  }
+
+  if (!profile) {
+    return null;
+  }
+
+  const handleSubscriptionChange = async (checked: boolean) => {
+    setIsUpdating(true);
+    try {
+      await dispatch(updateUserProfile({ email_subscription: checked })).unwrap();
+      dispatch({ type: "profile/updateSubscriptionOptimistic", payload: checked });
+      if (checked) {
+        toast.success("Email subscription enabled successfully.");
+      } else {
+        toast.success("Email subscription disabled successfully.");
+      }
+      capture("email_subscription_updated", { subscribed: checked });
+    } catch (error) {
+      toast.error("Failed to update preferences. Please try again.");
+      capture("email_subscription_update_failed", { subscribed: checked });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
+      <h2 className="text-xl font-semibold text-gray-900">Account Settings</h2>
+
+      <div className="p-4 rounded-lg border bg-white border-gray-200 transition-all hover:shadow-md">
+        <div>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 p-2 h-9 w-9 rounded-full bg-green-100">
+                <Mail className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="flex flex-col">
+                <label
+                  htmlFor="email-notifications"
+                  className="font-medium text-gray-800 cursor-pointer"
+                >
+                  Email Notifications
+                </label>
+                <p className=" text-sm -mt-1 text-gray-500">
+                  Receive email notifications based on your search and query history.
+                </p>
+              </div>
+            </div>
+            <div className="relative w-11 h-6">
+              {isUpdating ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg
+                    className="animate-spin h-5 w-5 text-blue-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                </div>
+              ) : (
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={profile?.email_subscription ?? false}
+                    onChange={e => handleSubscriptionChange(e.target.checked)}
+                    disabled={isUpdating}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:outline-none peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+                </label>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <h2 className="text-xl font-semibold text-gray-900">Professional Profile</h2>
 
-      {/* LinkedIn URL Section */}
-      <div className="p-4 rounded-lg border bg-white border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-blue-100">
-              <FiLinkedin className="h-5 w-5 text-blue-600" />
-            </div>
-            <span className="font-medium text-gray-800">LinkedIn Profile</span>
-          </div>
-
-          {profile?.linkedin_url ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1.5 bg-white hover:bg-gray-50"
-              onClick={() => setLinkedinModalOpen(true)}
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-              Edit
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1.5 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-              onClick={() => setLinkedinModalOpen(true)}
-            >
-              <FiLinkedin className="h-3.5 w-3.5" />
-              Connect LinkedIn
-            </Button>
-          )}
-        </div>
-
-        {profile?.linkedin_url ? (
-          <div className="mt-2 p-3 rounded-md bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <FiLinkedin className="flex-shrink-0 h-4 w-4 text-blue-600" />
-                <a
-                  href={profile.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="truncate text-sm text-blue-600 hover:text-blue-700"
-                >
-                  {profile.linkedin_url}
-                </a>
-              </div>
-              <a
-                href={profile.linkedin_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200"
-              >
-                <ExternalLink className="h-3.5 w-3.5 text-gray-500" />
-              </a>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-2 p-3 rounded-md bg-gray-50">
-            <p className="text-sm text-gray-500">
-              Connect your LinkedIn profile to enhance your networking experience and get more
-              relevant connections.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* LinkedIn Connections Section */}
-      <div className="p-4 rounded-lg border flex items-center justify-between bg-white border-gray-200">
-        <div className="flex items-center gap-3">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-blue-600"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-          </svg>
-          <span className="font-medium text-gray-800">LinkedIn Connections</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {profile.has_connections ? (
-            <>
-              <span className="text-green-600">Connected</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-green-600"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </>
-          ) : (
-            <>
-              <span className="text-red-600">Not Connected</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-red-600"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-2 text-sm bg-transparent border-gray-300 hover:bg-gray-100"
-                onClick={onConnectionsClick}
-              >
-                Import
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <LinkedInSection
+        linkedinUrl={profile?.linkedin_url}
+        hasConnections={profile?.has_connections || false}
+        onEditClick={() => setLinkedinModalOpen(true)}
+        onConnectionsClick={onConnectionsClick}
+      />
       <LinkedInUrlModal open={linkedinModalOpen} onOpenChange={setLinkedinModalOpen} />
     </div>
   );

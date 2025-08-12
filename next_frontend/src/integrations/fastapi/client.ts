@@ -155,7 +155,7 @@ export const apiClient = {
     }
   },
 
-  async updateProfile(data: ProfileUpdate): Promise<Profile> {
+  async updateProfile(data: ProfileUpdate): Promise<UserProfile> {
     try {
       const res = await axiosInstance.put("/profiles", data);
       return res.data?.data;

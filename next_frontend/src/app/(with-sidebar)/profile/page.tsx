@@ -35,7 +35,7 @@ function ProfilePage() {
         ) : profile ? (
           <div className="space-y-8">
             <ProfileHeader profile={profile} />
-            <ProfessionalProfile profile={profile} onConnectionsClick={handleConnectionsClick} />
+            <ProfessionalProfile onConnectionsClick={handleConnectionsClick} />
             <UsageStatsCard />
           </div>
         ) : (
