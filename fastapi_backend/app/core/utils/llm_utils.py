@@ -1,8 +1,9 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage
 from app.core.config import settings
-from typing import Type, TypeVar
+from typing import Type, TypeVar, List
 import weave
+from langchain_core.messages import BaseMessage
 
 T = TypeVar('T')
 
@@ -33,43 +34,7 @@ class GeminiChatModel:
             )
     
     @weave.op
-    def invoke(self, prompt):
-        """Invoke the model with support for system_instruction and flexible prompt types."""
-        # Check if we have a system instruction in model_kwargs
-        system_instruction = None
-        if hasattr(self.model, 'model_kwargs') and 'system_instruction' in self.model.model_kwargs:
-            system_instruction = self.model.model_kwargs['system_instruction']
-
-        # If we have a system instruction, combine it with the user prompt when prompt is a string
-        if system_instruction and isinstance(prompt, str):
-            combined_prompt = f"{system_instruction}\n\n{prompt}"
-            return self.model.invoke([HumanMessage(content=combined_prompt)])
-        elif isinstance(prompt, str):
-            return self.model.invoke([HumanMessage(content=prompt)])
-        else:
-            # Assume prompt is already a list of messages or proper input
-            return self.model.invoke(prompt)
-    
-    @weave.op
-    def stream(self, prompt):
-        """Stream the response from the model with support for system_instruction and flexible prompt types"""
-        # Check if we have a system instruction in model_kwargs
-        system_instruction = None
-        if hasattr(self.model, 'model_kwargs') and 'system_instruction' in self.model.model_kwargs:
-            system_instruction = self.model.model_kwargs['system_instruction']
-
-        # If we have a system instruction, combine it with the user prompt when prompt is a string
-        if system_instruction and isinstance(prompt, str):
-            combined_prompt = f"{system_instruction}\n\n{prompt}"
-            return self.model.stream([HumanMessage(content=combined_prompt)])
-        elif isinstance(prompt, str):
-            return self.model.stream([HumanMessage(content=prompt)])
-        else:
-            # Assume prompt is already a list of messages or proper input
-            return self.model.stream(prompt)
-    
-    @weave.op
-    def with_structured_output(self, schema_type: Type[T], prompt):
+    async def with_structured_output(self, schema_type: Type[T], prompt):
         """Get structured output from the model using a Pydantic schema
         
         Args:
@@ -93,14 +58,19 @@ class GeminiChatModel:
         # This is a workaround because system instructions don't work well with structured output
         if system_instruction and isinstance(prompt, str):
             combined_prompt = f"{system_instruction}\n\n{prompt}"
-            response = structured_llm.invoke([HumanMessage(content=combined_prompt)])
+            response = await structured_llm.ainvoke([HumanMessage(content=combined_prompt)])
         elif isinstance(prompt, str):
-            response = structured_llm.invoke([HumanMessage(content=prompt)])
+            response = await structured_llm.ainvoke([HumanMessage(content=prompt)])
         else:
-            response = structured_llm.invoke(prompt)
+            response = await structured_llm.ainvoke(prompt)
             
         # Return the parsed output and usage metadata from raw response
         return response["parsed"], response["raw"].usage_metadata
+
+    @weave.op
+    async def ainvoke(self, messages: List[BaseMessage]) -> AIMessage:
+        return await self.model.ainvoke(messages)
+        
 
 
 # if __name__ == "__main__":
