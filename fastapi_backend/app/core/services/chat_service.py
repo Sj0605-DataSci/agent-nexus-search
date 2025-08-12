@@ -358,7 +358,7 @@ class ChatService:
                     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
                     output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
                     
-                    cost_dollar = (input_tokens/1000000) * 0.3 + (output_tokens/1000000) * 2.5
+                    cost_dollar = (input_tokens/1000000) * 0.15 + (output_tokens/1000000) * 0.60
                     cost_rupees = cost_dollar * 85.86
                     await self.client.table("chat_costs").insert({
                         "user_id": user_id, 
