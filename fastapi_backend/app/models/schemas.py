@@ -140,6 +140,7 @@ class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     linkedin_url: Optional[str] = None
     email_subscription: Optional[bool] = None
+    phone_number: Optional[str] = None
     
 
 
@@ -149,6 +150,7 @@ class ProfileResponse(ProfileBase):
     user_subscriptions_id: Optional[UUID] = None
     linkedin_url: Optional[str] = None
     email_subscription: Optional[bool] = True
+    phone_number: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -211,6 +213,7 @@ class SignupRequest(BaseModel):
     password: str
     full_name: Optional[str] = None
     linkedin_url: Optional[str] = None
+    phone_number: Optional[str] = None
 
 # Refresh Token Schema
 class RefreshTokenRequest(BaseModel):

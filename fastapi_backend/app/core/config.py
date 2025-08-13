@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     def SUPABASE_ANON_KEY(self) -> str:
         return os.getenv("STAGING_SUPABASE_ANON_KEY", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_ANON_KEY", "")
     
+    @property
+    def SUPABASE_SERVICE_ROLE_KEY(self) -> str:
+        return os.getenv("STAGING_SUPABASE_SERVICE_ROLE_KEY", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    
     # OpenRouter settings
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     
