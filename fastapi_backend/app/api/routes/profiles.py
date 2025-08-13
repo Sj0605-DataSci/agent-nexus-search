@@ -1,7 +1,9 @@
 from uuid import UUID
 from typing import Dict, Any
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.auth import get_current_user, invalidate_profile_cache
+from app.core.config import settings
 from app.db.clients import get_async_supabase_client
 from app.core.utils.cache import (
     get_cached_item, cache_item, invalidate_cache_item,
@@ -11,7 +13,8 @@ from app.core.utils.cache import (
 from app.models.models import Profile
 from app.models.schemas import (
     ProfileCreate, ProfileUpdate, ProfileResponse, StandardResponse, StandardJSONResponse,
-    UserSubscriptionResponse
+    UserSubscriptionResponse, LinkedInTokenRequest, LinkedInTokenResponse,
+    LinkedInProfileRequest, LinkedInProfileResponse
 )
 from app.core.services.credit_service import CreditService
 from app.core.profiling import profile_async
@@ -495,5 +498,197 @@ async def upgrade_tier(
             success=False,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Error upgrading tier: {str(e)}",
+            data=None
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# LinkedIn OAuth Endpoints
+
+@router.post("/linkedin/token", response_model=StandardResponse[LinkedInTokenResponse], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.linkedin_token_exchange")
+async def linkedin_token_exchange(token_request: LinkedInTokenRequest):
+    """
+    Exchange LinkedIn OAuth authorization code for access token.
+    
+    This endpoint handles the OAuth token exchange flow for LinkedIn integration.
+    """
+    try:
+        logger.info("LinkedIn token exchange request received",
+                   code_present=bool(token_request.code),
+                   redirect_uri=token_request.redirect_uri)
+
+        if not settings.LINKEDIN_CLIENT_ID or not settings.LINKEDIN_CLIENT_SECRET:
+            logger.error("LinkedIn OAuth credentials not configured")
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="LinkedIn OAuth is not properly configured",
+                data=None
+            ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Prepare token exchange request
+        token_data = {
+            "grant_type": "authorization_code",
+            "code": token_request.code,
+            "redirect_uri": token_request.redirect_uri,
+            "client_id": settings.LINKEDIN_CLIENT_ID,
+            "client_secret": settings.LINKEDIN_CLIENT_SECRET,
+        }
+
+        logger.info("Exchanging code for token with LinkedIn...")
+
+        # Exchange code for access token
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                "https://www.linkedin.com/oauth/v2/accessToken",
+                data=token_data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json",
+                }
+            )
+
+        if response.status_code != 200:
+            logger.error("LinkedIn token exchange failed",
+                        status_code=response.status_code,
+                        response_text=response.text)
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=response.status_code,
+                message="LinkedIn token exchange failed",
+                data={"details": response.text}
+            ), status_code=response.status_code)
+
+        token_data = response.json()
+        logger.info("LinkedIn token exchange successful")
+
+        # Return token data
+        linkedin_response = LinkedInTokenResponse(
+            access_token=token_data.get("access_token"),
+            expires_in=token_data.get("expires_in"),
+            token_type=token_data.get("token_type", "Bearer"),
+            scope=token_data.get("scope")
+        )
+
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="LinkedIn token exchange successful",
+            data=linkedin_response
+        ))
+
+    except httpx.TimeoutException:
+        logger.error("LinkedIn token exchange timeout")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            message="LinkedIn API request timeout",
+            data=None
+        ), status_code=status.HTTP_408_REQUEST_TIMEOUT)
+    
+    except httpx.RequestError as e:
+        logger.error("LinkedIn token exchange network error", error=str(e))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Network error connecting to LinkedIn",
+            data={"details": str(e)}
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    except Exception as e:
+        logger.exception("LinkedIn token exchange error",
+                        exception_type=type(e).__name__,
+                        error_message=str(e))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Token exchange failed: {str(e)}",
+            data=None
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.post("/linkedin/profile", response_model=StandardResponse[LinkedInProfileResponse], response_class=StandardJSONResponse)
+@profile_async("routes.profiles.linkedin_profile_fetch")
+async def linkedin_profile_fetch(profile_request: LinkedInProfileRequest):
+    """
+    Fetch LinkedIn profile using access token.
+    
+    This endpoint retrieves the user's LinkedIn profile information using their access token.
+    """
+    try:
+        logger.info("LinkedIn profile fetch request received")
+
+        if not profile_request.access_token:
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Access token is required",
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch profile using LinkedIn userinfo endpoint
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://api.linkedin.com/v2/userinfo",
+                headers={
+                    "Authorization": f"Bearer {profile_request.access_token}",
+                    "Accept": "application/json",
+                }
+            )
+
+        if response.status_code != 200:
+            logger.error("LinkedIn profile fetch failed",
+                        status_code=response.status_code,
+                        response_text=response.text)
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=response.status_code,
+                message="LinkedIn profile fetch failed",
+                data={"details": response.text}
+            ), status_code=response.status_code)
+
+        profile_data = response.json()
+        logger.info("LinkedIn profile fetch successful",
+                   profile_id=profile_data.get("sub", "unknown"))
+
+        # Return profile data
+        linkedin_response = LinkedInProfileResponse(
+            profile=profile_data,
+            success=True
+        )
+
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="LinkedIn profile fetch successful",
+            data=linkedin_response
+        ))
+
+    except httpx.TimeoutException:
+        logger.error("LinkedIn profile fetch timeout")
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            message="LinkedIn API request timeout",
+            data=None
+        ), status_code=status.HTTP_408_REQUEST_TIMEOUT)
+    
+    except httpx.RequestError as e:
+        logger.error("LinkedIn profile fetch network error", error=str(e))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Network error connecting to LinkedIn",
+            data={"details": str(e)}
+        ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    except Exception as e:
+        logger.exception("LinkedIn profile fetch error",
+                        exception_type=type(e).__name__,
+                        error_message=str(e))
+        return StandardJSONResponse(StandardResponse(
+            success=False,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Profile fetch failed: {str(e)}",
             data=None
         ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

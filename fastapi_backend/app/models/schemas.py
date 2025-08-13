@@ -249,6 +249,29 @@ class PersonDetailsResponse(BaseModel):
     """Pydantic model for response containing one or more person details."""
     content: List[PersonDetails] = Field(description="List of person details")
 
+
+# LinkedIn OAuth Schemas
+class LinkedInTokenRequest(BaseModel):
+    """Request schema for LinkedIn OAuth token exchange"""
+    code: str = Field(..., description="Authorization code from LinkedIn OAuth")
+    redirect_uri: str = Field(..., description="Redirect URI used in OAuth flow")
+
+class LinkedInTokenResponse(BaseModel):
+    """Response schema for LinkedIn OAuth token exchange"""
+    access_token: str = Field(..., description="LinkedIn access token")
+    expires_in: int = Field(..., description="Token expiration time in seconds")
+    token_type: str = Field(default="Bearer", description="Token type")
+    scope: Optional[str] = Field(None, description="Token scope")
+
+class LinkedInProfileRequest(BaseModel):
+    """Request schema for LinkedIn profile fetch"""
+    access_token: str = Field(..., description="LinkedIn access token")
+
+class LinkedInProfileResponse(BaseModel):
+    """Response schema for LinkedIn profile data"""
+    profile: Dict[str, Any] = Field(..., description="LinkedIn profile data")
+    success: bool = Field(default=True, description="Success status")
+
 class TitleAndIntentGeneratorOutput(BaseModel):
     """Pydantic model for title and intent generator output."""
     title: str = Field(description="Title of the chat thread")

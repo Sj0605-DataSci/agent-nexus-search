@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     
     # OpenRouter settings
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    
+    # LinkedIn OAuth settings
+    LINKEDIN_CLIENT_ID: str = os.getenv("LINKEDIN_CLIENT_ID", "")
+    LINKEDIN_CLIENT_SECRET: str = os.getenv("LINKEDIN_CLIENT_SECRET", "")
 
     # Supabase database connection settings
     @property
