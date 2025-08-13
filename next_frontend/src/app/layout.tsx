@@ -14,33 +14,104 @@ const robotoMono = Roboto_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Discover new Minds",
-  description: "Its time to Discover new Minds",
-  authors: [{ name: "Team DiscoverMinds.ai" }],
+const baseMetadata = {
+  title: {
+    default: "DiscoverMinds.ai",
+    template: "%s | DiscoverMinds.ai",
+  },
+  description: "Discover and connect with professionals using our AI-powered people search engine.",
+};
+
+const productionMetadata: Metadata = {
+  title: {
+    default: "DiscoverMinds.ai | Intelligent People Search Engine",
+    template: "%s | DiscoverMinds.ai",
+  },
+  description:
+    "Discover and connect with professionals using our AI-powered people search engine. Find the right experts and opportunities.",
+  keywords: [
+    "people search",
+    "professional network",
+    "talent discovery",
+    "expert finder",
+    "professional connections",
+    "DiscoverMinds",
+    "AI search",
+  ],
+  authors: [
+    {
+      name: "DiscoverMinds.ai Team",
+      url: "https://discoverminds.ai/about",
+    },
+  ],
+  creator: "DiscoverMinds.ai",
+  publisher: "DiscoverMinds.ai",
+  metadataBase: new URL("https://discoverminds.ai"),
+  alternates: {
+    canonical: "/",
+  },
   icons: {
-    icon: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files//icon.png",
+    icon: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
   },
   openGraph: {
-    title: "Discover new Minds",
-    description: "Its time to Discover new Minds",
     type: "website",
+    locale: "en_US",
+    url: "https://discoverminds.ai",
+    siteName: "DiscoverMinds.ai",
+    title: "DiscoverMinds.ai | Intelligent People Search Engine",
+    description:
+      "Discover and connect with professionals using our AI-powered people search engine.",
     images: [
       {
-        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files//icon.png",
+        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
         width: 1200,
         height: 630,
-        alt: "Its time to Discover new Minds",
+        alt: "DiscoverMinds.ai - Intelligent People Search",
       },
     ],
   },
-  // twitter: {
-  //   card: "summary_large_image",
-  //   site: "@lovable_dev",
-  //   images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
-  // },
-  metadataBase: new URL("https://discoverminds.ai"), // optional for relative URLs
+  twitter: {
+    card: "summary_large_image",
+    title: "DiscoverMinds.ai | Intelligent People Search Engine",
+    description:
+      "Discover and connect with professionals using our AI-powered people search engine.",
+    images: [
+      "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+    ],
+    creator: "@discovermindsai",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "your-google-verification-code",
+    yandex: "your-yandex-verification-code",
+  },
+  manifest: "/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DiscoverMinds.ai",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
+
+export const metadata: Metadata = process.env.NODE_ENV === 'production' ? productionMetadata : baseMetadata;
+
+export const viewport = {
+  themeColor: "#ffffff",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>

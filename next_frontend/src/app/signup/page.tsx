@@ -1,8 +1,6 @@
-export const dynamic = "force-static";
-export const revalidate = false;
-
-import SignupForm from "@/components/signup/SignupForm";
+import { redirect } from "next/navigation";
 
 export default function SignupPage() {
-  return <SignupForm />;
+  redirect("/user-auth");
+  return null;
 }

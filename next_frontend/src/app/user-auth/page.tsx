@@ -8,7 +8,6 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Confetti from "react-confetti";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { apiClient } from "@/integrations/fastapi/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import posthog from "posthog-js";
@@ -268,7 +267,7 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
         if (response.success) {
           localStorage.setItem("lastSignupData", JSON.stringify(data));
           reset();
-          successSignupSubmission(); 
+          successSignupSubmission();
           showSuccessToast("Signup mail sent successfully! Check your email.");
           return;
         }
@@ -369,7 +368,7 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
           {isSubmitting ? "Creating Account..." : "Create an account"}
         </button>
       </form>
-      {/* <SocialSignIn /> */}
+      <SocialSignIn />
       <p className="text-center text-xs text-gray-400 mt-3">
         By creating an account, you agree to our{" "}
         <a href="#" className="font-semibold text-gray-500">
@@ -408,22 +407,18 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
 
       if (loginResult.success && loginResult.status_code === 200) {
         router.replace("/chat/new");
-
-        dispatch(fetchProfile()).then(profileResult => {
-          if (profileResult.payload?.success && profileResult.payload?.data) {
-            const profileData = profileResult.payload.data;
-            setTimeout(() => {
-              posthog.identify(profileData.id, {
-                email: profileData.email,
-                name: profileData.full_name,
-              });
-              posthog.capture("login_successful", {
-                userId: profileData.id,
-                hasConnections: profileData.has_connections,
-              });
-            }, 0);
-          }
-        });
+        const profileResult = await dispatch(fetchProfile());
+        if (profileResult.payload?.success && profileResult.payload?.data) {
+          const profileData = profileResult.payload.data;
+          posthog.identify(profileData.id, {
+            email: profileData.email,
+            name: profileData.full_name,
+          });
+          posthog.capture("login_successful", {
+            userId: profileData.id,
+            hasConnections: profileData.has_connections,
+          });
+        }
       } else {
         showErrorToast(loginResult.message || "Please check your credentials and try again.");
         posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });

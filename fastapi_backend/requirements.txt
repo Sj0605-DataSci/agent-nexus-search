@@ -48,3 +48,6 @@ weave
 
 # PDF generation
 reportlab
+
+# LinkedIn OAuth
+httpx

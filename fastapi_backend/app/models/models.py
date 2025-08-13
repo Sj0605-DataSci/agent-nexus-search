@@ -56,6 +56,7 @@ class Profile(Base):
     has_connections = Column(Boolean, default=False)
     user_subscriptions_id = Column(UUID(as_uuid=True), ForeignKey("user_subscriptions.id"), nullable=True)
     email_subscription = Column(Boolean, default=False)
+    phone_number = Column(Text, nullable=True)
     linkedin_url = Column(Text, nullable=True)
 
     # Relationships

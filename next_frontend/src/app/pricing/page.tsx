@@ -1,15 +1,13 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
 import HomeHeader from "@/components/Homepage/Header";
 import Footer from "@/components/Homepage/Footer";
 import FaqSection from "@/components/Pricing/FaqSection";
 
-export const metadata = {
-  title: "Pricing | DiscoverMinds.ai",
-  description: "Choose the perfect search plan for your journey with DiscoverMinds.ai",
-};
-
 export default function PricingPage() {
+  const [isYearly, setIsYearly] = useState(false);
   return (
     <>
       <HomeHeader />
@@ -17,10 +15,10 @@ export default function PricingPage() {
         <div className="relative bg-gradient-to-r from-gray-50 to-[#EEF3FB] text-gray-800">
           <div className="pt-28 pb-16 md:pt-36 md:pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h1 className="text-4xl font-bold md:text-6xl mb-4">Plans and Pricing</h1>
+              <h1 className="text-4xl font-bold md:text-6xl mb-4">⚔️ Unleash Arya's Power</h1>
               <div className="w-16 h-1 bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] mx-auto mb-6"></div>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-                Choose the perfect search plan for your journey
+                Choose the perfect plan for your hunting needs
               </p>
 
               <div className="max-w-2xl mx-auto mb-6 text-gray-600">
@@ -29,6 +27,32 @@ export default function PricingPage() {
                   based on your needs.
                 </p>
                 <p>Credits are consumed differently based on search type and agent.</p>
+              </div>
+
+              {/* Pricing Toggle */}
+              <div className="flex items-center justify-center mb-8">
+                <div className="flex items-center bg-gray-100 rounded-full p-1">
+                  <button
+                    onClick={() => setIsYearly(false)}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                      !isYearly
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setIsYearly(true)}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 relative ${
+                      isYearly
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Yearly
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -114,9 +138,21 @@ export default function PricingPage() {
                     </div>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <p className="text-4xl font-medium text-gray-800">$15</p>
-                    <p className="text-sm text-gray-500">per user / month</p>
+                    <p className="text-4xl font-medium text-gray-800">
+                      ${isYearly ? '15' : '25'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      per user / month{isYearly ? ' (billed yearly)' : ''}
+                    </p>
                   </div>
+                  {isYearly && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 line-through">$25/month</p>
+                      <p className="text-sm text-green-600 font-medium">
+                        Save $120/year with yearly billing
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <Link href="/signup?plan=professional">
                   <button className="cursor-pointer whitespace-nowrap font-medium leading-6 transition-colors inline-flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 disabled:pointer-events-none bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] text-white hover:opacity-90 focus-visible:ring-offset-[#4A89DC] focus-visible:ring-[#80A9F9] disabled:opacity-30 w-full md:min-w-[15rem] md:w-fit px-6 py-3 text-base md:text-base rounded-lg">
@@ -175,12 +211,12 @@ export default function PricingPage() {
                 <div className="flex flex-col">
                   <div className="flex h-20 flex-col">
                     <div className="flex gap-2">
-                      <p className="text-xl font-medium uppercase text-gray-800">Enterprise</p>
+                      <p className="text-xl font-medium uppercase text-gray-800">Enterprise & Community </p>
                     </div>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <p className="text-4xl font-medium text-gray-800">$60</p>
-                    <p className="text-sm text-gray-500">per user / month</p>
+                    <p className="text-4xl font-medium text-gray-800">Custom</p>
+                    <p className="text-sm text-gray-500">pricing</p>
                   </div>
                 </div>
                 <Link href="/signup">
@@ -212,7 +248,10 @@ export default function PricingPage() {
                       Team collaboration features
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
-                      Admin dashboard with analytics
+                      Arya Integrations: Slack, WhatsApp Business, Microsoft Teams, Discord
+                    </li>
+                    <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
+                      Dashboard & Analytics
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
                       Role-Based Access Control (RBAC)
@@ -261,7 +300,7 @@ export default function PricingPage() {
                       Professional <span className="text-[#4A89DC] text-sm block">$15/month</span>
                     </th>
                     <th className="p-4 text-center">
-                      Enterprise <span className="text-gray-700 text-sm block">$60/month</span>
+                      Enterprise & Community <span className="text-gray-700 text-sm block">Custom</span>
                     </th>
                   </tr>
                 </thead>

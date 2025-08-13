@@ -14,9 +14,14 @@ import {
   FiPlus,
   FiMenu,
   FiX,
+  FiAlertTriangle,
 } from "react-icons/fi";
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
 import posthog from "posthog-js";
+
+const LogoutConfirmation = lazy(() => 
+  import("@/components/ui/LogoutConfirmation").then(module => ({ default: module.LogoutConfirmation }))
+);
 import { apiClient } from "@/integrations/fastapi/client";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
@@ -50,6 +55,8 @@ const Sidebar = () => {
   } = useAppSelector(state => state.chatThreads);
   const [loadingMoreThreads, setLoadingMoreThreads] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const threadsFetchedRef = useRef(false);
 
   const fetchThreads = () => {
@@ -122,19 +129,25 @@ const Sidebar = () => {
   ];
 
   const handleSignOut = async () => {
+    setIsLoggingOut(true);
     try {
       await apiClient.logout();
+      // Clear local storage and state
+      localStorage.removeItem("discover_minds_access_token");
+      localStorage.removeItem("discover_minds_refresh_token");
+      dispatch(clearProfile());
+      posthog.reset();
+      // Redirect to auth page
+      router.push("/user-auth");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("discover_minds_access_token");
-      localStorage.removeItem("discover_minds_refresh_token");
-
-      dispatch(clearProfile());
-      posthog.reset();
-      router.push("/user-auth");
+      setIsLoggingOut(false);
+      setShowLogoutConfirm(false);
     }
   };
+
+
 
   const toggleMobileSidebar = useCallback(() => {
     if (isMobileSidebarOpen) {
@@ -404,7 +417,7 @@ const Sidebar = () => {
                 )}
               </div>
             </div>
-          ) : isAuthenticated() ? (
+          ) : (
             <div className="flex items-center justify-between">
               <Link
                 href="/profile"
@@ -433,33 +446,13 @@ const Sidebar = () => {
               </Link>
 
               <Button
-                onClick={handleSignOut}
+                onClick={() => setShowLogoutConfirm(true)}
                 variant="ghost"
                 size="icon"
                 className={`${collapsed && !isMobile ? "hidden" : "flex"} h-8 w-8 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
                 title="Sign Out"
               >
                 <FiLogOut size={16} />
-              </Button>
-            </div>
-          ) : (
-            <div className={`flex ${collapsed && !isMobile ? "flex-col" : "items-center"} gap-2`}>
-              <Button
-                onClick={() => router.push("/user-auth")}
-                variant="ghost"
-                className={`${collapsed && !isMobile ? "p-2" : "px-3 py-2"} flex items-center justify-center`}
-                title="Login"
-              >
-                <FiLogIn size={18} />
-                {(!collapsed || isMobile) && <span className="ml-2">Login</span>}
-              </Button>
-
-              <Button
-                onClick={() => router.push("/signup")}
-                className={`${collapsed && !isMobile ? "p-2" : "px-3 py-2"} flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md`}
-                title="Sign Up"
-              >
-                {collapsed && !isMobile ? "+" : "Sign Up"}
               </Button>
             </div>
           )}
@@ -513,6 +506,16 @@ const Sidebar = () => {
       >
         <SidebarContent isMobile={false} />
       </aside>
+
+      <Suspense fallback={null}>
+        {showLogoutConfirm && (
+          <LogoutConfirmation
+            onConfirm={handleSignOut}
+            onCancel={() => setShowLogoutConfirm(false)}
+            isLoggingOut={isLoggingOut}
+          />
+        )}
+      </Suspense>
     </>
   );
 };

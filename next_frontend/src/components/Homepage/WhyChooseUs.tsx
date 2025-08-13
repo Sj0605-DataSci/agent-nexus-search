@@ -6,13 +6,13 @@ const WhyChooseUs = () => {
       <div className="mx-auto max-w-7xl px-5">
         <div className="flex flex-col items-center justify-center mb-16">
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#80A9F9]/20 text-[#3B7DDD] text-sm font-medium mb-4">
-            Why Choose Us
+            ⚔️ Why Choose Arya
           </div>
           <h4 className="text-3xl font-bold mb-4 text-center md:text-4xl">
-            How We Compare to the Competition
+            Arya vs. The Competition
           </h4>
           <p className="text-gray-600 text-center max-w-2xl">
-            Discover why professionals are choosing DiscoverMinds.ai over other solutions
+            See why professionals choose Arya's sharp instincts over traditional search tools
           </p>
         </div>
 
@@ -22,10 +22,10 @@ const WhyChooseUs = () => {
               <tr className="border-b-2 border-gray-200">
                 <th className="p-4 px-3 text-left min-w-[220px]">Features</th>
                 <th className="p-4 px-2 text-center bg-[#EEF3FB] rounded-tl-lg min-w-[180px]">
-                  <span className="block font-bold text-[#3B7DDD]">DiscoverMinds</span>
+                  <span className="block font-bold text-[#3B7DDD]">⚔️ Arya</span>
                   <span className="text-sm font-normal">Professional $15/mo</span>
                   <p className="text-xs mt-1 text-gray-600">
-                    Best for AI-powered search & automation
+                    Best for precision people hunting & learning
                   </p>
                 </th>
                 <th className="p-4 px-2 text-center min-w-[180px]">
@@ -52,10 +52,10 @@ const WhyChooseUs = () => {
             </thead>
             <tbody>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">AI-Powered Search with Natural Language</td>
+                <td className="p-4 px-3 font-medium">⚔️ Arya's Sharp Instincts (Natural Language)</td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
-                  <span className="text-xs text-gray-500">Advanced NLP</span>
+                  <span className="text-xs text-gray-500">Understands intent like faces in Winterfell</span>
                 </td>
                 <td className="p-4 px-2 text-center text-red-500">
                   ✗<br />
@@ -76,8 +76,11 @@ const WhyChooseUs = () => {
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">Specialized AI Agents (HR, Sales, etc.)</td>
-                <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">✓</td>
+                <td className="p-4 px-3 font-medium">🧠 Learns & Adapts (Gets Sharper Every Hunt)</td>
+                <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
+                  ✓<br />
+                  <span className="text-xs text-gray-500">Remembers patterns & preferences</span>
+                </td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
@@ -92,10 +95,10 @@ const WhyChooseUs = () => {
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">Email & Slack Integration</td>
+                <td className="p-4 px-3 font-medium">🌍 Travels Everywhere (Global + Personal Networks)</td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
-                  <span className="text-xs text-gray-500">Seamless workflow</span>
+                  <span className="text-xs text-gray-500">From inbox to globe—no lead escapes</span>
                 </td>
                 <td className="p-4 px-2 text-center text-red-500">
                   ✗<br />
@@ -117,18 +120,21 @@ const WhyChooseUs = () => {
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">Custom Agent Personalities</td>
-                <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">✓</td>
+                <td className="p-4 px-3 font-medium">🎯 Delivers the Truth (Verified Results)</td>
+                <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
+                  ✓<br />
+                  <span className="text-xs text-gray-500">No guesswork, just facts</span>
+                </td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">LinkedIn Integration</td>
+                <td className="p-4 px-3 font-medium">🔍 Multi-Platform Tracking</td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
-                  <span className="text-xs text-gray-500">Full API access</span>
+                  <span className="text-xs text-gray-500">LinkedIn, Gmail, Slack & more</span>
                 </td>
                 <td className="p-4 px-2 text-center text-green-500">
                   ✓<br />
@@ -171,10 +177,10 @@ const WhyChooseUs = () => {
               </tr>
 
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">Team Collaboration</td>
+                <td className="p-4 px-3 font-medium">🤝 Team Hunt Coordination</td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
-                  <span className="text-xs text-gray-500">Real-time sharing</span>
+                  <span className="text-xs text-gray-500">Share Arya's findings instantly</span>
                 </td>
                 <td className="p-4 px-2 text-center text-yellow-500">
                   Basic
@@ -204,7 +210,7 @@ const WhyChooseUs = () => {
                 <td className="p-4 px-2 text-center bg-[#F8FAFF]">
                   <Link href="/signup?plan=professional">
                     <button className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] text-white hover:opacity-90 transition-colors duration-200 text-sm font-medium">
-                      Start Free Trial
+                      ⚔️ Unleash Arya
                     </button>
                   </Link>
                 </td>

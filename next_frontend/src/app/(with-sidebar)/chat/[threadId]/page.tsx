@@ -1,13 +1,34 @@
-"use client";
+import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import FullScreenLoader from "@/components/common/FullScreenLoader";
 
-import { useParams } from "next/navigation";
-import ChatThreadView from "../../../../components/chats/ChatThreadView";
+export async function generateStaticParams() {
+  return [];
+}
 
-const ChatThreadPage = () => {
-  const params = useParams();
-  const threadId = params.threadId as string;
+export const revalidate = 60;
 
-  return <ChatThreadView threadId={threadId} />;
-};
+const ChatThreadView = dynamic(() => import("@/components/chats/ChatThreadView"), {
+  ssr: false,
+  loading: () => <FullScreenLoader isLoading={true} />,
+});
 
-export default ChatThreadPage;
+interface PageProps {
+  params: { threadId: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function ChatThreadPage({ params }: PageProps) {
+  const { threadId } = params;
+
+  if (!threadId || typeof threadId !== "string") {
+    return notFound();
+  }
+
+  return (
+    <Suspense fallback={<FullScreenLoader isLoading={true} />}>
+      <ChatThreadView threadId={threadId} />
+    </Suspense>
+  );
+}

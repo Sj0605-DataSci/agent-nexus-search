@@ -35,19 +35,24 @@ const HeroSection: React.FC = () => {
   }, []);
   const features = [
     {
-      title: "Better People Search",
-      desc: "Natural language queries with an intelligent agent that learns from your searches",
-      icon: "🔍",
+      title: "Knows Your Intent",
+      desc: "Understands your query like I know the faces in Winterfell—no filters needed, just tell me what you need",
+      icon: "🎯",
     },
     {
-      title: "Personal People Search",
-      desc: "Search across your own networks as easily as the global web",
-      icon: "🌐",
+      title: "Learns Every Time",
+      desc: "Query once, I remember—sharpens with your feedback and evolves with every search",
+      icon: "🧠",
     },
     {
-      title: "Verified Results",
-      desc: "Get enriched, verified contact details and insights ready to act on",
-      icon: "✅",
+      title: "Travels Everywhere",
+      desc: "From your inbox to the globe—no lead is safe from me. Global reach meets personal networks",
+      icon: "🌍",
+    },
+    {
+      title: "Delivers the Truth",
+      desc: "Verified results. No guesswork. Just the facts you need to act on",
+      icon: "⚔️",
     },
   ];
 
@@ -76,9 +81,9 @@ const HeroSection: React.FC = () => {
                   data-aos-delay="100"
                   className="font-hero-headline text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[80px] leading-[1.1] font-bold text-primary tracking-[-0.02em] mb-6"
                 >
-                  Deep Search for{" "}
+                  Find the right people,{" "}
                   <span className="bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] bg-clip-text text-transparent font-extrabold">
-                    People
+                    fast
                   </span>
                 </h1>
               </Parallax>
@@ -90,8 +95,8 @@ const HeroSection: React.FC = () => {
                   data-aos-duration="600"
                   className="text-lg sm:text-xl lg:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed"
                 >
-                  The first context-aware, agent-powered search engine that evolves with you. Find
-                  the right person, fast with natural language and intelligent agents.
+                  AI-powered people search that understands your intent. Connect with the right professionals, 
+                  investors, and decision makers with precision and speed.
                 </p>
               </Parallax>
             </div>
@@ -119,10 +124,10 @@ const HeroSection: React.FC = () => {
                     <div className="w-full max-w-xl sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] text-left">
                       <h2 className="font-hero-headline text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-[1.15] font-bold text-white mb-4 sm:mb-6 [text-shadow:_0_2px_4px_rgba(0,0,0,0.7)]">
                         <Parallax translateY={[5, -5]} speed={-2} className="block">
-                          Search meets
+                          Arya never forgets
                         </Parallax>
                         <Parallax translateY={[10, -5]} speed={-1} className="block">
-                          intelligent agents
+                          a face or a lead
                         </Parallax>
                       </h2>
 
@@ -132,9 +137,9 @@ const HeroSection: React.FC = () => {
                           speed={-0.5}
                           className="text-sm sm:text-base lg:text-lg xl:text-xl text-white/90 font-medium leading-relaxed [text-shadow:_0_1px_3px_rgba(0,0,0,0.6)]"
                         >
-                          <span className="font-bold text-white">Intelligent agents</span> that
-                          understand your intent, learn from feedback, and evolve with every search.
-                          No filters, no databases just smart, contextual people discovery.
+                          <span className="font-bold text-white">Sharp, loyal, and relentless</span> — 
+                          Arya learns your patterns, remembers your preferences, and gets better with every hunt.
+                          No databases, no guesswork. Just precision.
                         </Parallax>
 
                         <div className="flex flex-wrap  items-center gap-4">
@@ -177,154 +182,22 @@ const HeroSection: React.FC = () => {
             </div>
             <div className="mt-10 mb-12 sm:mt-18 sm:mb-18 text-center">
               <p className="text-sm text-text-secondary mb-3 font-medium">
-                Powered by AI Agents • Real-time Insights • Evolving Intelligence
+                AI-Powered • Intelligent Search • Verified Results
               </p>
-              <ScrollVelocity
-                velocity={8}
-                texts={[
-                  " Find experts in seconds, not hours | ",
-                  " AI that learns your search patterns | ",
-                  " 10,000+ profiles indexed daily | ",
-                  " Get actionable contact info instantly | ",
-                ]}
-                className="t text-xl font-medium text-primary"
-              />
-              <ScrollVelocity
-                velocity={-8}
-                texts={[
-                  " Uncover hidden talent pools | ",
-                  " Source candidates with precision | ",
-                  " Build stronger, more diverse teams | ",
-                  " Data-driven recruitment decisions | ",
-                ]}
-                className="t text-xl font-medium text-primary mt-2"
-              />
+              <div className="flex justify-center gap-8 mt-8">
+                <Link href="/arya">
+                  <button className="px-8 py-3 bg-gray-900 text-white font-semibold rounded-full hover:bg-gray-800 transition-colors duration-200">
+                    Meet Arya
+                  </button>
+                </Link>
+                <Link href="/user-auth">
+                  <button className="px-8 py-3 border-2 border-gray-900 text-gray-900 font-semibold rounded-full hover:bg-gray-900 hover:text-white transition-colors duration-200">
+                    Get Started
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
-        </section>
-        <section className="relative py-24 overflow-hidden bg-gradient-to-b from-gray-50 to-white">
-          {/* Animated Particles Background */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="particles-container absolute inset-0">
-              {[...Array(15)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute rounded-full bg-gradient-to-r from-blue-200 to-indigo-200"
-                  style={{
-                    width: Math.random() * 10 + 5 + "px",
-                    height: Math.random() * 10 + 5 + "px",
-                    left: Math.random() * 100 + "%",
-                    top: Math.random() * 100 + "%",
-                  }}
-                  animate={{
-                    y: [0, Math.random() * 100 - 50],
-                    x: [0, Math.random() * 100 - 50],
-                    opacity: [0.2, 0.6, 0.2],
-                  }}
-                  transition={{
-                    duration: Math.random() * 10 + 10,
-                    repeat: Infinity,
-                    repeatType: "reverse",
-                    ease: "easeInOut",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="relative container mx-auto px-4 z-10">
-            <Reveal>
-              <h2 className="text-4xl md:text-6xl font-bold text-center mb-6 bg-clip-text text-transparent bg-gray-800">
-                Deep, Adaptive Search
-              </h2>
-            </Reveal>
-            <Reveal delay={0.1}>
-              <p className="text-lg md:text-xl text-center text-gray-600 mb-20 max-w-3xl mx-auto leading-relaxed">
-                Search that evolves with you, understands your intent, and helps you discover people naturally
-              </p>
-            </Reveal>
-
-            <div className="mt-16">
-              <Stagger
-                items={features}
-                as={motion.div}
-                className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
-                childAs={motion.div}
-                childClassName="group relative"
-                staggerDelay={0.08}
-                render={(feature, index) => (
-                  <motion.div
-                    key={index}
-                    className="h-full p-0.5 rounded-3xl bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200"
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                    whileHover={{
-                      y: -10,
-                      transition: { duration: 0.3 },
-                    }}
-                  >
-                    <div className="h-full p-8 bg-white/90 backdrop-blur-sm rounded-[22px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden">
-                      <motion.div
-                        className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-3xl text-blue-600"
-                        whileHover={{
-                          scale: 1.1,
-                          rotate: 5,
-                          transition: { duration: 0.3 },
-                        }}
-                      >
-                        {feature.icon}
-                      </motion.div>
-                      <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:bg-clip-text group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600 transition-all duration-500">
-                        {feature.title}
-                      </h3>
-                      <p className="text-gray-600 leading-relaxed mb-6">{feature.desc}</p>
-
-                      <motion.div
-                        className="absolute bottom-6 left-8 right-8 h-0.5 bg-gradient-to-r from-transparent via-gray-200 to-transparent"
-                        initial={{ width: "0%" }}
-                        whileInView={{ width: "100%" }}
-                        transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                        viewport={{ once: true }}
-                      />
-
-                      <motion.div
-                        className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600"
-                        initial={{ opacity: 0, scale: 0 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
-                        viewport={{ once: true }}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              />
-            </div>
-          </div>
-        </section>
-        <div className="max-w-4xl pb-20 mx-auto px-4">
-          <ScrollReveal
-            baseOpacity={0}
-            enableBlur={true}
-            baseRotation={1}
-            blurStrength={10}
-            containerClassName="text-center"
-          >
-            Discover the power of intelligent search that understands context, not just keywords.
-            Find exactly who you're looking for with natural language queries that feel like human
-            conversation.
-          </ScrollReveal>
-        </div>
-        <section className="bg-gray-50 flex-col flex">
-          <Parallax speed={-5}>
-            <WhyChooseUs />
-          </Parallax>
-
-          <VideoPlayer
-            url="https://www.youtube.com/watch?v=_ZWwTcxK0FI"
-            className="w-full max-w-4xl mx-auto "
-          />
         </section>
       </ParallaxProvider>
     </>

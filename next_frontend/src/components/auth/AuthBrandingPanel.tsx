@@ -10,44 +10,44 @@ const AuthBrandingPanel = () => {
           <Card customClass="p-6 bg-gray-800 text-white rounded-lg shadow-lg flex flex-col justify-between">
             <div>
               <h3 className="text-xl font-bold mb-3 text-indigo-400">
-                Intelligent Career Matching
+                ⚔️ Arya's Precision Hunting
               </h3>
               <p className="text-gray-300">
-                "DiscoverMinds connected me with a role that perfectly matched my skills and
-                ambitions. The AI-powered recommendations were spot-on!"
+                "Arya found the exact investor I needed in minutes, not months. She tracked down 
+                contacts I didn't even know existed in my network."
               </p>
             </div>
             <div className="mt-4">
-              <p className="font-semibold">Alex Johnson</p>
-              <p className="text-sm text-gray-400">Senior Data Scientist at Innovate Inc.</p>
+              <p className="font-semibold">Sarah Martinez</p>
+              <p className="text-sm text-gray-400">Founder at ClimaTech Ventures</p>
             </div>
           </Card>
           <Card customClass="p-6 bg-gray-800 text-white rounded-lg shadow-lg flex flex-col justify-between">
             <div>
               <h3 className="text-xl font-bold mb-3 text-indigo-400">
-                Seamless Application Process
+                🧠 Learns Your Patterns
               </h3>
               <p className="text-gray-300">
-                "The platform made it incredibly easy to apply for multiple jobs and track my
-                progress. A huge time-saver for any serious job seeker."
+                "Every search gets better. Arya remembers my preferences and adapts to how I work. 
+                It's like having a personal tracker who never forgets."
               </p>
             </div>
             <div className="mt-4">
-              <p className="font-semibold">Samantha Lee</p>
-              <p className="text-sm text-gray-400">Product Manager at TechCorp</p>
+              <p className="font-semibold">David Kim</p>
+              <p className="text-sm text-gray-400">Head of Talent at TechFlow</p>
             </div>
           </Card>
           <Card customClass="p-6 bg-gray-800 text-white rounded-lg shadow-lg flex flex-col justify-between">
             <div>
-              <h3 className="text-xl font-bold mb-3 text-indigo-400">Unlock Your Potential</h3>
+              <h3 className="text-xl font-bold mb-3 text-indigo-400">🎯 No Lead Escapes</h3>
               <p className="text-gray-300">
-                "From resume tips to interview prep, the resources available helped me land my dream
-                job faster than I ever thought possible."
+                "Arya verified a potential business partner's background across multiple platforms. 
+                Sharp instincts and verified results—exactly what I needed."
               </p>
             </div>
             <div className="mt-4">
-              <p className="font-semibold">Michael Chen</p>
-              <p className="text-sm text-gray-400">Software Engineer at NextGen Solutions</p>
+              <p className="font-semibold">Rachel Thompson</p>
+              <p className="text-sm text-gray-400">CEO at Digital Dynamics</p>
             </div>
           </Card>
         </CardSwap>
