@@ -91,7 +91,7 @@ const AuthComponent = () => {
               )}
               <button
                 onClick={() =>
-                  formToShow === "hidetoggle" ? () => setFormToShow("signin") : router.push("/")
+                  formToShow === "hidetoggle" ? setFormToShow("signin") : router.push("/")
                 }
                 className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
               >
@@ -108,9 +108,10 @@ const AuthComponent = () => {
                 exit="exit"
                 transition={{ duration: 0.3 }}
               >
-                {(formToShow === "signup" || formToShow === "hidetoggle") && (
+                {formToShow === "signup" && (
                   <SignUpForm successSignupSubmission={() => setFormToShow("hidetoggle")} />
                 )}
+                {formToShow === "hidetoggle" && <SuccessSignupModal />}
                 {formToShow === "signin" && (
                   <SignInForm onForgotPassword={() => setFormToShow("reset")} />
                 )}
@@ -157,15 +158,17 @@ const schema = yup.object().shape({
 
 type FormData = yup.InferType<typeof schema>;
 
-const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () => void }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
+const SuccessSignupModal = () => {
+  const [resendTimer, setResendTimer] = useState(5);
   const [lastSignupData, setLastSignupData] = useState<FormData | null>(null);
   const { width, height } = useWindowSize();
 
   useEffect(() => {
+    const storedData = localStorage.getItem("lastSignupData");
+    if (storedData) {
+      setLastSignupData(JSON.parse(storedData));
+    }
+
     let interval: NodeJS.Timeout;
     if (resendTimer > 0) {
       interval = setInterval(() => {
@@ -174,16 +177,6 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
     }
     return () => clearInterval(interval);
   }, [resendTimer]);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isDirty },
-  } = useForm<FormData>({
-    resolver: yupResolver(schema),
-    mode: "onBlur",
-  });
 
   const handleResendEmail = useCallback(async () => {
     if (lastSignupData && resendTimer === 0) {
@@ -208,6 +201,59 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
     }
   }, [lastSignupData, resendTimer]);
 
+  return (
+    <div className="text-center py-8">
+      <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />
+      <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
+        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white">
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M5 13l4 4L19 7"
+            ></path>
+          </svg>
+        </div>
+      </div>
+      <h2 className="text-2xl font-bold text-gray-900 mb-3">You're all set!</h2>
+      <p className="text-gray-600 mb-6">We've sent a verification link to your email.</p>
+      <button
+        type="button"
+        onClick={handleResendEmail}
+        disabled={resendTimer > 0}
+        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+          resendTimer > 0
+            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+            : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
+        }`}
+      >
+        {resendTimer > 0 ? `Resend (${resendTimer}s)` : "Resend Email"}
+      </button>
+    </div>
+  );
+};
+
+const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () => void }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    mode: "onBlur",
+  });
+
   const onSubmit: SubmitHandler<FormData> = useCallback(
     async data => {
       setIsSubmitting(true);
@@ -220,11 +266,9 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
         );
 
         if (response.success) {
-          setLastSignupData(data);
-          setResendTimer(60);
-          setIsSuccess(true);
+          localStorage.setItem("lastSignupData", JSON.stringify(data));
           reset();
-          successSignupSubmission();
+          successSignupSubmission(); 
           showSuccessToast("Signup mail sent successfully! Check your email.");
           return;
         }
@@ -247,48 +291,8 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
         setIsSubmitting(false);
       }
     },
-    [reset]
+    [reset, successSignupSubmission]
   );
-
-  if (isSuccess) {
-    return (
-      <div className="text-center py-8">
-        <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />
-        <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-          <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white">
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M5 13l4 4L19 7"
-              ></path>
-            </svg>
-          </div>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-3">You're all set!</h2>
-        <p className="text-gray-600 mb-6">We've sent a verification link to your email.</p>
-        <button
-          type="button"
-          onClick={handleResendEmail}
-          disabled={resendTimer > 0}
-          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-            resendTimer > 0
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
-          }`}
-        >
-          {resendTimer > 0 ? `Resend (${resendTimer}s)` : "Resend Email"}
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div>
