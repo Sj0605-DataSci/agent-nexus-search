@@ -6,7 +6,7 @@ from app.models.schemas import ProfileResponse, LoginRequest, StandardResponse, 
 from app.models.schemas import SignupRequest, RefreshTokenRequest, ResetPasswordRequest, UpdatePasswordRequest
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
-from app.core.profiling import profile_async, AsyncTimer
+from app.core.profiling import profile_async, profile_sync, AsyncTimer
 from supabase.client import AsyncClient
 from app.core.config import settings
 
@@ -197,6 +197,7 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
                         "data": {
                             "full_name": signup_request.full_name or "",
                             "linkedin_url": signup_request.linkedin_url or "",
+                            "phone_number": signup_request.phone_number or ""
                         }
                     }
                 })
@@ -240,6 +241,113 @@ async def signup(signup_request: SignupRequest, client: AsyncClient = Depends(ge
             ),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@router.post("/signup-direct", response_model=StandardResponse, response_class=StandardJSONResponse, status_code=status.HTTP_201_CREATED)
+@profile_sync("auth.signup_direct")
+def signup_direct(signup_request: SignupRequest):
+    """
+    Creates a new user account with email and password WITHOUT email confirmation.
+    
+    This endpoint uses the Supabase service key to create users directly with
+    confirmed email status, bypassing email confirmation entirely and triggering
+    the handle_email_confirmed() function to automatically create the profile.
+    
+    WARNING: This endpoint should only be used in development or trusted environments
+    as it bypasses the email verification security step.
+    """
+    if settings.ENVIRONMENT == "PRODUCTION":
+        return StandardJSONResponse(
+            StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Direct signup not available - not in production environment",
+                data=None
+            ),
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    else:
+        try:
+            logger.info("Direct signup request received", email=signup_request.email)
+            
+            # Use service key client for admin operations (bypasses email confirmation)
+            from supabase import create_client
+            from datetime import datetime
+        
+            # Validate anon key is configured
+            if not settings.SUPABASE_SERVICE_ROLE_KEY:
+                logger.error("Supabase service role key not configured")
+                return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="Direct signup not available - service role key not configured",
+                data=None
+            ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Create admin client with anon key
+            admin_client = create_client(
+                settings.SUPABASE_URL,
+                settings.SUPABASE_SERVICE_ROLE_KEY
+            )
+        
+        # Create user directly with admin privileges - no email sent
+            auth_response = admin_client.auth.admin.create_user({
+                "email": signup_request.email,
+                "password": signup_request.password,
+                "email_confirm": True,  # Directly confirm email
+                "user_metadata": {
+                    "full_name": signup_request.full_name or "",
+                    "linkedin_url": signup_request.linkedin_url or "",
+                    "phone_number": signup_request.phone_number or ""
+                }
+            })
+        
+            if not auth_response.user:
+                logger.error("Direct signup failed - no user created", 
+                            email=signup_request.email,
+                            error=str(auth_response))
+                return StandardJSONResponse(StandardResponse(
+                    success=False,
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message="Failed to create user account",
+                    data=None
+                ), status_code=status.HTTP_400_BAD_REQUEST)
+        
+            logger.info("User created successfully with confirmed email", 
+                   user_id=auth_response.user.id,
+                   email=signup_request.email,
+                   email_confirmed_at=auth_response.user.email_confirmed_at)
+        
+            logger.info("Direct signup successful", 
+                   user_id=auth_response.user.id,
+                   email=signup_request.email)
+        
+            return StandardJSONResponse(StandardResponse(
+                success=True,
+                status_code=status.HTTP_201_CREATED,
+                message="Account created successfully. Profile will be created automatically.",
+                data={
+                "user_id": auth_response.user.id,
+                "email": auth_response.user.email,
+                "email_confirmed": True,
+                "profile_creation": "automatic"
+            }
+            ))
+        
+        except Exception as e:
+            logger.exception("Direct signup error",
+                            exception_type=type(e).__name__,
+                            error_message=str(e),
+                            email=signup_request.email)
+        
+            return StandardJSONResponse(
+                StandardResponse(
+                    success=False,
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=f"Direct signup failed: {str(e)}",
+                    data=None
+                ),
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 @router.post("/logout", response_model=StandardResponse, response_class=StandardJSONResponse)
 @profile_async("auth.logout")
@@ -630,4 +738,3 @@ async def update_password(request: UpdatePasswordRequest, client: AsyncClient = 
             message=f"Failed to update password: {str(e)}",
             data=None
         ))
-

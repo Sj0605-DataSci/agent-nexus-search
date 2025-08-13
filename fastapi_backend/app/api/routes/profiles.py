@@ -119,7 +119,8 @@ async def get_my_profile(
             "has_connections": current_user.has_connections,
             "user_subscriptions_id": current_user.user_subscriptions_id,
             "linkedin_url": current_user.linkedin_url,
-            "email_subscription": current_user.email_subscription
+            "email_subscription": current_user.email_subscription,
+            "phone_number": current_user.phone_number
         }
         
         profile_response = ProfileResponse(**profile_data)
@@ -174,6 +175,8 @@ async def update_my_profile(
             update_data["linkedin_url"] = profile_update.linkedin_url
         if profile_update.email_subscription is not None:
             update_data["email_subscription"] = profile_update.email_subscription    
+        if profile_update.phone_number is not None:
+            update_data["phone_number"] = profile_update.phone_number    
         
         # Only perform update if there are fields to update
         if update_data:
@@ -204,7 +207,8 @@ async def update_my_profile(
                 "has_connections": updated_profile.data.get("has_connections", False),
                 "user_subscriptions_id": updated_profile.data.get("user_subscriptions_id"),
                 "linkedin_url": updated_profile.data.get("linkedin_url"),
-                "email_subscription": updated_profile.data.get("email_subscription", False)
+                "email_subscription": updated_profile.data.get("email_subscription", False),
+                "phone_number": updated_profile.data.get("phone_number")
             }
             cache_item(profile_cache_key, updated_profile_data)
             
