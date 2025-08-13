@@ -16,15 +16,15 @@ export const LogoutConfirmation = ({
 }: LogoutConfirmationProps) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
         <div className="p-6 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
-            <FiAlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-4">
+            <FiAlertTriangle className="h-6 w-6 text-amber-600 0" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+          <h3 className="text-lg font-medium text-gray-900  mb-2">
             Are you sure you want to sign out?
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-sm text-gray-500  mb-6">
             You'll need to sign back in to access your account and continue your work.
           </p>
           <div className="flex justify-center gap-3">
@@ -33,7 +33,7 @@ export const LogoutConfirmation = ({
               variant="outline"
               onClick={onCancel}
               disabled={isLoggingOut}
-              className="px-4 py-2 text-sm font-medium"
+              className="px-4 py-2 text-sm font-medium "
             >
               Cancel
             </Button>
