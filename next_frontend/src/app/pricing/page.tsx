@@ -1,15 +1,13 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
 import HomeHeader from "@/components/Homepage/Header";
 import Footer from "@/components/Homepage/Footer";
 import FaqSection from "@/components/Pricing/FaqSection";
 
-export const metadata = {
-  title: "Pricing | DiscoverMinds.ai",
-  description: "Choose the perfect search plan for your journey with DiscoverMinds.ai",
-};
-
 export default function PricingPage() {
+  const [isYearly, setIsYearly] = useState(false);
   return (
     <>
       <HomeHeader />
@@ -29,6 +27,32 @@ export default function PricingPage() {
                   based on your needs.
                 </p>
                 <p>Credits are consumed differently based on search type and agent.</p>
+              </div>
+
+              {/* Pricing Toggle */}
+              <div className="flex items-center justify-center mb-8">
+                <div className="flex items-center bg-gray-100 rounded-full p-1">
+                  <button
+                    onClick={() => setIsYearly(false)}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                      !isYearly
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setIsYearly(true)}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 relative ${
+                      isYearly
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Yearly
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -114,9 +138,21 @@ export default function PricingPage() {
                     </div>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <p className="text-4xl font-medium text-gray-800">$15</p>
-                    <p className="text-sm text-gray-500">per user / month</p>
+                    <p className="text-4xl font-medium text-gray-800">
+                      ${isYearly ? '15' : '25'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      per user / month{isYearly ? ' (billed yearly)' : ''}
+                    </p>
                   </div>
+                  {isYearly && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 line-through">$25/month</p>
+                      <p className="text-sm text-green-600 font-medium">
+                        Save $120/year with yearly billing
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <Link href="/signup?plan=professional">
                   <button className="cursor-pointer whitespace-nowrap font-medium leading-6 transition-colors inline-flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 disabled:pointer-events-none bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] text-white hover:opacity-90 focus-visible:ring-offset-[#4A89DC] focus-visible:ring-[#80A9F9] disabled:opacity-30 w-full md:min-w-[15rem] md:w-fit px-6 py-3 text-base md:text-base rounded-lg">
