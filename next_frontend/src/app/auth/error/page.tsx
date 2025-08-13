@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-export default function AuthErrorPage() {
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
@@ -24,10 +25,18 @@ export default function AuthErrorPage() {
               ? "Server error occurred during authentication."
               : "An error occurred during authentication."}
         </p>
-        <a href="/user-auth" className="text-indigo-600 hover:text-indigo-800 font-medium">
+        <Link href="/user-auth" className="text-indigo-600 hover:text-indigo-800 font-medium">
           Return to Sign In
-        </a>
+        </Link>
       </div>
     </div>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ErrorContent />
+    </Suspense>
   );
 }
