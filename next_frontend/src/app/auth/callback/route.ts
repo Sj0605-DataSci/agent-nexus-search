@@ -1,21 +1,37 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/integrations/supabase/server'
+import { NextResponse } from "next/server";
+import { createClient } from "@/integrations/supabase/server";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get('next') ?? '/'
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const error = searchParams.get("error");
+  const next = searchParams.get("next") ?? "/";
 
-  if (code) {
-    const supabase = createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
-    }
+  // Handle OAuth provider errors first
+  if (error) {
+    return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent(error)}`);
   }
 
-  // return the user to an error page with instructions
-  console.error('Error exchanging code for session: No code provided or an error occurred.');
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  if (!code) {
+    return NextResponse.redirect(`${origin}/auth/error?error=no_code`);
+  }
+
+  try {
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (authError) {
+      console.error("Auth Error:", authError.message);
+      return NextResponse.redirect(
+        `${origin}/auth/error?error=${encodeURIComponent(authError.message)}`
+      );
+    }
+
+    return NextResponse.redirect(`${origin}${next}`);
+  } catch (err: any) {
+    console.error("Error exchanging code:", err.message);
+    return NextResponse.redirect(
+      `${origin}/auth/error?error=${encodeURIComponent("server_error")}`
+    );
+  }
 }

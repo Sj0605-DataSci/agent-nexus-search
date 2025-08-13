@@ -16,11 +16,11 @@ const MainContentSkeleton = () => (
             <Skeleton className="h-9 w-24 rounded-full" />
           </div>
         </div>
-        
+
         <div className="grid gap-6">
           <Skeleton className="h-12 w-full rounded-lg" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4].map(i => (
               <Skeleton key={i} className="h-32 rounded-lg" />
             ))}
           </div>
@@ -30,10 +30,10 @@ const MainContentSkeleton = () => (
   </div>
 );
 
-const MainContent = ({ 
-  children, 
-  isLoading = false 
-}: { 
+const MainContent = ({
+  children,
+  isLoading = false,
+}: {
   children: React.ReactNode;
   isLoading?: boolean;
 }) => {
@@ -53,24 +53,9 @@ const MainContent = ({
 const AuthenticatedMainContent = withAuth(MainContent);
 
 function WithSidebarLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarReady, setIsSidebarReady] = useState(false);
-
-  // Simulate sidbar loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSidebarReady(true);
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      {isSidebarReady ? (
-        <Sidebar />
-      ) : (
-        <div className="w-16 sm:w-64 h-full bg-white border-r border-gray-200 animate-pulse" />
-      )}
+      <Sidebar />
       <AuthenticatedMainContent>{children}</AuthenticatedMainContent>
     </div>
   );

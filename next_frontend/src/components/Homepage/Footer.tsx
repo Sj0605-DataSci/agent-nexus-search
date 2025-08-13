@@ -26,7 +26,7 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-50 border-t mt-20 border-gray-200">
+    <footer className="bg-gray-50 border-t border-gray-200">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
           <div className="md:col-span-2">
@@ -73,7 +73,7 @@ export default function Footer() {
                     {link.name}
                   </Link>
                   {link.tooltip && (
-                    <span className="absolute left-0 top-8 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    <span className="absolute -left-16 top-8 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                       {link.tooltip}
                     </span>
                   )}

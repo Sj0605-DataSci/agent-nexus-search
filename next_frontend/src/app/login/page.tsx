@@ -1,8 +1,6 @@
-export const dynamic = "force-static";
-export const revalidate = false;
-
-import LoginForm from "@/components/login/LoginForm";
+import { redirect } from "next/navigation";
 
 export default function LoginPage() {
-  return <LoginForm />;
+  redirect("/user-auth");
+  return null;
 }

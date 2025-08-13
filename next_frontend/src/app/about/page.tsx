@@ -4,10 +4,53 @@ import Image from "next/image";
 import HomeHeader from "@/components/Homepage/Header";
 import Footer from "@/components/Homepage/Footer";
 
-export const metadata = {
-  title: "About | DiscoverMinds.ai",
-  description: "Meet the team behind Arya and learn about our mission to revolutionize people search",
+const baseMetadata = {
+  title: 'About DiscoverMinds.ai',
+  description: 'Learn about our AI-powered people search platform',
 };
+
+const productionMetadata = {
+  title: 'About DiscoverMinds.ai | AI-Powered People Search Platform',
+  description: 'Discover the team and vision behind DiscoverMinds.ai - Revolutionizing how professionals connect through intelligent, AI-powered people search and networking.',
+  keywords: [
+    "AI people search",
+    "professional networking",
+    "talent discovery",
+    "contact search",
+    "business connections",
+    "recruitment search",
+    "professional search engine",
+    "network intelligence",
+    "Arya AI search"
+  ],
+  openGraph: {
+    title: "About DiscoverMinds.ai | AI-Powered People Search Platform",
+    description: "Meet the team behind Arya AI and learn how we're transforming professional networking with intelligent search technology.",
+    url: "https://discoverminds.ai/about",
+    siteName: "DiscoverMinds.ai",
+    images: [
+      {
+        url: "/Logo.png",
+        width: 512,
+        height: 512,
+        alt: "DiscoverMinds.ai - Better People Search, Personal Connections"
+      }
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About DiscoverMinds.ai | AI-Powered People Search',
+    description: 'Transforming how professionals connect through intelligent search technology.',
+    images: ['/Logo.png'],
+  },
+  alternates: {
+    canonical: 'https://discoverminds.ai/about',
+  },
+};
+
+export const metadata = process.env.NODE_ENV === 'production' ? productionMetadata : baseMetadata;
 
 export default function AboutPage() {
   return (
@@ -18,7 +61,7 @@ export default function AboutPage() {
         <section className="pt-32 pb-20 px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-6xl md:text-8xl font-bold text-gray-900 mb-8 leading-tight">
-              DiscoverMinds.
+              DiscoverMinds.ai
             </h1>
             <div className="max-w-3xl mx-auto">
               <p className="text-xl md:text-2xl text-gray-600 leading-relaxed mb-8">
@@ -62,8 +105,8 @@ export default function AboutPage() {
         {/* Team Section */}
         <section className="py-20 px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-12 text-center">
-              Team
+            <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4 text-center">
+              Our Team
             </h2>
             <div className="text-center mb-16">
               <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
@@ -146,16 +189,19 @@ export default function AboutPage() {
         <section className="py-20 px-4 bg-gray-900 text-white">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl md:text-6xl font-bold mb-8">
-              Ready to meet Arya?
+              Experience the Future of People Search
             </h2>
-            <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-              Join thousands of professionals who trust Arya to find the right people, fast.
+            <p className="text-xl text-indigo-100 mb-12 max-w-2xl mx-auto">
+              Join professionals who trust DiscoverMinds.ai to find the right connections, faster and smarter.
             </p>
-            <Link href="/user-auth">
-              <button className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-full text-lg hover:bg-gray-100 transition-colors">
-                Get Started
-              </button>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/user-auth" className="px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full text-lg hover:bg-gray-100 transition-colors">
+                Get Started Free
+              </Link>
+              <Link href="/#features" className="px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-full text-lg hover:bg-white/10 transition-colors">
+                Learn More
+              </Link>
+            </div>
           </div>
         </section>
       </div>

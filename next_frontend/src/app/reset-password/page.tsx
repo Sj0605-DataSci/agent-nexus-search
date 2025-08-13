@@ -1,8 +1,9 @@
 export const dynamic = "force-static";
 export const revalidate = false;
 
-import ResetPasswordForm from "../../components/auth/ResetPasswordForm";
+import { redirect } from "next/navigation";
 
 export default function ResetPasswordPage() {
-  return <ResetPasswordForm />;
+  redirect("/user-auth");
+  return null;
 }

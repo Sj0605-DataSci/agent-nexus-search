@@ -5,6 +5,7 @@ import { apiClient } from "@/integrations/fastapi/client";
 import posthog from "posthog-js";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { clearProfile } from "@/store/profileSlice";
+import { showErrorToast } from "@/utils/toastManager";
 
 interface AuthContextType {
   user: User | null;
@@ -197,20 +198,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signInWithGoogle = async () => {
     try {
       posthog.capture("google_signin_initiated");
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: "email profile",
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
 
-      if (error) {
-        console.error("Google Sign-In Error:", error.message);
-        posthog.capture("google_signin_error", { reason: error.message });
-      }
+      if (error) throw error;
+
+      // Store the provider and any additional state if needed
+      localStorage.setItem("oauth_provider", "google");
     } catch (error: any) {
-      console.error("Google Sign-In Exception:", error.message);
-      posthog.capture("google_signin_error", { reason: "exception", message: error.message });
+      console.error("Google Sign-In Error:", error.message);
+      posthog.capture("google_signin_error", {
+        reason: error.message,
+        code: error.code,
+      });
+      showErrorToast("Google sign-in failed. Please try again.");
     }
   };
 
