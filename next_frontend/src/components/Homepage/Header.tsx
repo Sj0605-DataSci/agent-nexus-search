@@ -42,7 +42,9 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { name: "Pricing", href: "/pricing" },
+  { name: "Arya", href: "/arya" },
+  { name: "Examples", href: "/examples" },
+  { name: "About", href: "/about" },
   { name: "Get Started", href: "/user-auth", isButton: true },
 ];
 
@@ -90,35 +92,46 @@ const HomeHeader: React.FC = () => {
 
   return (
     <>
-      <header
-        className={`fixed left-0 top-0 right-0 z-50 mt-6 backdrop-blur-md bg-background/85 shadow-none`}
-      >
-        <div className="mx-auto flex h-16 sm:h-[60px] max-w-[1200px] items-center justify-between px-4 sm:px-5 lg:px-6 xl:px-6">
-          <BrandLogo className="" />
-          <nav className="hidden md:block">
-            <ul className="flex items-center gap-6 lg:gap-8">
-              {NAV_LINKS.map(link => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className={`relative transition-all duration-300 group ${
-                      link.isButton
-                        ? "px-4 py-2 lg:px-6 lg:py-2.5 bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] text-white font-medium rounded-full hover:opacity-90 hover:scale-105 shadow-lg transform transition-all duration-300 hover:-translate-y-0.5"
-                        : "text-sm lg:text-base font-medium text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+      <header className="fixed left-0 top-0 right-0 z-50 pt-6 px-6">
+        <div className="mx-auto max-w-[1200px] bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex h-16 items-center justify-between px-6">
+            <BrandLogo className="" />
+            
+            {/* Center Navigation */}
+            <nav className="hidden md:block">
+              <ul className="flex items-center gap-8">
+                {NAV_LINKS.filter(link => !link.isButton).map(link => (
+                  <li key={link.name}>
+                    <Link
+                      href={link.href}
+                      className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
 
-          {/* Mobile Menu Button */}
-          <MobileMenuIcon
-            isOpen={isMobileMenuOpen}
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          />
+            {/* Right CTA Button */}
+            <div className="hidden md:block">
+              {NAV_LINKS.filter(link => link.isButton).map(link => (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className="px-6 py-2.5 bg-gray-900 text-white font-semibold rounded-full hover:bg-gray-800 transition-colors duration-200"
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <MobileMenuIcon
+              isOpen={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            />
+          </div>
         </div>
       </header>
 

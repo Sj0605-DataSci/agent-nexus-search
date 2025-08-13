@@ -17,10 +17,10 @@ export default function PricingPage() {
         <div className="relative bg-gradient-to-r from-gray-50 to-[#EEF3FB] text-gray-800">
           <div className="pt-28 pb-16 md:pt-36 md:pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h1 className="text-4xl font-bold md:text-6xl mb-4">Plans and Pricing</h1>
+              <h1 className="text-4xl font-bold md:text-6xl mb-4">⚔️ Unleash Arya's Power</h1>
               <div className="w-16 h-1 bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] mx-auto mb-6"></div>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-                Choose the perfect search plan for your journey
+                Choose the perfect plan for your hunting needs
               </p>
 
               <div className="max-w-2xl mx-auto mb-6 text-gray-600">
@@ -175,12 +175,12 @@ export default function PricingPage() {
                 <div className="flex flex-col">
                   <div className="flex h-20 flex-col">
                     <div className="flex gap-2">
-                      <p className="text-xl font-medium uppercase text-gray-800">Enterprise</p>
+                      <p className="text-xl font-medium uppercase text-gray-800">Enterprise & Community </p>
                     </div>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <p className="text-4xl font-medium text-gray-800">$60</p>
-                    <p className="text-sm text-gray-500">per user / month</p>
+                    <p className="text-4xl font-medium text-gray-800">Custom</p>
+                    <p className="text-sm text-gray-500">pricing</p>
                   </div>
                 </div>
                 <Link href="/signup">
@@ -212,7 +212,10 @@ export default function PricingPage() {
                       Team collaboration features
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
-                      Admin dashboard with analytics
+                      Arya Integrations: Slack, WhatsApp Business, Microsoft Teams, Discord
+                    </li>
+                    <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
+                      Dashboard & Analytics
                     </li>
                     <li className="relative pl-7 text-sm before:absolute before:left-0 before:text-[#4A89DC] before:content-['✓'] md:text-base">
                       Role-Based Access Control (RBAC)
@@ -261,7 +264,7 @@ export default function PricingPage() {
                       Professional <span className="text-[#4A89DC] text-sm block">$15/month</span>
                     </th>
                     <th className="p-4 text-center">
-                      Enterprise <span className="text-gray-700 text-sm block">$60/month</span>
+                      Enterprise & Community <span className="text-gray-700 text-sm block">Custom</span>
                     </th>
                   </tr>
                 </thead>
