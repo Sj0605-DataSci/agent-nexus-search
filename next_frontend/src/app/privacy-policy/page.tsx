@@ -7,13 +7,14 @@ import Footer from "@/components/Homepage/Footer";
 export const revalidate = 60 * 60 * 24; // Revalidate every 24 hours
 
 const baseMetadata = {
-  title: 'Privacy Policy',
-  description: 'Privacy Policy for DiscoverMinds.ai',
+  title: "Privacy Policy",
+  description: "Privacy Policy for DiscoverMinds.ai",
 };
 
 const productionMetadata: Metadata = {
   title: `Privacy Policy | DiscoverMinds.ai`,
-  description: "Learn how DiscoverMinds.ai protects your privacy while delivering intelligent people search capabilities.",
+  description:
+    "Learn how DiscoverMinds.ai protects your privacy while delivering intelligent people search capabilities.",
   keywords: [
     "privacy policy",
     "data protection",
@@ -26,11 +27,12 @@ const productionMetadata: Metadata = {
     "contact information protection",
     "personal data security",
     "DiscoverMinds data handling",
-    "AI search privacy"
+    "AI search privacy",
   ],
   openGraph: {
     title: "Privacy Policy | DiscoverMinds.ai",
-    description: "Your privacy matters. Learn how we protect your data while delivering intelligent people search capabilities.",
+    description:
+      "Your privacy matters. Learn how we protect your data while delivering intelligent people search capabilities.",
     url: "https://discoverminds.ai/privacy-policy",
     siteName: "DiscoverMinds.ai",
     locale: "en_US",
@@ -39,14 +41,16 @@ const productionMetadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Privacy Policy | DiscoverMinds.ai",
-    description: "Your privacy matters. Learn how we protect your data while delivering intelligent people search capabilities.",
+    description:
+      "Your privacy matters. Learn how we protect your data while delivering intelligent people search capabilities.",
   },
   alternates: {
     canonical: "https://discoverminds.ai/privacy-policy",
   },
 };
 
-export const metadata: Metadata = process.env.NODE_ENV === 'production' ? productionMetadata : baseMetadata;
+export const metadata: Metadata =
+  process.env.NODE_ENV === "production" ? productionMetadata : baseMetadata;
 
 function addBreadcrumbList() {
   return {

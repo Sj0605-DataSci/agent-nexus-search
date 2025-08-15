@@ -7,19 +7,21 @@ import Footer from "@/components/Homepage/Footer";
 export const dynamic = "force-static";
 
 const baseMetadata = {
-  title: 'DiscoverMinds.ai',
-  description: 'AI-powered people search engine',
+  title: "DiscoverMinds.ai",
+  description: "AI-powered people search engine",
 };
 
 const productionMetadata: Metadata = {
   title: "Home | DiscoverMinds.ai - Intelligent People Search Engine",
-  description: "Discover and connect with professionals using our AI-powered people search engine. Find the right experts and opportunities.",
+  description:
+    "Discover and connect with professionals using our AI-powered people search engine. Find the right experts and opportunities.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "DiscoverMinds.ai | Intelligent People Search Engine",
-    description: "Discover and connect with professionals using our AI-powered people search engine.",
+    description:
+      "Discover and connect with professionals using our AI-powered people search engine.",
     url: "https://discoverminds.ai",
     siteName: "DiscoverMinds.ai",
     locale: "en_US",
@@ -28,11 +30,13 @@ const productionMetadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "DiscoverMinds.ai | Intelligent People Search Engine",
-    description: "Discover and connect with professionals using our AI-powered people search engine.",
+    description:
+      "Discover and connect with professionals using our AI-powered people search engine.",
   },
 };
 
-export const metadata: Metadata = process.env.NODE_ENV === 'production' ? productionMetadata : baseMetadata;
+export const metadata: Metadata =
+  process.env.NODE_ENV === "production" ? productionMetadata : baseMetadata;
 
 function addStructuredData() {
   return {

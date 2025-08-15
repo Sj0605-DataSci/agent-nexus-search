@@ -1,4 +1,4 @@
-import { ChatSource } from './chat';
+import { ChatSource } from "./chat";
 
 // Base API response type
 export interface ApiResponse<T> {
@@ -25,12 +25,12 @@ export interface ChatMessagesResponse {
   total: number;
 }
 // Worker message types
-export type WorkerMessageType = 
-  | 'process_message' 
-  | 'process_search_results' 
-  | 'analyze_query' 
-  | 'processed_message' 
-  | 'query_analysis';
+export type WorkerMessageType =
+  | "process_message"
+  | "process_search_results"
+  | "analyze_query"
+  | "processed_message"
+  | "query_analysis";
 
 export interface WorkerMessage {
   type: WorkerMessageType;
@@ -38,16 +38,16 @@ export interface WorkerMessage {
 }
 
 // Stream update types
-export type StreamUpdateType = 
-  | 'thread_id'
-  | 'thinking'
-  | 'token'
-  | 'search_query'
-  | 'source'
-  | 'message'
-  | 'error'
-  | 'done'
-  | 'connected';
+export type StreamUpdateType =
+  | "thread_id"
+  | "thinking"
+  | "token"
+  | "search_query"
+  | "source"
+  | "message"
+  | "error"
+  | "done"
+  | "connected";
 
 export interface StreamUpdate {
   type: StreamUpdateType;

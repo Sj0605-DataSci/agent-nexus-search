@@ -13,7 +13,7 @@ const AuthBrandingPanel = () => {
                 ⚔️ Arya's Precision Hunting
               </h3>
               <p className="text-gray-300">
-                "Arya found the exact investor I needed in minutes, not months. She tracked down 
+                "Arya found the exact investor I needed in minutes, not months. She tracked down
                 contacts I didn't even know existed in my network."
               </p>
             </div>
@@ -24,11 +24,9 @@ const AuthBrandingPanel = () => {
           </Card>
           <Card customClass="p-6 bg-gray-800 text-white rounded-lg shadow-lg flex flex-col justify-between">
             <div>
-              <h3 className="text-xl font-bold mb-3 text-indigo-400">
-                🧠 Learns Your Patterns
-              </h3>
+              <h3 className="text-xl font-bold mb-3 text-indigo-400">🧠 Learns Your Patterns</h3>
               <p className="text-gray-300">
-                "Every search gets better. Arya remembers my preferences and adapts to how I work. 
+                "Every search gets better. Arya remembers my preferences and adapts to how I work.
                 It's like having a personal tracker who never forgets."
               </p>
             </div>
@@ -41,7 +39,7 @@ const AuthBrandingPanel = () => {
             <div>
               <h3 className="text-xl font-bold mb-3 text-indigo-400">🎯 No Lead Escapes</h3>
               <p className="text-gray-300">
-                "Arya verified a potential business partner's background across multiple platforms. 
+                "Arya verified a potential business partner's background across multiple platforms.
                 Sharp instincts and verified results—exactly what I needed."
               </p>
             </div>

@@ -226,7 +226,6 @@ export default function AgentMarketplaceCard({
       >
         <div className={`absolute inset-0 bg-gradient-to-br ${gradientClass} opacity-50`} />
 
-
         <div className="relative z-10 p-4 sm:p-6 h-full flex flex-col">
           {/* Header Section */}
           <motion.div

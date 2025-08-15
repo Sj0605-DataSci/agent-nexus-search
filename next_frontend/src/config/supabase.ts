@@ -7,7 +7,8 @@ export const getSupabaseConfig = () => {
 
   const supabaseKey = isProduction
     ? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-    : process.env.NEXT_PUBLIC_SUPABASE_STAGING_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    : process.env.NEXT_PUBLIC_SUPABASE_STAGING_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   // Validate environment variables
   if (!supabaseUrl || !supabaseKey) {

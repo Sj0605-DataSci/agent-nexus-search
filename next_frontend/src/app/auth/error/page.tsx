@@ -29,24 +29,24 @@ export default function AuthErrorPage() {
               // Store tokens in localStorage first (this always works)
               localStorage.setItem("discover_minds_access_token", accessToken);
               localStorage.setItem("discover_minds_refresh_token", refreshToken);
-              
+
               // Set default auth header for axios
               setAuthToken(accessToken);
-              
+
               // Try to set the Supabase session (might fail with Invalid API key)
               const { error: sessionError } = await supabaseTemp.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken,
               });
-              
+
               if (sessionError) {
                 console.warn("Supabase session error, but continuing:", sessionError);
                 // Continue anyway since we've stored the tokens
               }
-              
+
               // Clear the URL hash
               window.history.replaceState({}, document.title, window.location.pathname);
-              
+
               // Redirect to chat
               router.push("/chat/new");
               return;

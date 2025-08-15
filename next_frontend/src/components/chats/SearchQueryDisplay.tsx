@@ -13,7 +13,7 @@ export const SearchQueryDisplay = ({
   isStreaming,
 }: SearchQueryDisplayProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   if (!showSearchQueries && streamingSearchQueries.length === 0 && !isStreaming) return null;
 
   return (

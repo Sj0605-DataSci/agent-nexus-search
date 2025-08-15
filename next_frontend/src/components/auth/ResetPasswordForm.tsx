@@ -16,7 +16,7 @@ import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import Aurora from "@/components/Aurora";
 import { apiClient } from "@/integrations/fastapi/client";
 
-const RESEND_COOLDOWN = 30; 
+const RESEND_COOLDOWN = 30;
 
 type FormData = {
   email: string;

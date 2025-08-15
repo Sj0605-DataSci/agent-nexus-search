@@ -31,15 +31,13 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   customClass?: string;
 }
 
-export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ customClass, ...rest }, ref) => (
-    <div
-      ref={ref}
-      {...rest}
-      className={`absolute top-1/2 left-1/2 rounded-xl border border-white/20 bg-black/80 backdrop-blur-sm [transform-style:preserve-3d] [will-change:transform] [backface-visibility:hidden] ${customClass ?? ""} ${rest.className ?? ""}`.trim()}
-    />
-  )
-);
+export const Card = forwardRef<HTMLDivElement, CardProps>(({ customClass, ...rest }, ref) => (
+  <div
+    ref={ref}
+    {...rest}
+    className={`absolute top-1/2 left-1/2 rounded-xl border border-white/20 bg-black/80 backdrop-blur-sm [transform-style:preserve-3d] [will-change:transform] [backface-visibility:hidden] ${customClass ?? ""} ${rest.className ?? ""}`.trim()}
+  />
+));
 Card.displayName = "Card";
 
 type CardRef = RefObject<HTMLDivElement>;
@@ -50,12 +48,7 @@ interface Slot {
   zIndex: number;
 }
 
-const makeSlot = (
-  i: number,
-  distX: number,
-  distY: number,
-  total: number
-): Slot => ({
+const makeSlot = (i: number, distX: number, distY: number, total: number): Slot => ({
   x: i * distX,
   y: -i * distY,
   z: -i * distX * 1.5,
@@ -110,11 +103,12 @@ const CardSwap: React.FC<CardSwapProps> = ({
     () => Children.toArray(children) as ReactElement<CardProps>[],
     [children]
   );
-  const refs = useMemo<CardRef[]>(() => childArr.map(() => React.createRef<HTMLDivElement>()), [childArr]);
-
-  const order = useRef<number[]>(
-    Array.from({ length: childArr.length }, (_, i) => i)
+  const refs = useMemo<CardRef[]>(
+    () => childArr.map(() => React.createRef<HTMLDivElement>()),
+    [childArr]
   );
+
+  const order = useRef<number[]>(Array.from({ length: childArr.length }, (_, i) => i));
 
   const tlRef = useRef<gsap.core.Timeline | null>(null);
   const intervalRef = useRef<number>();
@@ -123,11 +117,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
   useEffect(() => {
     const total = refs.length;
     refs.forEach((r, i) =>
-      placeNow(
-        r.current!,
-        makeSlot(i, cardDistance, verticalDistance, total),
-        skewAmount
-      )
+      placeNow(r.current!, makeSlot(i, cardDistance, verticalDistance, total), skewAmount)
     );
 
     const swap = () => {
@@ -162,12 +152,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
         );
       });
 
-      const backSlot = makeSlot(
-        refs.length - 1,
-        cardDistance,
-        verticalDistance,
-        refs.length
-      );
+      const backSlot = makeSlot(refs.length - 1, cardDistance, verticalDistance, refs.length);
       tl.addLabel("return", `promote+=${config.durMove * config.returnDelay}`);
       tl.call(
         () => {
@@ -222,7 +207,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
           key: i,
           ref: refs[i],
           style: { width, height, ...(child.props.style ?? {}) },
-          onClick: (e) => {
+          onClick: e => {
             child.props.onClick?.(e as React.MouseEvent<HTMLDivElement>);
             onCardClick?.(i);
           },

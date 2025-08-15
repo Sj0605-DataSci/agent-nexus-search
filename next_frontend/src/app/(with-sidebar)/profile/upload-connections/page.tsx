@@ -43,7 +43,7 @@ function UploadConnectionsContent() {
       setErrorMessage("");
 
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
-      
+
       // Get JWT token from localStorage (same as your working curl)
       const token = localStorage.getItem("discover_minds_access_token");
       if (!token) {
@@ -52,18 +52,18 @@ function UploadConnectionsContent() {
 
       // Use direct fetch API with proper authentication (like your working curl)
       const formData = new FormData();
-      formData.append('cacheControl', '3600');
-      formData.append('', file); // Empty name field like in your curl
+      formData.append("cacheControl", "3600");
+      formData.append("", file); // Empty name field like in your curl
 
       const { supabaseUrl, supabaseKey } = getSupabaseConfig();
 
       const uploadResponse = await fetch(
         `${supabaseUrl}/storage/v1/object/connection-files/${fileName}`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'apikey': supabaseKey,
+            Authorization: `Bearer ${token}`,
+            apikey: supabaseKey,
           },
           body: formData,
         }

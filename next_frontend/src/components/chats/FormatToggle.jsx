@@ -10,9 +10,7 @@ export default function FormatToggle({ format, setFormat, disabled = false }) {
         disabled={disabled}
         className={`relative flex items-center px-1 py-[3px] w-30 rounded-full
           border ${
-            isTable
-              ? "bg-purple-100 border-purple-200"
-              : "bg-blue-100 border-blue-200"
+            isTable ? "bg-purple-100 border-purple-200" : "bg-blue-100 border-blue-200"
           } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         <span

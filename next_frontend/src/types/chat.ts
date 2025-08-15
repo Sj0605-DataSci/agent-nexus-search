@@ -1,10 +1,10 @@
 // Base types for chat functionality
 
-export type SearchMode = 'basic' | 'deep';
-export type FormatType = 'chat' | 'table';
-export type WorldConnectionsMode = 'connections' | 'world';
+export type SearchMode = "basic" | "deep";
+export type FormatType = "chat" | "table";
+export type WorldConnectionsMode = "connections" | "world";
 
-export type ActiveTab = 'content' | 'sources';
+export type ActiveTab = "content" | "sources";
 
 export interface ApiResponse<T> {
   data?: T;
@@ -33,7 +33,7 @@ export interface FeedbackType {
 
 export interface MessageType {
   id: string;
-  type: 'user' | 'agent';
+  type: "user" | "agent";
   content: string;
   timestamp: Date;
   sources?: ChatSource[];

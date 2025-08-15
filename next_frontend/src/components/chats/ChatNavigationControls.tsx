@@ -10,7 +10,6 @@ interface ChatNavigationControlsProps {
   onNext: () => void;
   canNavigatePrevious: boolean;
   onRefresh: () => void;
-  
 }
 
 export function ChatNavigationControls({
@@ -21,7 +20,7 @@ export function ChatNavigationControls({
   onNext,
   onRefresh,
 }: ChatNavigationControlsProps) {
-  if (totalItems <= 1) return <div className="p-3"/>;
+  if (totalItems <= 1) return <div className="p-3" />;
 
   return (
     <div className="flex justify-center items-center gap-3 mt-6">

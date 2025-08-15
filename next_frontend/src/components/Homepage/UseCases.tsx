@@ -8,25 +8,30 @@ const UseCases: React.FC = () => {
   const professionalUseCases = [
     {
       title: "Recruitment & Hiring",
-      description: "Find senior AI engineers in Europe with public repos — in my network and globally — and generate a verified profile report for HR.",
+      description:
+        "Find senior AI engineers in Europe with public repos — in my network and globally — and generate a verified profile report for HR.",
       icon: "👥",
-      aryaQuote: "I'll hunt through every corner of the tech world to find your perfect candidates.",
+      aryaQuote:
+        "I'll hunt through every corner of the tech world to find your perfect candidates.",
     },
     {
       title: "Sales Prospecting",
-      description: "List CFOs in US healthcare companies I've emailed before, with company size and recent funding rounds.",
+      description:
+        "List CFOs in US healthcare companies I've emailed before, with company size and recent funding rounds.",
       icon: "💼",
       aryaQuote: "No lead escapes my memory. I remember every contact, every conversation.",
     },
     {
       title: "Investor Discovery",
-      description: "Discover early-stage climate-tech founders who raised in the past 6 months, with links to their announcements.",
+      description:
+        "Discover early-stage climate-tech founders who raised in the past 6 months, with links to their announcements.",
       icon: "💰",
       aryaQuote: "I track the money trails and spot opportunities before they're obvious.",
     },
     {
       title: "Event Planning",
-      description: "Pull a list of fintech professionals I know in Singapore for an upcoming meetup.",
+      description:
+        "Pull a list of fintech professionals I know in Singapore for an upcoming meetup.",
       icon: "🎯",
       aryaQuote: "Your network is my map. I know exactly who you need, where they are.",
     },
@@ -35,25 +40,29 @@ const UseCases: React.FC = () => {
   const personalUseCases = [
     {
       title: "Background Verification",
-      description: "Generate a verified background report on a potential match — education, work history, social presence, mutual references.",
+      description:
+        "Generate a verified background report on a potential match — education, work history, social presence, mutual references.",
       icon: "🔍",
       aryaQuote: "Trust, but verify. I'll uncover the truth behind any profile.",
     },
     {
       title: "Safety Checks",
-      description: "Verify someone's identity, check online presence, and flag inconsistencies before meeting in person.",
+      description:
+        "Verify someone's identity, check online presence, and flag inconsistencies before meeting in person.",
       icon: "🛡️",
       aryaQuote: "Your safety is my priority. I see what others miss.",
     },
     {
       title: "Mutual Connections",
-      description: "I met 'Arjun Mehta' at a party — find verified details from mutual contacts and global sources.",
+      description:
+        "I met 'Arjun Mehta' at a party — find verified details from mutual contacts and global sources.",
       icon: "🤝",
       aryaQuote: "Every face has a story. I'll connect the dots for you.",
     },
     {
       title: "Service Provider Vetting",
-      description: "Background check on a wedding photographer — confirm credentials, reviews, and portfolio.",
+      description:
+        "Background check on a wedding photographer — confirm credentials, reviews, and portfolio.",
       icon: "📸",
       aryaQuote: "No detail too small. I ensure you're working with the best.",
     },
@@ -112,11 +121,7 @@ const UseCases: React.FC = () => {
             className="grid gap-8 md:grid-cols-2 lg:grid-cols-2"
           >
             {professionalUseCases.map((useCase, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="group relative"
-              >
+              <motion.div key={index} variants={itemVariants} className="group relative">
                 <div className="h-full p-0.5 rounded-2xl bg-gradient-to-br from-blue-200 via-indigo-200 to-purple-200">
                   <div className="h-full p-8 bg-white rounded-[14px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
                     <div className="flex items-start gap-4 mb-6">
@@ -124,16 +129,12 @@ const UseCases: React.FC = () => {
                         {useCase.icon}
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold mb-2 text-gray-900">
-                          {useCase.title}
-                        </h3>
+                        <h3 className="text-xl font-bold mb-2 text-gray-900">{useCase.title}</h3>
                       </div>
                     </div>
-                    
-                    <p className="text-gray-600 mb-4 leading-relaxed">
-                      "{useCase.description}"
-                    </p>
-                    
+
+                    <p className="text-gray-600 mb-4 leading-relaxed">"{useCase.description}"</p>
+
                     <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border-l-4 border-blue-400">
                       <p className="text-sm text-gray-700 italic font-medium">
                         💭 Arya: "{useCase.aryaQuote}"
@@ -164,11 +165,7 @@ const UseCases: React.FC = () => {
             className="grid gap-8 md:grid-cols-2 lg:grid-cols-2"
           >
             {personalUseCases.map((useCase, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="group relative"
-              >
+              <motion.div key={index} variants={itemVariants} className="group relative">
                 <div className="h-full p-0.5 rounded-2xl bg-gradient-to-br from-purple-200 via-pink-200 to-red-200">
                   <div className="h-full p-8 bg-white rounded-[14px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
                     <div className="flex items-start gap-4 mb-6">
@@ -176,16 +173,12 @@ const UseCases: React.FC = () => {
                         {useCase.icon}
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold mb-2 text-gray-900">
-                          {useCase.title}
-                        </h3>
+                        <h3 className="text-xl font-bold mb-2 text-gray-900">{useCase.title}</h3>
                       </div>
                     </div>
-                    
-                    <p className="text-gray-600 mb-4 leading-relaxed">
-                      "{useCase.description}"
-                    </p>
-                    
+
+                    <p className="text-gray-600 mb-4 leading-relaxed">"{useCase.description}"</p>
+
                     <div className="p-4 bg-gradient-to-r from-gray-50 to-purple-50 rounded-lg border-l-4 border-purple-400">
                       <p className="text-sm text-gray-700 italic font-medium">
                         💭 Arya: "{useCase.aryaQuote}"
@@ -202,9 +195,7 @@ const UseCases: React.FC = () => {
         <Reveal delay={0.6}>
           <div className="text-center mt-20">
             <div className="inline-block p-8 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl text-white">
-              <h3 className="text-2xl font-bold mb-4">
-                Ready to unleash Arya?
-              </h3>
+              <h3 className="text-2xl font-bold mb-4">Ready to unleash Arya?</h3>
               <p className="text-gray-300 mb-6 max-w-md">
                 Join the waitlist and be among the first to experience precision people hunting.
               </p>

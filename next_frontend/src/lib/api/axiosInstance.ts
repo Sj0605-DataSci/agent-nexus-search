@@ -79,7 +79,7 @@ axiosInstance.interceptors.response.use(
       "/join-waitlist",
       "/privacy-policy",
       "/terms",
-      "/reset-password"
+      "/reset-password",
     ];
     const isUnauthenticatedEndpoint = unauthenticatedEndpoints.some(path =>
       originalRequest.url?.includes(path)
