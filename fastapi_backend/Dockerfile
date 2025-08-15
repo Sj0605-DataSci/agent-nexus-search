@@ -39,5 +39,5 @@ ENV PYTHONHASHSEED=random
 # Expose port
 EXPOSE 8000
 
-# Run application with memory optimizations
-CMD gunicorn app.main:app -w ${WEB_CONCURRENCY:-2} -k uvicorn.workers.UvicornWorker --bind ${HOST:-0.0.0.0}:${PORT:-8000} --max-requests 1000 --max-requests-jitter 100 --worker-connections 1000 --timeout 120 --graceful-timeout 30 --worker-tmp-dir /tmp --access-logfile - --error-logfile -
+# Run application with Uvicorn directly for better development experience
+CMD uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000} --reload --log-level debug
