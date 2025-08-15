@@ -18,10 +18,14 @@ export default function AuthCallback() {
   const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
+    const authTimeout = setTimeout(() => {
+      handleAuth();
+    }, 500);
+    
     const handleAuth = async () => {
       try {
         setLoadingState("Checking authentication status...");
-        
+        console.log("window.location.hash", window.location.hash);
         // First, check if we have a hash with tokens
         if (window.location.hash) {
           const hash = window.location.hash.substring(1);
@@ -131,13 +135,8 @@ export default function AuthCallback() {
       }
     };
 
-    handleAuth();
+    return () => clearTimeout(authTimeout);
   }, [router]);
 
-  return (
-    <FullScreenLoader 
-      isLoading={isProcessing} 
-      label={loadingState}
-    />
-  );
+  return <FullScreenLoader isLoading={isProcessing} label={loadingState} />;
 }
