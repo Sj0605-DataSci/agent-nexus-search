@@ -17,6 +17,7 @@ import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { useAuth } from "@/hooks/useAuth";
 import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
 import BrandLogo from "@/components/BrandLogo";
+import { supabaseTemp } from "../supabaseClient";
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 48 48">
@@ -612,10 +613,34 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
 };
 
 const SocialSignIn = () => {
-  const { signInWithGoogle } = useAuth();
+  // const { signInWithGoogle } = useAuth();
 
-  const handleGoogleSignIn = async () => {
-    await signInWithGoogle();
+  // const handleGoogleSignIn = async () => {
+  //   await signInWithGoogle();
+  // };
+  const signInWithGoogle = async () => {
+    // Track login attempt with PostHog if available
+    if (typeof window !== "undefined" && window.posthog) {
+      window.posthog.capture("login_attempt", { provider: "google" });
+    }
+
+    const { data, error } = await supabaseTemp.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+        scopes: ["email", "profile", "https://www.googleapis.com/auth/user.phonenumbers.read"].join(
+          " "
+        ),
+      },
+    });
+
+    if (error) {
+      console.error("Error signing in with Google:", error);
+    }
   };
 
   return (
@@ -630,7 +655,7 @@ const SocialSignIn = () => {
       </div>
       <div className="mt-3">
         <button
-          onClick={handleGoogleSignIn}
+          onClick={signInWithGoogle}
           className="w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors"
         >
           <GoogleIcon />

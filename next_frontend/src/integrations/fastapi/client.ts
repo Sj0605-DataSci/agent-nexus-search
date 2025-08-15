@@ -2,6 +2,15 @@ import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 import { handleAxiosError } from "@/lib/api/handleAxiosError";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+// Add setAuthToken to axios instance
+export const setAuthToken = (token: string) => {
+  if (token) {
+    axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete axiosInstance.defaults.headers.common['Authorization'];
+  }
+};
 import {
   AgentTemplate,
   AgentTemplateCreate,

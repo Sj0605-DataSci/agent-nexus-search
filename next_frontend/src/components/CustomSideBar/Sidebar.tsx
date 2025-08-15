@@ -19,8 +19,10 @@ import {
 import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
 import posthog from "posthog-js";
 
-const LogoutConfirmation = lazy(() => 
-  import("@/components/ui/LogoutConfirmation").then(module => ({ default: module.LogoutConfirmation }))
+const LogoutConfirmation = lazy(() =>
+  import("@/components/ui/LogoutConfirmation").then(module => ({
+    default: module.LogoutConfirmation,
+  }))
 );
 import { apiClient } from "@/integrations/fastapi/client";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -30,6 +32,7 @@ import { clearProfile } from "@/store/profileSlice";
 import { Button } from "@/components/ui/button";
 import ShimmerLoader from "./ShimmerLoader";
 import { ChatThread } from "@/integrations/fastapi/types";
+import { supabaseTemp } from "@/app/supabaseClient";
 
 const isAuthenticated = () => {
   if (typeof window === "undefined") return false;
@@ -136,6 +139,7 @@ const Sidebar = () => {
       localStorage.removeItem("discover_minds_access_token");
       localStorage.removeItem("discover_minds_refresh_token");
       dispatch(clearProfile());
+      await supabaseTemp.auth.signOut();
       posthog.reset();
       // Redirect to auth page
       router.push("/user-auth");
@@ -146,8 +150,6 @@ const Sidebar = () => {
       setShowLogoutConfirm(false);
     }
   };
-
-
 
   const toggleMobileSidebar = useCallback(() => {
     if (isMobileSidebarOpen) {
@@ -513,6 +515,7 @@ const Sidebar = () => {
             onConfirm={handleSignOut}
             onCancel={() => setShowLogoutConfirm(false)}
             isLoggingOut={isLoggingOut}
+            isOpen={showLogoutConfirm}
           />
         )}
       </Suspense>

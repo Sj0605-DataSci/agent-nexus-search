@@ -1,80 +1,136 @@
 "use client";
 
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiLogOut } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
 
 interface LogoutConfirmationProps {
   onConfirm: () => void;
   onCancel: () => void;
   isLoggingOut: boolean;
+  isOpen: boolean;
 }
 
 export const LogoutConfirmation = ({
   onConfirm,
   onCancel,
   isLoggingOut,
+  isOpen,
 }: LogoutConfirmationProps) => {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShow(true);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setShow(false);
+    setTimeout(onCancel, 200);
+  };
+
+  if (!isOpen && !show) return null;
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
-        <div className="p-6 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-4">
-            <FiAlertTriangle className="h-6 w-6 text-amber-600 0" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900  mb-2">
-            Are you sure you want to sign out?
-          </h3>
-          <p className="text-sm text-gray-500  mb-6">
-            You'll need to sign back in to access your account and continue your work.
-          </p>
-          <div className="flex justify-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={isLoggingOut}
-              className="px-4 py-2 text-sm font-medium "
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        onClick={handleClose}
+      >
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="p-6 sm:p-8 text-center">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-amber-50 mb-6"
             >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={onConfirm}
-              disabled={isLoggingOut}
-              className="px-4 py-2 text-sm font-medium min-w-[100px]"
+              <FiAlertTriangle className="h-7 w-7 text-amber-500" />
+            </motion.div>
+
+            <motion.h3
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              className="text-xl font-semibold text-gray-900 mb-3"
             >
-              {isLoggingOut ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Signing out...
-                </>
-              ) : (
-                "Sign out"
-              )}
-            </Button>
+              Ready to sign out?
+            </motion.h3>
+
+            <motion.p
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-gray-500 mb-7 text-sm leading-relaxed"
+            >
+              You'll be signed out of your account. Make sure to save any unsaved changes before
+              proceeding.
+            </motion.p>
+
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.25 }}
+              className="flex flex-col sm:flex-row justify-center gap-3"
+            >
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isLoggingOut}
+                className="sm:w-auto border-0 text-gray-50 min-w-[130px] px-6 py-3 text-sm font-medium transition-colors  bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={onConfirm}
+                disabled={isLoggingOut}
+                className="w-full sm:w-auto px-6 py-3 border-1 text-sm font-medium min-w-[120px] relative overflow-hidden group"
+              >
+                {isLoggingOut ? (
+                  <span className="flex items-center justify-center">
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full mr-2"
+                    />
+                    Signing out...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    <FiLogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </span>
+                )}
+                {isLoggingOut && (
+                  <motion.span
+                    className="absolute inset-0 bg-black/10"
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+              </Button>
+            </motion.div>
           </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
