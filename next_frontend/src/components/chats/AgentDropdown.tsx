@@ -85,7 +85,9 @@ export function AgentDropdown({
                 {agentData?.avatar}
               </span>
             )}
-            <span className="font-medium truncate max-w-[80px] sm:max-w-none">{agentData?.name}</span>
+            <span className="font-medium truncate max-w-[80px] sm:max-w-none">
+              {agentData?.name}
+            </span>
             <FiChevronDown
               className={`h-3 w-3 sm:h-4 sm:w-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${showAgentDropdown ? "rotate-180" : ""}`}
             />
@@ -142,11 +144,7 @@ export function AgentDropdown({
                         key={a.id}
                         onClick={e => onAgentSelect(e, a.id, a.hired)}
                         className={`w-full flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-1 text-left transition-colors text-sm
-                          ${
-                            agentData?.id === a.id
-                              ? "bg-gray-100/80"
-                              : "hover:bg-gray-50"
-                          }
+                          ${agentData?.id === a.id ? "bg-gray-100/80" : "hover:bg-gray-50"}
                           text-gray-900`}
                       >
                         <span className="flex items-center gap-3">
@@ -166,9 +164,7 @@ export function AgentDropdown({
                           )}
                           <span className="font-medium ">{a?.name}</span>
                         </span>
-                        {agentData?.id === a.id && (
-                          <FiCheck className="h-5 w-5 text-blue-500" />
-                        )}
+                        {agentData?.id === a.id && <FiCheck className="h-5 w-5 text-blue-500" />}
                       </button>
                     ))}
                 </div>

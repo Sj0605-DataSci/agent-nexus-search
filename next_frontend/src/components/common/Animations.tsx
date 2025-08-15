@@ -1,7 +1,14 @@
 "use client";
 
 import React, { ReactNode, useRef } from "react";
-import { AnimatePresence, useInView, motion, MotionProps, useReducedMotion, UseInViewOptions } from "framer-motion";
+import {
+  AnimatePresence,
+  useInView,
+  motion,
+  MotionProps,
+  useReducedMotion,
+  UseInViewOptions,
+} from "framer-motion";
 
 /**
  * Types for our animation components
@@ -25,7 +32,7 @@ interface TransitionProps {
 
 interface RevealProps extends TransitionProps {
   /** Direction from which the element enters */
-  direction?: 'up' | 'down' | 'left' | 'right';
+  direction?: "up" | "down" | "left" | "right";
   /** Distance in pixels for the animation */
   distance?: number;
   /** Threshold for triggering the animation (0-1) */
@@ -59,7 +66,7 @@ interface StaggerProps<T> {
  * PageTransition component for smooth page transitions
  * Wraps content in an AnimatePresence with fade and blur effects
  * Respects user's reduced motion preferences
- * 
+ *
  * @example
  * ```tsx
  * <PageTransition>
@@ -74,22 +81,16 @@ export function PageTransition({
   duration = 0.45,
   delay = 0,
   ease = [0.22, 1, 0.36, 1],
-  motionProps = {}
+  motionProps = {},
 }: TransitionProps) {
   const prefersReducedMotion = useReducedMotion();
-  
+
   const variants = {
-    initial: prefersReducedMotion 
-      ? { opacity: 0 } 
-      : { opacity: 0, y: 12, filter: "blur(6px)" },
-    animate: prefersReducedMotion 
-      ? { opacity: 1 } 
-      : { opacity: 1, y: 0, filter: "blur(0px)" },
-    exit: prefersReducedMotion 
-      ? { opacity: 0 } 
-      : { opacity: 0, y: -12, filter: "blur(6px)" }
+    initial: prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, filter: "blur(6px)" },
+    animate: prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" },
+    exit: prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -12, filter: "blur(6px)" },
   };
-  
+
   return (
     <AnimatePresence mode="wait">
       <Component
@@ -111,7 +112,7 @@ export function PageTransition({
  * Reveal component for revealing elements when they enter the viewport
  * Uses useInView hook to detect when element is in view
  * Supports different reveal directions and respects reduced motion preferences
- * 
+ *
  * @example
  * ```tsx
  * <Reveal direction="up" delay={0.2}>
@@ -126,31 +127,35 @@ export function Reveal({
   delay = 0,
   duration = 0.5,
   ease = [0.22, 1, 0.36, 1],
-  direction = 'up',
+  direction = "up",
   distance = 14,
   threshold = 0.1,
   margin = "-10% 0px -10% 0px",
-  motionProps = {}
+  motionProps = {},
 }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { margin, once: true, amount: threshold });
   const prefersReducedMotion = useReducedMotion();
-  
+
   // Determine direction of animation
   const getDirectionalProps = () => {
     if (prefersReducedMotion) return {};
-    
+
     switch (direction) {
-      case 'down': return { y: -distance };
-      case 'left': return { x: distance };
-      case 'right': return { x: -distance };
-      case 'up':
-      default: return { y: distance };
+      case "down":
+        return { y: -distance };
+      case "left":
+        return { x: distance };
+      case "right":
+        return { x: -distance };
+      case "up":
+      default:
+        return { y: distance };
     }
   };
-  
+
   const initial = { opacity: 0, ...getDirectionalProps() };
-  
+
   return (
     <Component
       ref={ref}
@@ -169,7 +174,7 @@ export function Reveal({
  * Stagger component for staggered animations of list items
  * Takes an array of items and a render function
  * Supports customization of stagger delay and container/item elements
- * 
+ *
  * @example
  * ```tsx
  * <Stagger
@@ -187,28 +192,28 @@ export function Stagger<T>({
   childClassName = "",
   childAs: ChildComponent = motion.li,
   threshold = 0.2,
-  motionProps = {}
+  motionProps = {},
 }: StaggerProps<T>) {
   const prefersReducedMotion = useReducedMotion();
-  
+
   // Define variants based on reduced motion preference
   const containerVariants = {
     hidden: {},
     show: {
-      transition: { staggerChildren: prefersReducedMotion ? 0 : staggerDelay }
-    }
+      transition: { staggerChildren: prefersReducedMotion ? 0 : staggerDelay },
+    },
   };
-  
+
   // Define item variants with reduced or full animation based on user preference
   const itemVariants = {
     hidden: prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 },
     show: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
-    }
+      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+    },
   };
-  
+
   // If there are no items, don't render anything
   if (items.length === 0) return null;
 
@@ -222,11 +227,7 @@ export function Stagger<T>({
       {...motionProps}
     >
       {items.map((item, i) => (
-        <ChildComponent
-          key={i}
-          className={childClassName}
-          variants={itemVariants}
-        >
+        <ChildComponent key={i} className={childClassName} variants={itemVariants}>
           {render(item, i)}
         </ChildComponent>
       ))}

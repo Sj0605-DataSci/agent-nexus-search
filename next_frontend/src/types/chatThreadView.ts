@@ -1,15 +1,15 @@
-import { ChatMessage } from './api';
-import { 
-  ChatSource, 
-  MessageType, 
-  SearchMode, 
-  FormatType, 
-  WorldConnectionsMode, 
+import { ChatMessage } from "./api";
+import {
+  ChatSource,
+  MessageType,
+  SearchMode,
+  FormatType,
+  WorldConnectionsMode,
   ActiveTab,
-  FeedbackType 
-} from './chat';
+  FeedbackType,
+} from "./chat";
 
-export interface ChatPair extends Omit<ChatMessage, 'message'> {
+export interface ChatPair extends Omit<ChatMessage, "message"> {
   message: string | object;
 }
 

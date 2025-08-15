@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, Suspense } from "react";
+import { getSupabaseConfig } from "@/config/supabase";
 import { useRouter } from "next/navigation";
 import { Upload, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ function UploadConnectionsContent() {
       setErrorMessage("");
 
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
-      
+
       // Get JWT token from localStorage (same as your working curl)
       const token = localStorage.getItem("discover_minds_access_token");
       if (!token) {
@@ -51,16 +52,18 @@ function UploadConnectionsContent() {
 
       // Use direct fetch API with proper authentication (like your working curl)
       const formData = new FormData();
-      formData.append('cacheControl', '3600');
-      formData.append('', file); // Empty name field like in your curl
+      formData.append("cacheControl", "3600");
+      formData.append("", file); // Empty name field like in your curl
+
+      const { supabaseUrl, supabaseKey } = getSupabaseConfig();
 
       const uploadResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/connection-files/${fileName}`,
+        `${supabaseUrl}/storage/v1/object/connection-files/${fileName}`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+            Authorization: `Bearer ${token}`,
+            apikey: supabaseKey,
           },
           body: formData,
         }

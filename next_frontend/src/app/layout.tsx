@@ -106,7 +106,8 @@ const productionMetadata: Metadata = {
   },
 };
 
-export const metadata: Metadata = process.env.NODE_ENV === 'production' ? productionMetadata : baseMetadata;
+export const metadata: Metadata =
+  process.env.NODE_ENV === "production" ? productionMetadata : baseMetadata;
 
 export const viewport = {
   themeColor: "#ffffff",

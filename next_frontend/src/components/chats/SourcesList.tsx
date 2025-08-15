@@ -88,11 +88,11 @@ const SourcesList = ({ sources, sourcesGathered }: SourcesListProps) => {
               >
                 <div className="flex items-start gap-2.5">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-blue-50 text-blue-700 text-xs font-medium self-start mt-0.5">
-                  <span className="relative -top-px">{src.short_url}</span>
-                </div>
+                    <span className="relative -top-px">{src.short_url}</span>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <h4 
-                      className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight" 
+                    <h4
+                      className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight"
                       title={src.title}
                     >
                       {src.title}
@@ -110,9 +110,7 @@ const SourcesList = ({ sources, sourcesGathered }: SourcesListProps) => {
           );
         })}
         {!hasSources && (
-          <li className="p-2 text-center text-gray-500 text-xs">
-            No sources available
-          </li>
+          <li className="p-2 text-center text-gray-500 text-xs">No sources available</li>
         )}
       </ul>
     </div>

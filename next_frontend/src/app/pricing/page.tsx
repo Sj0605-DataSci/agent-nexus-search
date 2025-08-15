@@ -36,8 +36,8 @@ export default function PricingPage() {
                     onClick={() => setIsYearly(false)}
                     className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                       !isYearly
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
                     Monthly
@@ -46,8 +46,8 @@ export default function PricingPage() {
                     onClick={() => setIsYearly(true)}
                     className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 relative ${
                       isYearly
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
                     Yearly
@@ -138,11 +138,9 @@ export default function PricingPage() {
                     </div>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <p className="text-4xl font-medium text-gray-800">
-                      ${isYearly ? '15' : '25'}
-                    </p>
+                    <p className="text-4xl font-medium text-gray-800">${isYearly ? "15" : "25"}</p>
                     <p className="text-sm text-gray-500">
-                      per user / month{isYearly ? ' (billed yearly)' : ''}
+                      per user / month{isYearly ? " (billed yearly)" : ""}
                     </p>
                   </div>
                   {isYearly && (
@@ -211,7 +209,9 @@ export default function PricingPage() {
                 <div className="flex flex-col">
                   <div className="flex h-20 flex-col">
                     <div className="flex gap-2">
-                      <p className="text-xl font-medium uppercase text-gray-800">Enterprise & Community </p>
+                      <p className="text-xl font-medium uppercase text-gray-800">
+                        Enterprise & Community{" "}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-end gap-1.5">
@@ -300,7 +300,8 @@ export default function PricingPage() {
                       Professional <span className="text-[#4A89DC] text-sm block">$15/month</span>
                     </th>
                     <th className="p-4 text-center">
-                      Enterprise & Community <span className="text-gray-700 text-sm block">Custom</span>
+                      Enterprise & Community{" "}
+                      <span className="text-gray-700 text-sm block">Custom</span>
                     </th>
                   </tr>
                 </thead>

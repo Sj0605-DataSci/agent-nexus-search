@@ -95,8 +95,8 @@ const HeroSection: React.FC = () => {
                   data-aos-duration="600"
                   className="text-lg sm:text-xl lg:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed"
                 >
-                  AI-powered people search that understands your intent. Connect with the right professionals, 
-                  investors, and decision makers with precision and speed.
+                  AI-powered people search that understands your intent. Connect with the right
+                  professionals, investors, and decision makers with precision and speed.
                 </p>
               </Parallax>
             </div>
@@ -137,9 +137,9 @@ const HeroSection: React.FC = () => {
                           speed={-0.5}
                           className="text-sm sm:text-base lg:text-lg xl:text-xl text-white/90 font-medium leading-relaxed [text-shadow:_0_1px_3px_rgba(0,0,0,0.6)]"
                         >
-                          <span className="font-bold text-white">Sharp, loyal, and relentless</span> — 
-                          Arya learns your patterns, remembers your preferences, and gets better with every hunt.
-                          No databases, no guesswork. Just precision.
+                          <span className="font-bold text-white">Sharp, loyal, and relentless</span>{" "}
+                          — Arya learns your patterns, remembers your preferences, and gets better
+                          with every hunt. No databases, no guesswork. Just precision.
                         </Parallax>
 
                         <div className="flex flex-wrap  items-center gap-4">

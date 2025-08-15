@@ -1,8 +1,8 @@
 // lib/supabase.ts (suggested location)
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { getSupabaseConfig } from "@/config/supabase";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+const { supabaseUrl, supabaseKey } = getSupabaseConfig();
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey);

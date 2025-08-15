@@ -52,10 +52,14 @@ const WhyChooseUs = () => {
             </thead>
             <tbody>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">⚔️ Arya's Sharp Instincts (Natural Language)</td>
+                <td className="p-4 px-3 font-medium">
+                  ⚔️ Arya's Sharp Instincts (Natural Language)
+                </td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
-                  <span className="text-xs text-gray-500">Understands intent like faces in Winterfell</span>
+                  <span className="text-xs text-gray-500">
+                    Understands intent like faces in Winterfell
+                  </span>
                 </td>
                 <td className="p-4 px-2 text-center text-red-500">
                   ✗<br />
@@ -76,7 +80,9 @@ const WhyChooseUs = () => {
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">🧠 Learns & Adapts (Gets Sharper Every Hunt)</td>
+                <td className="p-4 px-3 font-medium">
+                  🧠 Learns & Adapts (Gets Sharper Every Hunt)
+                </td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
                   <span className="text-xs text-gray-500">Remembers patterns & preferences</span>
@@ -95,7 +101,9 @@ const WhyChooseUs = () => {
                 <td className="p-4 px-2 text-center text-red-500">✗</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-4 px-3 font-medium">🌍 Travels Everywhere (Global + Personal Networks)</td>
+                <td className="p-4 px-3 font-medium">
+                  🌍 Travels Everywhere (Global + Personal Networks)
+                </td>
                 <td className="p-4 px-2 text-center text-green-500 bg-[#F8FAFF]">
                   ✓<br />
                   <span className="text-xs text-gray-500">From inbox to globe—no lead escapes</span>

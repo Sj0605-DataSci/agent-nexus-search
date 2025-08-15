@@ -9,7 +9,6 @@ They don't understand your intent. They don't evolve with you. And they certainl
 **DiscoverMinds.ai** changes that.
 
 > Imagine typing into a search bar and having an intelligent agent — one that knows your goals — help you find the right people, globally or within your own networks, instantly.
-> 
 
 No more outdated databases. No more guessing filters. Just **deep, adaptive, and personal search for people.**
 
@@ -50,17 +49,17 @@ DiscoverMinds.ai lets you **connect your socials and communication platforms** �
 ## How It Works
 
 1. **Type your query in natural language**
-    
-    *"Find fintech investors I've emailed before who are based in Singapore."*
-    
+
+   _"Find fintech investors I've emailed before who are based in Singapore."_
+
 2. **Choose your search scope**
-    - **Global**: Search the entire world
-    - **Personal**: Search across your connected networks
-    - Or combine both
+   - **Global**: Search the entire world
+   - **Personal**: Search across your connected networks
+   - Or combine both
 3. **Get enriched, verified results**
-    - Contact info, roles, activity, and more — ready to act on
+   - Contact info, roles, activity, and more — ready to act on
 4. **Refine through feedback**
-    - Every search trains your personal agent to understand you better
+   - Every search trains your personal agent to understand you better
 
 ---
 
@@ -78,10 +77,10 @@ DiscoverMinds.ai lets you **connect your socials and communication platforms** �
 
 ## Use Cases
 
-- **Recruiters**: *"Show me senior AI engineers in Europe with public repos, across my networks and globally."*
-- **Sales Teams**: *"Find VPs of Operations in SaaS companies I've messaged before on LinkedIn."*
-- **Founders & Investors**: *"Discover climate-tech founders worldwide who've recently raised."*
-- **Community Managers**: *"Search Slack, Gmail, and LinkedIn for members working in healthtech."*
+- **Recruiters**: _"Show me senior AI engineers in Europe with public repos, across my networks and globally."_
+- **Sales Teams**: _"Find VPs of Operations in SaaS companies I've messaged before on LinkedIn."_
+- **Founders & Investors**: _"Discover climate-tech founders worldwide who've recently raised."_
+- **Community Managers**: _"Search Slack, Gmail, and LinkedIn for members working in healthtech."_
 
 ---
 

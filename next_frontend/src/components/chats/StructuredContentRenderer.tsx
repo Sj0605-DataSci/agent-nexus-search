@@ -222,7 +222,7 @@ const StructuredContentRenderer: React.FC<StructuredContentRendererProps> = ({ c
 
     const { content: processedContent, score } = extractAndProcessScore(content);
 
-    const lines = processedContent.split("\n").filter(line => line.trim() !== '*');
+    const lines = processedContent.split("\n").filter(line => line.trim() !== "*");
     const elements: React.ReactNode[] = [];
 
     if (score !== undefined) {
@@ -237,7 +237,10 @@ const StructuredContentRenderer: React.FC<StructuredContentRendererProps> = ({ c
 
     const flushBulletPoints = () => {
       if (currentBulletPoints.length > 0) {
-        const renderNestedList = (items: typeof currentBulletPoints, level: number): React.ReactNode => {
+        const renderNestedList = (
+          items: typeof currentBulletPoints,
+          level: number
+        ): React.ReactNode => {
           const listItems: React.ReactNode[] = [];
           let i = 0;
           while (i < items.length) {

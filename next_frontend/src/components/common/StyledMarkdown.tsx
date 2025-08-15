@@ -119,7 +119,6 @@ const StyledMarkdown: React.FC<StyledMarkdownProps> = ({
     })
     // Remove extra newlines before list items
     .replace(/(\n\s*\n)(?=\s*\*)/g, "\n");
-    
 
   return (
     <div className={cn("prose max-w-none prose-headings:font-sans relative", className)}>
