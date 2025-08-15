@@ -18,6 +18,7 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import posthog from "posthog-js";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
+import { getSupabaseConfig } from "@/config/supabase";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -26,6 +27,8 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const agentsStatus = useAppSelector(state => state.agents.status);
   const router = useRouter();
   const pathname = usePathname();
+  const { supabaseUrl, supabaseKey: supabaseAnonKey } = getSupabaseConfig();
+  console.log("supabaseUrl", supabaseUrl, supabaseAnonKey);
   useEffect(() => {
     const fetchProfileData = async () => {
       const token = localStorage.getItem("discover_minds_access_token");
