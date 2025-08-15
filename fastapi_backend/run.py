@@ -55,4 +55,10 @@ def run_simple():
     )
 
 if __name__ == "__main__":
-    run_simple()
+    # Check if gunicorn is available
+    try:
+        import gunicorn
+        run_development()
+    except ImportError:
+        print("Gunicorn not found, falling back to simple uvicorn server...")
+        run_simple()
