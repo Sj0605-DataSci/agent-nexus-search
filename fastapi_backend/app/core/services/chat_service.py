@@ -593,6 +593,8 @@ class ChatService:
                         message_chunk, metadata = chunk_data
                         if metadata.get("langgraph_node") == "sql_query_generation":
                             pass
+                        elif metadata.get("langgraph_node") == "finalize_answer":
+                            pass
                         else:
                             if message_chunk.content:
                                 # Stream the token with metadata about which node it came from

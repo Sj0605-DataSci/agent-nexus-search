@@ -458,6 +458,7 @@ Score should be out of 10 and based on following criteria:
 -Use these summaries, and give all these answers based on the system instruction format, never  miss a single result to give, give all the summaries u get, if you don't have any answer fill it with NULL
 
 Always give a reason for the score: why that person is relevant to the query that's it.
+Give all the answers in table format, all the profiles you got
 """
 
 answer_table_user_prompt = """User Context:
@@ -468,6 +469,9 @@ Summaries:
 
 Use these links:
 {links}
+
+Give all the answers in table format, all the profiles you got
+
 """
 
 # Keep original for backward compatibility
