@@ -33,7 +33,7 @@ export default function AuthCallback() {
 
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
-
+          console.log("accessToken", refreshToken, accessToken);
           if (accessToken && refreshToken) {
             try {
               setLoadingState("Securing your session...");
@@ -60,6 +60,7 @@ export default function AuthCallback() {
                 console.error("Error setting Supabase session, but continuing:", sessionErr);
                 // Continue with the tokens we've already stored
               }
+              router.push("/chat/new");
 
               try {
                 setLoadingState("Loading your profile...");
@@ -90,7 +91,6 @@ export default function AuthCallback() {
 
               // Redirect to chat
               setLoadingState("Taking you to your dashboard...");
-              router.push("/chat/new");
               return;
             } catch (error) {
               console.error("Error during OAuth callback:", error);
