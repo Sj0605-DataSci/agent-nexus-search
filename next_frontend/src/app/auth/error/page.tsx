@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { supabaseTemp } from "../../supabaseClient";
 import { setAuthToken } from "@/integrations/fastapi/client";
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const router = useRouter();
   const sp = useSearchParams();
   const error = sp.get("error") ?? "auth_error";
@@ -106,5 +106,17 @@ export default function AuthErrorPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen grid place-items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   );
 }

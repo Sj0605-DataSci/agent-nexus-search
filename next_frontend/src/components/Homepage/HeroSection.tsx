@@ -3,15 +3,10 @@
 import React, { useEffect } from "react";
 import Image from "next/image";
 import AOS from "aos";
-import "aos/dist/aos.css";
+// import "aos/dist/aos.css";
 import { Parallax, ParallaxProvider } from "react-scroll-parallax";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import ScrollVelocity from "../common/ScrollVelocity";
-import ScrollReveal from "../common/ScrollReveal";
-import WhyChooseUs from "./WhyChooseUs";
-import { PageTransition, Reveal, Stagger } from "../common/Animations";
-import { motion } from "framer-motion";
 
 interface VideoPlayerProps {
   url: string;

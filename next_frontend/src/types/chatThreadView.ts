@@ -11,6 +11,7 @@ import {
 
 export interface ChatPair extends Omit<ChatMessage, "message"> {
   message: string | object;
+  world_connections: "connections" | "world";
 }
 
 export interface CachedThread {

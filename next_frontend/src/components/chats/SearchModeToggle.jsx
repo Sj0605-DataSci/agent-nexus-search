@@ -1,5 +1,11 @@
+import { useEffect } from "react";
+
 export default function SearchModeToggle({ searchMode, setSearchMode, disabled = false }) {
+  
   const isDeep = searchMode === "deep";
+  useEffect(() => {
+    setSearchMode(searchMode);
+  }, [searchMode]);
 
   return (
     <div className="relative group" title={`${isDeep ? "Basic" : "Deep"} Search`}>

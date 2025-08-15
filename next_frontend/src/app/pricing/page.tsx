@@ -272,8 +272,6 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <FaqSection />
-
         <section className="py-20 bg-white">
           <div className="mx-auto max-w-6xl px-5">
             <div className="flex flex-col items-center justify-center mb-16">
@@ -413,6 +411,7 @@ export default function PricingPage() {
             </div>
           </div>
         </section>
+        <FaqSection />
       </div>
       <Footer />
     </>

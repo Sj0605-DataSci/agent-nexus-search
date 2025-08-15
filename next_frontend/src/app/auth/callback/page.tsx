@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseTemp } from "../../supabaseClient";
 import { apiClient, setAuthToken } from "@/integrations/fastapi/client";
+import FullScreenLoader from "@/components/common/FullScreenLoader";
 
 declare global {
   interface Window {
@@ -13,10 +14,14 @@ declare global {
 
 export default function AuthCallback() {
   const router = useRouter();
+  const [loadingState, setLoadingState] = useState("Initializing authentication...");
+  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     const handleAuth = async () => {
       try {
+        setLoadingState("Checking authentication status...");
+        
         // First, check if we have a hash with tokens
         if (window.location.hash) {
           const hash = window.location.hash.substring(1);
@@ -27,6 +32,7 @@ export default function AuthCallback() {
 
           if (accessToken && refreshToken) {
             try {
+              setLoadingState("Securing your session...");
               // Store tokens in localStorage first (this always works)
               localStorage.setItem("discover_minds_access_token", accessToken);
               localStorage.setItem("discover_minds_refresh_token", refreshToken);
@@ -36,6 +42,7 @@ export default function AuthCallback() {
 
               // Try to set the Supabase session (might fail with Invalid API key)
               try {
+                setLoadingState("Connecting to your account...");
                 const { error: sessionError } = await supabaseTemp.auth.setSession({
                   access_token: accessToken,
                   refresh_token: refreshToken,
@@ -51,12 +58,14 @@ export default function AuthCallback() {
               }
 
               try {
+                setLoadingState("Loading your profile...");
                 // Get user profile
                 const profileResponse = await apiClient.fetchProfile();
                 const profileData = profileResponse.data;
 
                 // Track successful login with PostHog
                 if (window.posthog) {
+                  setLoadingState("Finalizing your experience...");
                   window.posthog.identify(profileData.id, {
                     email: profileData.email,
                     name: profileData.full_name,
@@ -76,6 +85,7 @@ export default function AuthCallback() {
               window.history.replaceState({}, document.title, window.location.pathname);
 
               // Redirect to chat
+              setLoadingState("Taking you to your dashboard...");
               router.push("/chat/new");
               return;
             } catch (error) {
@@ -85,6 +95,7 @@ export default function AuthCallback() {
           }
         }
 
+        setLoadingState("Checking existing session...");
         // If no hash or no tokens in hash, try to get session
         const {
           data: { session },
@@ -97,6 +108,7 @@ export default function AuthCallback() {
 
         if (session) {
           // If we have a session, redirect to chat
+          setLoadingState("Welcome back! Redirecting...");
           router.push("/chat/new");
           return;
         }
@@ -114,6 +126,8 @@ export default function AuthCallback() {
           ? `&hash=${encodeURIComponent(window.location.hash)}`
           : "";
         router.push(`/auth/error?error=auth_error${errorHash}`);
+      } finally {
+        setIsProcessing(false);
       }
     };
 
@@ -121,8 +135,9 @@ export default function AuthCallback() {
   }, [router]);
 
   return (
-    <div className="min-h-screen grid place-items-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
+    <FullScreenLoader 
+      isLoading={isProcessing} 
+      label={loadingState}
+    />
   );
 }

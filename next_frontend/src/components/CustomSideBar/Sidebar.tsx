@@ -436,12 +436,12 @@ const Sidebar = () => {
                 }
               >
                 <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium flex-shrink-0">
-                  {profile?.email?.charAt(0).toUpperCase() || "U"}
+                  {profile?.full_name?.charAt(0).toUpperCase() || "U"}
                 </div>
                 {(!collapsed || isMobile) && (
                   <div className="flex-1 truncate">
                     <div className="text-sm font-medium truncate text-gray-700">
-                      {profile?.email?.split("@")[0] || "User"}
+                      {profile?.full_name?.split("@")[0] || "User"}
                     </div>
                   </div>
                 )}

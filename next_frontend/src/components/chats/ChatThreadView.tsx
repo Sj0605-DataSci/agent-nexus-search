@@ -53,7 +53,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string>(
     "00000000-0000-4000-a000-000000000000"
   );
-  console.log("threadId", threadId);
   const [format, setFormat] = useState<FormatType>("table");
   const [searchMode, setSearchMode] = useState<SearchMode>("basic");
   const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
@@ -374,11 +373,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         message: "⏳ Searching for information...",
         created_at: new Date(),
         updated_at: new Date(),
+        world_connections: worldConnectionsMode,
       };
       setChatPairs(prev => [...prev, newChatPair]);
       setCurrentMessageIndex(chatPairs.length);
     }
-
     setIsStreaming(true);
     setIsLoading(true);
 
@@ -811,28 +810,31 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               <div className="flex flex-col sm:flex-row justify-between w-full mt-2 gap-2 sm:gap-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <SearchModeToggle
-                    searchMode={searchMode}
+                    searchMode={
+                      chatPairs[currentMessageIndex]?.main_query === query
+                        ? chatPairs[currentMessageIndex]?.search_mode
+                        : searchMode
+                    }
                     disabled={
                       isStreaming ||
-                      (chatPairs.length > 0 &&
-                        currentMessageIndex < chatPairs.length &&
-                        chatPairs[currentMessageIndex].main_query === query &&
-                        query.trim() !== "")
+                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
                     }
                     setSearchMode={(mode: "basic" | "deep") => {
                       posthog.capture("search_mode_changed", { mode });
+                      console.log("mode", mode);
                       setSearchMode(mode);
                     }}
                   />
                   <WorldConnectionsToggle
-                    worldConnectionsMode={worldConnectionsMode}
+                    worldConnectionsMode={
+                      chatPairs[currentMessageIndex]?.main_query === query
+                        ? chatPairs[currentMessageIndex]?.world_connections
+                        : worldConnectionsMode
+                    }
                     disabled={
                       !profile?.has_connections ||
                       isStreaming ||
-                      (chatPairs.length > 0 &&
-                        currentMessageIndex < chatPairs.length &&
-                        chatPairs[currentMessageIndex].main_query === query &&
-                        query.trim() !== "")
+                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
                     }
                     setWorldConnectionsMode={(mode: "connections" | "world") => {
                       posthog.capture("world_connections_mode_changed", { mode });
@@ -884,7 +886,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         <></>
       )}
       {messages && messages.length > 0 && (
-        <div className="w-full">
+        <div className="w-full md:px-20 overflow-y-scroll">
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
           </div>
@@ -894,19 +896,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               return (
                 m.type === "agent" && (
                   <>
-                    <div
-                      key={m.id}
-                      className="rounded-xl p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md"
-                    >
+                    <div key={m.id} className="rounded-xl bg-white">
                       <div className="flex items-start">
-                        <div
-                          className={`rounded-full hidden md:flex  mr-4 justify-center items-center h-12 w-12 bg-blue-50`}
-                        >
-                          <div className={`h-12 w-12 text-blue-600`}>
-                            <OrbAura />
-                          </div>
-                        </div>
-                        <div className="flex-1">
+                        <div className="flex-1 ">
                           {isStreaming && (
                             <SearchQueryDisplay
                               showSearchQueries={showSearchQueries}
@@ -987,7 +979,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                             <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
                           )}
 
-                          <div className="mt-4 flex justify-between items-center">
+                          <div className="mt-4  flex justify-between items-center">
                             <span
                               title={getFullTimestamp(m.timestamp)}
                               className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"

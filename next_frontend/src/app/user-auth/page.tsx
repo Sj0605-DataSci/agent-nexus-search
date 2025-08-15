@@ -300,6 +300,12 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
       <p className="text-gray-500 mb-6 text-sm">
         Get started with our app, just create an account.
       </p>
+      <SocialSignIn
+        mode="signup"
+        onError={error => {
+          console.error("Sign up error:", error);
+        }}
+      />
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-1">
         <div>
           <div className="relative">
@@ -369,7 +375,7 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
           {isSubmitting ? "Creating Account..." : "Create an account"}
         </button>
       </form>
-      <SocialSignIn />
+
       <p className="text-center text-xs text-gray-400 mt-3">
         By creating an account, you agree to our{" "}
         <a href="#" className="font-semibold text-gray-500">
@@ -437,6 +443,12 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
     <div>
       <h2 className="text-3xl font-bold text-gray-900 ">Welcome back</h2>
       <p className="text-gray-500 mb-4 text-sm">Sign in to continue to your account.</p>
+      <SocialSignIn
+        mode="signin"
+        onError={error => {
+          console.error("Sign in error:", error);
+        }}
+      />
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-2">
         <div>
           <div className="relative">
@@ -486,7 +498,6 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
           {isSubmitting ? "Signing in..." : "Sign in"}
         </button>
       </form>
-      {/* <SocialSignIn /> */}
     </div>
   );
 };
@@ -612,21 +623,25 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
   );
 };
 
-const SocialSignIn = () => {
-  // const { signInWithGoogle } = useAuth();
+interface SocialSignInProps {
+  mode?: "signin" | "signup";
+  onError?: (error: Error) => void;
+}
 
-  // const handleGoogleSignIn = async () => {
-  //   await signInWithGoogle();
-  // };
-  const signInWithGoogle = async () => {
-    // Track login attempt with PostHog if available
-    if (typeof window !== "undefined" && window.posthog) {
-      window.posthog.capture("login_attempt", { provider: "google" });
-    }
+const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError }) => {
+  const [isLoading, setIsLoading] = useState(false);
 
-    const { data, error } = await supabaseTemp.auth.signInWithOAuth({
-      provider: "google",
-      options: {
+  const handleSocialAuth = async (provider: "google" | "linkedin") => {
+    if (typeof window === "undefined") return;
+
+    setIsLoading(true);
+
+    try {
+      if (window.posthog) {
+        window.posthog.capture(`${mode}_attempt`, { provider });
+      }
+
+      const options = {
         redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           access_type: "offline",
@@ -635,32 +650,45 @@ const SocialSignIn = () => {
         scopes: ["email", "profile", "https://www.googleapis.com/auth/user.phonenumbers.read"].join(
           " "
         ),
-      },
-    });
+      };
 
-    if (error) {
-      console.error("Error signing in with Google:", error);
+      const { error } = await supabaseTemp.auth.signInWithOAuth({
+        provider,
+        options,
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error(`Error during ${mode} with ${provider}:`, error);
+      onError?.(error as Error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="mt-3">
-      <div className="relative">
+    <div className="mt-2 ">
+      <div className=" space-y-2">
+        <button
+          onClick={() => handleSocialAuth("google")}
+          disabled={isLoading}
+          className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          <GoogleIcon />
+          <span className="ml-2">{isLoading ? "Processing..." : `Continue with Google`}</span>
+        </button>
+      </div>
+      <div className="relative py-3">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-400">OR SIGN IN WITH</span>
+          <span className="px-2 bg-white text-gray-400">
+            OR {mode === "signin" ? "SIGN IN" : "SIGN UP"} WITH
+          </span>
         </div>
-      </div>
-      <div className="mt-3">
-        <button
-          onClick={signInWithGoogle}
-          className="w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors"
-        >
-          <GoogleIcon />
-          <span className="ml-2">Continue with Google</span>
-        </button>
       </div>
     </div>
   );

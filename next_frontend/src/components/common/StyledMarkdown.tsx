@@ -146,7 +146,7 @@ const StyledMarkdown: React.FC<StyledMarkdownProps> = ({
 
           // Text
           p: ({ node, ...props }) => (
-            <p className="my-4 leading-relaxed text-gray-700" {...props} />
+            <p className="my-1 leading-relaxed text-gray-700" {...props} />
           ),
 
           // Links

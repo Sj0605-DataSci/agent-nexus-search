@@ -41,15 +41,10 @@ const PlaceholderMobileCard = () => (
 const MessagePlaceholder = () => {
   return (
     <div className="w-full  animate-pulse">
-      <div className="mb-4 flex justify-between items-center">
-        <div className="h-8 w-32 bg-gray-200 rounded"></div>
-      </div>
-      <div className="rounded-xl md:p-6 bg-white md:border md:border-gray-200 md:shadow-sm">
+      <div className="rounded-xl md:px-20 bg-white  ">
         <div className="flex items-start">
-          <div className="hidden md:flex mr-4 h-10 w-10 bg-gray-200 rounded-full"></div>
           <div className="flex-1">
             <div className="mb-4 flex space-x-4 border-b p-2 border-gray-200">
-              <div className="h-6 w-24 bg-gray-200 rounded mb-2"></div>
               <div className="h-6 w-24 bg-gray-200 rounded mb-2"></div>
               <div className="h-6 w-24 bg-gray-200 rounded mb-2"></div>
             </div>
