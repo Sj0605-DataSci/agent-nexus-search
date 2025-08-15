@@ -18,7 +18,6 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import posthog from "posthog-js";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
-import { getSupabaseConfig } from "@/config/supabase";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();

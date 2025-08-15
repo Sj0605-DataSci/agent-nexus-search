@@ -20,8 +20,8 @@ export default function AuthCallback() {
   useEffect(() => {
     const authTimeout = setTimeout(() => {
       handleAuth();
-    }, 500);
-    
+    }, 2000);
+
     const handleAuth = async () => {
       try {
         setLoadingState("Checking authentication status...");
@@ -134,6 +134,7 @@ export default function AuthCallback() {
         setIsProcessing(false);
       }
     };
+    handleAuth();
 
     return () => clearTimeout(authTimeout);
   }, [router]);
