@@ -86,7 +86,7 @@ export default function AuthCallback() {
               }
 
               // Clear the URL hash
-              window.history.replaceState({}, document.title, window.location.pathname);
+              // window.history.replaceState({}, document.title, window.location.pathname);
 
               // Redirect to chat
               setLoadingState("Taking you to your dashboard...");
