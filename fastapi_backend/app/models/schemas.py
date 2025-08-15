@@ -240,13 +240,25 @@ class UpdatePasswordRequest(BaseModel):
 
 class PersonDetails(BaseModel):
     """Pydantic model for person details in table format."""
-    fname: str = Field(description="First name of the person")
-    lname: str = Field(description="Last name of the person")
-    social_links: List[str] = Field(description="List of social media links (LinkedIn, GitHub, etc.)")
-    email: str = Field(description="Email address of the person")
-    phone_no: str = Field(description="Phone number of the person")
-    score: int = Field(description="Score of the person")
-    reason: str = Field(description="Reason for the score")
+    fname: Optional[str] = Field(description="First name of the person")
+    lname: Optional[str] = Field(description="Last name of the person")
+    social_links: Optional[List[str]] = Field(description="List of social media links (LinkedIn, GitHub, etc.)")
+    email: Optional[str] = Field(description="Email address of the person")
+    phone_no: Optional[str] = Field(description="Phone number of the person")
+    score: Optional[int] = Field(description="Score of the person")
+    reason: Optional[str] = Field(description="Reason for the score")
+    
+    def format_for_display(self) -> dict:
+        """Format the person's details with 'NULL' for None values."""
+        return {
+            'fname': self.fname if self.fname is not None else 'NULL',
+            'lname': self.lname if self.lname is not None else 'NULL',
+            'social_links': self.social_links if self.social_links is not None else 'NULL',
+            'email': self.email if self.email is not None else 'NULL',
+            'phone_no': self.phone_no if self.phone_no is not None else 'NULL',
+            'score': self.score if self.score is not None else 'NULL',
+            'reason': self.reason if self.reason is not None else 'NULL'
+        }
 
 class PersonDetailsResponse(BaseModel):
     """Pydantic model for response containing one or more person details."""

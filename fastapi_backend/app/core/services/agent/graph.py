@@ -101,10 +101,6 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
         num_results = agent_config.get("number_of_results_returned", 5)  # Default to 5 if missing
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
-        
-        # Log agent config for debugging
-        print(f"Agent config in generate_query: {agent_config}")
-        print(f"Number of results returned: {num_results}")
 
     # check for custom initial search query count
         initial_search_query_count = state["initial_search_query_count"]
@@ -180,8 +176,7 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
                     "weave_url": state["weave_url"]
                 }).execute()    
         except Exception as e:
-            print(f"Error inserting data into Supabase: {e}")
-    
+            pass
     # Return WebSearchState
         return WebSearchState(
             messages=state["messages"],
@@ -201,7 +196,6 @@ async def generate_query(state: OverallState, config: RunnableConfig) -> WebSear
             world_connections=state["world_connections"]
         )
     except Exception as e:
-        print(f"Error generating search queries: {e}")
         raise    
 
 @weave.op
@@ -279,7 +273,6 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
     # Initialize Tavily API client
     tavily_api_key = settings.TAVILY_API_KEY
     tavilly_search = TavilyClient(api_key=tavily_api_key)
-    print(tavily_api_key)
     
     # Create single ThreadPoolExecutor for all operations
     # Use semaphore to control concurrent Tavily API calls
@@ -307,7 +300,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                 else:
                     query = str(query_data)
                 
-                print(f"Using search query {idx + 1}: {query}")
+                
                 
                 # Use shared ThreadPoolExecutor for CPU-bound Tavily API calls
                 loop = asyncio.get_event_loop()
@@ -322,8 +315,6 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                         exclude_domains=[]
                     )
                 )
-                
-                print(f"Search results for query {idx + 1}:", search_results)
                 
                 # Process search results from Tavily API (same logic as web_research)
                 processed_results = []
@@ -374,7 +365,7 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                                     if url:
                                         url_to_content[url] = extract_result
                     except Exception as e:
-                        print(f"Error extracting content for query {idx + 1}: {e}")
+                        pass
                 
                 # Update processed results with extracted content
                 for i, result in enumerate(processed_results):
@@ -387,7 +378,6 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                 
                 # Format the search results into a readable text (same format as web_research)
                 response_text = f"Research on: {query}\n\n"
-                print(f"Response text for query {idx + 1}:", response_text)
                 
                 # Process search results (same logic as web_research)
                 for i, result in enumerate(processed_results):
@@ -402,7 +392,6 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                     response_text += f"Source {i+1}: {result.get('title', 'No title')}\n"
                     response_text += f"URL: {result.get('url')}\n"
                     response_text += f"Content: {content_to_show}\n\n"
-                    print(f"Updated response text for query {idx + 1}:", response_text)
                 
                 # Create citation structure (same logic as web_research)
                 resolved_urls = []
@@ -449,7 +438,6 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                 }
                 
             except Exception as e:
-                print(f"Error processing query {idx + 1}: {e}")
                 return {
                     "query_index": idx,
                     "query": query if 'query' in locals() else str(query_data),
@@ -459,18 +447,11 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                 }
     
     try:
-        # Execute all searches in parallel
-        print(f"Starting parallel processing of {len(search_queries)} queries...")
-        start_time = asyncio.get_event_loop().time()
-        
         # Use asyncio.gather for true parallel execution
         results = await asyncio.gather(
             *[search_single_query(query, idx) for idx, query in enumerate(search_queries)],
             return_exceptions=True
         )
-        
-        end_time = asyncio.get_event_loop().time()
-        print(f"Parallel processing completed in {end_time - start_time:.2f} seconds")
         
     finally:
         # Clean up the executor
@@ -487,7 +468,6 @@ async def web_research(state: WebSearchState, config: RunnableConfig) -> Overall
                 all_modified_texts.append(result.get("modified_text"))
         else:
             # Handle exceptions
-            print(f"Exception in parallel processing: {result}")
             if hasattr(result, '__str__'):
                 all_modified_texts.append(f"Error in parallel processing: {str(result)}\n\n")
     
@@ -555,7 +535,6 @@ async def sql_query_generation(state:WebSearchState) -> OverallState:
     for idx, search_query in enumerate(search_queries):
         # Extract the actual query string from the dictionary
         query_text = search_query["query"] if isinstance(search_query, dict) else search_query
-        print(f"Processing query: {query_text}")
         
         # Format user prompt
         user_prompt = sql_query_user_prompt.format(
@@ -646,7 +625,6 @@ async def sql_query_execution(state: OverallState) -> OverallState:
     
     for sql_query in state.get("sql_queries", []) if isinstance(state.get("sql_queries", []), list) else [state.get("sql_queries", [])]:
         try:
-            print(f"Executing SQL query: {sql_query}")
             
             # Clean the SQL query by removing trailing semicolon
             clean_query = sql_query.strip().rstrip(';')
@@ -666,12 +644,8 @@ async def sql_query_execution(state: OverallState) -> OverallState:
                             query_results.append(row['to_jsonb'])
                         else:
                             query_results.append(row)
-                    print(f"Query returned {len(result.data)} results")
-                else:
-                    print("Query returned no results")
-                    
-            except Exception as rpc_error:
-                print(f"RPC execution failed: {rpc_error}")
+            except Exception as e:
+                
                 # Fallback: try direct table query if it's a simple SELECT
                 if sql_query.strip().upper().startswith('SELECT') and 'connections' in sql_query.lower():
                     try:
@@ -679,14 +653,11 @@ async def sql_query_execution(state: OverallState) -> OverallState:
                         result = await supabase_client.table('connections').select('*').eq('user_id', state.get('user_id', '')).limit(1).execute()
                         if result.data:
                             query_results.extend(result.data)
-                            print(f"Fallback query returned {len(result.data)} results")
                     except Exception as fallback_error:
-                        print(f"Fallback query also failed: {fallback_error}")
+                        pass
                 
         except Exception as e:
-            print(f"Error executing SQL query '{sql_query}': {e}")
-            # Continue with other queries even if one fails
-            continue
+            pass
     
     return OverallState(
         messages=state.get("messages", []),
@@ -1022,16 +993,17 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
     input_tokens = usage_metadata.get("input_tokens") or usage_metadata["input_tokens"]
     output_tokens = usage_metadata.get("output_tokens") or usage_metadata["output_tokens"]
     
-    # Convert PersonDetailsResponse to a string format
+    # Convert PersonDetailsResponse to a string format with NULL handling
     formatted_content = ""
     for person in result_table.content:
-            formatted_content += f"FName : {person.fname}\n"
-            formatted_content += f"LName : {person.lname}\n"
-            formatted_content += f"Social links : {', '.join(person.social_links)}\n"
-            formatted_content += f"Email : {person.email}\n"
-            formatted_content += f"Phone No : {person.phone_no}\n"
-            formatted_content += f"Score : {person.score}\n"
-            formatted_content += f"Reason : {person.reason}\n"
+        person_data = person.format_for_display()
+        formatted_content += f"FName : {person_data['fname']}\n"
+        formatted_content += f"LName : {person_data['lname']}\n"
+        formatted_content += f"Social links : {person_data['social_links']}\n"
+        formatted_content += f"Email : {person_data['email']}\n"
+        formatted_content += f"Phone No : {person_data['phone_no']}\n"
+        formatted_content += f"Score : {person_data['score']}\n"
+        formatted_content += f"Reason : {person_data['reason']}\n"
         
     final_message = AIMessage(content=formatted_content.strip())
     
@@ -1077,7 +1049,7 @@ async def finalize_answer(state: OverallState, config: RunnableConfig):
                 "model_cost_rupees": float(cost_rupees),
         }).execute()
     except Exception as e:
-        print(f"Error inserting data into Supabase: {e}")
+        pass
 
     return {
         "messages": [final_message],

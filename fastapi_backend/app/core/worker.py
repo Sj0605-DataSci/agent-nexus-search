@@ -179,13 +179,45 @@ class ChatWorker:
                     )
                     await client.publish(channel, query_update.model_dump_json())
                     
-                elif update["type"] == "source":
+                elif update["type"] == "sources":
                     # For source updates
                     source_update = StreamingChatUpdate(
-                        type="source",
+                        type="sources",
                         content=update["content"]
                     )
                     await client.publish(channel, source_update.model_dump_json())
+
+                elif update["type"] == "web_research_result":
+                    # For source updates
+                    source_update = StreamingChatUpdate(
+                        type="web_research_result",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, source_update.model_dump_json())
+
+                elif update["type"] == "sql_queries":
+                    # For source updates
+                    source_update = StreamingChatUpdate(
+                        type="sql_queries",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, source_update.model_dump_json())
+
+                elif update["type"] == "reflection":
+                    # For source updates
+                    source_update = StreamingChatUpdate(
+                        type="reflection",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, source_update.model_dump_json()) 
+
+                elif update["type"] == "finalize_answer":
+                    # For source updates
+                    source_update = StreamingChatUpdate(
+                        type="finalize_answer",
+                        content=update["content"]
+                    )
+                    await client.publish(channel, source_update.model_dump_json())                 
                     
                 elif update["type"] == "message":
                     # For final message updates
