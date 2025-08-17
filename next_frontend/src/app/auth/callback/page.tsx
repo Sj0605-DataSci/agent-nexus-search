@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseTemp } from "../../supabaseClient";
+import { supabaseHandler } from "../../supabaseClient";
 import { apiClient, setAuthToken } from "@/integrations/fastapi/client";
-import FullScreenLoader from "@/components/common/FullScreenLoader";
 
 declare global {
   interface Window {
@@ -14,18 +13,10 @@ declare global {
 
 export default function AuthCallback() {
   const router = useRouter();
-  const [loadingState, setLoadingState] = useState("Initializing authentication...");
-  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
-    const authTimeout = setTimeout(() => {
-      handleAuth();
-    }, 2000);
-
     const handleAuth = async () => {
       try {
-        setLoadingState("Checking authentication status...");
-        console.log("window.location.hash", window.location.hash);
         // First, check if we have a hash with tokens
         if (window.location.hash) {
           const hash = window.location.hash.substring(1);
@@ -33,10 +24,9 @@ export default function AuthCallback() {
 
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
-          console.log("accessToken", refreshToken, accessToken);
+
           if (accessToken && refreshToken) {
             try {
-              setLoadingState("Securing your session...");
               // Store tokens in localStorage first (this always works)
               localStorage.setItem("discover_minds_access_token", accessToken);
               localStorage.setItem("discover_minds_refresh_token", refreshToken);
@@ -45,32 +35,28 @@ export default function AuthCallback() {
               setAuthToken(accessToken);
 
               // Try to set the Supabase session (might fail with Invalid API key)
-              try {
-                setLoadingState("Connecting to your account...");
-                const { error: sessionError } = await supabaseTemp.auth.setSession({
-                  access_token: accessToken,
-                  refresh_token: refreshToken,
-                });
+              // try {
+              //   const { error: sessionError } = await supabaseHandler.auth.setSession({
+              //     access_token: accessToken,
+              //     refresh_token: refreshToken,
+              //   });
 
-                if (sessionError) {
-                  console.warn("Supabase session error, but continuing:", sessionError);
-                  // Continue anyway since we've stored the tokens
-                }
-              } catch (sessionErr) {
-                console.error("Error setting Supabase session, but continuing:", sessionErr);
-                // Continue with the tokens we've already stored
-              }
-              router.push("/chat/new");
+              //   if (sessionError) {
+              //     console.warn("Supabase session error, but continuing:", sessionError);
+              //     // Continue anyway since we've stored the tokens
+              //   }
+              // } catch (sessionErr) {
+              //   console.error("Error setting Supabase session, but continuing:", sessionErr);
+              //   // Continue with the tokens we've already stored
+              // }
 
               try {
-                setLoadingState("Loading your profile...");
                 // Get user profile
                 const profileResponse = await apiClient.fetchProfile();
                 const profileData = profileResponse.data;
 
                 // Track successful login with PostHog
                 if (window.posthog) {
-                  setLoadingState("Finalizing your experience...");
                   window.posthog.identify(profileData.id, {
                     email: profileData.email,
                     name: profileData.full_name,
@@ -86,11 +72,11 @@ export default function AuthCallback() {
                 // Continue with login even if profile fetch fails
               }
 
-              // Clear the URL hash
+              // // Clear the URL hash
               // window.history.replaceState({}, document.title, window.location.pathname);
 
               // Redirect to chat
-              setLoadingState("Taking you to your dashboard...");
+              router.push("/chat/new");
               return;
             } catch (error) {
               console.error("Error during OAuth callback:", error);
@@ -99,12 +85,11 @@ export default function AuthCallback() {
           }
         }
 
-        setLoadingState("Checking existing session...");
         // If no hash or no tokens in hash, try to get session
         const {
           data: { session },
           error: sessionError,
-        } = await supabaseTemp.auth.getSession();
+        } = await supabaseHandler.auth.getSession();
 
         if (sessionError) {
           throw new Error("Session error: " + sessionError.message);
@@ -112,7 +97,6 @@ export default function AuthCallback() {
 
         if (session) {
           // If we have a session, redirect to chat
-          setLoadingState("Welcome back! Redirecting...");
           router.push("/chat/new");
           return;
         }
@@ -130,14 +114,15 @@ export default function AuthCallback() {
           ? `&hash=${encodeURIComponent(window.location.hash)}`
           : "";
         router.push(`/auth/error?error=auth_error${errorHash}`);
-      } finally {
-        setIsProcessing(false);
       }
     };
-    handleAuth();
 
-    return () => clearTimeout(authTimeout);
+    handleAuth();
   }, [router]);
 
-  return <FullScreenLoader isLoading={isProcessing} label={loadingState} />;
+  return (
+    <div className="min-h-screen grid place-items-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
 }

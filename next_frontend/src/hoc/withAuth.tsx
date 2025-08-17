@@ -13,7 +13,6 @@ function withAuth<P extends object>(Wrapped: ComponentType<P>) {
     const loading = useAppSelector(state => state.profile.loading);
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState<string | null>(null);
-
     useEffect(() => {
       setIsClient(true);
       setToken(localStorage.getItem("discover_minds_access_token"));
@@ -33,7 +32,7 @@ function withAuth<P extends object>(Wrapped: ComponentType<P>) {
         if (!token && !profile) {
           router.replace("/user-auth");
         }
-      }, 100);
+      }, 500);
 
       return () => clearTimeout(timer);
     }, [isClient, loading, profile, router, token]);

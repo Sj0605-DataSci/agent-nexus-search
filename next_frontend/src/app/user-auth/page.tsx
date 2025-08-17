@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, User, Linkedin, X, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { Eye, EyeOff, Mail, Lock, User, Linkedin, Phone, X } from "lucide-react";
 import Confetti from "react-confetti";
-import { useRouter } from "next/navigation";
+import CountryCodeSelector from "@/components/CountryCodeSelector";
 import { apiClient } from "@/integrations/fastapi/client";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import posthog from "posthog-js";
@@ -17,7 +18,8 @@ import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { useAuth } from "@/hooks/useAuth";
 import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
 import BrandLogo from "@/components/BrandLogo";
-import { supabaseTemp } from "../supabaseClient";
+import { supabaseHandler } from "../supabaseClient";
+import { DEFAULT_COUNTRY_CODE } from "@/utils/countryCodes";
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 48 48">
@@ -128,6 +130,8 @@ const AuthComponent = () => {
   );
 };
 
+const phoneRegex = /^\+\d{1,3}\d{10}$/;
+
 const schema = yup.object().shape({
   name: yup.string().required("Full name is required").min(2, "Name must be at least 2 characters"),
   email: yup
@@ -149,11 +153,15 @@ const schema = yup.object().shape({
     .matches(/[^A-Za-z0-9]/, "Password must contain a special character"),
   linkedin_url: yup
     .string()
-    .required("LinkedIn profile URL is required")
+    .url("Please enter a valid URL")
     .matches(
-      /^https?:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/?$/,
-      "Enter a valid LinkedIn profile URL"
+      /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-z0-9_-]+\/?$/i,
+      "Please enter a valid LinkedIn profile URL"
     ),
+  phone_number: yup
+    .string()
+    .required("Phone number is required")
+    .matches(phoneRegex, "Please enter a valid phone number (select a code and enter 10 digits)."),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -185,7 +193,8 @@ const SuccessSignupModal = () => {
           lastSignupData.email,
           lastSignupData.password,
           lastSignupData.name,
-          lastSignupData.linkedin_url
+          lastSignupData.linkedin_url || "",
+          lastSignupData.phone_number || ""
         );
 
         if (response.success) {
@@ -240,33 +249,52 @@ const SuccessSignupModal = () => {
   );
 };
 
-const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () => void }) => {
+const SignUpFormComponent = ({
+  successSignupSubmission,
+}: {
+  successSignupSubmission: () => void;
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [phoneValue, setPhoneValue] = useState(`${DEFAULT_COUNTRY_CODE}-`);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, touchedFields, isSubmitted },
+    setValue,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     mode: "onBlur",
   });
+  const fullPhoneNumber = useMemo(() => {
+    const [dial, number] = phoneValue.split("-");
+    return dial && number ? `${dial}${number}` : ""; // empty until both parts exist
+  }, [phoneValue]);
 
   const onSubmit: SubmitHandler<FormData> = useCallback(
     async data => {
       setIsSubmitting(true);
       try {
+        // Format phone number as '91-8929495901'
+        const phoneNumber = phoneValue;
+        
         const response = await apiClient.userSignUp(
           data.email,
           data.password,
           data.name,
-          data.linkedin_url
+          data.linkedin_url || "",
+          phoneNumber
         );
 
         if (response.success) {
-          localStorage.setItem("lastSignupData", JSON.stringify(data));
+          // Save phone number along with other data for resend functionality
+          const dataToSave = {
+            ...data,
+            phone_number: fullPhoneNumber,
+          };
+          localStorage.setItem("lastSignupData", JSON.stringify(dataToSave));
           reset();
           successSignupSubmission();
           showSuccessToast("Signup mail sent successfully! Check your email.");
@@ -291,7 +319,7 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
         setIsSubmitting(false);
       }
     },
-    [reset, successSignupSubmission]
+    [reset, successSignupSubmission, phoneValue]
   );
 
   return (
@@ -367,6 +395,22 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
             {errors.linkedin_url?.message}
           </p>
         </div>
+        <div>
+          <div className="relative w-full">
+            <CountryCodeSelector
+              value={phoneValue}
+              onChange={setPhoneValue}
+              register={register}
+              name="phone_number"
+              error={!!errors.phone_number}
+              className=""
+              setValue={setValue}
+            />
+          </div>
+          <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">
+            {errors.phone_number?.message}
+          </p>
+        </div>
         <button
           type="submit"
           disabled={isSubmitting || !isDirty}
@@ -385,6 +429,10 @@ const SignUpForm = ({ successSignupSubmission }: { successSignupSubmission: () =
     </div>
   );
 };
+
+// Memoize the SignUpForm component to prevent unnecessary re-renders
+const SignUpForm = memo(SignUpFormComponent);
+SignUpForm.displayName = "SignUpForm";
 
 const signInSchema = yup.object().shape({
   email: yup.string().required("Email is required").email("Invalid email format"),
@@ -631,40 +679,92 @@ interface SocialSignInProps {
 const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSocialAuth = async (provider: "google" | "linkedin") => {
-    if (typeof window === "undefined") return;
+  // const handleSocialAuth = async (provider: "google" | "linkedin") => {
+  //   if (typeof window === "undefined") return;
 
-    setIsLoading(true);
+  //   try {
+  //     setIsLoading(true);
+  //     localStorage.setItem("oauth_loading", "true");
+  //     localStorage.setItem("oauth_provider", provider);
 
+  //     if (window.posthog) {
+  //       window.posthog.capture(`${mode}_attempt`, { provider });
+  //     }
+
+  //     const state = Math.random().toString(36).substring(2, 15);
+  //     localStorage.setItem("oauth_state", state);
+
+  //     const options = {
+  //       redirectTo: `${window.location.origin}/auth/callback`,
+  //       queryParams: {
+  //         access_type: "offline",
+  //         prompt: "consent",
+  //         state: state,
+  //       },
+  //       scopes: ["email", "profile", "https://www.googleapis.com/auth/user.phonenumbers.read"].join(
+  //         " "
+  //       ),
+  //     };
+
+  // const { error } = await supabaseHandler.auth.signInWithOAuth({
+  //   provider,
+  //   options,
+  // });
+
+  //     if (error) {
+  //       throw new Error(`OAuth sign-in failed: ${error.message}`);
+  //     }
+  // } catch (error) {
+  //   console.error(`Error during ${mode} with ${provider}:`, error);
+  //   localStorage.removeItem("oauth_loading");
+  //   localStorage.removeItem("oauth_state");
+  //   onError?.(error as Error);
+
+  //   if (window.posthog) {
+  //     window.posthog.capture(`${mode}_error`, {
+  //       provider,
+  //       error: error instanceof Error ? error.message : "Unknown error",
+  //     });
+  //   }
+  // } finally {
+  //   if (typeof window !== "undefined") {
+  //     setIsLoading(false);
+  //   }
+  // }
+  // };
+  const handleSocialAuth = async () => {
+    // Track login attempt with PostHog if available
+    if (typeof window !== "undefined" && window.posthog) {
+      window.posthog.capture("login_attempt", { provider: "google" });
+    }
     try {
-      if (window.posthog) {
-        window.posthog.capture(`${mode}_attempt`, { provider });
-      }
-
-      const options = {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
+      const { data, error } = await supabaseHandler.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+          scopes: [
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/user.phonenumbers.read",
+          ].join(" "),
         },
-        scopes: ["email", "profile", "https://www.googleapis.com/auth/user.phonenumbers.read"].join(
-          " "
-        ),
-      };
-
-      const { error } = await supabaseTemp.auth.signInWithOAuth({
-        provider,
-        options,
       });
 
       if (error) {
-        throw error;
+        console.error("Error signing in with Google:", error);
       }
     } catch (error) {
-      console.error(`Error during ${mode} with ${provider}:`, error);
+      localStorage.removeItem("oauth_loading");
+      localStorage.removeItem("oauth_state");
       onError?.(error as Error);
     } finally {
-      setIsLoading(false);
+      if (typeof window !== "undefined") {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -672,7 +772,7 @@ const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError })
     <div className="mt-2 ">
       <div className=" space-y-2">
         <button
-          onClick={() => handleSocialAuth("google")}
+          onClick={() => handleSocialAuth()}
           disabled={isLoading}
           className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >

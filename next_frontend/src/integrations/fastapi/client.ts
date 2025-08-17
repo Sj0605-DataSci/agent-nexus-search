@@ -182,13 +182,14 @@ export const apiClient = {
     }
   },
 
-  async userSignUp(email: string, password: string, fullName: string, linkedinUrl: string) {
+  async userSignUp(email: string, password: string, fullName: string, linkedinUrl: string, phoneNumber: string) {
     try {
       const res = await axiosInstance.post("/auth/signup", {
         email,
         password,
         full_name: fullName,
         linkedin_url: linkedinUrl,
+        phone_number: phoneNumber,
       });
       return res.data;
     } catch (error) {

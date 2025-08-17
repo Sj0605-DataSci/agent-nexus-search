@@ -18,6 +18,8 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import posthog from "posthog-js";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
+import { supabaseHandler } from "./supabaseClient";
+import { Session } from "@supabase/supabase-js";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -26,10 +28,30 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const agentsStatus = useAppSelector(state => state.agents.status);
   const router = useRouter();
   const pathname = usePathname();
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabaseHandler.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabaseHandler.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        
+        if (event === 'TOKEN_REFRESHED' && session) {
+          localStorage.setItem("discover_minds_access_token", session.access_token);
+          localStorage.setItem("discover_minds_refresh_token", session.refresh_token);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const fetchProfileData = async () => {
-      const token = localStorage.getItem("discover_minds_access_token");
+      const token = localStorage.getItem("discover_minds_access_token") || session?.access_token || '';
 
       if (token && !profile) {
         try {
@@ -76,6 +98,35 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
     fetchProfileData();
   }, [user, profile, dispatch, router, pathname, agentsStatus]);
+
+  useEffect(() => {
+    const handleGoogleAuth = async () => {
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          localStorage.setItem("discover_minds_access_token", accessToken);
+          localStorage.setItem("discover_minds_refresh_token", refreshToken);
+          
+          await supabaseHandler.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          if (profile) {
+            dispatch(fetchProfile());
+          }
+        }
+      }
+    };
+
+    handleGoogleAuth();
+  }, [dispatch, profile]);
 
   return <>{children}</>;
 }
