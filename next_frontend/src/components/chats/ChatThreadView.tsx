@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { ChatNavigationControls } from "./ChatNavigationControls";
@@ -182,12 +182,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       const { messages: cachedMessages, timestamp } = cachedThreads[threadId];
       const cacheAge = Date.now() - timestamp;
       if (cacheAge < 5 * 60 * 1000) {
-        setChatPairs(cachedMessages);
-        setCurrentMessageIndex(cachedMessages.length - 1);
+        setChatPairs(cachedMessages || []);
+        setCurrentMessageIndex(Math.max(0, (cachedMessages?.length || 0) - 1));
         setIsLoading(false);
         return;
       }
     }
+
     setIsLoading(true);
     try {
       const messagesResponse = await apiClient.getChatMessages(threadId);
@@ -204,7 +205,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             timestamp: Date.now(),
           },
         }));
+      } else {
+        setChatPairs([]);
+        setCurrentMessageIndex(0);
       }
+
       setInitialLoadComplete(true);
     } catch (error: unknown) {
       console.error("[ChatThreadView] fetchMessages error:", error);
@@ -225,8 +230,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         message = "This chat thread was not found.";
       } else if (typedError.response?.status === 403) {
         message = "You do not have access to this chat thread.";
+      } else if (typedError.response?.status === 401) {
+        message = "Please log in to view this chat thread.";
+      } else if (!navigator.onLine) {
+        message = "You're offline. Please check your internet connection.";
       }
-      console.log("[ChatThreadView] threadError:", message);
+
+      showErrorToast("Load Failed", message);
       setChatPairs([]);
       setCurrentMessageIndex(0);
     } finally {
@@ -446,7 +456,12 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         const now = Date.now();
         if (now - lastUpdateTime > updateDebounceMs) {
           setMessages(m =>
-            m.map(msg => (msg.id === newLoadingMessageId ? { ...msg, content } : msg))
+            m.map(msg => {
+              if (msg.id === newLoadingMessageId) {
+                return { ...msg, content };
+              }
+              return msg;
+            })
           );
           lastUpdateTime = now;
         }
@@ -586,26 +601,24 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               });
               break;
 
-            case "done":
+            case "finalize_answer":
               if (fullContent) {
                 updateMessageContent(fullContent);
-                setQuery(update.content.query);
+                if (update.content?.query) {
+                  setQuery(update.content.query);
+                }
                 if (chatWorkerRef.current) {
                   chatWorkerRef.current.postMessage({
                     type: "process_message",
                     data: {
-                      id: update.content.chat_thread_id || update.content.thread_id,
+                      id:
+                        update.content?.chat_thread_id ||
+                        update.content?.thread_id ||
+                        newLoadingMessageId,
                       content: fullContent,
                     },
                   });
                 }
-                // if (update.content && update.content.chat_thread_id && threadId === "new") {
-                //   const newThreadId = update.content.chat_thread_id;
-                //   if (newThreadId !== threadId) {
-                //     const newUrl = `/chat/${newThreadId}`;
-                //     window.history.replaceState({ path: newUrl }, "", newUrl);
-                //   }
-                // }
               }
 
               setMessages(m => {
@@ -636,8 +649,54 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               });
               break;
 
+            case "web_research_result":
+              if (update.content?.web_research_result?.length > 0) {
+                const researchContent = update.content.web_research_result.join("\n");
+                currentContent = researchContent;
+                updateMessageContent(currentContent);
+              }
+              break;
+
+            case "reflection":
+              if (update.content) {
+                const { is_sufficient, follow_up_queries = [], knowledge_gap } = update.content;
+
+                // Add reflection to the current message
+                const reflectionContent = [
+                  "## Research Reflection",
+                  `**Status:** ${is_sufficient ? "✅ Sufficient Information" : "⚠️ Additional Research Needed"}`,
+                  "",
+                  "### Knowledge Gaps",
+                  knowledge_gap,
+                  "",
+                  "### Follow-up Queries",
+                  ...follow_up_queries.map((q: string, i: number) => `- ${i + 1}. ${q}`),
+                ].join("\n");
+
+                // Update the message with reflection
+                setMessages(m => {
+                  if (m.length === 0) return m;
+                  const lastIndex = m.length - 1;
+                  const updatedMessages = [...m];
+                  updatedMessages[lastIndex] = {
+                    ...updatedMessages[lastIndex],
+                    content: updatedMessages[lastIndex].content + "\n\n" + reflectionContent,
+                  };
+                  return updatedMessages;
+                });
+
+                // Store follow-up queries for potential use
+                if (follow_up_queries.length > 0) {
+                  setStreamingSearchQueries(prev => [...prev, ...follow_up_queries]);
+                }
+              }
+              break;
+
             case "connected":
               console.log("Stream connected");
+              break;
+            case "done":
+              setIsStreaming(false);
               break;
 
             default:
@@ -687,14 +746,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const getPersonalizedGreeting = () => {
+  const getPersonalizedGreeting = useCallback(() => {
     const baseGreeting = getTimeBasedGreeting();
-    if (profile?.full_name) {
-      const firstName = profile.full_name.split(" ")[0];
+    if (profile?.full_name?.trim()) {
+      const firstName = profile.full_name.trim().split(" ")[0];
       return `${baseGreeting}, ${firstName}`;
     }
     return baseGreeting;
-  };
+  }, [profile?.full_name]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -705,30 +764,35 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   }, [query]);
 
-  const handleFeedback = (messageId: string, isPositive: boolean) => {
-    posthog.capture("feedback_given", {
-      message_id: messageId,
-      thread_id: threadId,
-      feedback: isPositive ? "positive" : "negative",
-    });
+  const handleFeedback = useCallback(
+    (messageId: string, isPositive: boolean) => {
+      if (!messageId || feedbackSubmitted[messageId]) return;
 
-    setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
+      posthog.capture("feedback_given", {
+        message_id: messageId,
+        thread_id: threadId,
+        feedback: isPositive ? "positive" : "negative",
+      });
 
-    if (isPositive) {
-      handleFeedbackSubmit({
-        messageId,
-        isPositive,
-        comment: "",
-      });
-    } else {
-      setCurrentFeedback({
-        messageId,
-        isPositive,
-        comment: "",
-      });
-      setFeedbackModalOpen(true);
-    }
-  };
+      setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
+
+      if (isPositive) {
+        handleFeedbackSubmit({
+          messageId,
+          isPositive,
+          comment: "",
+        });
+      } else {
+        setCurrentFeedback({
+          messageId,
+          isPositive,
+          comment: "",
+        });
+        setFeedbackModalOpen(true);
+      }
+    },
+    [threadId, feedbackSubmitted]
+  );
 
   const handleFeedbackSubmit = async (feedback: FeedbackType) => {
     try {
@@ -955,7 +1019,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                     </p>
                                   </div>
                                 ) : format === "table" &&
-                                  parseStructuredData(m.content).isStructured &&
+                                  parseStructuredData(m.content) &&
                                   /(fname|lname|link)/i.test(m.content) ? (
                                   <div className="flex w-full">
                                     {renderAsTable(
