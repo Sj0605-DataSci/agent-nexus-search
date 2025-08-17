@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseHandler } from "../../supabaseClient";
 import { apiClient, setAuthToken } from "@/integrations/fastapi/client";
@@ -11,11 +11,11 @@ declare global {
   }
 }
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
-  const code = searchParams.get('code');
+  const error = searchParams?.get('error');
+  const code = searchParams?.get('code');
 
   useEffect(() => {
     const handleAuth = async () => {
@@ -132,5 +132,17 @@ export default function AuthCallback() {
     <div className="min-h-screen grid place-items-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen grid place-items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
