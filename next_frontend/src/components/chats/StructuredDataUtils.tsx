@@ -1,7 +1,118 @@
-import React from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import {
+  Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ExternalLink,
+  Linkedin,
+  Github,
+  Twitter,
+  Facebook as FacebookIcon,
+  Youtube,
+  Instagram,
+  MessageSquare,
+  Search,
+  Code,
+  Package,
+  Film,
+  Music,
+  Apple,
+  AlertCircle,
+  MessageSquareText,
+  Laptop2,
+  BookOpenText,
+} from "lucide-react";
 import { useAppSelector } from "@/store";
+
+// Domain to icon component mapping
+const DOMAIN_ICONS: Record<
+  string,
+  { icon: React.ComponentType<{ className?: string }>; color: string }
+> = {
+  "linkedin.com": { icon: Linkedin, color: "#0A66C2" },
+  "github.com": { icon: Github, color: "#181717" },
+  "twitter.com": { icon: Twitter, color: "#1DA1F2" },
+  "facebook.com": { icon: FacebookIcon, color: "#1877F2" },
+  "fb.com": { icon: FacebookIcon, color: "#1877F2" },
+  "fb.gg": { icon: FacebookIcon, color: "#1877F2" },
+  "youtube.com": { icon: Youtube, color: "#FF0000" },
+  "youtu.be": { icon: Youtube, color: "#FF0000" },
+  "instagram.com": { icon: Instagram, color: "#E4405F" },
+  "reddit.com": { icon: MessageSquare, color: "#FF4500" },
+  "medium.com": { icon: BookOpenText, color: "#000000" },
+  "stackoverflow.com": { icon: MessageSquare, color: "#F48024" },
+  "google.com": { icon: Search, color: "#4285F4" },
+  "microsoft.com": { icon: Laptop2, color: "#00A4EF" },
+  "apple.com": { icon: Apple, color: "#000000" },
+  "amazon.com": { icon: Package, color: "#FF9900" },
+  "netflix.com": { icon: Film, color: "#E50914" },
+  "spotify.com": { icon: Music, color: "#1DB954" },
+  "dev.to": { icon: Code, color: "#0A0A0A" },
+};
+
+// Default icon for unknown domains
+const DEFAULT_ICON = {
+  icon: ExternalLink,
+  color: "#6B7280",
+};
+
+// URL validation regex
+const URL_REGEX = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w- .\/?%&=]*)?$/;
+
+// Get domain from URL
+const getDomain = (url: string): string => {
+  try {
+    const domain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(
+      "www.",
+      ""
+    );
+    return domain;
+  } catch {
+    return "";
+  }
+};
+
+// Get icon for domain
+const getDomainIcon = (url: string) => {
+  if (!url) return DEFAULT_ICON;
+
+  try {
+    const domain = getDomain(url).toLowerCase();
+    if (!domain) return DEFAULT_ICON;
+
+    console.log("Looking up icon for domain:", domain);
+
+    // First try exact matches
+    for (const [key, value] of Object.entries(DOMAIN_ICONS)) {
+      if (domain === key || domain.endsWith(`.${key}`)) {
+        console.log("Found exact icon match:", { domain, key });
+        return value;
+      }
+    }
+
+    // Then try partial matches for known domains
+    for (const [key, value] of Object.entries(DOMAIN_ICONS)) {
+      if (domain.includes(key)) {
+        console.log("Found partial icon match:", { domain, key });
+        return value;
+      }
+    }
+
+    // Special case for Facebook domains
+    if (domain.includes("facebook") || domain.includes("fb.")) {
+      console.log("Matched Facebook domain:", domain);
+      return DOMAIN_ICONS["facebook.com"] || DEFAULT_ICON;
+    }
+
+    console.log("No icon match found for domain:", domain);
+    return DEFAULT_ICON;
+  } catch (error) {
+    console.error("Error in getDomainIcon:", error);
+    return DEFAULT_ICON;
+  }
+};
 
 /**
  * Parses text to determine if it contains structured data with people information
@@ -133,19 +244,21 @@ const renderSocialLink = (link: string) => {
   const trimmed = link.trim();
   if (!trimmed) return null;
 
-  let icon = "🔗";
-  let displayText = trimmed;
-
-  try {
-    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
-    displayText = url.hostname.replace("www.", "");
-
-    if (url.hostname.includes("linkedin.com")) icon = "💼";
-    else if (url.hostname.includes("github.com")) icon = "🐙";
-    else if (url.hostname.includes("stackoverflow.com")) icon = "🔍";
-  } catch (e) {
-    console.warn("Invalid URL:", trimmed);
+  const isValidUrl = URL_REGEX.test(trimmed);
+  if (!isValidUrl) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <ExternalLink className="w-4 h-4" />
+        <span className="truncate max-w-[120px] sm:max-w-none" title={trimmed}>
+          {trimmed.length > 30 ? `${trimmed.substring(0, 27)}...` : trimmed}
+        </span>
+      </div>
+    );
   }
+
+  const domain = getDomain(trimmed);
+  const { icon: Icon, color } = getDomainIcon(trimmed);
+  const displayText = domain || trimmed;
 
   return (
     <a
@@ -153,11 +266,14 @@ const renderSocialLink = (link: string) => {
       href={trimmed.startsWith("http") ? trimmed : `https://${trimmed}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-blue-500 hover:underline flex items-center gap-1.5 text-sm"
+      className="hover:underline flex items-center gap-1.5 text-sm"
+      style={{ color }}
       title={trimmed}
     >
-      <span>{icon}</span>
-      <span className="truncate max-w-[120px] sm:max-w-none">{displayText}</span>
+      <Icon className="w-4 h-4" />
+      <span className="truncate max-w-[120px] sm:max-w-none">
+        {displayText.length > 24 ? `${displayText.substring(0, 24)}...` : displayText}
+      </span>
     </a>
   );
 };
@@ -244,23 +360,73 @@ const PersonCard = ({
   </div>
 );
 
-export const renderAsTable = (
-  content: string,
-  darkMode: boolean,
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>,
-  hasMoreMessages?: boolean,
-  loadMoreMessages?: () => void
-) => {
-  const { people, columns } = parseStructuredData(content);
-  if (people.length === 0) return <div className="whitespace-pre-wrap">{content}</div>;
+interface SortConfig {
+  key: string;
+  direction: "asc" | "desc";
+}
 
-  const sortedPeople = sortPeople(people);
+interface StructuredDataTableProps {
+  people: Array<Record<string, string>>;
+  columns: string[];
+  darkMode: boolean;
+  onDownload: () => void;
+}
+
+const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
+  people,
+  columns,
+  darkMode,
+  onDownload,
+}) => {
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "Score",
+    direction: "desc",
+  });
+
+  const requestSort = useCallback((key: string) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === "asc" ? "desc" : "asc",
+    }));
+  }, []);
+
+  const sortedPeople = useMemo(() => {
+    const sortablePeople = [...people];
+    if (!sortConfig) return sortablePeople;
+
+    return sortablePeople.sort((a, b) => {
+      // Handle empty or null values
+      if (!a[sortConfig.key] && !b[sortConfig.key]) return 0;
+      if (!a[sortConfig.key]) return 1;
+      if (!b[sortConfig.key]) return -1;
+
+      // Special handling for different data types
+      if (sortConfig.key === "Score") {
+        const aValue = parseFloat(a[sortConfig.key] || "0") || 0;
+        const bValue = parseFloat(b[sortConfig.key] || "0") || 0;
+        return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
+      }
+
+      // Default string comparison
+      const aValue = String(a[sortConfig.key] || "").toLowerCase();
+      const bValue = String(b[sortConfig.key] || "").toLowerCase();
+
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [people, sortConfig]);
+
+  const getSortIndicator = (key: string) => {
+    if (sortConfig.key !== key) return "↕";
+    return sortConfig.direction === "asc" ? "↑" : "↓";
+  };
 
   return (
     <div className="w-full">
       <div className="mb-4 flex justify-end">
         <Button
-          onClick={() => downloadAsCSV(people, columns)}
+          onClick={onDownload}
           variant="outline"
           size="sm"
           className={`flex items-center gap-2 ${
@@ -291,9 +457,15 @@ export const renderAsTable = (
                   {columns.map((col, i) => (
                     <th
                       key={i}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-opacity-50 ${
+                        darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+                      }`}
+                      onClick={() => requestSort(col)}
                     >
-                      {col}
+                      <div className="flex items-center gap-1">
+                        {col}
+                        <span className="text-xs">{getSortIndicator(col)}</span>
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -320,9 +492,9 @@ export const renderAsTable = (
                           <div className="flex flex-col gap-1.5">
                             {person[col]
                               .split(",")
-                              .map(link => link.trim())
-                              .filter(link => link)
-                              .map((link, i) => (
+                              .map((link: string) => link.trim())
+                              .filter((link: string) => link)
+                              .map((link: string, i: number) => (
                                 <React.Fragment key={i}>{renderSocialLink(link)}</React.Fragment>
                               ))}
                           </div>
@@ -349,3 +521,26 @@ export const renderAsTable = (
     </div>
   );
 };
+
+export const renderAsTable = (
+  content: string,
+  darkMode: boolean,
+  messagesContainerRef: React.RefObject<HTMLDivElement | null>,
+  hasMoreMessages?: boolean,
+  loadMoreMessages?: () => void
+) => {
+  const { people, columns } = parseStructuredData(content);
+
+  if (people.length === 0) return <div className="whitespace-pre-wrap">{content}</div>;
+
+  return (
+    <StructuredDataTable
+      people={people}
+      columns={columns}
+      darkMode={darkMode}
+      onDownload={() => downloadAsCSV(people, columns)}
+    />
+  );
+};
+
+export { StructuredDataTable };
