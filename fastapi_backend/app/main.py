@@ -219,30 +219,14 @@ class DBConnectionProfilingMiddleware(BaseHTTPMiddleware):
         
         return response
 
-# Set up CORS middleware with more specific settings
+# Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:3001", 
-        "https://www.discoverminds.ai", 
-        "https://discoverminds.ai",
-        "https://www.test-web.discoverminds.ai",
-        "https://test-web.discoverminds.ai",
-        "chrome-extension://ohhahepljehjfliiiacafdmgnfodklbd"
-    ],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://www.test-web.discoverminds.ai", "https://www.test-web.discoverminds.ai/", "https://test-web.discoverminds.ai", "https://test-web.discoverminds.ai/"],  # Include localhost development URLs
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "*",
-        "Authorization",
-        "Content-Type",
-        "Access-Control-Allow-Origin",
-        "Access-Control-Allow-Headers",
-        "Access-Control-Allow-Methods",
-    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=["*"],
-    max_age=600,  # Cache preflight response for 10 minutes
 )
 
 # Add profiling middleware in reverse order (first added = last executed)
@@ -263,22 +247,6 @@ async def cors_debug_middleware(request: Request, call_next):
                    request_url=str(request.url),
                    origin=origin,
                    headers=dict(request.headers))
-        
-        # Create a response for OPTIONS requests
-        from fastapi.responses import JSONResponse
-        response = JSONResponse(
-            status_code=200,
-            content={"message": "CORS preflight successful"},
-        )
-        
-        # Add CORS headers
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Access-Control-Allow-Origin, Access-Control-Allow-Headers"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Max-Age"] = "600"  # 10 minutes
-        
-        return response
     
     # Process the request
     response = await call_next(request)
