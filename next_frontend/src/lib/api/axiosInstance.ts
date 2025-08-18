@@ -76,6 +76,7 @@ axiosInstance.interceptors.response.use(
       "/user-auth",
       "/pricing",
       "/signup",
+      "/",
       "/join-waitlist",
       "/privacy-policy",
       "/terms",
