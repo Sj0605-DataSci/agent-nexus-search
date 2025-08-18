@@ -15,11 +15,11 @@ alembic
 python-dotenv
 
 # LangGraph and LLM dependencies
-langgraph>=0.0.25
-langchain>=0.1.0
-langchain-openai>=0.0.5
-langchain-core>=0.1.10
-langchain-google-genai>=0.0.5
+langgraph
+langchain
+langchain-openai
+langchain-core
+langchain-google-genai
 google-genai
 # Search API clients
 exa-py
@@ -43,9 +43,8 @@ email-validator
 
 redis
 psutil
-wandb
 weave
-
+wandb
 # PDF generation
 reportlab
 

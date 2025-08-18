@@ -5,11 +5,11 @@ FROM python:3.11-slim as builder
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.lock .
 
 # Install uv and dependencies
 RUN pip install --no-cache-dir uv && \
-    uv pip install --system --no-cache -r requirements.txt && \
+    uv pip install --system --no-cache -r requirements.lock && \
     rm -rf /root/.cache
 
 # Final stage
@@ -18,6 +18,10 @@ WORKDIR /app
 
 # Copy installed dependencies
 COPY --from=builder /usr/local /usr/local
+
+# After installing requirements
+RUN sed -i 's/session.execute(query, kwargs)/session.execute(query, *kwargs)/' \
+    /usr/local/lib/python3.11/site-packages/weave/wandb_interface/wandb_api.py
 
 # Create non-root user
 RUN useradd -m myuser && \

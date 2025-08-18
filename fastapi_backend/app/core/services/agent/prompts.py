@@ -32,18 +32,18 @@ Try to understand the query and transform it into a query searching for people.
 
 Try to understand intent of the query, then use various platforms like : 
 
-site\:linkedin.com/in
-site\:indeed.com/r
-site\:naukri.com
-site\:monster.com
-site\:apollo.io/people
-site\:cognism.com/profiles
-site\:hubspot.com/contacts
-site\:saleshandy.com/prospects
-site\:hunter.io
-site\:drift.com/chat
-site\:leadsforge.com
-site\:lusha.com
+site:linkedin.com/in
+site:indeed.com/r
+site:naukri.com
+site:monster.com
+site:apollo.io/people
+site:cognism.com/profiles
+site:hubspot.com/contacts
+site:saleshandy.com/prospects
+site:hunter.io
+site:drift.com/chat
+site:leadsforge.com
+site:lusha.com
 
 "rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
 "query": [
@@ -79,10 +79,10 @@ HR_agent_prompt = """Examples:
 
 **HR Agent Example**
    * Use platforms where professionals list their experience and skills:
-     * site\:linkedin.com/in
-     * site\:indeed.com/r
-     * site\:naukri.com
-     * site\:monster.com
+     * site:linkedin.com/in
+     * site:indeed.com/r
+     * site:naukri.com
+     * site:monster.com
 
 Example output for "Product Manager" role:
 When using linkedin scrape profiles, you can also scrape posts of those person to understand
@@ -101,17 +101,17 @@ Example shorthand when only 1 query is needed:
 
 Sales_agent_prompt = """2. **Sales Agent Example**
    * Use platforms where decision-makers and company contacts appear:
-     * site\:linkedin.com/in
-     * site\:crunchbase.com/organization
-     * site\:zoominfo.com/profile
-     * site\:apollo.io/people
-     * site\:cognism.com/profiles
-     * site\:hubspot.com/contacts
-     * site\:saleshandy.com/prospects
-     * site\:hunter.io
-     * site\:drift.com/chat
-     * site\:leadsforge.com
-     * site\:lusha.com
+     * site:linkedin.com/in
+     * site:crunchbase.com/organization
+     * site:zoominfo.com/profile
+     * site:apollo.io/people
+     * site:cognism.com/profiles
+     * site:hubspot.com/contacts
+     * site:saleshandy.com/prospects
+     * site:hunter.io
+     * site:drift.com/chat
+     * site:leadsforge.com
+     * site:lusha.com
    * Example output for "CRM software" leads:
 
 "rationale": "To find potential CRM software buyers, we search for technology and sales leaders across leading B2B intelligence, networking, and outreach platforms, ensuring a diverse pool of decision-makers from verified sources.",
