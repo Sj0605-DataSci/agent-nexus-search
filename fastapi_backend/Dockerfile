@@ -7,9 +7,10 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install uv and dependencies
-RUN pip install --no-cache-dir uv && \
-    uv pip install --system --no-cache -r requirements.txt && \
+# Install uv and dependencies with package updates
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir uv && \
+    uv pip install --upgrade --no-cache -r requirements.txt && \
     rm -rf /root/.cache
 
 # Final stage
