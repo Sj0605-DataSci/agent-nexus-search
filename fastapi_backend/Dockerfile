@@ -10,7 +10,7 @@ COPY requirements.txt .
 # Install uv and dependencies with package updates
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir uv && \
-    uv pip install --upgrade --no-cache -r requirements.txt && \
+    uv pip install --system --upgrade --no-cache -r requirements.txt && \
     rm -rf /root/.cache
 
 # Final stage
