@@ -44,7 +44,7 @@ email-validator
 redis
 psutil
 wandb
-weave==0.0.1
+weave
 
 # PDF generation
 reportlab
