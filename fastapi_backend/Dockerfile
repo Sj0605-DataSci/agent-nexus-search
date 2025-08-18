@@ -19,6 +19,10 @@ WORKDIR /app
 # Copy installed dependencies
 COPY --from=builder /usr/local /usr/local
 
+# After installing requirements
+RUN sed -i 's/session.execute(query, kwargs)/session.execute(query, *kwargs)/' \
+    /usr/local/lib/python3.11/site-packages/weave/wandb_interface/wandb_api.py
+
 # Create non-root user
 RUN useradd -m myuser && \
     chown myuser /app
