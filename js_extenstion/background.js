@@ -1,8 +1,8 @@
 // Info: Currently Hardcoded ID+Backend for test env
 const CLIENT_ID = "77hcnh58oyowdg"; // public
-const BACKEND = "http://localhost:3000/api/linkedin/token";
-// const BACKEND =
-// "https://staging-apis.discoverminds.ai/api/profiles/linkedin/token";
+// const BACKEND = "http://localhost:3000/api/linkedin/token";
+const BACKEND =
+  "https://staging-apis.discoverminds.ai/api/profiles/linkedin/token";
 
 const SCOPES = ["openid", "profile", "email"];
 const AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization";
