@@ -269,7 +269,10 @@ class PersonDetailsResponse(BaseModel):
 class LinkedInTokenRequest(BaseModel):
     """Request schema for LinkedIn OAuth token exchange"""
     code: str = Field(..., description="Authorization code from LinkedIn OAuth")
-    redirect_uri: str = Field(..., description="Redirect URI used in OAuth flow")
+    redirect_uri: str = Field(..., description="Redirect URI used in OAuth flow", alias="redirectUri")
+    
+    class Config:
+        populate_by_name = True
 
 class LinkedInTokenResponse(BaseModel):
     """Response schema for LinkedIn OAuth token exchange"""
