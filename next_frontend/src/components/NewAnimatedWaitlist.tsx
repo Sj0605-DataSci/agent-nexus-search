@@ -159,7 +159,7 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
     }
 
     const linkedinRegex =
-      /^(https?:\/\/)?(www\.)?linkedin\.com\/(in|company|school|pub|profile)\/[A-Za-z0-9\-_%\.]+\/?.*$/i;
+      /^(https?:\/\/)?([a-z]{2,3}\.)?linkedin\.com\/(in|company|school|pub|profile|sales\/lead)\/[A-Za-z0-9\-_\.%]+(?:\/[-a-z\d%_.~+]*)*(?:\?[;&a-z\d%_.~+=-]*)?(?:\#[-a-z\d_]*)?$/i;
 
     if (!linkedinUrl) {
       errors.linkedin_url = "LinkedIn profile URL is required";
@@ -214,7 +214,7 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 px-4 py-8 flex items-center justify-center">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-100/20 via-transparent to-purple-100/20 pointer-events-none" />
 
-      <div className="absolute top-4 right-4 z-20 flex items-center space-x-3">
+      {/* <div className="absolute top-4 right-4 z-20 flex items-center space-x-3">
         <Link
           href="/user-auth"
           className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors px-2 py-1"
@@ -229,7 +229,7 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
             Sign Up
           </button>
         </Link>
-      </div>
+      </div> */}
 
       <main className="relative z-10 w-full max-w-sm rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-200/50 p-6">
         {success ? (
@@ -240,8 +240,8 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
               <BrandLogo className="mb-3" />
               <h1 className="text-xl font-bold mb-1 text-gray-900">Join the Waitlist</h1>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Reimagine how you find the perfect hire or your perfect lead — smarter, faster, more
-                personal.
+                Tired of cold outreach? DiscoverMinds helps you make warm, meaningful connections
+                through your extended network.
               </p>
             </div>
 
@@ -351,7 +351,7 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
                 />
               </div>
               <span className="text-xs font-medium text-blue-700 ml-2">
-                55+ users already joined
+                100+ users already joined
               </span>
             </div>
           </div>
