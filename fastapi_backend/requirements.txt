@@ -50,3 +50,6 @@ reportlab
 
 # LinkedIn OAuth
 httpx
+
+# OpenAI client for Gemini API compatibility
+openai
