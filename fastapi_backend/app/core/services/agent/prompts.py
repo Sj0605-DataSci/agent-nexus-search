@@ -32,18 +32,18 @@ Try to understand the query and transform it into a query searching for people.
 
 Try to understand intent of the query, then use various platforms like : 
 
-site\:linkedin.com/in
-site\:indeed.com/r
-site\:naukri.com
-site\:monster.com
-site\:apollo.io/people
-site\:cognism.com/profiles
-site\:hubspot.com/contacts
-site\:saleshandy.com/prospects
-site\:hunter.io
-site\:drift.com/chat
-site\:leadsforge.com
-site\:lusha.com
+site:linkedin.com/in
+site:indeed.com/r
+site:naukri.com
+site:monster.com
+site:apollo.io/people
+site:cognism.com/profiles
+site:hubspot.com/contacts
+site:saleshandy.com/prospects
+site:hunter.io
+site:drift.com/chat
+site:leadsforge.com
+site:lusha.com
 
 "rationale": "To identify experienced Product Managers, we target professional networking and job platforms where profiles detail role history and accomplishments.",
 "query": [
@@ -79,10 +79,10 @@ HR_agent_prompt = """Examples:
 
 **HR Agent Example**
    * Use platforms where professionals list their experience and skills:
-     * site\:linkedin.com/in
-     * site\:indeed.com/r
-     * site\:naukri.com
-     * site\:monster.com
+     * site:linkedin.com/in
+     * site:indeed.com/r
+     * site:naukri.com
+     * site:monster.com
 
 Example output for "Product Manager" role:
 When using linkedin scrape profiles, you can also scrape posts of those person to understand
@@ -101,17 +101,17 @@ Example shorthand when only 1 query is needed:
 
 Sales_agent_prompt = """2. **Sales Agent Example**
    * Use platforms where decision-makers and company contacts appear:
-     * site\:linkedin.com/in
-     * site\:crunchbase.com/organization
-     * site\:zoominfo.com/profile
-     * site\:apollo.io/people
-     * site\:cognism.com/profiles
-     * site\:hubspot.com/contacts
-     * site\:saleshandy.com/prospects
-     * site\:hunter.io
-     * site\:drift.com/chat
-     * site\:leadsforge.com
-     * site\:lusha.com
+     * site:linkedin.com/in
+     * site:crunchbase.com/organization
+     * site:zoominfo.com/profile
+     * site:apollo.io/people
+     * site:cognism.com/profiles
+     * site:hubspot.com/contacts
+     * site:saleshandy.com/prospects
+     * site:hunter.io
+     * site:drift.com/chat
+     * site:leadsforge.com
+     * site:lusha.com
    * Example output for "CRM software" leads:
 
 "rationale": "To find potential CRM software buyers, we search for technology and sales leaders across leading B2B intelligence, networking, and outreach platforms, ensuring a diverse pool of decision-makers from verified sources.",
@@ -159,15 +159,25 @@ Output Format:
 
 lets say number of follow up queries is 2 then:
 Example:
-is_sufficient": false,
-knowledge_gap": "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
-follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
+is_sufficient: false,
+knowledge_gap: "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
+follow_up_queries: ["Find React developers in Berlin with recent GitHub contributions", "React developer personal portfolio Berlin site:about.me OR site:github.io"]
 
 lets say number of follow up queries is 1 then:
 Example:
-is_sufficient": false,
-knowledge_gap": "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
-follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions"]"""
+is_sufficient: false,
+knowledge_gap: "The summary lacks specific examples of candidates' open-source contributions or portfolio links.",
+follow_up_queries: ["Find React developers in Berlin with recent GitHub contributions"]
+
+
+is_sufficient: true,
+knowledge_gap: "", 
+follow_up_queries: []
+
+"""
+
+
+
 
 reflection_user_prompt = """Research topic: "{research_topic}"
 
@@ -304,7 +314,7 @@ AND (
 ORDER BY 
     CASE WHEN first_name ILIKE 'Ashish' AND last_name ILIKE 'Gupta' THEN 1 ELSE 2 END,
     CASE WHEN company ILIKE '%Instaservice%' THEN 1 ELSE 2 END
-LIMIT 50;
+LIMIT 10;
 ```
 
 RULES:
@@ -312,7 +322,7 @@ RULES:
 - Use ILIKE for case-insensitive matching
 - Use % wildcards for partial matches
 - Order results by relevance
-- Limit results to reasonable numbers (50-100)
+- Limit results to reasonable numbers (10-20)
 - NO MySQL syntax (no MATCH/AGAINST)
 - NO non-existent columns (name, bio, skills, etc.)
 
@@ -335,7 +345,7 @@ SELECT * FROM connections
 WHERE user_id = '{user_id}'
 AND (first_name ILIKE '%John%' AND last_name ILIKE '%Smith%')
 AND company ILIKE '%Google%'
-LIMIT 50;"""
+LIMIT 10;"""
 
 # Keep original for backward compatibility
 sql_query_instructions = sql_query_system_instruction + "\n\n" + sql_query_user_prompt
@@ -370,6 +380,10 @@ Example:
 is_sufficient": false,
 knowledge_gap": "The answer lacks specific examples of candidates' open-source contributions or portfolio links.",
 follow_up_queries": ["Find React developers in Berlin with recent GitHub contributions"]
+
+is_sufficient": true,
+knowledge_gap": "",
+follow_up_queries": []
 
 Always take time to think, and you should always reflect whether summaries contain list of people or name of people or not, there should ne job listings or whatever, you are a people search engine, your main goal is to reflect whether you got suffficent data on people or not"""
 
@@ -426,17 +440,25 @@ Phone No : 1234567890
 Score : 10
 Reason : 
 
-if any field has empty value, type null in front of that field
+if any field has empty value, type NULL in front of that field:
+  - Fname : NULL
+  - Lname : NULL
+  - Social links : NULL
+  - Email : NULL
+  - Phone No : NULL
+  - Score : NULL
+  - Reason : NO person found matching the criteria
+
 
 Always give correct links and do not give any fake links
 Score should be out of 10 and based on following criteria:
 - Relevance of the person to the user's question
 - How many times the person has been mentioned in the summaries
 - In summaries relevancy of information, created, updated, when information was published
+-Use these summaries, and give all these answers based on the system instruction format, never  miss a single result to give, give all the summaries u get, if you don't have any answer fill it with NULL
 
-Always give a reason for the score
-Also write every answer based on summaries and links, that means don't leave any person information that has been mentioned in summaries and links
-
+Always give a reason for the score: why that person is relevant to the query that's it.
+Give all the answers in table format, all the profiles you got
 """
 
 answer_table_user_prompt = """User Context:
@@ -446,7 +468,11 @@ Summaries:
 {summaries}
 
 Use these links:
-{links}"""
+{links}
+
+Give all the answers in table format, all the profiles you got
+
+"""
 
 # Keep original for backward compatibility
 answer_instructions_table_format = answer_table_system_instruction + "\n\n" + answer_table_user_prompt

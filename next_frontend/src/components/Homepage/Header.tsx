@@ -119,7 +119,7 @@ const HomeHeader: React.FC = () => {
         <motion.header
           ref={headerRef}
           className="fixed left-0 top-0 right-0 z-50 pt-6 px-6"
-          initial={{ y: -100 }}
+          initial={{ y: 0 }}
           animate={{ y: 0 }}
           exit={{ y: -100 }}
           transition={{ type: "spring", damping: 10, stiffness: 50 }}

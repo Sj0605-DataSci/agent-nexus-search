@@ -1,6 +1,6 @@
 import Link from "next/link";
 import BrandLogo from "../BrandLogo";
-import { Twitter, Linkedin, Github } from "lucide-react";
+import { FaTwitter, FaLinkedin, FaGithub } from "react-icons/fa";
 
 const footerLinks = {
   product: [
@@ -102,7 +102,7 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-gray-500"
             >
-              <Twitter size={20} />
+              <FaTwitter size={20} />
             </a>
             <a
               href="https://www.linkedin.com/company/discover-minds"
@@ -110,7 +110,7 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-gray-500"
             >
-              <Linkedin size={20} />
+              <FaLinkedin size={20} />
             </a>
           </div>
           <div className="flex flex-col items-center sm:items-end mt-4 sm:mt-0">

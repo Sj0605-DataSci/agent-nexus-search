@@ -591,14 +591,19 @@ class ChatService:
                     if chunk_type == "messages":
                         # This is a token from an LLM
                         message_chunk, metadata = chunk_data
-                        if message_chunk.content:
-                            # Stream the token with metadata about which node it came from
-                            yield {
-                            "type": "token",
-                            "content": message_chunk.content,
-                            "node": metadata.get("node_name", "unknown"),
+                        if metadata.get("langgraph_node") == "sql_query_generation":
+                            pass
+                        elif metadata.get("langgraph_node") == "finalize_answer":
+                            pass
+                        else:
+                            if message_chunk.content:
+                                # Stream the token with metadata about which node it came from
+                                yield {
+                                "type": "token",
+                                "content": message_chunk.content,
+                            "node": metadata.get("langgraph_node"),
                             "tags": metadata.get("tags", [])
-                        }
+                            }
                     
                     elif chunk_type == "updates":
                         # This is a state update from a node
@@ -606,25 +611,59 @@ class ChatService:
                         node_data = chunk_data.get(node_name, {})
                         
                         # Handle different types of updates based on the node
-                        if "search_query" in node_data:
-                            # Stream search queries
-                            for query in node_data["search_query"]:
-                                if isinstance(query, dict) and "query" in query:
-                                    yield {
-                                        "type": "search_query",
-                                    "content": {"query": query["query"]}
+                        if node_name == "generate_query":
+                            
+                            if "search_query" in node_data:
+                                # Stream search queries
+                                for query in node_data["search_query"]:
+                                    if isinstance(query, dict) and "query" in query:
+                                        yield {
+                                            "type": "search_query",
+                                            "content": {"query": query["query"]}
+                                        }
+                                    elif isinstance(query, str):
+                                        yield {
+                                            "type": "search_query",
+                                            "content": {"query": query}
+                                        }
+                        if node_name == "web_research":                
+                            if "sources_gathered" in node_data:
+                                yield {
+                                    "type": "sources",
+                                    "content": {"sources": node_data["sources_gathered"]}
                                 }
-                                elif isinstance(query, str):
-                                    yield {
-                                        "type": "search_query",
-                                        "content": {"query": query}
-                                    }
-                    
-                        if "sources_gathered" in node_data:
+                            if "web_research_result" in node_data:
+                                yield {
+                                    "type": "web_research_result",
+                                    "content": {"web_research_result": node_data["web_research_result"]}
+                                }    
+                        if node_name == "sql_query_generation":                
+                            for query in node_data["sql_queries"]:
+                                    if isinstance(query, dict) and "query" in query:
+                                        yield {
+                                            "type": "sql_queries",
+                                            "content": {"query": query["query"]}
+                                        }
+                                    elif isinstance(query, str):
+                                        yield {
+                                            "type": "sql_queries",
+                                            "content": {"query": query}
+                                        }
+                        if node_name == "sql_query_execution":                
                             yield {
-                                "type": "source",
-                                "content": {"sources": node_data["sources_gathered"]}
+                                "type": "web_research_result",
+                                "content": {"web_research_result": node_data["web_research_result"]}
+                            }    
+                        if node_name == "reflection":                
+                            yield {
+                                "type": "reflection",
+                                "content": {"is_sufficient": node_data["is_sufficient"], "follow_up_queries": node_data["follow_up_queries"], "knowledge_gap": node_data["knowledge_gap"]}
                             }
+                        if node_name == "finalize_answer":                
+                            yield {
+                                "type": "finalize_answer",
+                                "content": {"messages": node_data["messages"], "sources_gathered": node_data["sources_gathered"]}
+                            }        
             
                 # Get updated user subscription for final credit info
                 user_subscription = await credit_service.get_user_subscription_optimized(user_id)

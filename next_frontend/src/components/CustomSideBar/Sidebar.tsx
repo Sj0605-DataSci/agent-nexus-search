@@ -32,7 +32,7 @@ import { clearProfile } from "@/store/profileSlice";
 import { Button } from "@/components/ui/button";
 import ShimmerLoader from "./ShimmerLoader";
 import { ChatThread } from "@/integrations/fastapi/types";
-import { supabaseTemp } from "@/app/supabaseClient";
+import { supabaseHandler } from "@/app/supabaseClient";
 
 const isAuthenticated = () => {
   if (typeof window === "undefined") return false;
@@ -139,7 +139,7 @@ const Sidebar = () => {
       localStorage.removeItem("discover_minds_access_token");
       localStorage.removeItem("discover_minds_refresh_token");
       dispatch(clearProfile());
-      await supabaseTemp.auth.signOut();
+      await supabaseHandler.auth.signOut();
       posthog.reset();
       // Redirect to auth page
       router.push("/user-auth");
@@ -157,7 +157,7 @@ const Sidebar = () => {
       const timer = setTimeout(() => {
         setIsMobileSidebarOpen(false);
         setIsClosing(false);
-      }, 250); // Match this with the CSS transition duration
+      }, 250);
       return () => clearTimeout(timer);
     } else {
       setIsMobileSidebarOpen(true);
@@ -436,12 +436,12 @@ const Sidebar = () => {
                 }
               >
                 <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium flex-shrink-0">
-                  {profile?.email?.charAt(0).toUpperCase() || "U"}
+                  {profile?.full_name?.charAt(0).toUpperCase() || "U"}
                 </div>
                 {(!collapsed || isMobile) && (
                   <div className="flex-1 truncate">
                     <div className="text-sm font-medium truncate text-gray-700">
-                      {profile?.email?.split("@")[0] || "User"}
+                      {profile?.full_name?.split("@")[0] || "User"}
                     </div>
                   </div>
                 )}

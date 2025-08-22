@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { ChatNavigationControls } from "./ChatNavigationControls";
@@ -53,7 +53,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string>(
     "00000000-0000-4000-a000-000000000000"
   );
-  console.log("threadId", threadId);
   const [format, setFormat] = useState<FormatType>("table");
   const [searchMode, setSearchMode] = useState<SearchMode>("basic");
   const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
@@ -183,12 +182,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       const { messages: cachedMessages, timestamp } = cachedThreads[threadId];
       const cacheAge = Date.now() - timestamp;
       if (cacheAge < 5 * 60 * 1000) {
-        setChatPairs(cachedMessages);
-        setCurrentMessageIndex(cachedMessages.length - 1);
+        setChatPairs(cachedMessages || []);
+        setCurrentMessageIndex(Math.max(0, (cachedMessages?.length || 0) - 1));
         setIsLoading(false);
         return;
       }
     }
+
     setIsLoading(true);
     try {
       const messagesResponse = await apiClient.getChatMessages(threadId);
@@ -205,7 +205,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             timestamp: Date.now(),
           },
         }));
+      } else {
+        setChatPairs([]);
+        setCurrentMessageIndex(0);
       }
+
       setInitialLoadComplete(true);
     } catch (error: unknown) {
       console.error("[ChatThreadView] fetchMessages error:", error);
@@ -226,8 +230,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         message = "This chat thread was not found.";
       } else if (typedError.response?.status === 403) {
         message = "You do not have access to this chat thread.";
+      } else if (typedError.response?.status === 401) {
+        message = "Please log in to view this chat thread.";
+      } else if (!navigator.onLine) {
+        message = "You're offline. Please check your internet connection.";
       }
-      console.log("[ChatThreadView] threadError:", message);
+
+      showErrorToast("Load Failed", message);
       setChatPairs([]);
       setCurrentMessageIndex(0);
     } finally {
@@ -374,11 +383,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         message: "⏳ Searching for information...",
         created_at: new Date(),
         updated_at: new Date(),
+        world_connections: worldConnectionsMode,
       };
       setChatPairs(prev => [...prev, newChatPair]);
       setCurrentMessageIndex(chatPairs.length);
     }
-
     setIsStreaming(true);
     setIsLoading(true);
 
@@ -447,7 +456,12 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         const now = Date.now();
         if (now - lastUpdateTime > updateDebounceMs) {
           setMessages(m =>
-            m.map(msg => (msg.id === newLoadingMessageId ? { ...msg, content } : msg))
+            m.map(msg => {
+              if (msg.id === newLoadingMessageId) {
+                return { ...msg, content };
+              }
+              return msg;
+            })
           );
           lastUpdateTime = now;
         }
@@ -587,26 +601,24 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               });
               break;
 
-            case "done":
+            case "finalize_answer":
               if (fullContent) {
                 updateMessageContent(fullContent);
-                setQuery(update.content.query);
+                if (update.content?.query) {
+                  setQuery(update.content.query);
+                }
                 if (chatWorkerRef.current) {
                   chatWorkerRef.current.postMessage({
                     type: "process_message",
                     data: {
-                      id: update.content.chat_thread_id || update.content.thread_id,
+                      id:
+                        update.content?.chat_thread_id ||
+                        update.content?.thread_id ||
+                        newLoadingMessageId,
                       content: fullContent,
                     },
                   });
                 }
-                // if (update.content && update.content.chat_thread_id && threadId === "new") {
-                //   const newThreadId = update.content.chat_thread_id;
-                //   if (newThreadId !== threadId) {
-                //     const newUrl = `/chat/${newThreadId}`;
-                //     window.history.replaceState({ path: newUrl }, "", newUrl);
-                //   }
-                // }
               }
 
               setMessages(m => {
@@ -637,8 +649,54 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               });
               break;
 
+            case "web_research_result":
+              if (update.content?.web_research_result?.length > 0) {
+                const researchContent = update.content.web_research_result.join("\n");
+                currentContent = researchContent;
+                updateMessageContent(currentContent);
+              }
+              break;
+
+            case "reflection":
+              if (update.content) {
+                const { is_sufficient, follow_up_queries = [], knowledge_gap } = update.content;
+
+                // Add reflection to the current message
+                const reflectionContent = [
+                  "## Research Reflection",
+                  `**Status:** ${is_sufficient ? "✅ Sufficient Information" : "⚠️ Additional Research Needed"}`,
+                  "",
+                  "### Knowledge Gaps",
+                  knowledge_gap,
+                  "",
+                  "### Follow-up Queries",
+                  ...follow_up_queries.map((q: string, i: number) => `- ${i + 1}. ${q}`),
+                ].join("\n");
+
+                // Update the message with reflection
+                setMessages(m => {
+                  if (m.length === 0) return m;
+                  const lastIndex = m.length - 1;
+                  const updatedMessages = [...m];
+                  updatedMessages[lastIndex] = {
+                    ...updatedMessages[lastIndex],
+                    content: updatedMessages[lastIndex].content + "\n\n" + reflectionContent,
+                  };
+                  return updatedMessages;
+                });
+
+                // Store follow-up queries for potential use
+                if (follow_up_queries.length > 0) {
+                  setStreamingSearchQueries(prev => [...prev, ...follow_up_queries]);
+                }
+              }
+              break;
+
             case "connected":
               console.log("Stream connected");
+              break;
+            case "done":
+              setIsStreaming(false);
               break;
 
             default:
@@ -688,14 +746,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const getPersonalizedGreeting = () => {
+  const getPersonalizedGreeting = useCallback(() => {
     const baseGreeting = getTimeBasedGreeting();
-    if (profile?.full_name) {
-      const firstName = profile.full_name.split(" ")[0];
+    if (profile?.full_name?.trim()) {
+      const firstName = profile.full_name.trim().split(" ")[0];
       return `${baseGreeting}, ${firstName}`;
     }
     return baseGreeting;
-  };
+  }, [profile?.full_name]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -706,30 +764,35 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   }, [query]);
 
-  const handleFeedback = (messageId: string, isPositive: boolean) => {
-    posthog.capture("feedback_given", {
-      message_id: messageId,
-      thread_id: threadId,
-      feedback: isPositive ? "positive" : "negative",
-    });
+  const handleFeedback = useCallback(
+    (messageId: string, isPositive: boolean) => {
+      if (!messageId || feedbackSubmitted[messageId]) return;
 
-    setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
+      posthog.capture("feedback_given", {
+        message_id: messageId,
+        thread_id: threadId,
+        feedback: isPositive ? "positive" : "negative",
+      });
 
-    if (isPositive) {
-      handleFeedbackSubmit({
-        messageId,
-        isPositive,
-        comment: "",
-      });
-    } else {
-      setCurrentFeedback({
-        messageId,
-        isPositive,
-        comment: "",
-      });
-      setFeedbackModalOpen(true);
-    }
-  };
+      setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
+
+      if (isPositive) {
+        handleFeedbackSubmit({
+          messageId,
+          isPositive,
+          comment: "",
+        });
+      } else {
+        setCurrentFeedback({
+          messageId,
+          isPositive,
+          comment: "",
+        });
+        setFeedbackModalOpen(true);
+      }
+    },
+    [threadId, feedbackSubmitted]
+  );
 
   const handleFeedbackSubmit = async (feedback: FeedbackType) => {
     try {
@@ -811,28 +874,31 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               <div className="flex flex-col sm:flex-row justify-between w-full mt-2 gap-2 sm:gap-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <SearchModeToggle
-                    searchMode={searchMode}
+                    searchMode={
+                      chatPairs[currentMessageIndex]?.main_query === query
+                        ? chatPairs[currentMessageIndex]?.search_mode
+                        : searchMode
+                    }
                     disabled={
                       isStreaming ||
-                      (chatPairs.length > 0 &&
-                        currentMessageIndex < chatPairs.length &&
-                        chatPairs[currentMessageIndex].main_query === query &&
-                        query.trim() !== "")
+                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
                     }
                     setSearchMode={(mode: "basic" | "deep") => {
                       posthog.capture("search_mode_changed", { mode });
+                      console.log("mode", mode);
                       setSearchMode(mode);
                     }}
                   />
                   <WorldConnectionsToggle
-                    worldConnectionsMode={worldConnectionsMode}
+                    worldConnectionsMode={
+                      chatPairs[currentMessageIndex]?.main_query === query
+                        ? chatPairs[currentMessageIndex]?.world_connections
+                        : worldConnectionsMode
+                    }
                     disabled={
                       !profile?.has_connections ||
                       isStreaming ||
-                      (chatPairs.length > 0 &&
-                        currentMessageIndex < chatPairs.length &&
-                        chatPairs[currentMessageIndex].main_query === query &&
-                        query.trim() !== "")
+                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
                     }
                     setWorldConnectionsMode={(mode: "connections" | "world") => {
                       posthog.capture("world_connections_mode_changed", { mode });
@@ -884,7 +950,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         <></>
       )}
       {messages && messages.length > 0 && (
-        <div className="w-full">
+        <div className="w-full md:px-20 overflow-y-scroll">
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
           </div>
@@ -894,19 +960,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               return (
                 m.type === "agent" && (
                   <>
-                    <div
-                      key={m.id}
-                      className="rounded-xl p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md"
-                    >
+                    <div key={m.id} className="rounded-xl bg-white">
                       <div className="flex items-start">
-                        <div
-                          className={`rounded-full hidden md:flex  mr-4 justify-center items-center h-12 w-12 bg-blue-50`}
-                        >
-                          <div className={`h-12 w-12 text-blue-600`}>
-                            <OrbAura />
-                          </div>
-                        </div>
-                        <div className="flex-1">
+                        <div className="flex-1 ">
                           {isStreaming && (
                             <SearchQueryDisplay
                               showSearchQueries={showSearchQueries}
@@ -963,7 +1019,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                     </p>
                                   </div>
                                 ) : format === "table" &&
-                                  parseStructuredData(m.content).isStructured &&
+                                  parseStructuredData(m.content) &&
                                   /(fname|lname|link)/i.test(m.content) ? (
                                   <div className="flex w-full">
                                     {renderAsTable(
@@ -987,7 +1043,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                             <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
                           )}
 
-                          <div className="mt-4 flex justify-between items-center">
+                          <div className="mt-4  flex justify-between items-center">
                             <span
                               title={getFullTimestamp(m.timestamp)}
                               className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"

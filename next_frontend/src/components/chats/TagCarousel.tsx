@@ -114,9 +114,6 @@ function TagCarousel({ onTagClick, category, scrollSpeed = 1 }: TagCarouselProps
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-blue-50 to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-purple-50 to-transparent z-10 pointer-events-none" />
-
       <div className="overflow-hidden py-1.5 px-2">
         <div
           ref={containerRef}

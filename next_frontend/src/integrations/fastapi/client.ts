@@ -144,7 +144,6 @@ export const apiClient = {
     }
   },
 
-  // Profile
   async getProfile(): Promise<Profile> {
     try {
       const res = await axiosInstance.get("/auth/me");
@@ -182,15 +181,42 @@ export const apiClient = {
     }
   },
 
-  async userSignUp(email: string, password: string, fullName: string, linkedinUrl: string) {
+  async userSignUp(
+    email: string,
+    password: string,
+    fullName: string,
+    linkedinUrl: string,
+    phoneNumber: string
+  ) {
     try {
-      const res = await axiosInstance.post("/auth/signup", {
+      const { supabaseHandler } = await import("@/app/supabaseClient");
+      
+      const { data, error } = await supabaseHandler.auth.signUp({
         email,
         password,
-        full_name: fullName,
-        linkedin_url: linkedinUrl,
+        options: {
+          data: {
+            full_name: fullName,
+            linkedin_url: linkedinUrl,
+            phone_number: phoneNumber,
+          },
+        },
       });
-      return res.data;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return {
+        success: true,
+        status_code: 201,
+        data: {
+          user: data.user,
+          session: data.session,
+          access_token: data.session?.access_token,
+          refresh_token: data.session?.refresh_token,
+        }
+      };
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }
@@ -270,22 +296,34 @@ export const apiClient = {
 
   async handleLoginWithStorage(email: string, password: string) {
     try {
-      const res = await axiosInstance.post("/auth/login", {
+      const { supabaseHandler } = await import("@/app/supabaseClient");
+
+      const { data, error } = await supabaseHandler.auth.signInWithPassword({
         email,
         password,
       });
 
-      const responseData = res.data;
-
-      if (responseData.success && responseData.status_code === 200) {
-        localStorage.setItem("discover_minds_access_token", responseData.data.access_token);
-        localStorage.setItem("discover_minds_refresh_token", responseData.data.refresh_token);
-
-        axiosInstance.defaults.headers.common["Authorization"] =
-          `Bearer ${responseData.data.access_token}`;
+      if (error) {
+        throw new Error(error.message);
       }
 
-      return responseData;
+      if (data.session) {
+        localStorage.setItem("discover_minds_access_token", data.session.access_token);
+        localStorage.setItem("discover_minds_refresh_token", data.session.refresh_token);
+
+        axiosInstance.defaults.headers.common["Authorization"] =
+          `Bearer ${data.session.access_token}`;
+      }
+
+      return {
+        success: true,
+        status_code: 200,
+        data: {
+          access_token: data.session?.access_token,
+          refresh_token: data.session?.refresh_token,
+          user: data.user,
+        },
+      };
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
     }

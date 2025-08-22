@@ -4,7 +4,7 @@ import { getSupabaseConfig } from "@/config/supabase";
 
 const { supabaseUrl, supabaseKey: supabaseAnonKey } = getSupabaseConfig();
 
-export const supabaseTemp = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabaseHandler = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

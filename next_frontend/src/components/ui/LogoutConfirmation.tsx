@@ -101,7 +101,7 @@ export const LogoutConfirmation = ({
                 variant="destructive"
                 onClick={onConfirm}
                 disabled={isLoggingOut}
-                className="w-full sm:w-auto px-6 py-3 border-1 text-sm font-medium min-w-[120px] relative overflow-hidden group"
+                className="w-full sm:w-auto px-6 py-3 max-w-[120px] border-1 text-sm font-medium min-w-[120px] relative overflow-hidden group"
               >
                 {isLoggingOut ? (
                   <span className="flex items-center justify-center">

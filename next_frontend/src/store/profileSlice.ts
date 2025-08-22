@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { UserProfile, ApiResponse, AuthResponse } from "@/integrations/fastapi/types";
 import { apiClient } from "@/integrations/fastapi/client";
+import { supabaseHandler } from "@/app/supabaseClient";
 
 // Using the imported UserProfile type from types.ts
 interface ProfileState {
@@ -33,8 +34,29 @@ export const loginUser = createAsyncThunk(
   "profile/loginUser",
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.handleLoginWithStorage(email, password);
-      return response;
+      const { data, error } = await supabaseHandler.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.session) {
+        localStorage.setItem("discover_minds_access_token", data.session.access_token);
+        localStorage.setItem("discover_minds_refresh_token", data.session.refresh_token);
+      }
+
+      const profileResponse = await apiClient.fetchProfile();
+      return {
+        ...profileResponse,
+        data: {
+          ...profileResponse.data,
+          access_token: data.session?.access_token,
+          refresh_token: data.session?.refresh_token,
+        }
+      };
     } catch (error: any) {
       return rejectWithValue(error.message || "Login failed");
     }

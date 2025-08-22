@@ -66,7 +66,7 @@ axiosInstance.interceptors.response.use(
       if (typeof window !== "undefined") {
         localStorage.removeItem("discover_minds_access_token");
         localStorage.removeItem("discover_minds_refresh_token");
-        window.location.href = "/login";
+        window.location.href = "/user-auth";
       }
       return Promise.reject(error);
     }
@@ -76,6 +76,7 @@ axiosInstance.interceptors.response.use(
       "/user-auth",
       "/pricing",
       "/signup",
+      "/",
       "/join-waitlist",
       "/privacy-policy",
       "/terms",
@@ -137,7 +138,7 @@ axiosInstance.interceptors.response.use(
         if (typeof window !== "undefined") {
           localStorage.removeItem("discover_minds_access_token");
           localStorage.removeItem("discover_minds_refresh_token");
-          window.location.href = "/login";
+          window.location.href = "/user-auth";
         }
         return Promise.reject(refreshError);
       } finally {
