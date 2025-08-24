@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Union
 from app.core.services.agent.graph import graph
+from app.core.services.agent.graph_2 import graph_2
 from langchain_core.messages import HumanMessage, AIMessage
 import weave, wandb
 import uuid
@@ -583,7 +584,7 @@ class ChatService:
                         }
                     }
             
-                async for chunk_type, chunk_data in graph.astream(
+                async for chunk_type, chunk_data in graph_2.astream(
                     initial_state, 
                     stream_mode=["messages", "updates"]
                 ):
@@ -626,6 +627,39 @@ class ChatService:
                                             "type": "search_query",
                                             "content": {"query": query}
                                         }
+                        
+                        # Handle generate_sql_queries node from graph_2.py
+                        if node_name == "generate_sql_queries":
+                            # Stream search queries
+                            if "search_query" in node_data:
+                                for query in node_data["search_query"]:
+                                    if isinstance(query, dict) and "query" in query:
+                                        yield {
+                                            "type": "search_query",
+                                            "content": {"query": query["query"]}
+                                        }
+                                    elif isinstance(query, str):
+                                        yield {
+                                            "type": "search_query",
+                                            "content": {"query": query}
+                                        }
+                            
+                            # Stream SQL queries
+                            if "sql_queries" in node_data:
+                                for query in node_data["sql_queries"]:
+                                    if isinstance(query, str):
+                                        yield {
+                                            "type": "sql_queries",
+                                            "content": {"query": query}
+                                        }
+                            
+                            # Stream SQL results
+                            if "web_research_result" in node_data:
+                                yield {
+                                    "type": "web_research_result",
+                                    "content": {"web_research_result": node_data["web_research_result"]}
+                                }
+                        
                         if node_name == "web_research":                
                             if "sources_gathered" in node_data:
                                 yield {
@@ -663,6 +697,13 @@ class ChatService:
                             yield {
                                 "type": "finalize_answer",
                                 "content": {"messages": node_data["messages"], "sources_gathered": node_data["sources_gathered"]}
+                            }
+                        
+                        # Handle finalize_sql_answer node from graph_2.py
+                        if node_name == "finalize_sql_answer":
+                            yield {
+                                "type": "finalize_answer",
+                                "content": {"messages": node_data["messages"], "sources_gathered": node_data["sources_gathered"]}
                             }        
             
                 # Get updated user subscription for final credit info
@@ -696,7 +737,7 @@ class ChatService:
             yield {
                 "type": "error",
                 "content": {"message": f"Error: {str(e)}"}
-            }
+            }            
     
     async def generate_and_email_pdf_results(
         self,

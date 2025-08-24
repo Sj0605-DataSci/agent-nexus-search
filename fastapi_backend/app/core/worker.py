@@ -188,20 +188,20 @@ class ChatWorker:
                     await client.publish(channel, source_update.model_dump_json())
 
                 elif update["type"] == "web_research_result":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
+                    # For web research result updates
+                    result_update = StreamingChatUpdate(
                         type="web_research_result",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json())
+                    await client.publish(channel, result_update.model_dump_json())
 
                 elif update["type"] == "sql_queries":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
+                    # For SQL query updates
+                    sql_update = StreamingChatUpdate(
                         type="sql_queries",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json())
+                    await client.publish(channel, sql_update.model_dump_json())
 
                 elif update["type"] == "reflection":
                     # For source updates
