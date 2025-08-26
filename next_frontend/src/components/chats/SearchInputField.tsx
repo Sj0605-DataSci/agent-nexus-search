@@ -1,39 +1,53 @@
 "use client";
 
 import React, { memo } from "react";
-import { FiSearch } from "react-icons/fi";
+import { FiArrowUp } from "react-icons/fi";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 export interface SearchInputFieldProps {
   query: string;
   setQuery: (query: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   onKey: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isStreaming: boolean;
 }
 
 const SearchInputField = memo(
-  ({ query, setQuery, textareaRef, onKey, isStreaming }: SearchInputFieldProps) => {
+  ({ query, setQuery, textareaRef, onKey, onSubmit, isStreaming }: SearchInputFieldProps) => {
     return (
-      <div className="flex flex-row w-full items-center">
-        <FiSearch className="h-5 w-5 mr-1 text-gray-500" />
-        <Textarea
-          placeholder="Search for people by skills, experience, or interests… (Shift+Enter for new line)"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          ref={textareaRef}
-          onKeyDown={onKey}
-          rows={1}
-          disabled={isStreaming}
-          className={`
-          flex bg-transparent text-sm sm:text-base resize-none
-          border-0 focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0
-          min-h-[40px] max-h-[120px]
-          text-gray-900 placeholder:text-gray-500 placeholder:text-sm sm:placeholder:text-base
-          ${isStreaming ? "opacity-60 cursor-not-allowed" : ""}
-        `}
-        />
-      </div>
+      <form onSubmit={onSubmit}>
+        <div className="relative">
+          <Textarea
+            placeholder="Tech founders in NYC who raised a pre-seed round."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            ref={textareaRef}
+            onKeyDown={onKey}
+            rows={1}
+            disabled={isStreaming}
+            className={`
+              flex bg-transparent text-lg resize-none
+              border-none focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0 shadow-none
+              min-h-[80px] w-full p-1
+              placeholder:text-foreground/70
+              ${isStreaming ? "opacity-60 cursor-not-allowed" : ""}
+            `}
+          />
+          <div className="absolute bottom-1 right-1 flex h-10 justify-end">
+            <button
+              type="submit"
+              className={`rounded-full h-10 w-10 flex justify-center items-center ${isStreaming || !query.trim() ? "bg-[#5D9CEC]/50 cursor-not-allowed" : "bg-[#5D9CEC] hover:bg-[#4a8bd8]"}`}
+              disabled={isStreaming || !query.trim()}
+            >
+              <FiArrowUp
+                className={`h-7 w-7 ${isStreaming || !query.trim() ? "text-gray-200" : "text-white"}`}
+              />
+            </button>
+          </div>
+        </div>
+      </form>
     );
   }
 );

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { ChatNavigationControls } from "./ChatNavigationControls";
@@ -55,7 +55,8 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   );
   const [format, setFormat] = useState<FormatType>("table");
   const [searchMode, setSearchMode] = useState<SearchMode>("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
+  const [worldConnectionsMode, setWorldConnectionsMode] =
+    useState<WorldConnectionsMode>("connections");
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
@@ -732,16 +733,23 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   };
 
-  const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isStreaming) return;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!isStreaming) {
-        handleSearch();
-        posthog.capture("search_input_method", { method: "enter_key" });
-      }
-    } else if (e.key === "Enter" && e.shiftKey) {
+      handleSubmit(e as any);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (query.trim() && !isStreaming) {
+      console.log("Submitting query:", query);
+      // Add your submission logic here
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuery(suggestion);
   };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -850,8 +858,8 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             </h1>
             {!messages.length && (
               <p className="text-gray-600 text-sm md:text-lg mt-6">
-                Our AI filters through millions of profiles to surface truly relevant people, faster
-                and more precisely than traditional platforms.
+                Our AI-powered smart search unlocks hidden opportunities in your extended network,<br/>
+                connecting you through trusted warm introductions instead of ineffective cold outreach.
               </p>
             )}
           </div>
@@ -860,52 +868,19 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
           <div className="relative flex justify-center w-full px-2 sm:px-0">
-            <div
-              className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg focus-within:shadow-xl w-full max-w-3xl border border-gray-200 bg-white hover:border-gray-300"
-              style={{ backdropFilter: "blur(10px)" }}
-            >
-              <SearchInputField
-                query={query}
-                setQuery={setQuery}
-                textareaRef={textareaRef}
-                onKey={onKey}
-                isStreaming={isStreaming}
-              />
-              <div className="flex flex-col sm:flex-row justify-between w-full mt-2 gap-2 sm:gap-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <SearchModeToggle
-                    searchMode={
-                      chatPairs[currentMessageIndex]?.main_query === query
-                        ? chatPairs[currentMessageIndex]?.search_mode
-                        : searchMode
-                    }
-                    disabled={
-                      isStreaming ||
-                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
-                    }
-                    setSearchMode={(mode: "basic" | "deep") => {
-                      posthog.capture("search_mode_changed", { mode });
-                      console.log("mode", mode);
-                      setSearchMode(mode);
-                    }}
-                  />
-                  <WorldConnectionsToggle
-                    worldConnectionsMode={
-                      chatPairs[currentMessageIndex]?.main_query === query
-                        ? chatPairs[currentMessageIndex]?.world_connections
-                        : worldConnectionsMode
-                    }
-                    disabled={
-                      !profile?.has_connections ||
-                      isStreaming ||
-                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
-                    }
-                    setWorldConnectionsMode={(mode: "connections" | "world") => {
-                      posthog.capture("world_connections_mode_changed", { mode });
-                      setWorldConnectionsMode(mode);
-                    }}
-                  />
-                </div>
+            <div className="w-full max-w-3xl">
+              <div
+                className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg focus-within:shadow-xl w-full max-w-3xl border border-[#5D9CEC]/60 bg-white hover:border-[#5D9CEC]"
+                style={{ backdropFilter: "blur(10px)" }}
+              >
+                <SearchInputField
+                  query={query}
+                  setQuery={setQuery}
+                  textareaRef={textareaRef}
+                  onKey={handleKeyDown}
+                  onSubmit={handleSubmit}
+                  isStreaming={isStreaming}
+                />
               </div>
             </div>
           </div>
