@@ -5,32 +5,27 @@ import termsOfService from "@/constant/terms-of-service.json";
 import Footer from "@/components/Homepage/Footer";
 
 const baseMetadata = {
-  title: "Terms of Service",
-  description: "Terms of Service for DiscoverMinds.ai",
+  title: "Terms of Service | DiscoverMinds.ai",
+  description: "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
 };
 
 const productionMetadata: Metadata = {
   title: "Terms of Service | DiscoverMinds.ai",
   description:
-    "Terms of Service for DiscoverMinds.ai - The first context-aware, agent-powered search engine for people.",
+    "Please read our Terms of Service. By using DiscoverMinds.ai, you agree to these terms, which govern your use of our mutual network-sharing platform for unlocking professional opportunities.",
   keywords: [
     "terms of service",
     "terms and conditions",
-    "intelligent people search terms",
-    "professional networking agreement",
+    "user agreement",
+    "community guidelines",
+    "network sharing policy",
+    "professional networking terms",
     "DiscoverMinds user terms",
-    "AI search platform conditions",
-    "people search service agreement",
-    "professional connections terms",
-    "data usage policy",
-    "user conduct guidelines",
-    "platform usage terms",
-    "search engine terms of use",
   ],
   openGraph: {
     title: "Terms of Service | DiscoverMinds.ai",
     description:
-      "Review the terms and conditions for using DiscoverMinds.ai intelligent people search platform.",
+      "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
     url: "https://discoverminds.ai/terms",
     siteName: "DiscoverMinds.ai",
     locale: "en_US",
@@ -40,7 +35,7 @@ const productionMetadata: Metadata = {
     card: "summary_large_image",
     title: "Terms of Service | DiscoverMinds.ai",
     description:
-      "Review the terms and conditions for using DiscoverMinds.ai intelligent people search platform.",
+      "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
   },
   alternates: {
     canonical: "https://discoverminds.ai/terms",
