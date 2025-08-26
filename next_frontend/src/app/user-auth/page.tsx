@@ -44,7 +44,7 @@ const GoogleIcon = () => (
 
 const AuthComponent = () => {
   const [formToShow, setFormToShow] = useState<"signup" | "signin" | "reset" | "hidetoggle">(
-    "signup"
+    "signin"
   );
   const router = useRouter();
 
@@ -62,7 +62,7 @@ const AuthComponent = () => {
             <BrandLogo className="mb-3" size="large" />
 
             <div className="relative flex justify-between items-center mb-8">
-              {formToShow != "reset" && formToShow != "hidetoggle" && (
+              {/* {formToShow != "reset" && formToShow != "hidetoggle" && (
                 <div className="relative bg-gray-200 p-1 rounded-full flex items-center w-[170px]">
                   {["Sign up", "Sign in"].map((item, index) => {
                     const isActive =
@@ -90,7 +90,7 @@ const AuthComponent = () => {
                     );
                   })}
                 </div>
-              )}
+              )} */}
               <button
                 onClick={() =>
                   formToShow === "hidetoggle" ? setFormToShow("signin") : router.push("/")
@@ -110,9 +110,9 @@ const AuthComponent = () => {
                 exit="exit"
                 transition={{ duration: 0.3 }}
               >
-                {formToShow === "signup" && (
+                {/* {formToShow === "signup" && (
                   <SignUpForm successSignupSubmission={() => setFormToShow("hidetoggle")} />
-                )}
+                )} */}
                 {formToShow === "hidetoggle" && <SuccessSignupModal />}
                 {formToShow === "signin" && (
                   <SignInForm onForgotPassword={() => setFormToShow("reset")} />
@@ -491,12 +491,22 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
     <div>
       <h2 className="text-3xl font-bold text-gray-900 ">Welcome back</h2>
       <p className="text-gray-500 mb-4 text-sm">Sign in to continue to your account.</p>
-      <SocialSignIn
+      <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+        <p className="text-yellow-700 text-sm mb-2">Login access is currently limited to approved users only.</p>
+        <p className="text-yellow-700 text-sm mb-3">Thanks for showing interest! Join our waitlist and we'll reach out once we launch.</p>
+        <a 
+          href="/join-waitlist" 
+          className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded text-sm transition-colors duration-200"
+        >
+          Join Waitlist
+        </a>
+      </div>
+      {/* <SocialSignIn
         mode="signin"
         onError={error => {
           console.error("Sign in error:", error);
         }}
-      />
+      /> */}
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-2">
         <div>
           <div className="relative">

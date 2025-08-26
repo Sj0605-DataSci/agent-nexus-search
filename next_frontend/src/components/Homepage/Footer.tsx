@@ -5,7 +5,7 @@ import { FaTwitter, FaLinkedin, FaGithub } from "react-icons/fa";
 const footerLinks = {
   product: [
     { name: "Meet Arya", href: "/arya" },
-    { name: "Examples", href: "/examples" },
+    // { name: "Examples", href: "/examples" },
     { name: "Pricing", href: "/pricing" },
     { name: "Get Started", href: "/user-auth" },
   ],
@@ -32,7 +32,7 @@ export default function Footer() {
           <div className="md:col-span-2">
             <BrandLogo />
             <p className="text-gray-500 mt-4 max-w-xs">
-              The first context-aware, agent-powered search engine for people.
+              Unlock hidden opportunities in your extended network
             </p>
           </div>
           <div>

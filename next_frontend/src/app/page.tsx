@@ -4,6 +4,7 @@ import WhyChooseUs from "@/components/Homepage/WhyChooseUs";
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Footer from "@/components/Homepage/Footer";
+import FaqSection from "@/components/Pricing/FaqSection";
 
 export const dynamic = "force-static";
 
@@ -56,9 +57,6 @@ function addStructuredData() {
 }
 
 export default function Home() {
-  redirect('/join-waitlist');
-  
-  return null;
   return (
     <>
       <script
@@ -68,7 +66,8 @@ export default function Home() {
       />
       <HomeHeader />
       <HeroSection />
-      <WhyChooseUs />
+      <FaqSection />
+      {/* <WhyChooseUs /> */}
       <Footer />
     </>
   );
