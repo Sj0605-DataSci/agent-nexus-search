@@ -43,10 +43,10 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { name: "Arya", href: "/arya" },
-  { name: "Examples", href: "/examples" },
+  { name: "Pricing", href: "/pricing" },
+  // { name: "Examples", href: "/examples" },
   { name: "About", href: "/about" },
-  { name: "Get Started", href: "/user-auth", isButton: true },
+  { name: "Join Waitlist", href: "/join-waitlist", isButton: true },
 ];
 
 const HomeHeader: React.FC = () => {

@@ -1,100 +1,113 @@
-# 🔍 DiscoverMinds.ai — Better People Search. Personal People Search.
+# 🔍 DiscoverMinds.ai
 
-## Overview
+## 1. Introduction
 
-Traditional search engines and databases weren't built for finding people.
+**Product Name:** DiscoverMinds.ai
 
-They don't understand your intent. They don't evolve with you. And they certainly don't know your networks.
+**Purpose:** To unlock hidden opportunities within professional extended networks by facilitating warm introductions and addressing the fragmentation of existing professional networks.
 
-**DiscoverMinds.ai** changes that.
-
-> Imagine typing into a search bar and having an intelligent agent — one that knows your goals — help you find the right people, globally or within your own networks, instantly.
-
-No more outdated databases. No more guessing filters. Just **deep, adaptive, and personal search for people.**
+**Target Users:** Professionals, entrepreneurs, VCs, communities, and working professionals ("prosumers").
 
 ---
 
-## Two Pillars of DiscoverMinds.ai
+## 2. Problem Statement
 
-### **1. Better People Search**
-
-Why rely on static databases or generic search engines that don't understand you?
-
-With DiscoverMinds.ai, your search bar has an **agent built in** — listening to your intent, refining results through context, and helping you find the right people anywhere in the world.
-
-**What makes it better:**
-
-- Natural language queries — no complex filters
-- An intelligent agent that learns from your searches
-- Verified global results with contact details and insights
-- Contextual relevance ranking based on your goals
+- Professional networks are fragmented across multiple platforms (LinkedIn, Twitter, personal contacts), limiting opportunities.
+- 70-85% of jobs are filled through referrals and hidden markets, which are hard to access.
+- Cold outreach is ineffective (2-20% response rates, highly time-intensive, low trust).
+- Trust barriers prevent meaningful network sharing and mutual introductions.
 
 ---
 
-### **2. Personal People Search**
+## 3. Solution Overview
 
-Global search is powerful — but sometimes, you already have the right people in your orbit. The challenge? Your connections are **scattered**.
-
-DiscoverMinds.ai lets you **connect your socials and communication platforms** — LinkedIn, Twitter, Gmail, Slack, and more — to make them searchable in one place.
-
-**What makes it personal:**
-
-- Search across your own networks as easily as the global web
-- Combine global reach with local context
-- Uncover hidden connections and opportunities you already have
-- One interface for all your professional and community contacts
+A mutual network-sharing platform with consent-based discovery to help users find opportunities in their extended networks.
 
 ---
 
-## How It Works
+## 4. Key Features & Functionality
 
-1. **Type your query in natural language**
+DiscoverMinds.ai is more than a search tool; it's a complete system for network intelligence.
 
-   _"Find fintech investors I've emailed before who are based in Singapore."_
+### **Unified Contact Hub: Import & Integrate**
+-   **One-Click Sync**: Seamlessly import and sync contacts from all your professional platforms—LinkedIn, Twitter, Gmail, and even your phone's contact list.
+-   **Centralized View**: See all your connections in one place, eliminating the need to switch between apps and creating a single source of truth for your professional network.
 
-2. **Choose your search scope**
-   - **Global**: Search the entire world
-   - **Personal**: Search across your connected networks
-   - Or combine both
-3. **Get enriched, verified results**
-   - Contact info, roles, activity, and more — ready to act on
-4. **Refine through feedback**
-   - Every search trains your personal agent to understand you better
+### **Consent-Based Mutual Sharing**
+-   **Build Your Inner Circle**: Invite trusted friends and colleagues to a mutual network-sharing group where you can grant access to each other's connections.
+-   **Reciprocal Value**: It's a two-way street. You give access, you get access. This creates a powerful, shared pool of opportunities that benefits everyone involved.
 
----
+### **AI-Powered Smart Search**
+-   **Natural Language Queries**: Forget complicated filters. Just ask what you need in plain English: _"Find me a software engineer in London who has worked at Google and is in my 2nd-degree network."_
+-   **Context-Aware Matching**: Our AI doesn't just match keywords; it understands your intent, surfacing the most relevant people and opportunities based on relationship strength and context.
+-   **Proactive Suggestions**: DiscoverMinds.ai learns from your activity and proactively suggests new connections and opportunities you might have missed.
 
-## Why It's Different
+### **Streamlined Warm Introductions**
+-   **Visualize the Path**: Instantly see the shortest and strongest referral path to any person in your extended network. No more guessing who knows whom.
+-   **Trackable Requests**: Request and manage introductions through a built-in tracking system. See the status of every request and follow up with ease.
 
-❌ Old databases are static and incomplete
-
-❌ Search engines are broad but not deep
-
-❌ Social platforms lock your network inside silos
-
-✅ DiscoverMinds.ai combines **global reach** with **personal context** — powered by an evolving agent that understands your intent.
-
----
-
-## Use Cases
-
-- **Recruiters**: _"Show me senior AI engineers in Europe with public repos, across my networks and globally."_
-- **Sales Teams**: _"Find VPs of Operations in SaaS companies I've messaged before on LinkedIn."_
-- **Founders & Investors**: _"Discover climate-tech founders worldwide who've recently raised."_
-- **Community Managers**: _"Search Slack, Gmail, and LinkedIn for members working in healthtech."_
+### **Privacy-First by Design**
+-   **You Own Your Data**: Your data is yours. Period. You have full control over what you share and who can see it.
+-   **Granular Permissions**: Decide exactly which contacts or network segments you want to share with your trusted circle. All sharing is opt-in and can be revoked at any time.
+-   **Double Opt-In Introductions**: Introductions only happen when both parties agree, ensuring that all connections are welcome and respectful of everyone's time.
 
 ---
 
-## The Vision
+## 5. User Stories (Examples)
 
-We believe the future of people discovery is both **global** and **personal**.
+- **As a job seeker,** I want to find hidden job opportunities through warm introductions within my extended network so I can bypass cold outreach and increase my chances of getting hired.
+- **As an entrepreneur,** I want to connect with relevant VCs or mentors through trusted introductions so I can secure funding or guidance more effectively.
+- **As a business development manager,** I want to identify and get warm introductions to potential clients in my target industry so I can build stronger relationships and improve conversion rates.
+- **As a user,** I want to control who can see my network and who I get introduced to, ensuring my data privacy and trust.
 
-At **DiscoverMinds.ai**, we're building:
+---
 
-- Search that understands you and adapts to you
-- Search that unifies your connections across platforms
-- Search that feels like a conversation with someone who knows your goals
+## 6. Business Model
 
-> Better people search. Personal people search. All in one place.
+### Hunter Plan (Free)
+- Access to DiscoverMinds Search.
+
+### Pro Plan ($15/month per user)
+- Unlimited Searches Per Month
+- Unlimited Connected Accounts
+- Slack Integrations
+- Unlimited Friends And Unlimited Groups
+- Unlimited Results Per Search
+- Export Search Results To CSV
+- Forward Emails To Agent@DiscoverMinds.Ai
+
+---
+
+## 7. Growth Strategy (High-Level)
+
+- **Direct Outreach** to entrepreneur/VC communities and alumni networks.
+- **Viral Invitation Loop:** Growth accelerates as friends and colleagues join.
+- **Partnership Strategy:** Integrations with recruiting firms, accelerators, ecosystem partners.
+- **Content Marketing:** Share success stories and best practices.
+
+---
+
+## 8. Key Metrics for Success (KPIs)
+
+- User growth
+- Network density
+- Successful introductions (conversion rate)
+- User retention
+- Number of Pro Plan users
+- Annual Recurring Revenue (ARR)
+
+---
+
+## 9. Milestones (Near-term, Next 6-12 Months)
+
+- MVP launch with 500-1,000 active users.
+- First enterprise/community partnerships.
+- Viral referral loop: 3-5X user growth through team invites.
+- Integrations with Slack, Discord, WhatsApp, and CRMs.
+- Achieve 30%+ intro conversion rate.
+- Secure 1000+ Pro Plan users.
+- Reach $250K+ ARR from paying customers.
+- Raise Seed round ($3-5M) for scale.
 
 ---
 
