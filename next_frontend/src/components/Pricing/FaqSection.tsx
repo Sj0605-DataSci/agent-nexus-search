@@ -10,152 +10,80 @@ interface FaqItemData {
 
 const faqData: FaqItemData[] = [
   {
-    question: "What is a search credit and how are they consumed?",
+    question: "What is DiscoverMinds.ai?",
     answer: (
       <>
         <p>
-          Search credits are the currency used to perform searches on our platform. Different search
-          types consume different amounts of credits:
-        </p>
-        <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li>Basic search: 1 credit - Standard search with our General Agent</li>
-          <li>Deep search: 3 credits - More comprehensive results with specialized agents</li>
-          <li>
-            Advanced search: 7 credits - Our most powerful search with all agents and extensive data
-            analysis (Enterprise plan only)
-          </li>
-        </ul>
-        <p className="mt-4">
-          Credits are automatically deducted when you perform a search, and your remaining balance
-          is displayed in your account dashboard.
+          DiscoverMinds.ai is a mutual network-sharing platform designed to unlock hidden
+          opportunities within your professional extended network. It addresses the fragmentation of
+          professional networks across platforms like LinkedIn, Twitter, and personal contacts,
+          helping you leverage warm introductions to access the 70-85% of jobs and opportunities in
+          the hidden market.
         </p>
       </>
     ),
   },
   {
-    question: "What happens when I run out of credits?",
+    question: "Is this free?",
     answer: (
       <>
         <p>
-          When you run out of credits, you'll still have access to your account and past search
-          results, but you won't be able to perform new searches until you:
-        </p>
-        <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li>
-            Wait for your monthly credit allowance to reset at the start of your next billing cycle
-          </li>
-          <li>Purchase additional credits as an add-on to your current plan</li>
-          <li>Upgrade to a higher tier plan with more monthly credits</li>
-        </ul>
-        <p className="mt-4">
-          Professional and Enterprise plans have the option to enable automatic credit refills to
-          ensure uninterrupted service.
+          Yes! Our <strong>Hunter Plan</strong> is completely free and gives you access to the core
+          DiscoverMinds search functionality. For users who need more advanced features, we offer a{" "}
+          <strong>Pro Plan</strong> with unlimited capabilities.
         </p>
       </>
     ),
   },
   {
-    question: "What's the difference between search types?",
+    question: "Is my data secure?",
     answer: (
       <>
-        <p>DiscoverMinds offers three search types with increasing depth and capabilities:</p>
-        <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li>
-            <strong>Basic search (1 credit):</strong> Quick searches with the General Agent,
-            suitable for most everyday queries.
-          </li>
-          <li>
-            <strong>Deep search (3 credits):</strong> More comprehensive analysis with specialized
-            agents (HR, Sales), better context understanding, and more detailed profiles.
-          </li>
-          <li>
-            <strong>Advanced search (7 credits):</strong> Our most powerful search option with all
-            agents, extensive data analysis, highest quality results, and specialized filtering
-            options (Enterprise plan only).
-          </li>
-        </ul>
-      </>
-    ),
-  },
-  {
-    question: "Can I share credits with my team?",
-    answer: (
-      <>
-        <p>Yes, credit sharing depends on your plan:</p>
-        <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li>
-            <strong>Hunter (Free):</strong> Credits are individual and cannot be shared.
-          </li>
-          <li>
-            <strong>Professional:</strong> Credits are assigned per user but can be pooled within
-            small teams (up to 5 users).
-          </li>
-          <li>
-            <strong>Enterprise:</strong> Credits are pooled across your entire organization with
-            admin controls to allocate and monitor usage.
-          </li>
-        </ul>
-        <p className="mt-4">
-          Enterprise plans include advanced team management features, usage analytics, and the
-          ability to set credit limits for different departments or user groups.
+        <p>
+          Absolutely. We are privacy-first by design. You own your data, period. We provide granular
+          permissions that give you full control over what you share and who can see it. All sharing
+          is opt-in and can be revoked at any time. Furthermore, introductions only happen when both
+          parties agree, ensuring all connections are welcome and respectful.
         </p>
       </>
     ),
   },
   {
-    question: "How do Automatic Credit Refills work?",
+    question: "How do I connect accounts?",
     answer: (
       <>
-        <p>Automatic Credit Refills ensure you never run out of search credits:</p>
-        <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li>Set a credit threshold (e.g., 50 credits remaining)</li>
-          <li>Choose a refill amount (e.g., 250 credits)</li>
-          <li>When your balance drops below the threshold, credits are automatically added</li>
-          <li>Your payment method on file is charged at the discounted bulk rate</li>
-        </ul>
-        <p className="mt-4">
-          You can enable, disable, or adjust refill settings at any time from your account
-          dashboard.
+        <p>
+          You can seamlessly import and sync contacts from your professional platforms including
+          LinkedIn, Twitter, and Gmail with a single click. This creates a centralized view of all
+          your connections in one place, creating a single source of truth for your professional
+          network.
         </p>
       </>
     ),
   },
   {
-    question: "What are the new features in the latest update?",
+    question: "What are friends and groups?",
     answer: (
       <>
-        <p>We've added several new features to enhance your search experience:</p>
-        <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li>
-            <strong>Search within LinkedIn connections:</strong> Find prospects and leads from your
-            own network (Hunter plan and above).
-          </li>
-          <li>
-            <strong>Customize agent personality:</strong> Tailor the agent's tone and style to match
-            your brand (Hunter plan and above).
-          </li>
-          <li>
-            <strong>CSV Export:</strong> Export your search results to CSV format. The number of
-            results you can export at once depends on your plan:
-            <ul className="mt-2 list-disc pl-6 space-y-1">
-              <li>Hunter: Up to 5 results at a time</li>
-              <li>Professional: Up to 50 results at a time</li>
-              <li>Enterprise: Unlimited results</li>
-            </ul>
-          </li>
-          <li>
-            <strong>Email Integration:</strong> Get responses and send queries via email.
-            <ul className="mt-2 list-disc pl-6 space-y-1">
-              <li>Hunter: Get responses on email</li>
-              <li>Professional: Send queries and get responses on email</li>
-              <li>Enterprise: Full email integration</li>
-            </ul>
-          </li>
-          <li>
-            <strong>Slack Integration:</strong> Integrate with your Slack workspace (Professional
-            plan and above).
-          </li>
-        </ul>
+        <p>
+          You can invite trusted friends and colleagues to a <strong>group</strong> for mutual
+          network sharing. It’s a reciprocal system: you give access to your network and get access
+          in return. This creates a powerful, shared pool of opportunities that benefits everyone
+          involved.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Is DiscoverMinds.ai affiliated with third-party services?",
+    answer: (
+      <>
+        <p>
+          DiscoverMinds.ai is an independent platform. We integrate with third-party services like
+          LinkedIn, Twitter, and Gmail to help you unify your contacts. We also plan to offer
+          integrations with tools like Slack, Discord, and CRMs to streamline your workflow, but we
+          are not directly affiliated with any of these companies.
+        </p>
       </>
     ),
   },
@@ -201,7 +129,7 @@ export default function FaqSection() {
   };
 
   return (
-    <section className="py-20 md:py-40 text-gray-800 bg-gray-50 relative overflow-hidden">
+    <section className="py-20  text-gray-800 bg-gray-50 relative overflow-hidden">
       <div className="absolute inset-0 z-0 opacity-10">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#80A9F9]/50 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[#80A9F9]/30 rounded-full blur-3xl"></div>
@@ -216,7 +144,8 @@ export default function FaqSection() {
           </h4>
           <div className="w-20 h-1 bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] rounded-full mb-6"></div>
           <p className="text-gray-600 text-center max-w-2xl">
-            Everything you need to know about our credit-based search system and plans
+            Find answers to common questions about DiscoverMinds.ai, our features, and how we handle
+            your data.
           </p>
         </div>
         <div className="space-y-6 max-w-4xl mx-auto">

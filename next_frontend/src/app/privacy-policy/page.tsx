@@ -7,32 +7,28 @@ import Footer from "@/components/Homepage/Footer";
 export const revalidate = 60 * 60 * 24; // Revalidate every 24 hours
 
 const baseMetadata = {
-  title: "Privacy Policy",
-  description: "Privacy Policy for DiscoverMinds.ai",
+  title: "Privacy Policy | DiscoverMinds.ai",
+  description: "Learn how we protect your data on our mutual network-sharing platform.",
 };
 
 const productionMetadata: Metadata = {
   title: `Privacy Policy | DiscoverMinds.ai`,
   description:
-    "Learn how DiscoverMinds.ai protects your privacy while delivering intelligent people search capabilities.",
+    "Your privacy is fundamental to building a trusted network. Learn how DiscoverMinds.ai protects your data on our mutual network-sharing platform.",
   keywords: [
     "privacy policy",
     "data protection",
-    "intelligent people search",
-    "personal networking privacy",
+    "network sharing privacy",
+    "warm introductions",
     "GDPR compliance",
     "CCPA compliance",
-    "data privacy policy",
-    "professional search privacy",
-    "contact information protection",
-    "personal data security",
-    "DiscoverMinds data handling",
-    "AI search privacy",
+    "data privacy",
+    "user data protection",
   ],
   openGraph: {
     title: "Privacy Policy | DiscoverMinds.ai",
     description:
-      "Your privacy matters. Learn how we protect your data while delivering intelligent people search capabilities.",
+      "Your privacy is fundamental to building a trusted network. Learn how DiscoverMinds.ai protects your data on our mutual network-sharing platform.",
     url: "https://discoverminds.ai/privacy-policy",
     siteName: "DiscoverMinds.ai",
     locale: "en_US",
@@ -42,7 +38,7 @@ const productionMetadata: Metadata = {
     card: "summary_large_image",
     title: "Privacy Policy | DiscoverMinds.ai",
     description:
-      "Your privacy matters. Learn how we protect your data while delivering intelligent people search capabilities.",
+      "Your privacy is fundamental to building a trusted network. Learn how DiscoverMinds.ai protects your data on our mutual network-sharing platform.",
   },
   alternates: {
     canonical: "https://discoverminds.ai/privacy-policy",

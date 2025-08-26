@@ -16,27 +16,29 @@ const robotoMono = Roboto_Mono({
 
 const baseMetadata = {
   title: {
-    default: "DiscoverMinds.ai",
+    default: "DiscoverMinds.ai - Unlock Your Network's Potential",
     template: "%s | DiscoverMinds.ai",
   },
-  description: "Discover and connect with professionals using our AI-powered people search engine.",
+  description: "DiscoverMinds.ai is a mutual network-sharing platform designed to unlock hidden opportunities within your professional extended network through warm introductions.",
 };
 
 const productionMetadata: Metadata = {
   title: {
-    default: "DiscoverMinds.ai | Intelligent People Search Engine",
+    default: "DiscoverMinds.ai | Unlock Your Network's Potential",
     template: "%s | DiscoverMinds.ai",
   },
   description:
-    "Discover and connect with professionals using our AI-powered people search engine. Find the right experts and opportunities.",
+    "Unlock the hidden job market and find opportunities through warm introductions. DiscoverMinds.ai helps you leverage your extended professional network.",
   keywords: [
-    "people search",
     "professional network",
+    "warm introductions",
+    "hidden job market",
+    "AI-powered search",
+    "network intelligence",
     "talent discovery",
     "expert finder",
-    "professional connections",
-    "DiscoverMinds",
-    "AI search",
+    "referral network",
+    "career opportunities",
   ],
   authors: [
     {

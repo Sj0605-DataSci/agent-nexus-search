@@ -2,26 +2,28 @@ import HomeHeader from "@/components/Homepage/Header";
 import HeroSection from "@/components/Homepage/HeroSection";
 import WhyChooseUs from "@/components/Homepage/WhyChooseUs";
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Footer from "@/components/Homepage/Footer";
+import FaqSection from "@/components/Pricing/FaqSection";
 
 export const dynamic = "force-static";
 
 const baseMetadata = {
-  title: "DiscoverMinds.ai",
-  description: "AI-powered people search engine",
+  title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
+  description: "A mutual network-sharing platform to unlock hidden opportunities through warm introductions.",
 };
 
 const productionMetadata: Metadata = {
-  title: "Home | DiscoverMinds.ai - Intelligent People Search Engine",
+  title: "Home | Unlock Your Network's Hidden Opportunities",
   description:
-    "Discover and connect with professionals using our AI-powered people search engine. Find the right experts and opportunities.",
+    "DiscoverMinds.ai is a mutual network-sharing platform that helps you unlock hidden opportunities through warm introductions. Find and connect with the right people to achieve your goals.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "DiscoverMinds.ai | Intelligent People Search Engine",
+    title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
     description:
-      "Discover and connect with professionals using our AI-powered people search engine.",
+      "Join a community where sharing your network leads to discovering new career paths, investment opportunities, and valuable connections.",
     url: "https://discoverminds.ai",
     siteName: "DiscoverMinds.ai",
     locale: "en_US",
@@ -29,9 +31,9 @@ const productionMetadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DiscoverMinds.ai | Intelligent People Search Engine",
+    title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
     description:
-      "Discover and connect with professionals using our AI-powered people search engine.",
+      "Join a community where sharing your network leads to discovering new career paths, investment opportunities, and valuable connections.",
   },
 };
 
@@ -64,7 +66,8 @@ export default function Home() {
       />
       <HomeHeader />
       <HeroSection />
-      <WhyChooseUs />
+      <FaqSection />
+      {/* <WhyChooseUs /> */}
       <Footer />
     </>
   );

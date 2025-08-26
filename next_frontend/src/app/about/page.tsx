@@ -5,29 +5,28 @@ import HomeHeader from "@/components/Homepage/Header";
 import Footer from "@/components/Homepage/Footer";
 
 const baseMetadata = {
-  title: "About DiscoverMinds.ai",
-  description: "Learn about our AI-powered people search platform",
+  title: "About Us | DiscoverMinds.ai",
+  description: "Learn about our mission to unlock human potential through a mutual network-sharing platform.",
 };
 
 const productionMetadata = {
-  title: "About DiscoverMinds.ai | AI-Powered People Search Platform",
+  title: "About Us | DiscoverMinds.ai - Our Mission to Unlock Human Potential",
   description:
-    "Discover the team and vision behind DiscoverMinds.ai - Revolutionizing how professionals connect through intelligent, AI-powered people search and networking.",
+    "Learn about the mission and team behind DiscoverMinds.ai, a mutual network-sharing platform dedicated to unlocking hidden opportunities through meaningful, warm introductions.",
   keywords: [
-    "AI people search",
     "professional networking",
-    "talent discovery",
-    "contact search",
+    "warm introductions",
+    "network sharing",
+    "career opportunities",
     "business connections",
-    "recruitment search",
-    "professional search engine",
-    "network intelligence",
-    "Arya AI search",
+    "talent discovery",
+    "about DiscoverMinds.ai",
+    "our mission",
   ],
   openGraph: {
-    title: "About DiscoverMinds.ai | AI-Powered People Search Platform",
+    title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
     description:
-      "Meet the team behind Arya AI and learn how we're transforming professional networking with intelligent search technology.",
+      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
     url: "https://discoverminds.ai/about",
     siteName: "DiscoverMinds.ai",
     images: [
@@ -35,7 +34,7 @@ const productionMetadata = {
         url: "/Logo.png",
         width: 512,
         height: 512,
-        alt: "DiscoverMinds.ai - Better People Search, Personal Connections",
+        alt: "DiscoverMinds.ai - Unlocking opportunities through warm introductions",
       },
     ],
     locale: "en_US",
@@ -43,8 +42,8 @@ const productionMetadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "About DiscoverMinds.ai | AI-Powered People Search",
-    description: "Transforming how professionals connect through intelligent search technology.",
+    title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
+    description: "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
     images: ["/Logo.png"],
   },
   alternates: {
