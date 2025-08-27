@@ -6,7 +6,7 @@ import CreateGroupModal from "@/components/groups/CreateGroupModal";
 
 export default function Page() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const handleCreateGroup = (groupName: string) => {
     console.log("Creating group:", groupName);
     // Here you would typically make an API call to create the group
@@ -145,7 +145,9 @@ export default function Page() {
                       <h3 className="text-lg font-semibold leading-none tracking-tight">
                         Bot for Slack
                       </h3>
-                      <p className="text-sm text-muted-foreground">Great for teams that use Slack.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Great for teams that use Slack.
+                      </p>
                     </div>
                   </div>
                   <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
@@ -163,13 +165,13 @@ export default function Page() {
               <div className="group rounded-xl border bg-card border-[#5D9CEC]/50 text-card-foreground shadow-sm transition-all hover:shadow-md hover:bg-muted/10">
                 <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:gap-0 md:p-6">
                   <div className="flex items-center space-x-5">
-                    <div className="flex-shrink-0 bg-[#EBF1F9] p-2 rounded-lg">
+                    <div className="flex-shrink-0 bg-[#EEEAF900] p-2 rounded-lg">
                       <Image
                         alt="Email Agent"
-                        width="48"
-                        height="48"
+                        width="50"
+                        height="50"
                         className="size-10 object-contain"
-                        src="/logos/email.svg"
+                        src="/logos/email.webp"
                       />
                     </div>
                     <div className="flex-1 space-y-1.5">
@@ -196,13 +198,13 @@ export default function Page() {
               <div className="group rounded-xl border bg-card border-[#5D9CEC]/50 text-card-foreground shadow-sm transition-all hover:shadow-md hover:bg-muted/10">
                 <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:gap-0 md:p-6">
                   <div className="flex items-center space-x-5">
-                    <div className="flex-shrink-0 bg-[#EEEAF9] p-2 rounded-lg">
+                    <div className="flex-shrink-0 bg-[#EEEAF900] p-2 rounded-lg">
                       <Image
                         alt="Discord"
-                        width="48"
-                        height="48"
+                        width="50"
+                        height="50"
                         className="size-10 object-contain"
-                        src="/logos/discord.svg"
+                        src="/logos/discord.webp"
                       />
                     </div>
                     <div className="flex-1 space-y-1.5">
@@ -228,8 +230,8 @@ export default function Page() {
           </div>
         </div>
       </main>
-      
-      <CreateGroupModal 
+
+      <CreateGroupModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateGroup}

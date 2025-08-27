@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 body {
-  background: #FFFFFF;
-  color: #0F1729;
+  background: #ffffff;
+  color: #0f1729;
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -25,89 +25,89 @@ body {
 
 @layer base {
   :root {
-    --background: #FFFFFF;
-    --foreground: #0F1729;
+    --background: #ffffff;
+    --foreground: #0f1729;
 
-    --card: #FFFFFF;
-    --card-foreground: #0F1729;
+    --card: #ffffff;
+    --card-foreground: #0f1729;
 
-    --popover: #FFFFFF;
-    --popover-foreground: #0F1729;
+    --popover: #ffffff;
+    --popover-foreground: #0f1729;
 
-    --primary: #5D9CEC;
-    --primary-foreground: #F5F9FF;
+    --primary: #5d9cec;
+    --primary-foreground: #f5f9ff;
 
-    --secondary: #F1F5F9;
-    --secondary-foreground: #1E293B;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #1e293b;
 
-    --muted: #F1F5F9;
-    --muted-foreground: #64748B;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
 
-    --accent: #F1F5F9;
-    --accent-foreground: #1E293B;
+    --accent: #f1f5f9;
+    --accent-foreground: #1e293b;
 
-    --destructive: #EF4444;
-    --destructive-foreground: #F5F9FF;
+    --destructive: #ef4444;
+    --destructive-foreground: #f5f9ff;
 
-    --border: #E2E8F0;
-    --input: #E2E8F0;
-    --ring: #0F1729;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #0f1729;
 
     --radius: 0.5rem;
 
-    --sidebar-background: #FAFAFA;
+    --sidebar-background: #fafafa;
 
     --sidebar-foreground: #424249;
 
-    --sidebar-primary: #1A1A1F;
+    --sidebar-primary: #1a1a1f;
 
-    --sidebar-primary-foreground: #FAFAFA;
+    --sidebar-primary-foreground: #fafafa;
 
-    --sidebar-accent: #F4F4F5;
+    --sidebar-accent: #f4f4f5;
 
-    --sidebar-accent-foreground: #1A1A1F;
+    --sidebar-accent-foreground: #1a1a1f;
 
-    --sidebar-border: #E8E8EC;
+    --sidebar-border: #e8e8ec;
 
-    --sidebar-ring: #5D9CEC;
+    --sidebar-ring: #5d9cec;
   }
 
   .dark {
-    --background: #0F1729;
-    --foreground: #F5F9FF;
+    --background: #0f1729;
+    --foreground: #f5f9ff;
 
-    --card: #0F1729;
-    --card-foreground: #F5F9FF;
+    --card: #0f1729;
+    --card-foreground: #f5f9ff;
 
-    --popover: #0F1729;
-    --popover-foreground: #F5F9FF;
+    --popover: #0f1729;
+    --popover-foreground: #f5f9ff;
 
-    --primary: #5D9CEC;
-    --primary-foreground: #1E293B;
+    --primary: #5d9cec;
+    --primary-foreground: #1e293b;
 
-    --secondary: #1E293B;
-    --secondary-foreground: #F5F9FF;
+    --secondary: #1e293b;
+    --secondary-foreground: #f5f9ff;
 
-    --muted: #1E293B;
-    --muted-foreground: #94A3B8;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
 
-    --accent: #1E293B;
-    --accent-foreground: #F5F9FF;
+    --accent: #1e293b;
+    --accent-foreground: #f5f9ff;
 
-    --destructive: #991B1B;
-    --destructive-foreground: #F5F9FF;
+    --destructive: #991b1b;
+    --destructive-foreground: #f5f9ff;
 
-    --border: #1E293B;
-    --input: #1E293B;
-    --ring: #CBD5E1;
-    --sidebar-background: #1A1A1F;
-    --sidebar-foreground: #F4F4F5;
-    --sidebar-primary: #4F46E5;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #27272A;
-    --sidebar-accent-foreground: #F4F4F5;
-    --sidebar-border: #27272A;
-    --sidebar-ring: #5D9CEC;
+    --border: #1e293b;
+    --input: #1e293b;
+    --ring: #cbd5e1;
+    --sidebar-background: #1a1a1f;
+    --sidebar-foreground: #f4f4f5;
+    --sidebar-primary: #4f46e5;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #27272a;
+    --sidebar-accent-foreground: #f4f4f5;
+    --sidebar-border: #27272a;
+    --sidebar-ring: #5d9cec;
   }
 }
 
@@ -182,14 +182,12 @@ body {
   font-weight: 600;
   color: white;
   transition-property: background-color;
-  background-color: #5D9CEC;
+  background-color: #5d9cec;
 }
 
 .btn-primary:hover {
   background-color: rgba(93, 156, 236, 0.9);
 }
-
-/* Direct color utility classes */
 .text-primary {
   color: #5D9CEC !important;
 }
@@ -197,8 +195,6 @@ body {
 .bg-primary {
   background-color: #5D9CEC !important;
 }
-
-
 /* Success Message Animations */
 @keyframes fadeInUp {
   from {

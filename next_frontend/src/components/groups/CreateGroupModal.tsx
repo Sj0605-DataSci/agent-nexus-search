@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -11,11 +12,14 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (groupName.trim()) {
-      onSubmit(groupName);
+      await onSubmit(groupName);
       setGroupName("");
+      router.push(`/groups/${encodeURIComponent(groupName.trim())}`);
     }
   };
 

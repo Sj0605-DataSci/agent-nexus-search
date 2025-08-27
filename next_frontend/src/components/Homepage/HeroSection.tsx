@@ -5,17 +5,17 @@ import Link from "next/link";
 const HeroSection: React.FC = () => {
   return (
     <>
-      <section className="bg-background pt-6 md:pt-0 text-primary relative overflow-hidden min-h-screen flex items-center">
+      <section className="bg-background pt-6 md:pt-0 relative overflow-hidden min-h-screen flex items-center">
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-20 sm:pt-24 lg:pt-28 pb-12 sm:pb-10 lg:pb-10">
           <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-            <h1 className="font-hero-headline text-4xl sm:text-5xl md:text-6xl leading-[1.1] font-bold text-primary tracking-[-0.02em] mb-6">
+            <h1 className="font-hero-headline text-4xl sm:text-5xl md:text-6xl leading-[1.1] font-bold tracking-[-0.02em] mb-6">
               Unlock Hidden Opportunities
               <span className="block bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] bg-clip-text text-transparent font-extrabold">
                 in Your Network
               </span>
             </h1>
 
-            <p className="text-lg sm:text-xl  text-text-secondary max-w-4xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl  text-secondary max-w-4xl mx-auto leading-relaxed">
               Stop sending cold emails. DiscoverMinds helps you find warm introductions to
               opportunities in your extended network by connecting your fragmented professional
               circles.
