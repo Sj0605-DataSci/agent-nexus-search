@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Users, List, Puzzle, Settings, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Trash2, LogOut, ImageUp } from "lucide-react";
+import { TabNavigation } from "@/components/groups/TabNavigation";
+import { Member } from "../members/page";
 
 interface SettingsPageProps {
   params: {
@@ -11,26 +13,59 @@ interface SettingsPageProps {
   };
 }
 
+const members: Member[] = [
+  {
+    id: "1",
+    name: "Jib Ohe",
+    email: "jibohe4323@litepax.com",
+    role: "Admin",
+    joinedDate: "August 27, 2025",
+    avatar:
+      "https://mtxrobrwanikajymnkaf.supabase.co/storage/v1/object/public/public-files/HR_Agent.png",
+    connections: 0,
+    isCurrentUser: true,
+  },
+];
+
 export default function SettingsPage({ params }: SettingsPageProps) {
   const { groupId } = params;
   const [groupName, setGroupName] = useState("Friends");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [avatar, setAvatar] = useState(
+    "https://mtxrobrwanikajymnkaf.supabase.co/storage/v1/object/public/public-files/HR_Agent.png"
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would handle saving the group settings
     console.log("Saving group settings:", { groupName });
-    // Show success message or redirect
   };
 
   const handleDelete = () => {
-    // Here you would handle the group deletion
     console.log("Deleting group");
-    // Redirect to groups page after deletion
+  };
+
+  const handleLeaveGroup = () => {
+    console.log("Leaving group");
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
-    <div className="container mx-auto max-w-4xl p-4 md:p-8">
+    <div className="container mx-auto max-w-4xl p-4 ">
       {/* Back button */}
       <Link href="/groups">
         <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 mb-2 h-6 p-0 text-muted-foreground hover:bg-transparent hover:text-foreground">
@@ -54,7 +89,7 @@ export default function SettingsPage({ params }: SettingsPageProps) {
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">Friends</h1>
             <p className="text-sm font-medium text-muted-foreground">
-              1 member
+              {members.length} member{members.length !== 1 ? "s" : ""}
               <span className="mx-1.5 hidden sm:inline">•</span>
               <span className="hidden sm:inline">Created August 2025</span>
             </p>
@@ -62,119 +97,158 @@ export default function SettingsPage({ params }: SettingsPageProps) {
         </div>
       </div>
 
-      {/* Navigation tabs */}
-      <div className="mt-4 flex flex-col">
-        <div className="relative flex flex-row gap-2 overflow-x-auto pb-2 scrollbar-hide md:overflow-x-visible md:pb-0">
-          <Link className="relative" href={`/groups/${groupId}`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-              <Users className="size-4" />
-              <span className="font-medium">Group</span>
-            </button>
-          </Link>
-          <Link className="relative" href={`/groups/${groupId}/members`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-muted-foreground">
-              <List className="size-4" />
-              <span className="font-medium">Members</span>
-            </button>
-          </Link>
-          <Link className="relative" href={`/groups/${groupId}/integrations`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-muted-foreground">
-              <Puzzle className="size-4" />
-              <span className="font-medium">Integrations</span>
-            </button>
-          </Link>
-          <Link className="relative" href={`/groups/${groupId}/settings`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-primary hover:bg-primary/10 hover:text-primary">
-              <Settings className="size-4" />
-              <span className="font-medium">Settings</span>
-            </button>
-            <div className="absolute -bottom-2 left-0 right-0 h-0.5 bg-primary"></div>
-          </Link>
-        </div>
-
-        <div
-          data-orientation="horizontal"
-          role="none"
-          className="shrink-0 bg-border h-[1px] w-full mb-4 mt-0 md:mt-2"
-        ></div>
-
-        {/* Main content */}
-        <div className="w-full">
-          <div className="space-y-6">
-            {/* Group settings */}
-            <div className="rounded-lg border bg-card text-card-foreground">
-              <div className="flex flex-col space-y-1.5 p-6">
+      <div className="w-full">
+        <TabNavigation groupId={groupId} activeTab="settings" />
+        <div className="space-y-6">
+          {/* Group Settings Card */}
+          <div className="rounded-lg border border-gray-300/50 bg-card text-card-foreground">
+            <form onSubmit={handleSave}>
+              <div className="flex flex-col space-y-1.5 p-6 pb-0">
                 <h3 className="font-semibold leading-tight tracking-tight">Group settings</h3>
                 <p className="text-sm text-muted-foreground">
                   Manage your group's basic information.
                 </p>
               </div>
-              <div className="p-6 pt-0">
-                <form className="space-y-6" onSubmit={handleSave}>
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      htmlFor="group-name"
-                    >
-                      Group name
-                    </label>
+              <div className="p-6 pt-0 space-y-6">
+                {/* Avatar Upload */}
+                <div className="flex flex-col items-center">
+                  <div className="relative mb-2">
+                    <span className="relative flex shrink-0 overflow-hidden rounded-full h-24 w-24">
+                      <Image
+                        src={avatar}
+                        alt="Group avatar"
+                        width={96}
+                        height={96}
+                        className="aspect-square h-full w-full object-cover"
+                      />
+                      <div
+                        className="absolute inset-0 flex h-24 w-24 cursor-pointer items-center justify-center rounded-full opacity-0 transition-opacity hover:bg-black/50 hover:opacity-100"
+                        onClick={handleAvatarClick}
+                      >
+                        <ImageUp className="h-8 w-8 text-white" />
+                      </div>
+                    </span>
                     <input
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      id="group-name"
-                      value={groupName}
-                      onChange={e => setGroupName(e.target.value)}
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
                     />
                   </div>
-                  <div className="flex justify-end">
-                    <button
-                      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4 py-2 gap-2"
-                      type="submit"
-                    >
-                      <Save className="h-4 w-4" />
-                      Save changes
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+                  <button
+                    type="button"
+                    onClick={handleAvatarClick}
+                    className="inline-flex items-center  border-gray-300/50 justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-xs"
+                  >
+                    Update avatar
+                  </button>
+                </div>
 
-            {/* Danger zone */}
-            <div className="rounded-lg border border-destructive/20 bg-card text-card-foreground">
-              <div className="flex flex-col space-y-1.5 p-6">
-                <h3 className="font-semibold leading-tight tracking-tight text-destructive">
-                  Danger zone
-                </h3>
-                <p className="text-sm text-muted-foreground">Actions here cannot be undone.</p>
-              </div>
-              <div className="p-6 pt-0">
-                <div className="space-y-4">
-                  {isDeleting ? (
-                    <div className="space-y-4">
-                      <p className="text-sm font-medium">
-                        Are you sure you want to delete this group? This action cannot be undone.
-                      </p>
-                      <div className="flex gap-2">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="group-name"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Group name
+                  </label>
+                  <input
+                    id="group-name"
+                    type="text"
+                    value={groupName}
+                    onChange={e => setGroupName(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-gray-300/50 bg-transparent px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:border-[#5D9CEC]/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5D9CEC]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="Group name"
+                  />
+                </div>
+
+                <div
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${groupName !== "Friends" ? "max-h-20 opacity-100" : "max-h-0 opacity-0"}`}
+                >
+                  {groupName !== "Friends" && (
+                    <div className="flex items-center p-6 pt-0">
+                      <div className="ml-auto flex gap-2">
                         <button
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-                          onClick={() => setIsDeleting(false)}
+                          type="button"
+                          onClick={() => setGroupName("Friends")}
+                          className="inline-flex items-center border-gray-300/50 justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-xs"
                         >
                           Cancel
                         </button>
                         <button
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-4 py-2"
-                          onClick={handleDelete}
+                          type="submit"
+                          // className="inline-flex items-center border-gray-300/50 justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-8 rounded-md px-3 text-xs gap-2"
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-red-500 h-9 px-4 py-2 text-sm gap-1"
                         >
-                          Yes, delete group
+                          <Save className="h-3.5 w-3.5" />
+                          Save
                         </button>
                       </div>
                     </div>
+                  )}
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="rounded-lg border border-gray-300/50 bg-card text-card-foreground">
+            <div className="flex flex-col space-y-1.5 p-6">
+              <h3 className="font-semibold leading-tight tracking-tight text-destructive">
+                Danger zone
+              </h3>
+              <p className="text-sm text-muted-foreground">Actions here cannot be undone.</p>
+            </div>
+            <div className="p-6 pt-0 space-y-4">
+              {/* Leave Group */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Leave group</div>
+                  <p className="text-xs text-muted-foreground">
+                    You'll need to be invited back to rejoin
+                  </p>
+                </div>
+                <button
+                  onClick={handleLeaveGroup}
+                  className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-8 rounded-md px-3 text-xs gap-2"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Leave
+                </button>
+              </div>
+
+              {/* Delete Group */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div>
+                  <div className="text-sm font-medium">Delete group</div>
+                  <p className="text-xs text-muted-foreground">
+                    This will permanently delete the group and all its data
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {isDeleting ? (
+                    <>
+                      <button
+                        onClick={() => setIsDeleting(false)}
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-8 px-3 gap-2"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </>
                   ) : (
                     <button
-                      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-destructive/50 bg-destructive/10 text-destructive shadow-sm hover:bg-destructive/20 h-9 px-4 py-2 gap-2"
                       onClick={() => setIsDeleting(true)}
+                      className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-8 rounded-md px-3 text-xs gap-2"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      Delete group
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
                     </button>
                   )}
                 </div>

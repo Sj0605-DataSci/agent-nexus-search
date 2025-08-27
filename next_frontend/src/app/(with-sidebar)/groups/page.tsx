@@ -16,7 +16,7 @@ export default function Page() {
   return (
     <>
       <main>
-        <div className="container mx-auto max-w-screen-xl p-4 md:p-8">
+        <div className="container mx-auto max-w-screen-xl p-4 ">
           <div className="mb-6">
             <h1 className="text-2xl font-bold md:text-3xl">Groups</h1>
             <div className="text-sm text-muted-foreground md:text-base">
@@ -62,7 +62,7 @@ export default function Page() {
           <div className="mb-6 mt-10">
             <h2 className="text-lg font-bold md:text-xl">Integrations</h2>
             <p className="mb-6 text-base text-muted-foreground">
-              Bring Happenstance to your group's home.
+              Bring DiscoverMinds to your group's home.
             </p>
             <div className="mb-8">
               <ul className="space-y-2">
@@ -104,7 +104,7 @@ export default function Page() {
                       <path d="M20 6 9 17l-5-5"></path>
                     </svg>
                   </div>
-                  <span>Tag the Happenstance bot to run searches</span>
+                  <span>Tag the DiscoverMinds bot to run searches</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#5D9CEC]/10">

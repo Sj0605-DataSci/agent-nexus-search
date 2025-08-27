@@ -56,19 +56,12 @@ body {
     --radius: 0.5rem;
 
     --sidebar-background: #fafafa;
-
     --sidebar-foreground: #424249;
-
     --sidebar-primary: #1a1a1f;
-
     --sidebar-primary-foreground: #fafafa;
-
     --sidebar-accent: #f4f4f5;
-
     --sidebar-accent-foreground: #1a1a1f;
-
     --sidebar-border: #e8e8ec;
-
     --sidebar-ring: #5d9cec;
   }
 
@@ -100,6 +93,7 @@ body {
     --border: #1e293b;
     --input: #1e293b;
     --ring: #cbd5e1;
+    
     --sidebar-background: #1a1a1f;
     --sidebar-foreground: #f4f4f5;
     --sidebar-primary: #4f46e5;

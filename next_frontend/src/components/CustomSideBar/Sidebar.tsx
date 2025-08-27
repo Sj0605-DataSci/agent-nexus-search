@@ -17,6 +17,7 @@ import {
   FiPlus,
   FiMenu,
   FiX,
+  FiGlobe,
   FiAlertTriangle,
   FiSearch,
 } from "react-icons/fi";
@@ -132,6 +133,7 @@ const Sidebar = () => {
 
   const navItems = [
     { href: "/agents", label: "Agents", icon: <FiZap /> },
+    { href: "/connections", label: "Connections", icon: <FiGlobe /> },
     { href: "/friends", label: "Friends", icon: <FiSmile /> },
     { href: "/groups", label: "Groups", icon: <FiUsers /> },
   ];

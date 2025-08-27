@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Users, List, Puzzle, Settings } from "lucide-react";
+import { TabNavigation } from "@/components/groups/TabNavigation";
 
 interface IntegrationsPageProps {
   params: {
@@ -40,7 +41,7 @@ export default function IntegrationsPage({ params }: IntegrationsPageProps) {
   ];
 
   return (
-    <div className="container mx-auto max-w-4xl p-4 md:p-8">
+    <div className="container mx-auto max-w-4xl p-4 ">
       {/* Back button */}
       <Link href="/groups">
         <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 mb-2 h-6 p-0 text-muted-foreground hover:bg-transparent hover:text-foreground">
@@ -73,81 +74,53 @@ export default function IntegrationsPage({ params }: IntegrationsPageProps) {
       </div>
 
       {/* Navigation tabs */}
-      <div className="mt-4 flex flex-col">
-        <div className="relative flex flex-row gap-2 overflow-x-auto pb-2 scrollbar-hide md:overflow-x-visible md:pb-0">
-          <Link className="relative" href={`/groups/${groupId}`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-              <Users className="size-4" />
-              <span className="font-medium">Group</span>
-            </button>
-          </Link>
-          <Link className="relative" href={`/groups/${groupId}/members`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-muted-foreground">
-              <List className="size-4" />
-              <span className="font-medium">Members</span>
-            </button>
-          </Link>
-          <Link className="relative" href={`/groups/${groupId}/integrations`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-primary hover:bg-primary/10 hover:text-primary">
-              <Puzzle className="size-4" />
-              <span className="font-medium">Integrations</span>
-            </button>
-            <div className="absolute -bottom-2 left-0 right-0 h-0.5 bg-primary"></div>
-          </Link>
-          <Link className="relative" href={`/groups/${groupId}/settings`}>
-            <button className="justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground py-2 flex h-8 shrink-0 items-center gap-2 px-2 transition-colors text-muted-foreground">
-              <Settings className="size-4" />
-              <span className="font-medium">Settings</span>
-            </button>
-          </Link>
-        </div>
+      <TabNavigation groupId={groupId} />
 
-        <div
-          data-orientation="horizontal"
-          role="none"
-          className="shrink-0 bg-border h-[1px] w-full mb-4 mt-0 md:mt-2"
-        ></div>
+      <div
+        data-orientation="horizontal"
+        role="none"
+        className="shrink-0 bg-border h-[1px] w-full mb-4 mt-0 md:mt-2"
+      ></div>
 
-        <div className="w-full">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4">
-              {integrations.map(integration => (
-                <div
-                  key={integration.id}
-                  className="group rounded-xl border bg-card text-card-foreground border-[#5D9CEC]/50 shadow-sm transition-all hover:shadow-md hover:bg-muted/10"
-                >
-                  <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:gap-0 md:p-6">
-                    <div className="flex items-center space-x-5">
-                      <div className="flex-shrink-0 p-2 rounded-lg">
-                        <Image
-                          alt={integration.name}
-                          width="48"
-                          height="48"
-                          className="size-10 object-contain"
-                          src={integration.logo}
-                        />
-                      </div>
-                      <div className="flex-1 space-y-1.5">
-                        <h3 className="text-lg font-semibold leading-none tracking-tight">
-                          {integration.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{integration.description}</p>
-                      </div>
+      <div className="w-full">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4">
+            {integrations.map(integration => (
+              <div
+                key={integration.id}
+                className="group rounded-xl border bg-card text-card-foreground border-[#5D9CEC]/50 shadow-sm transition-all hover:shadow-md hover:bg-muted/10"
+              >
+                <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:gap-0 md:p-6">
+                  <div className="flex items-center space-x-5">
+                    <div className="flex-shrink-0 p-2 rounded-lg">
+                      <Image
+                        alt={integration.name}
+                        width="48"
+                        height="48"
+                        className="size-10 object-contain"
+                        src={integration.logo}
+                      />
                     </div>
-                    <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
-                      <Link className="block" href={integration.link}>
-                        <button
-                          className="inline-flex h-10 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#EDF4FE] px-6 py-2 text-sm font-medium text-[#5D9CEC] transition-colors hover:bg-[#DCE8FD] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5D9CEC]/30 disabled:pointer-events-none disabled:opacity-50 md:w-auto"
-                          aria-label="Try the feature now"
-                        >
-                          Try it now
-                        </button>
-                      </Link>
+                    <div className="flex-1 space-y-1.5">
+                      <h3 className="text-lg font-semibold leading-none tracking-tight">
+                        {integration.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{integration.description}</p>
                     </div>
                   </div>
+                  <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
+                    <Link className="block" href={integration.link}>
+                      <button
+                        className="inline-flex h-10 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#EDF4FE] px-6 py-2 text-sm font-medium text-[#5D9CEC] transition-colors hover:bg-[#DCE8FD] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5D9CEC]/30 disabled:pointer-events-none disabled:opacity-50 md:w-auto"
+                        aria-label="Try the feature now"
+                      >
+                        Try it now
+                      </button>
+                    </Link>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

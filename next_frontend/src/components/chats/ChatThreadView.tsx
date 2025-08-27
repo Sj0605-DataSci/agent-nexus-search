@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect, useCallback, FormEvent } from "reac
 import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { ChatNavigationControls } from "./ChatNavigationControls";
-import { AgentDropdown } from "./AgentDropdown";
 import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
 import { FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
 import { BsTextParagraph } from "react-icons/bs";
@@ -18,12 +17,8 @@ import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
 import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
-import SearchModeToggle from "./SearchModeToggle";
-import WorldConnectionsToggle from "./WorldConnectionsToggle";
-import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
-import OrbAura from "../OrbAura";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
 import MessagePlaceholder from "./MessagePlaceholder";
@@ -858,8 +853,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             </h1>
             {!messages.length && (
               <p className="text-gray-600 text-sm md:text-lg mt-6">
-                Our AI-powered smart search unlocks hidden opportunities in your extended network,<br/>
-                connecting you through trusted warm introductions instead of ineffective cold outreach.
+                Our AI-powered smart search unlocks hidden opportunities in your extended network,
+                <br />
+                connecting you through trusted warm introductions instead of ineffective cold
+                outreach.
               </p>
             )}
           </div>
@@ -867,23 +864,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         <div
           className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
-          <div className="relative flex justify-center w-full px-2 sm:px-0">
-            <div className="w-full max-w-3xl">
-              <div
-                className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg focus-within:shadow-xl w-full max-w-3xl border border-[#5D9CEC]/60 bg-white hover:border-[#5D9CEC]"
-                style={{ backdropFilter: "blur(10px)" }}
-              >
-                <SearchInputField
-                  query={query}
-                  setQuery={setQuery}
-                  textareaRef={textareaRef}
-                  onKey={handleKeyDown}
-                  onSubmit={handleSubmit}
-                  isStreaming={isStreaming}
-                />
-              </div>
-            </div>
-          </div>
+          <SearchInputField
+            query={query}
+            setQuery={setQuery}
+            textareaRef={textareaRef}
+            onKey={handleKeyDown}
+            onSubmit={handleSubmit}
+            isStreaming={isStreaming}
+          />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[
