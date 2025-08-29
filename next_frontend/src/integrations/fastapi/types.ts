@@ -3,6 +3,7 @@
  */
 
 import { UUID } from "crypto";
+import { Session, User } from "@supabase/supabase-js";
 
 export interface UsageStats {
   period_days: number;
@@ -96,6 +97,18 @@ export interface ApiResponse<T> {
   status_code: number;
   message: string;
   data: T;
+}
+
+export interface SignUpResponse {
+  success: boolean;
+  status_code: number;
+  message?: string;
+  data?: {
+    user: User | null;
+    session: Session | null;
+    access_token: string | undefined;
+    refresh_token: string | undefined;
+  };
 }
 
 export interface AuthResponse {

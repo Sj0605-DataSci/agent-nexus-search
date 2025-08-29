@@ -28,7 +28,7 @@ export default function FriendsPage() {
       </div>
 
       <div className="rounded-lg border bg-card text-card-foreground border-[#5D9CEC50] bg-[#5D9CEC10]/50">
-        <div className="flex flex-col space-y-1 p-6">
+        <div className="flex flex-col space-y-1 p-3 md:p-6">
           <h3 className="font-semibold tracking-tight flex items-center gap-2 text-lg md:text-xl">
             Invite friends
           </h3>
@@ -36,7 +36,7 @@ export default function FriendsPage() {
             Type or paste in emails below, separated by commas.
           </p>
         </div>
-        <div className="p-6 pt-0 mt-2">
+        <div className="p-2 md:px-6 pt-0 mt-2">
           <div className="space-y-6">
             <form className="flex flex-col gap-4">
               <div className="space-y-2 flex-1">

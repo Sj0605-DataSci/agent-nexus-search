@@ -143,6 +143,7 @@ const profileSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         if (action.payload.success && action.payload.status_code === 200) {
+          state.profile = action.payload.data;
           state.isAuthenticated = true;
         } else {
           state.error = action.payload.message || "Login failed";

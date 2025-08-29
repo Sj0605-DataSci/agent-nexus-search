@@ -116,25 +116,36 @@ export async function linkedInSignIn() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, redirectUri }),
-  }).then((r) =>
-    r.ok
-      ? r.json()
-      : r.text().then((t) => {
-          throw new Error(t);
-        })
-  );
+  }).then(async (r) => {
+    if (r.ok) {
+      const data = await r.json();
+      // Store the token response data locally
+      await chrome.storage.local.set({
+        authData: {
+          ...data,
+          timestamp: new Date().toISOString()
+        }
+      });
+      console.log('Auth data stored successfully');
+      return data;
+    } else {
+      const errorText = await r.text();
+      console.error('Auth error:', errorText);
+      throw new Error(errorText);
+    }
+  });
 
   // LinkedIn's standard OAuth flow doesn't return id_token by default
   // Instead, we'll use the access_token and fetch the profile separately
   let profile = {};
-
+  console.log("tokenRes?.data?.access_token", tokenRes?.data?.access_token);
   try {
     // Fetch user profile using the access token
     const profileResponse = await fetch(
       "https://api.linkedin.com/v2/userinfo",
       {
         headers: {
-          Authorization: `Bearer ${tokenRes.access_token}`,
+          Authorization: `Bearer ${tokenRes?.data?.access_token}`,
           Accept: "application/json",
         },
       }
@@ -169,22 +180,53 @@ export async function linkedInSignIn() {
 
   return stored;
 }
+async function logAllLinkedInCookies() {
+  try {
+    const cookies = await chrome.cookies.getAll({
+      domain: ".linkedin.com",
+    });
 
-export async function fetchConnections({ start = 0, count = 50 } = {}) {
-  const { access_token } = await chrome.storage.local.get(["access_token"]);
-  if (!access_token) throw new Error("Not signed in");
+    console.group("LinkedIn Cookies:");
+    cookies.forEach((cookie) => {
+      console.log(`Name: ${cookie.name}`);
+      console.log(`Value: ${cookie.value}`);
+      console.log(`Domain: ${cookie.domain}`);
+      console.log(`Path: ${cookie.path}`);
+      console.log(`Secure: ${cookie.secure}`);
+      console.log(`HttpOnly: ${cookie.httpOnly}`);
+      console.log(
+        `Expires: ${
+          cookie.expirationDate
+            ? new Date(cookie.expirationDate * 1000)
+            : "Session"
+        }`
+      );
+      console.log("---");
+    });
+    console.groupEnd();
 
-  const url = new URL("https://api.linkedin.com/v2/relationships/connections");
-  url.searchParams.set("q", "viewer");
-  url.searchParams.set("start", start);
-  url.searchParams.set("count", count);
-
-  const r = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${access_token}` },
-  });
-  if (!r.ok) throw new Error("Connections fetch failed: " + r.status);
-  return r.json(); // { paging:{start,count,total}, elements:[…] }
+    return cookies;
+  } catch (error) {
+    console.error("Error fetching LinkedIn cookies:", error);
+    return [];
+  }
 }
+
+// export async function fetchConnections({ start = 0, count = 50 } = {}) {
+//   const { access_token } = await chrome.storage.local.get(["access_token"]);
+//   if (!access_token) throw new Error("Not signed in");
+
+//   const url = new URL("https://api.linkedin.com/v2/relationships/connections");
+//   url.searchParams.set("q", "viewer");
+//   url.searchParams.set("start", start);
+//   url.searchParams.set("count", count);
+
+//   const r = await fetch(url.toString(), {
+//     headers: { Authorization: `Bearer ${access_token}` },
+//   });
+//   if (!r.ok) throw new Error("Connections fetch failed: " + r.status);
+//   return r.json(); // { paging:{start,count,total}, elements:[…] }
+// }
 
 export async function fetchFullProfile() {
   const { access_token } = await chrome.storage.local.get(["access_token"]);

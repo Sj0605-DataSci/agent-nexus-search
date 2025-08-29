@@ -253,8 +253,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   }, [threadId]);
 
   useEffect(() => {
-    const hasDismissed = localStorage.getItem("hasDismissedLinkedInModal");
-    if (profile && !profile.linkedin_url && hasDismissed !== "true") {
+    if (profile && !profile.linkedin_url) {
       setLinkedinModalOpen(true);
     }
   }, [profile]);

@@ -10,9 +10,10 @@ import { Eye, EyeOff, Mail, Lock, User, Linkedin, Phone, X } from "lucide-react"
 import Confetti from "react-confetti";
 import CountryCodeSelector from "@/components/CountryCodeSelector";
 import { apiClient } from "@/integrations/fastapi/client";
+import { SignUpResponse } from "@/integrations/fastapi/types";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import posthog from "posthog-js";
-import { useAppDispatch } from "@/store";
+import { useAppDispatch, useAppSelector } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,6 +48,29 @@ const AuthComponent = () => {
     "signin"
   );
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const dispatch = useAppDispatch();
+  const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (user && profile) {
+        router.replace("/chat/new");
+      } else if (user && !profile) {
+        dispatch(fetchProfile());
+      }
+    }
+  }, [user, profile, authLoading, dispatch, router]);
+
+  const isLoading = authLoading || profileLoading;
+
+  if (isLoading || (user && profile)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-indigo-600"></div>
+      </div>
+    );
+  }
 
   const formVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -189,7 +213,7 @@ const SuccessSignupModal = () => {
   const handleResendEmail = useCallback(async () => {
     if (lastSignupData && resendTimer === 0) {
       try {
-        const response = await apiClient.userSignUp(
+                const response: SignUpResponse = await apiClient.userSignUp(
           lastSignupData.email,
           lastSignupData.password,
           lastSignupData.name,
@@ -279,8 +303,8 @@ const SignUpFormComponent = ({
       try {
         // Format phone number as '91-8929495901'
         const phoneNumber = phoneValue;
-        
-        const response = await apiClient.userSignUp(
+
+                const response: SignUpResponse = await apiClient.userSignUp(
           data.email,
           data.password,
           data.name,
@@ -460,20 +484,17 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
       posthog.capture("login_attempted", { email: data.email });
       const loginResult = await dispatch(loginUser(data)).unwrap();
 
-      if (loginResult.success && loginResult.status_code === 200) {
+            if (loginResult.success && loginResult.status_code === 200) {
+        const profileData = loginResult.data;
+        posthog.identify(profileData.id, {
+          email: profileData.email,
+          name: profileData.full_name,
+        });
+        posthog.capture("login_successful", {
+          userId: profileData.id,
+          hasConnections: profileData.has_connections,
+        });
         router.replace("/chat/new");
-        const profileResult = await dispatch(fetchProfile());
-        if (profileResult.payload?.success && profileResult.payload?.data) {
-          const profileData = profileResult.payload.data;
-          posthog.identify(profileData.id, {
-            email: profileData.email,
-            name: profileData.full_name,
-          });
-          posthog.capture("login_successful", {
-            userId: profileData.id,
-            hasConnections: profileData.has_connections,
-          });
-        }
       } else {
         showErrorToast(loginResult.message || "Please check your credentials and try again.");
         posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });
@@ -492,21 +513,26 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
       <h2 className="text-3xl font-bold text-gray-900 ">Welcome back</h2>
       <p className="text-gray-500 mb-4 text-sm">Sign in to continue to your account.</p>
       <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-        <p className="text-yellow-700 text-sm mb-2">Login access is currently limited to approved users only.</p>
-        <p className="text-yellow-700 text-sm mb-3">Thanks for showing interest! Join our waitlist and we'll reach out once we launch.</p>
-        <a 
-          href="/join-waitlist" 
+        <p className="text-yellow-700 text-sm mb-2">
+          Login access is currently limited to approved users only.
+        </p>
+        <p className="text-yellow-700 text-sm mb-3">
+          Thanks for showing interest! Join our waitlist and we'll reach out once we launch.
+        </p>
+        <a
+          href="/join-waitlist"
           className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded text-sm transition-colors duration-200"
         >
           Join Waitlist
         </a>
       </div>
-      {/* <SocialSignIn
+
+      <SocialSignIn
         mode="signin"
         onError={error => {
           console.error("Sign in error:", error);
         }}
-      /> */}
+      />
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-2">
         <div>
           <div className="relative">

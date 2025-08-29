@@ -20,7 +20,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { supabaseHandler } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
-
+import { ClerkProvider } from "@clerk/nextjs";
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
@@ -35,23 +35,24 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
       setSession(session);
     });
 
-    const { data: { subscription } } = supabaseHandler.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        
-        if (event === 'TOKEN_REFRESHED' && session) {
-          localStorage.setItem("discover_minds_access_token", session.access_token);
-          localStorage.setItem("discover_minds_refresh_token", session.refresh_token);
-        }
+    const {
+      data: { subscription },
+    } = supabaseHandler.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+
+      if (event === "TOKEN_REFRESHED" && session) {
+        localStorage.setItem("discover_minds_access_token", session.access_token);
+        localStorage.setItem("discover_minds_refresh_token", session.refresh_token);
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
     const fetchProfileData = async () => {
-      const token = localStorage.getItem("discover_minds_access_token") || session?.access_token || '';
+      const token =
+        localStorage.getItem("discover_minds_access_token") || session?.access_token || "";
 
       if (token && !profile) {
         try {
@@ -101,23 +102,23 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleGoogleAuth = async () => {
-      if (typeof window !== 'undefined' && window.location.hash) {
+      if (typeof window !== "undefined" && window.location.hash) {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
 
         if (accessToken && refreshToken) {
           localStorage.setItem("discover_minds_access_token", accessToken);
           localStorage.setItem("discover_minds_refresh_token", refreshToken);
-          
+
           await supabaseHandler.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken
+            refresh_token: refreshToken,
           });
 
           window.history.replaceState({}, document.title, window.location.pathname);
-          
+
           if (profile) {
             dispatch(fetchProfile());
           }
@@ -143,31 +144,33 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ReduxProvider store={store}>
         <ThemeProvider attribute="class" forcedTheme="light">
-          <AuthProvider>
-            <Toaster position="top-center" reverseOrder={false} />
-            <ProfileDataFetcher>
-              <PostHogProvider>
-                <AnalyticsProvider>
-                  {isMounted && (
-                    <>
-                      <ToastContainer
-                        position="top-right"
-                        autoClose={5000}
-                        hideProgressBar={false}
-                        closeOnClick
-                        pauseOnHover
-                        limit={4}
-                        draggable
-                        theme="light"
-                      />
-                      <ServiceWorkerRegistration />
-                    </>
-                  )}
-                  <main>{children}</main>
-                </AnalyticsProvider>
-              </PostHogProvider>
-            </ProfileDataFetcher>
-          </AuthProvider>
+          <ClerkProvider>
+            <AuthProvider>
+              <Toaster position="top-center" reverseOrder={false} />
+              <ProfileDataFetcher>
+                <PostHogProvider>
+                  <AnalyticsProvider>
+                    {isMounted && (
+                      <>
+                        <ToastContainer
+                          position="top-right"
+                          autoClose={5000}
+                          hideProgressBar={false}
+                          closeOnClick
+                          pauseOnHover
+                          limit={4}
+                          draggable
+                          theme="light"
+                        />
+                        <ServiceWorkerRegistration />
+                      </>
+                    )}
+                    <main>{children}</main>
+                  </AnalyticsProvider>
+                </PostHogProvider>
+              </ProfileDataFetcher>
+            </AuthProvider>
+          </ClerkProvider>
         </ThemeProvider>
       </ReduxProvider>
     </QueryClientProvider>

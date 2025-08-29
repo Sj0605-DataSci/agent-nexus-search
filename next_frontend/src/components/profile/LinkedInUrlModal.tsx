@@ -27,7 +27,8 @@ const LinkedInUrlModal: React.FC<LinkedInUrlModalProps> = ({ open, onOpenChange 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const validateLinkedinUrl = (url: string) => {
-    const linkedinRegex = /^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/i;
+    const linkedinRegex =
+      /^(https?:\/\/)?([a-z]{2,3}\.)?linkedin\.com\/(in|company|school|pub|profile|sales\/lead)\/[A-Za-z0-9\-_\.%]+(?:\/[-a-z\d%_.~+]*)*(?:\?[;&a-z\d%_.~+=-]*)?(?:\#[-a-z\d_]*)?$/i;
     return linkedinRegex.test(url);
   };
 
