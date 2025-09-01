@@ -13,10 +13,11 @@ export interface SearchInputFieldProps {
   onKey: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isStreaming: boolean;
+  previousQuery?: string;
 }
 
 const SearchInputField = memo(
-  ({ query, setQuery, textareaRef, onKey, onSubmit, isStreaming }: SearchInputFieldProps) => {
+  ({ query, setQuery, textareaRef, onKey, onSubmit, isStreaming, previousQuery = '' }: SearchInputFieldProps) => {
     return (
       <div className="relative flex justify-center w-full px-2 sm:px-0">
         <div className="w-full max-w-3xl">
@@ -25,6 +26,14 @@ const SearchInputField = memo(
             style={{ backdropFilter: "blur(10px)" }}
           >
             <SearchScopeSelector />
+            <style jsx global>{`
+              .grammarly-absolute-positions {
+                right: 60px !important;
+                left: auto !important;
+                top: auto !important;
+                bottom: 50px !important;
+              }
+            `}</style>
             <form onSubmit={onSubmit}>
               <div className="relative">
                 <Textarea
@@ -35,6 +44,9 @@ const SearchInputField = memo(
                   onKeyDown={onKey}
                   rows={1}
                   disabled={isStreaming}
+                  data-gramm="false"
+                  data-gramm_editor="false"
+                  data-enable-grammarly="false"
                   className={`
               flex bg-transparent text-lg resize-none
               border-none focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0 shadow-none
@@ -43,14 +55,22 @@ const SearchInputField = memo(
               ${isStreaming ? "opacity-60 cursor-not-allowed" : ""}
             `}
                 />
-                <div className="absolute bottom-1 right-1 flex h-10 justify-end">
+                <div className="absolute bottom-1 right-1 flex h-8 md:h-9 justify-end">
                   <button
                     type="submit"
-                    className={`rounded-full h-10 w-10 flex justify-center items-center ${isStreaming || !query.trim() ? "bg-[#5D9CEC]/50 cursor-not-allowed" : "bg-[#5D9CEC] hover:bg-[#4a8bd8]"}`}
-                    disabled={isStreaming || !query.trim()}
+                    className={`rounded-full h-8 w-8  flex justify-center items-center ${
+                      isStreaming || !query.trim() || query.trim().toLowerCase() === previousQuery.trim().toLowerCase()
+                        ? "bg-[#5D9CEC]/50 cursor-not-allowed"
+                        : "bg-[#5D9CEC] hover:bg-[#4a8bd8]"
+                    }`}
+                    disabled={isStreaming || !query.trim() || query.trim().toLowerCase() === previousQuery.trim().toLowerCase()}
                   >
                     <FiArrowUp
-                      className={`h-7 w-7 ${isStreaming || !query.trim() ? "text-gray-200" : "text-white"}`}
+                      className={`h-6 w-6 md:h-7 md:w-7 ${
+                        isStreaming || !query.trim() || query.trim().toLowerCase() === previousQuery.trim().toLowerCase()
+                          ? "text-gray-200"
+                          : "text-white"
+                      }`}
                     />
                   </button>
                 </div>

@@ -24,10 +24,7 @@ export default {
         ring: "#0F1729",
         background: "#FFFFFF",
         foreground: "#0F1729",
-        primary: {
-          DEFAULT: "#5D9CEC",
-          foreground: "#F5F9FF",
-        },
+        primary: "#fff",
         secondary: {
           DEFAULT: "#F1F5F9",
           foreground: "#1E293B",
@@ -69,6 +66,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        "shiny-text": {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "var(--shiny-width) 0" },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -99,6 +100,7 @@ export default {
         },
       },
       animation: {
+        "shiny-text": "shiny-text 2s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-in forwards",

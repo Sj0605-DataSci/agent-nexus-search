@@ -1,0 +1,46 @@
+{
+  "project": "Next.js Frontend",
+  "framework": "Next.js",
+  "language": "TypeScript",
+  "codeStyle": {
+    "removeConsoleLogs": true,
+    "enforceSOLID": true,
+    "enableTypeSafety": true,
+    "useModularComponents": true,
+    "keepDRY": true,
+    "handleErrorsGracefully": true
+  },
+  "windsurf": {
+    "autoExecution": false,
+    "promptFocus": "single task",
+    "branching": {
+      "useFeatureBranches": true,
+      "isolateChanges": true
+    },
+    "scoping": {
+      "targetFiles": true,
+      "functionTargeting": true
+    },
+    "validation": {
+      "runTestsBeforeCommit": true,
+      "manualReviewRequired": true
+    },
+    "documentation": {
+      "updateDocumentationAfterChange": true
+    },
+    "aiInteraction": {
+      "usePrecisePrompts": true,
+      "limitMultiTasking": true
+    }
+  },
+  "nextjsBestPractices": {
+    "preferStaticGeneration": true,
+    "useNextImageComponent": true,
+    "dynamicImports": true,
+    "projectStructure": "feature-based"
+  },
+  "performance": {
+    "lazyLoadComponents": true,
+    "optimizeImages": true
+  }
+}

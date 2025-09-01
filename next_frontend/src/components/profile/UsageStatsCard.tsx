@@ -61,7 +61,7 @@ const UsageStatsCard = () => {
       : 0;
 
   return (
-    <Card className="transition-all duration-300 bg-white border-gray-200">
+    <div className="border rounded-lg bg-white border-gray-200 transition-all hover:shadow-md"> 
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-semibold text-gray-800">Usage Statistics</CardTitle>
         <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-100">
@@ -135,7 +135,7 @@ const UsageStatsCard = () => {
           </div>
         )}
       </CardContent>
-    </Card>
+    </div>
   );
 };
 

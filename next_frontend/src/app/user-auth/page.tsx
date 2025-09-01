@@ -527,12 +527,12 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
         </a>
       </div>
 
-      <SocialSignIn
+      {/* <SocialSignIn
         mode="signin"
         onError={error => {
           console.error("Sign in error:", error);
         }}
-      />
+      /> */}
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-2">
         <div>
           <div className="relative">

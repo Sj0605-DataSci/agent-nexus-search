@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { FiSearch } from "react-icons/fi";
 
+declare module 'react' {
+  interface CSSProperties {
+    '--shiny-width'?: string;
+  }
+}
+
 interface SearchQueryDisplayProps {
   showSearchQueries: boolean;
   streamingSearchQueries: string[];
@@ -67,10 +73,12 @@ export const SearchQueryDisplay = ({
         <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-400 to-blue-400"></div>
 
         {isStreaming && streamingSearchQueries.length === 0 && (
-          <div className="py-3 text-sm text-gray-500 flex items-center relative">
+          <div className="py-3 text-sm flex items-center relative">
             <div className="absolute -left-[5px] h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 animate-pulse"></div>
             <div className="ml-5 flex items-center">
-              <span>Preparing search queries...</span>
+              <p className="text-muted-foreground/50 group-hover:text-foreground/60 bg-clip-text bg-no-repeat [background-position:0_0] [background-size:var(--shiny-width)_100%] animate-shiny-text bg-gradient-to-r from-transparent via-black via-50% to-transparent dark:via-white my-1 w-fit text-base" style={{"--shiny-width": "150px"}}>
+                Preparing search queries...
+              </p>
             </div>
           </div>
         )}
@@ -95,12 +103,9 @@ export const SearchQueryDisplay = ({
 
               {isStreaming && (
                 <li className="flex items-center pl-5 py-2">
-                  <div className="flex items-center space-x-1.5">
-                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    <span className="ml-2 text-xs text-gray-500">Searching...</span>
-                  </div>
+                  <p className="text-muted-foreground/50 group-hover:text-foreground/60 bg-clip-text bg-no-repeat [background-position:0_0] [background-size:var(--shiny-width)_100%] animate-shiny-text bg-gradient-to-r from-transparent via-black via-50% to-transparent dark:via-white my-1 w-fit text-xs" style={{"--shiny-width": "150px"}}>
+                    Running embedding search
+                  </p>
                 </li>
               )}
             </ul>

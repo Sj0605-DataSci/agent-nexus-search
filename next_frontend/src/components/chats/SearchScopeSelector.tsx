@@ -35,13 +35,9 @@ export const SearchScopeSelectorComponent = () => {
       <div className="flex flex-wrap items-center gap-1.5">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="size-5 shrink-0 rounded-md animate-pulse border-primary p-0"
-            >
-              <Plus className="size-2" />
-            </Button>
+            <button className="inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-sm border border-primary bg-transparent p-0 text-sm font-medium  ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+              <Plus className="size-4" />
+            </button>
           </PopoverTrigger>
           <PopoverContent
             className="w-[200px] border border-gray-400/50 bg-white p-0"
@@ -76,13 +72,13 @@ export const SearchScopeSelectorComponent = () => {
                       >
                         <div
                           className={cn(
-                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-gray-400/50",
+                            "mr-2 flex h-[14px] w-[14px] items-center justify-center rounded-sm border border-primary",
                             isSelected
                               ? "bg-primary text-primary-foreground"
-                              : "opacity-50 [&_svg]:invisible"
+                              : "bg-transparent opacity-50 [&_svg]:invisible"
                           )}
                         >
-                          <Check className={cn("h-4 w-4")} />
+                          <Check className="size-3" />
                         </div>
                         <span>{group.label}</span>
                       </CommandItem>

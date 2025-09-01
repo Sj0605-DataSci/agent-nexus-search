@@ -9,7 +9,7 @@ interface ProfileHeaderProps {
 
 export default function ProfileHeader({ profile }: ProfileHeaderProps) {
   return (
-    <div className="rounded-xl shadow-md p-6 border bg-white border-gray-200">
+    <div className="p-4 rounded-lg border bg-white border-gray-200 transition-all hover:shadow-md">
       <div className="flex items-center space-x-4">
         <div className="p-3 rounded-full bg-indigo-100">
           <User className="h-6 w-6 text-indigo-600" />

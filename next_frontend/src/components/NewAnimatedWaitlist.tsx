@@ -6,6 +6,7 @@ import { FiUser, FiMail, FiPhone, FiLoader } from "react-icons/fi";
 import { FaLinkedin } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/integrations/fastapi/client";
+import CountryCodeSelector from "./CountryCodeSelector";
 
 interface InputFieldProps {
   id: string;
@@ -46,10 +47,22 @@ const CompactInputField: React.FC<InputFieldProps> = ({
       />
       <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">{icon}</div>
     </div>
-    <div className=" mb-[4px] px-1 h-1">
+    <div className="mt-1.5">
       {error && (
-        <div className="flex items-center">
-          <p className="text-xs text-red-500">{error}</p>
+        <div className="bg-red-50/50 border border-red-100 rounded-md px-2.5 py-1 flex items-center">
+          <svg
+            className="w-3.5 h-3.5 text-red-400 mr-1.5 flex-shrink-0"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <p className="text-red-500/90 text-xs">{error}</p>
         </div>
       )}
     </div>
@@ -128,6 +141,7 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
     phone: "",
     linkedin_url: "",
   });
+  const [fullPhoneNumber, setFullPhoneNumber] = useState("+91-");
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -151,11 +165,8 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
       errors.email = "Please enter a valid email address";
     }
 
-    const phoneRegex = /^[0-9]{10}$/;
     if (!phone) {
       errors.phone = "Phone number is required";
-    } else if (!phoneRegex.test(phone)) {
-      errors.phone = "Please enter a valid 10-digit phone number";
     }
 
     const linkedinRegex =
@@ -211,8 +222,8 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
 
   const isButtonDisabled = isSubmitting || isPending;
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 px-4 py-8 flex items-center justify-center">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-100/20 via-transparent to-purple-100/20 pointer-events-none" />
+    <div className="flex items-center justify-center">
+      <div className=" pointer-events-none" />
 
       {/* <div className="absolute top-4 right-4 z-20 flex items-center space-x-3">
         <Link
@@ -231,13 +242,13 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
         </Link>
       </div> */}
 
-      <main className="relative z-10 w-full max-w-sm rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-200/50 p-6">
+      <main className="relative z-10 w-full  rounded-2xl">
         {success ? (
           <SuccessState />
         ) : (
           <div>
             <div className="text-start mb-4">
-              <BrandLogo className="mb-3" />
+              {/* <BrandLogo className="mb-3" /> */}
               <h1 className="text-xl font-bold mb-1 text-gray-900">Join the Waitlist</h1>
               <p className="text-xs text-gray-600 leading-relaxed">
                 Tired of cold outreach? DiscoverMinds helps you make warm, meaningful connections
@@ -270,21 +281,19 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
                 onChange={handleInputChange}
               />
 
-              <CompactInputField
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="10-digit Phone Number"
-                icon={<FiPhone size={16} className="text-gray-400" />}
-                required
-                error={errors.phone}
-                value={formData.phone}
-                onChange={e => {
-                  // Only allow digits and limit to 10 characters
-                  const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                  setFormData(prev => ({ ...prev, phone: value }));
-                }}
-              />
+              <div className="relative mb-4">
+                <CountryCodeSelector
+                  value={fullPhoneNumber}
+                  onChange={value => {
+                    setFullPhoneNumber(value);
+                    const digits = value.split("-")[1] || "";
+                    setFormData(prev => ({ ...prev, phone: digits }));
+                  }}
+                  error={!!errors.phone}
+                  currentError={errors.phone}
+                  icon={<FiPhone size={16} className="text-gray-400" />}
+                />
+              </div>
 
               <CompactInputField
                 id="linkedin_url"
@@ -299,20 +308,31 @@ const NewAnimatedWaitlist: React.FC<{ showSuccess?: boolean }> = ({ showSuccess 
               />
 
               {errors.submit && (
-                <div className="mb-3 p-2 rounded-lg bg-red-50 border border-red-200">
-                  <p className="text-xs text-red-600">{errors.submit}</p>
+                <div className="mb-3 px-2.5 py-1 rounded-md bg-red-50/50 border border-red-100 flex items-center">
+                  <svg
+                    className="w-3.5 h-3.5 text-red-400 mr-1.5 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <p className="text-red-500/90 text-xs">{errors.submit}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isButtonDisabled}
-                // className="w-full py-3 rounded-lg font-semibold text-base bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mb-3"
-                className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
+                className={`w-full py-3.5 rounded-lg font-bold text-base transition-all duration-300 ${
                   isButtonDisabled
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 text-white shadow-lg"
-                }`}
+                    : "bg-[#085157] hover:bg-[#064045] text-white shadow-md hover:shadow-lg"
+                } focus:outline-none focus:ring-2 focus:ring-teal-300`}
               >
                 {isButtonDisabled ? (
                   <span className="flex items-center justify-center gap-2">

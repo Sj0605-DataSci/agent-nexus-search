@@ -3,7 +3,7 @@
 import { useState, useRef, Suspense } from "react";
 import { getSupabaseConfig } from "@/config/supabase";
 import { useRouter } from "next/navigation";
-import { Upload, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle, ArrowLeft, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,10 +19,11 @@ function UploadConnectionsContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error" | string>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
       if (selectedFile.type !== "text/csv" && !selectedFile.name.endsWith(".csv")) {
         setErrorMessage("Please select a CSV file");
         setFile(null);
@@ -32,6 +33,26 @@ function UploadConnectionsContent() {
       setFile(selectedFile);
       setErrorMessage("");
       setUploadStatus("idle");
+      setCountdown(3);
+      
+      // Start countdown
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timer);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Auto upload after 3 seconds
+      setTimeout(() => {
+        clearInterval(timer);
+        if (file) {
+          handleUpload();
+        }
+      }, 3000);
     }
   };
 
@@ -143,13 +164,12 @@ function UploadConnectionsContent() {
 
   return (
     <div
-      className={`min-h-screen ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
     >
       <div className="container mx-auto px-4 pt-8 pb-16 max-w-2xl">
         <Button
           onClick={() => router.back()}
           variant="ghost"
-          className={`mb-6 flex items-center gap-2 ${darkMode ? "text-white hover:text-gray-300" : "text-gray-900 hover:text-gray-700"}`}
+          className={`mb-6 bg-gray-100 flex items-center gap-2 ${darkMode ? "text-white hover:text-gray-300" : "text-gray-900 hover:text-gray-700"}`}
         >
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -215,15 +235,66 @@ function UploadConnectionsContent() {
             </div>
           )}
 
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleUpload} disabled={!file || uploading} className="px-6">
-              {uploading ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span>
-                  Uploading...
-                </>
+          <div className="mt-8 flex justify-end">
+            <Button
+              onClick={handleUpload}
+              disabled={!file || uploading}
+              className={`relative overflow-hidden transition-all duration-300 px-8 py-2.5 rounded-lg font-medium text-sm ${
+                !file || uploading
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transform transition-all'
+              }`}
+            >
+              {countdown !== null ? (
+                <div className="flex items-center h-6">
+                  <div className="relative w-5 h-5 mr-2.5 flex-shrink-0">
+                    <svg className="w-full h-full" viewBox="0 0 24 24">
+                      <circle
+                        className="text-blue-100"
+                        strokeWidth="2"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="10"
+                        cx="12"
+                        cy="12"
+                      />
+                      <circle
+                        className="text-blue-500"
+                        strokeWidth="2"
+                        strokeDasharray="63"
+                        strokeDashoffset={63 - (countdown / 3) * 63}
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="10"
+                        cx="12"
+                        cy="12"
+                      />
+                    </svg>
+                    {/* <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold leading-none">
+                      {countdown}
+                    </span> */}
+                  </div>
+                  <span className="text-sm">Uploading in {countdown}s...</span>
+                </div>
+              ) : uploading ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </div>
               ) : (
-                "Upload File"
+                <div className="flex items-center">
+                  <UploadCloud className="w-5 h-5 mr-2" />
+                  <span>Upload Connections</span>
+                </div>
+              )}
+              {!file && (
+                <span className="absolute -bottom-6 left-0 right-0 text-xs text-gray-500 text-center transition-opacity duration-200">
+                  Please select a file first
+                </span>
               )}
             </Button>
           </div>

@@ -23,7 +23,7 @@ body {
   }
 }
 
-@layer base {
+/* @layer base {
   :root {
     --background: #ffffff;
     --foreground: #0f1729;
@@ -34,7 +34,7 @@ body {
     --popover: #ffffff;
     --popover-foreground: #0f1729;
 
-    --primary: #5d9cec;
+    --primary: #0f5b5c;
     --primary-foreground: #f5f9ff;
 
     --secondary: #f1f5f9;
@@ -93,7 +93,7 @@ body {
     --border: #1e293b;
     --input: #1e293b;
     --ring: #cbd5e1;
-    
+
     --sidebar-background: #1a1a1f;
     --sidebar-foreground: #f4f4f5;
     --sidebar-primary: #4f46e5;
@@ -103,7 +103,7 @@ body {
     --sidebar-border: #27272a;
     --sidebar-ring: #5d9cec;
   }
-}
+} */
 
 #root {
   max-width: 1280px;
@@ -183,11 +183,11 @@ body {
   background-color: rgba(93, 156, 236, 0.9);
 }
 .text-primary {
-  color: #5D9CEC !important;
+  color: #5d9cec !important;
 }
 
 .bg-primary {
-  background-color: #5D9CEC !important;
+  background-color: #5d9cec !important;
 }
 /* Success Message Animations */
 @keyframes fadeInUp {

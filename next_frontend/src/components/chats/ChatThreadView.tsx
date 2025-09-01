@@ -913,10 +913,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       )}
       {messages && messages.length > 0 && (
         <div className="w-full md:px-20 overflow-y-scroll">
-          <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
-          </div>
-
           <div className="space-y-6">
             {messages.map(m => {
               return (
@@ -932,41 +928,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                               isStreaming={isStreaming}
                             />
                           )}
-                          {m.sources && m.sources.length > 0 ? (
-                            <div className="mb-4 border-b border-gray-200">
-                              <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-                                <li className="mr-2">
-                                  <button
-                                    onClick={() => setActiveTab("content")}
-                                    className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
-                                      activeTab === "content"
-                                        ? "text-blue-600 border-blue-600 font-semibold"
-                                        : "text-gray-500 border-transparent hover:text-gray-600"
-                                    } duration-200`}
-                                  >
-                                    <BsTextParagraph className="w-4 h-4 mr-2" />
-                                    Content
-                                  </button>
-                                </li>
-                                <li className="mr-2">
-                                  <button
-                                    onClick={() => setActiveTab("sources")}
-                                    className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
-                                      activeTab === "sources"
-                                        ? "text-blue-600 border-blue-600 font-semibold"
-                                        : "text-gray-500 border-transparent hover:text-gray-600"
-                                    } duration-200`}
-                                  >
-                                    <FiLink className="w-4 h-4 mr-2" />
-                                    Sources
-                                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
-                                      {m.sources.length}
-                                    </span>
-                                  </button>
-                                </li>
-                              </ul>
-                            </div>
-                          ) : null}
 
                           {(!m.sources || m.sources.length === 0 || activeTab === "content") &&
                             !isStreaming && (
@@ -1005,7 +966,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                             <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
                           )}
 
-                          <div className="mt-4  flex justify-between items-center">
+                          <div className="mt-3 pb-4 px-3 flex justify-between items-center">
                             <span
                               title={getFullTimestamp(m.timestamp)}
                               className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"

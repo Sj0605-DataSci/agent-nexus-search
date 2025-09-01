@@ -3,10 +3,13 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 
 interface BrandLogoProps {
   variant?: "full" | "text-only";
   className?: string;
+  showCrossIcon?: boolean;
   showLink?: boolean;
   size?: "small" | "medium" | "large";
 }
@@ -15,8 +18,11 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   variant = "full",
   className = "",
   showLink = true,
+  showCrossIcon = false,
   size = "medium",
 }) => {
+  const router = useRouter();
+
   // Size configurations
   const sizeConfig = {
     small: {
@@ -37,7 +43,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       iconSize: 36,
       iconContainer: "w-9 h-9",
       iconClass: "h-9 w-9",
-      textSize: "text-3xl",
+      textSize: "text-3xl ml-1",
       gap: "gap-3",
     },
   };
@@ -60,7 +66,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         </div>
       )}
       <span
-        className={`${textSize} ${variant === "full" ? "font-bold" : "font-semibold"} text-gray-900 ${
+        className={`${textSize}  ${variant === "full" ? "font-bold " : "font-semibold"} text-gray-900 ${
           variant === "text-only" ? "text-gray-500" : ""
         }`}
       >
@@ -70,7 +76,23 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   );
 
   if (showLink) {
-    return (
+    return showCrossIcon ? (
+      <Link
+        prefetch
+        href="/"
+        className={`inline-flex items-center w-full justify-between ${gap} ${className}`}
+      >
+        <div className=" flex flex-row">{logoContent}</div>
+        <div className="relative flex   justify-between items-center">
+          <button
+            onClick={() => router.push("/")}
+            className=" p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            <X size={20} className="text-gray-500" />
+          </button>
+        </div>
+      </Link>
+    ) : (
       <Link prefetch href="/" className={`inline-flex items-center ${gap} ${className}`}>
         {logoContent}
       </Link>

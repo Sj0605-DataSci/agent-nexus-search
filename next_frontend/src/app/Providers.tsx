@@ -20,7 +20,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { supabaseHandler } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
-import { ClerkProvider } from "@clerk/nextjs";
+// import { ClerkProvider } from "@clerk/nextjs";
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
@@ -144,7 +144,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ReduxProvider store={store}>
         <ThemeProvider attribute="class" forcedTheme="light">
-          <ClerkProvider>
+          {/* <ClerkProvider> */}
             <AuthProvider>
               <Toaster position="top-center" reverseOrder={false} />
               <ProfileDataFetcher>
@@ -170,7 +170,7 @@ export function Providers({ children }: { children: ReactNode }) {
                 </PostHogProvider>
               </ProfileDataFetcher>
             </AuthProvider>
-          </ClerkProvider>
+          {/* </ClerkProvider> */}
         </ThemeProvider>
       </ReduxProvider>
     </QueryClientProvider>
