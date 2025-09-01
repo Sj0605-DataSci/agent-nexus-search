@@ -19,6 +19,7 @@ import TagCarousel, { TagCategories } from "./TagCarousel";
 import { renderAsTable } from "./StructuredDataUtils";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
+import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
 import FeedbackModule from "./FeedbackModule"; // Import FeedbackModule component
 
