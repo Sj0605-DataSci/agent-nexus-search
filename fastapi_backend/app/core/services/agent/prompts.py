@@ -339,12 +339,17 @@ IMPORTANT REMINDERS:
 - Always filter by user_id = '{user_id}'
 - Use PostgreSQL ILIKE syntax (NOT MySQL MATCH/AGAINST)
 - Return only valid PostgreSQL SQL
+- DO NOT use row_to_json() wrapper - return direct SELECT results
 
 Example for "Find John Smith at Google":
-SELECT * FROM connections 
+SELECT id, first_name, last_name, headline, about_section, 
+       experience_json, education_json, skills, linkedin_url, 
+       company, position, location, profile_photo_url, embedding_generated_at
+FROM connections 
 WHERE user_id = '{user_id}'
 AND (first_name ILIKE '%John%' AND last_name ILIKE '%Smith%')
 AND company ILIKE '%Google%'
+ORDER BY embedding_generated_at DESC, created_at DESC
 LIMIT 10;"""
 
 # Keep original for backward compatibility

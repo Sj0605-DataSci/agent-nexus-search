@@ -73,8 +73,8 @@ def run_development():
             "--worker-class", "uvicorn.workers.UvicornWorker",
             "--workers", "1",     # Start with 1 worker for debugging
             "--bind", "0.0.0.0:8000",
-            "--timeout", "120",
-            "--graceful-timeout", "30",
+            "--timeout", "3600",
+            "--graceful-timeout", "300",
             "--worker-tmp-dir", "/tmp",
             "--reload",
             "--access-logfile", "-",

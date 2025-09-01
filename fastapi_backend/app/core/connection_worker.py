@@ -8,9 +8,12 @@ import uuid
 import traceback
 import csv
 import requests
+import os
+import sys
 from datetime import datetime
 from typing import Dict, Any, List, Union, Optional
 
+# LinkedIn enrichment will be handled by background service
 from app.db.redis_client import redis_client
 from app.db.clients import get_async_supabase_client
 
@@ -29,6 +32,8 @@ class ConnectionWorker:
         self.worker_id = str(uuid.uuid4())
         self.running = False
         self.current_task = None
+        
+        # No longer need enrichment package - using separate enrichment worker
     
     async def start(self):
         """Start the worker process"""
@@ -145,6 +150,9 @@ class ConnectionWorker:
             await self._update_file_status(supabase, file_id, "completed")
             logger.info(f"Successfully processed connection file {file_id}")
             
+            # Trigger LinkedIn enrichment as separate background task
+            await self._trigger_enrichment_task(user_id, connections)
+            
         except Exception as e:
             logger.error(f"Error processing connection file {file_id}: {e}")
             logger.error(traceback.format_exc())
@@ -165,10 +173,79 @@ class ConnectionWorker:
             except Exception as e:
                 logger.error(f"Error removing connection task from processing: {str(e)}")
     
+    async def _trigger_enrichment_task(self, user_id: str, connections: List[Dict[str, Any]]):
+        """Trigger LinkedIn enrichment as separate background task"""
+        try:
+            # Extract LinkedIn URLs from connections
+            linkedin_urls = []
+            for conn in connections:
+                url = conn.get('url', '').strip()
+                if url and 'linkedin.com/in/' in url:
+                    linkedin_urls.append(url)
+            
+            if not linkedin_urls:
+                logger.info("No LinkedIn URLs found in connections")
+                return
+            
+            logger.info(f"Enqueueing enrichment task for {len(linkedin_urls)} LinkedIn URLs")
+            
+            # Create enrichment task
+            enrichment_task = {
+                "user_id": user_id,
+                "linkedin_urls": linkedin_urls,
+                "created_at": datetime.now().isoformat(),
+            }
+            
+            # Add to enrichment queue
+            client = await redis_client.get_client()
+            await client.lpush("enrichment:queue", json.dumps(enrichment_task))
+            
+            logger.info(f"Enqueued enrichment task for user {user_id} with {len(linkedin_urls)} URLs")
+            
+        except Exception as e:
+            logger.error(f"Error triggering enrichment task: {str(e)}")
+            # Don't raise - enrichment is optional
+    
+    async def _update_enriched_profiles(self, user_id: str, results):
+        """Update database with enriched profile data"""
+        try:
+            supabase = await get_async_supabase_client()
+            
+            for result in results.results:
+                if not result.success or not result.profile_data:
+                    continue
+                
+                profile = result.profile_data
+                
+                # Prepare update data
+                update_data = {
+                    'company': profile.current_company,
+                    'position': profile.current_position,
+                    'location': profile.location,
+                    'email_address': profile.email,
+                    'about_section': profile.about_section,
+                    'experience_json': profile.experience,
+                    'education_json': profile.education,
+                    'skills': profile.skills,
+                    'connections_count': profile.connections_count,
+                    'followers_count': profile.followers_count,
+                    'enriched_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Update the connection record
+                await supabase.table("connections").update(update_data).eq(
+                    "user_id", user_id
+                ).eq("linkedin_url", profile.linkedin_url).execute()
+                
+        except Exception as e:
+            logger.error(f"Error updating enriched profiles: {str(e)}")
+            # Don't raise - this is optional
+    
     async def _download_file(self, file_url: str) -> Optional[str]:
         """Download file from URL and return its content"""
         try:
-            response = requests.get(file_url)
+            response = requests.get(file_url, timeout=10)
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
@@ -245,7 +322,7 @@ class ConnectionWorker:
                     'last_name': conn.get('last_name', ''),
                     'company': conn.get('company', ''),
                     'position': conn.get('position', ''),
-                    'source': 'File',
+                    'source': 'Linkedin CSV File',
                     'linkedin_url': conn.get('url', ''),
                     'connected_on': conn.get('connected_on', ''),
                     'created_at': datetime.now().isoformat(),
@@ -271,24 +348,54 @@ class ConnectionWorker:
             logger.error(f"Error inserting connections: {e}")
             return False
     
-    async def _update_file_status(self, supabase, file_id: str, status: str, error_message: Optional[str] = None) -> bool:
-        """Update the status of a connection file"""
+    async def _update_file_status(self, supabase, file_id: str, status: str, message: str = None):
+        """Stream file processing status via Redis pub/sub and update database"""
         try:
-            data = {"status": status, "updated_at": datetime.now().isoformat()}
-            if error_message:
-                data["error_message"] = error_message
-                
-            response = await supabase.table("connection_files").update(data).eq("id", file_id).execute()
+            # Create status update payload
+            status_update = {
+                "file_id": file_id,
+                "status": status,
+                "message": message or f"Status: {status}",
+                "timestamp": datetime.now().isoformat(),
+                "type": "connection_file_status"
+            }
             
-            if hasattr(response, 'error') and response.error:
-                logger.error(f"Error updating file status: {response.error}")
-                return False
+            # Stream to Redis for real-time updates
+            client = await redis_client.get_client()
+            
+            # Publish to file-specific channel
+            file_channel = f"connection_file_status:{file_id}"
+            await client.publish(file_channel, json.dumps(status_update))
+            
+            # Get user_id from file record and publish to user channel
+            try:
+                file_response = await supabase.table("connection_files").select("user_id").eq("id", file_id).execute()
+                if file_response.data:
+                    user_id = file_response.data[0]["user_id"]
+                    user_channel = f"user_updates:{user_id}"
+                    await client.publish(user_channel, json.dumps(status_update))
+            except Exception as e:
+                logger.warning(f"Could not publish to user channel: {str(e)}")
+            
+            # Also update database as backup
+            update_data = {"status": status}
+            if message:
+                update_data["status_message"] = message
                 
-            return True
+            await supabase.table("connection_files").update(update_data).eq("id", file_id).execute()
+            
+            logger.info(f"Streamed connection file status {file_id}: {status} - {message}")
             
         except Exception as e:
-            logger.error(f"Error updating file status: {e}")
-            return False
+            logger.error(f"Error streaming connection file status: {str(e)}")
+            # Fallback to database-only update
+            try:
+                update_data = {"status": status}
+                if message:
+                    update_data["status_message"] = message
+                await supabase.table("connection_files").update(update_data).eq("id", file_id).execute()
+            except Exception as db_error:
+                logger.error(f"Database fallback also failed: {str(db_error)}")
 
 
 # Helper function for enqueueing tasks

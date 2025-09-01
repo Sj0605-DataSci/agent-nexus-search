@@ -583,128 +583,79 @@ class ChatService:
                             "search_mode": search_mode
                         }
                     }
-            
-                async for chunk_type, chunk_data in graph_2.astream(
-                    initial_state, 
-                    stream_mode=["messages", "updates"]
-                ):
-                # Handle different types of streaming chunks
-                    if chunk_type == "messages":
-                        # This is a token from an LLM
-                        message_chunk, metadata = chunk_data
-                        if metadata.get("langgraph_node") == "sql_query_generation":
-                            pass
-                        elif metadata.get("langgraph_node") == "finalize_answer":
-                            pass
-                        else:
-                            if message_chunk.content:
-                                # Stream the token with metadata about which node it came from
-                                yield {
-                                "type": "token",
-                                "content": message_chunk.content,
-                            "node": metadata.get("langgraph_node"),
-                            "tags": metadata.get("tags", [])
-                            }
                     
-                    elif chunk_type == "updates":
-                        # This is a state update from a node
-                        node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
-                        node_data = chunk_data.get(node_name, {})
+                    # Stream the graph execution
+                    async for chunk in graph_2.astream(initial_state, stream_mode=["messages", "updates"]):
+                        chunk_type, chunk_data = chunk
                         
-                        # Handle different types of updates based on the node
-                        if node_name == "generate_query":
+                        # Handle different types of streaming chunks
+                        if chunk_type == "messages":
+                            # This is a token from an LLM
+                            message_chunk, metadata = chunk_data
+                            if metadata.get("langgraph_node") == "finalize_sql_answer":
+                                if message_chunk.content:
+                                    yield {
+                                        "type": "token",
+                                        "content": message_chunk.content,
+                                        "node": metadata.get("langgraph_node"),
+                                        "tags": metadata.get("tags", [])
+                                    }
+                        
+                        elif chunk_type == "updates":
+                            # This is a state update from a node
+                            node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
+                            node_data = chunk_data.get(node_name, {})
                             
-                            if "search_query" in node_data:
-                                # Stream search queries
-                                for query in node_data["search_query"]:
-                                    if isinstance(query, dict) and "query" in query:
-                                        yield {
-                                            "type": "search_query",
-                                            "content": {"query": query["query"]}
-                                        }
-                                    elif isinstance(query, str):
-                                        yield {
-                                            "type": "search_query",
-                                            "content": {"query": query}
-                                        }
-                        
-                        # Handle generate_sql_queries node from graph_2.py
-                        if node_name == "generate_sql_queries":
-                            # Stream search queries
-                            if "search_query" in node_data:
-                                for query in node_data["search_query"]:
-                                    if isinstance(query, dict) and "query" in query:
-                                        yield {
-                                            "type": "search_query",
-                                            "content": {"query": query["query"]}
-                                        }
-                                    elif isinstance(query, str):
-                                        yield {
-                                            "type": "search_query",
-                                            "content": {"query": query}
-                                        }
+                            # Handle only graph_2.py nodes
+                            if node_name == "query_analysis":
+                                # Stream keyphrases, traits, filters from query analysis
+                                if "query_analysis" in node_data:
+                                    analysis = node_data["query_analysis"]
+                                    yield {
+                                        "type": "query_analysis",
+                                        "content": {
+                                            "keyphrases": analysis.get("keyphrases", {}),
+                                            "traits": analysis.get("traits", {}),
+                                            "filters": analysis.get("filters", {})                                        }
+                                    }
                             
-                            # Stream SQL queries
-                            if "sql_queries" in node_data:
-                                for query in node_data["sql_queries"]:
-                                    if isinstance(query, str):
-                                        yield {
-                                            "type": "sql_queries",
-                                            "content": {"query": query}
+                            elif node_name == "vector_search":
+                                # Stream vector search progress and results
+                                if "vector_results" in node_data:
+                                    yield {
+                                        "type": "vector_search_results",
+                                        "content": {
+                                            "message": f"🔍 Found {len(node_data['vector_results'])} semantic matches"
                                         }
+                                    }
                             
-                            # Stream SQL results
-                            if "web_research_result" in node_data:
-                                yield {
-                                    "type": "web_research_result",
-                                    "content": {"web_research_result": node_data["web_research_result"]}
-                                }
-                        
-                        if node_name == "web_research":                
-                            if "sources_gathered" in node_data:
-                                yield {
-                                    "type": "sources",
-                                    "content": {"sources": node_data["sources_gathered"]}
-                                }
-                            if "web_research_result" in node_data:
-                                yield {
-                                    "type": "web_research_result",
-                                    "content": {"web_research_result": node_data["web_research_result"]}
-                                }    
-                        if node_name == "sql_query_generation":                
-                            for query in node_data["sql_queries"]:
-                                    if isinstance(query, dict) and "query" in query:
-                                        yield {
-                                            "type": "sql_queries",
-                                            "content": {"query": query["query"]}
+                            elif node_name == "sql_search":
+                                # Stream SQL queries and keyword search results
+                                if "sql_queries" in node_data:
+                                    for sql_query in node_data["sql_queries"]:
+                                        if isinstance(sql_query, str):
+                                            yield {
+                                                "type": "sql_query",
+                                                "content": {"query": sql_query}
+                                            }
+                                
+                                if "sql_results" in node_data:
+                                    yield {
+                                        "type": "sql_search_results",
+                                        "content": {
+                                            "message": f"📊 Found {len(node_data['sql_results'])} keyword matches"
                                         }
-                                    elif isinstance(query, str):
-                                        yield {
-                                            "type": "sql_queries",
-                                            "content": {"query": query}
+                                    }
+                            
+                            elif node_name == "fusion_ranking":
+                                # Stream fusion ranking results
+                                if "final_results" in node_data:
+                                    yield {
+                                        "type": "fusion_ranking",
+                                        "content": {
+                                            "message": f"⚡ Merged and ranked {len(node_data['final_results'])} total results"
                                         }
-                        if node_name == "sql_query_execution":                
-                            yield {
-                                "type": "web_research_result",
-                                "content": {"web_research_result": node_data["web_research_result"]}
-                            }    
-                        if node_name == "reflection":                
-                            yield {
-                                "type": "reflection",
-                                "content": {"is_sufficient": node_data["is_sufficient"], "follow_up_queries": node_data["follow_up_queries"], "knowledge_gap": node_data["knowledge_gap"]}
-                            }
-                        if node_name == "finalize_answer":                
-                            yield {
-                                "type": "finalize_answer",
-                                "content": {"messages": node_data["messages"], "sources_gathered": node_data["sources_gathered"]}
-                            }
-                        
-                        # Handle finalize_sql_answer node from graph_2.py
-                        if node_name == "finalize_sql_answer":
-                            yield {
-                                "type": "finalize_answer",
-                                "content": {"messages": node_data["messages"], "sources_gathered": node_data["sources_gathered"]}
-                            }        
+                                    }       
             
                 # Get updated user subscription for final credit info
                 user_subscription = await credit_service.get_user_subscription_optimized(user_id)

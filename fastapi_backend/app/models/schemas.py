@@ -12,6 +12,43 @@ logger = logging.getLogger(__name__)
 # Standard API Response Schemas
 T = TypeVar('T')
 
+# Pydantic models for enhanced search
+class ScoredProfile(BaseModel):
+    profile_id: str
+    linkedin_url: str
+    all_quotes: List[str]
+    yes_confidence: float
+    yes_quotes: List[str]
+    yes_matching_traits: List[str]
+    maybe_confidence: float
+    maybe_quotes: List[str]
+    maybe_matching_traits: List[str]
+    no_confidence: float
+    no_quotes: List[str]
+    no_matching_traits: List[str]
+
+class ScoredProfilesResponse(BaseModel):
+    profiles: List[ScoredProfile]
+
+class SearchFilters(BaseModel):
+    location: Optional[List[str]] = []
+    work_experience: Optional[List[str]] = []
+    company: Optional[List[str]] = []
+    position: Optional[List[str]] = []
+    skills: Optional[List[str]] = []
+
+class SearchTraits(BaseModel):
+    traits: List[str] = []
+    descriptions: List[str] = []
+
+class SearchKeyphrases(BaseModel):
+    keyphrases: List[str] = []
+
+class QueryAnalysis(BaseModel):
+    filters: SearchFilters
+    traits: SearchTraits
+    keyphrases: SearchKeyphrases
+
 class StandardResponse(BaseModel, Generic[T]):
     """Standard response format for all API endpoints"""
     success: bool

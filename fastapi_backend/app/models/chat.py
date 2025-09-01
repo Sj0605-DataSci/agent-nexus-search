@@ -70,6 +70,33 @@ class OverallState(BaseModel):
     weave_url: Annotated[str, lambda x, y: y or x] = Field(
         description="The URL of the Weave graph."
     )
+    agent_id: Annotated[str, lambda x, y: y or x] = Field(
+        description="The ID of the agent."
+    )
+    query_analysis: Annotated[Optional[Dict[str, Any]], lambda x, y: y or x] = Field(
+        description="Query analysis results with keyphrases, traits, filters.",
+        default_factory=dict
+    )
+    user_query: Annotated[str, lambda x, y: y or x] = Field(
+        description="The original user query string.",
+        default=""
+    )
+    vector_results: Annotated[Optional[list], lambda x, y: y or x] = Field(
+        description="Vector search results - list of profile IDs.",
+        default_factory=list
+    )
+    vector_similarity_data: Annotated[Optional[Dict[str, Any]], lambda x, y: y or x] = Field(
+        description="Vector similarity data and matching keyphrases.",
+        default_factory=dict
+    )
+    sql_results: Annotated[Optional[list], lambda x, y: y or x] = Field(
+        description="SQL search results - list of profiles.",
+        default_factory=list
+    )
+    final_results: Annotated[Optional[list], lambda x, y: y or x] = Field(
+        description="Final ranked and scored results.",
+        default_factory=list
+    )
 
 class ReflectionState(BaseModel):
     messages: Annotated[list, add_messages] = Field(

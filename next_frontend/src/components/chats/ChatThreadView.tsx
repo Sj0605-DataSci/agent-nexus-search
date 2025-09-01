@@ -21,6 +21,7 @@ import TagCarousel, { TagCategories } from "./TagCarousel";
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
+import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
 
 const FeedbackModal = dynamic(() => import("./FeedbackModal"));
@@ -837,8 +838,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             onKey={handleKeyDown}
             onSubmit={handleSubmit}
             isStreaming={isStreaming}
-            hideGroupOption={false}
-          />
+            hideGroupOption={false} defaultSearchButton={false}          />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[

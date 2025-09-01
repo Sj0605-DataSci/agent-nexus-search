@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 import os
 from dotenv import load_dotenv
 
@@ -74,7 +75,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     SUPABASE_JWT_EXPIRY: int = int(os.getenv("SUPABASE_JWT_EXPIRY", "3600"))
+    
+    # LinkedIn Enrichment API Keys
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+    APIFY_API_KEY: str = os.getenv("APIFY_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     # Use Railway Redis environment variables if available
     REDIS_HOST: str = os.getenv("REDISHOST", "localhost")

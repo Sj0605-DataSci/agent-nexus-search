@@ -25,6 +25,7 @@ google-genai
 exa-py
 tavily-python
 firecrawl
+apify-client
 
 # Database clients
 supabase
