@@ -401,15 +401,12 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
 
         cache_key = f"graph2:sql_search:{user_id}:{user_query}"
         
-        cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             return OverallState(**cached_result)
         
         supabase_client = await get_async_supabase_client()
         
         # Extract traits and filters for keyword generation
-        filters = query_analysis.get("filters", {})
-        traits = query_analysis.get("traits", {}).get("traits", [])
         
         # Prepare search context for LLM
         search_context = {
@@ -557,11 +554,7 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
         if cached_result is not None:
             return OverallState(**cached_result)
         
-        supabase_client = await get_async_supabase_client()
         
-        # Get results from parallel nodes
-        vector_profile_ids = state.get("vector_results", [])
-        vector_similarity_data = state.get("vector_similarity_data", {})
         keyword_results = state.get("sql_results", [])
         
         # Get vector search profiles from database
@@ -579,11 +572,7 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
                 
                 if valid_profile_ids:
                     result = await supabase_client.table("connections").select(
-                        "id, first_name, last_name, headline, about_section, "
                         "experience_json, education_json, skills, linkedin_url, "
-                        "company, position, location, profile_photo_url, embedding_generated_at"
-                    ).eq("user_id", user_id).in_("id", valid_profile_ids).order(
-                        "embedding_generated_at", desc=True
                     ).order("created_at", desc=True).execute()
                     
                     vector_results = result.data if result.data else []
@@ -952,7 +941,6 @@ Profiles to Score:
         
         message_content = json.dumps(response_data, indent=2, ensure_ascii=False)
         final_message = AIMessage(content=message_content)
-    
     try:
         # Update message in database
         await supabase_client.table("chat_messages").update({
@@ -969,9 +957,6 @@ Profiles to Score:
         "messages": [final_message],
         "sources_gathered": state.get("sources_gathered", []),
     }
-    await redis_client.set(cache_key, result, expire=3600)
-    return result
-
 
 # Add custom key functions for caching
 # @traceable(project_name="Discoverminds",name="query caching inmem")
