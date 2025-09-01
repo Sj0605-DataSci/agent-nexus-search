@@ -1,26 +1,18 @@
 from typing import List, Union
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
-from langgraph.types import Send
 from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
-from app.models.chat import OverallState, WebSearchState, QueryWriterOutput
+from app.models.chat import OverallState
 from app.core.utils.llm_utils import GeminiChatModel
 from app.db.clients import get_async_supabase_client
 from app.core.config import settings
-from app.core.services.agent.configuration import Configuration
-from app.core.services.agent.prompts import (
-    get_current_date,
-    optimised_query_system_instruction,
-    optimised_query_user_prompt,
-    sql_query_system_instruction,
-    sql_query_user_prompt,
-    answer_table_system_instruction,
-    answer_table_user_prompt,
-)
-from app.models.schemas import PersonDetailsResponse
+from app.models.schemas import QueryAnalysis, ScoredProfilesResponse
 import weave
 from app.core.utils.cache import invalidate_chat_messages_cache
-
+import vecs
+import json
+import asyncio
+from urllib.parse import quote_plus
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
@@ -55,67 +47,77 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     return research_topic
 
 
+# ===== NODE 1: Query Analysis =====
 @weave.op
-async def generate_sql_queries(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Fast SQL query generation node - combines query generation and execution for speed."""
+async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Analyze user query and extract filters, traits, and keyphrases."""
     try:
         if hasattr(state, "model_dump"):
             state = state.model_dump()
 
         supabase_client = await get_async_supabase_client()
         
-        # Use fast model for quick response
         model = "gemini-2.5-flash"
-        
         agent_config = state["agent_config"]
         agent_id = agent_config["id"]
         user_id = agent_config["user_id"]
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
         
-        # Generate optimized search queries first
-        initial_search_query_count = state.get("initial_search_query_count", 3)
+        user_query = get_research_topic(state["messages"])
         
-        # Format system instruction for query optimization
-        system_instruction = optimised_query_system_instruction.format(
-            number_queries=initial_search_query_count
-        )
+        print(f"NODE 1: Analyzing query and extracting filters, traits, keyphrases")
         
-        # Format user prompt
-        user_prompt = optimised_query_user_prompt.format(
-            research_topic=get_research_topic(state["messages"])
-        )
+        system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
+
+Extract exactly 9 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
+
+Given a user's search query, you need to:
+1. Paraphrase the query in a clear, professional manner
+2. Extract relevant filters (location, work experience, company, position, skills)
+3. Identify key traits the user is looking for in people
+4. Extract exactly 9 important keyphrases for semantic search (or fewer if query is simple)
+
+Lets say i searched : Tech founders in NYC who raised a pre-seed round
+
+filters : [Location, Work Work Including prior work experience]
+traits : [Is a tech founder,Is based in NYC, Has closed a pre-seed funding round of less than or approximately $3M]
+keyphrases : [Startup founder in technology,Entrepreneur in the tech sector,Built a tech company from the ground up,Lives in New York City,NYC-based professional,Operating out of the greater New York area,Raised pre-seed capital,Secured early-stage funding under $3 million,Closed a seed round of approximately $2.5M]
+
+Be thorough but precise. Focus on professional attributes and qualifications."""
+
+        user_prompt = f"""Analyze this search query and extract structured information:
+
+Query: "{user_query}"
+
+Please provide:
+1. A paraphrased version of the query
+2. Filters for location, work experience, company, position, skills
+3. Key traits the user is looking for (e.g., "tech founder", "startup experience", "AI expertise")
+4. Exactly 9 important keyphrases for semantic matching (or fewer if query is simple)
+"""
+
+        llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction)
         
-        # Create LLM with system instruction
-        llm = GeminiChatModel(
-            model=model,
-            temperature=0,
-            system_instruction=system_instruction
-        )
-        
-        # Generate the search queries
+        # Generate query analysis
         response, usage_metadata = await llm.with_structured_output(
-            schema_type=QueryWriterOutput, 
+            schema_type=QueryAnalysis, 
             prompt=user_prompt
         )
         
-        # Convert to expected format
-        search_queries = []
-        for query in response.query:
-            search_queries.append({
-                "query": query, 
-                "rationale": response.rationale
-            })
+        print(f"✅ Query analysis complete: {len(response.keyphrases.keyphrases)} keyphrases extracted")
         
-        # Log query generation to Supabase
+        # Store query analysis in state for other nodes
+        state["query_analysis"] = response.model_dump()
+        state["user_query"] = user_query
+        
+        # Log query analysis
         try:
-            query_strings = [q["query"] for q in search_queries]
             await supabase_client.table("chat_messages").update({
-                "sub_queries": query_strings, 
+                "sub_queries": response.keyphrases.keyphrases,
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
-            # Invalidate chat messages cache for this thread
             invalidate_chat_messages_cache(chat_thread_id)
             
             # Log costs
@@ -130,7 +132,7 @@ async def generate_sql_queries(state: OverallState, config: RunnableConfig) -> O
                 "chat_thread_id": chat_thread_id,
                 "message_id": current_message_id,
                 "model": model,
-                "node": "generate_sql_queries",
+                "node": "query_analysis",
                 "model_input_tokens": float(input_tokens), 
                 "model_output_tokens": float(output_tokens), 
                 "model_cost_dollar": float(cost_dollar),
@@ -140,112 +142,13 @@ async def generate_sql_queries(state: OverallState, config: RunnableConfig) -> O
         except Exception as e:
             pass
         
-        # Now generate SQL queries for each search query
-        sql_queries = []
-        
-        # Format system instruction for SQL generation
-        sql_system_instruction = sql_query_system_instruction.format(
-            user_id=user_id,
-            number_of_results_returned=state.get("number_of_results_returned", 10)
-        )
-        
-        # Create SQL LLM
-        sql_llm = GeminiChatModel(
-            model=model,
-            temperature=0,
-            system_instruction=sql_system_instruction
-        )
-        
-        # Generate SQL for each query
-        for search_query in search_queries:
-            query_text = search_query["query"]
-            
-            # Format user prompt for SQL
-            sql_user_prompt = sql_query_user_prompt.format(
-                user_id=user_id,
-                subquery=query_text
-            )
-            
-            # Generate SQL query
-            sql_response = await sql_llm.ainvoke(sql_user_prompt)
-            sql_usage_metadata = sql_response.usage_metadata
-            
-            # Extract SQL content
-            if hasattr(sql_response, 'content'):
-                sql_query = sql_response.content.strip()
-            else:
-                sql_query = str(sql_response).strip()
-            
-            # Clean up SQL query
-            if "```sql" in sql_query:
-                sql_query = sql_query.split("```sql")[1].split("```")[0].strip()
-            elif "```" in sql_query:
-                sql_query = sql_query.split("```")[1].strip()
-            
-            sql_queries.append(sql_query)
-            
-            # Log SQL generation costs
-            try:
-                sql_input_tokens = sql_usage_metadata.get("input_tokens", 0)
-                sql_output_tokens = sql_usage_metadata.get("output_tokens", 0)
-                sql_cost_dollar = (sql_input_tokens/1000000) * 0.15 + (sql_output_tokens/1000000) * 0.60
-                sql_cost_rupees = sql_cost_dollar * 85.86
-                
-                await supabase_client.table("chat_costs").insert({
-                    "user_id": user_id, 
-                    "agent_id": agent_id, 
-                    "chat_thread_id": chat_thread_id,
-                    "message_id": current_message_id,
-                    "model": model,
-                    "node": "sql_generation",
-                    "model_input_tokens": float(sql_input_tokens), 
-                    "model_output_tokens": float(sql_output_tokens), 
-                    "model_cost_dollar": float(sql_cost_dollar),
-                    "model_cost_rupees": float(sql_cost_rupees),
-                    "weave_url": state["weave_url"]
-                }).execute()
-            except Exception as e:
-                pass
-        
-        # Execute SQL queries immediately
-        query_results = []
-        for sql_query in sql_queries:
-            try:
-                # Clean the SQL query
-                clean_query = sql_query.strip().rstrip(';')
-                
-                # Execute with JSON wrapper
-                json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
-                
-                try:
-                    result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
-                    
-                    if result.data:
-                        for row in result.data:
-                            if isinstance(row, dict) and 'to_jsonb' in row:
-                                query_results.append(row['to_jsonb'])
-                            else:
-                                query_results.append(row)
-                except Exception as e:
-                    # Fallback for simple SELECT queries
-                    if sql_query.strip().upper().startswith('SELECT') and 'connections' in sql_query.lower():
-                        try:
-                            result = await supabase_client.table('connections').select('*').eq('user_id', user_id).limit(10).execute()
-                            if result.data:
-                                query_results.extend(result.data)
-                        except Exception as fallback_error:
-                            pass
-            except Exception as e:
-                pass
-        
-        # Return updated state with results
         return OverallState(
             messages=state["messages"],
             intent=state["intent"],
-            format=state.get("format", "table"),
-            search_query=search_queries,
-            sql_queries=sql_queries,
-            web_research_result=query_results,
+            format=state["format"],
+            search_query=[],
+            sql_queries=[],
+            web_research_result=[],
             sources_gathered=[],
             current_message_id=current_message_id,
             agent_config=agent_config,
@@ -253,10 +156,531 @@ async def generate_sql_queries(state: OverallState, config: RunnableConfig) -> O
             user_id=user_id,
             agent_id=agent_id,
             weave_url=state["weave_url"],
-            max_research_loops=state.get("max_research_loops", 1),
-            initial_search_query_count=initial_search_query_count,
-            number_of_results_returned=state.get("number_of_results_returned", 10),
-            world_connections="connections"
+            max_research_loops=state["max_research_loops"],
+            initial_search_query_count=state["initial_search_query_count"],
+            number_of_results_returned=state["number_of_results_returned"],
+            world_connections=state["world_connections"],
+            query_analysis=response.model_dump(),
+            user_query=user_query
+        )
+        
+    except Exception as e:
+        raise
+        
+# ===== NODE 2: Vector Search (Parallel) =====
+@weave.op
+async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Generate embeddings and perform vector search only."""
+    try:
+        if hasattr(state, "model_dump"):
+            state = state.model_dump()
+
+        print(f"NODE 2: Vector search with embeddings")
+        
+        query_analysis = state.get("query_analysis", {})
+        keyphrases = query_analysis.get("keyphrases", {}).get("keyphrases", [])
+        agent_config = state["agent_config"]
+        user_id = agent_config["user_id"]
+        
+        from google import genai
+        gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        
+        keyphrase_embeddings = []
+        for i, keyphrase in enumerate(keyphrases[:9]):  # Limit to 9
+            try:
+                result = gemini_client.models.embed_content(
+                    model="gemini-embedding-001",
+                    contents=keyphrase
+                )
+                
+                if result.embeddings and len(result.embeddings) > 0:
+                    embedding = result.embeddings[0].values
+                    keyphrase_embeddings.append((keyphrase, embedding))
+                    print(f"✅ Generated embedding for keyphrase {i+1}: '{keyphrase}'")
+                else:
+                    print(f"❌ Failed to generate embedding for keyphrase: '{keyphrase}'")
+                    
+                # Rate limiting
+                await asyncio.sleep(0.2)
+                
+            except Exception as e:
+                print(f"❌ Error generating embedding for '{keyphrase}': {str(e)}")
+                continue
+        
+        print(f"✅ Generated {len(keyphrase_embeddings)} embeddings successfully")
+        
+        # ===== STEP 3: Search vector DB with each embedding (3-5 results per keyphrase) =====
+        print(f"STEP 3: Searching vector DB with {len(keyphrase_embeddings)} embeddings")
+        
+        all_vector_results = []
+        try:
+            # Initialize vector client
+            if settings.SUPABASE_USER and settings.SUPABASE_PASSWORD and settings.SUPABASE_HOST and settings.SUPABASE_PORT and settings.SUPABASE_DBNAME:
+                db_url = f"postgresql://{settings.SUPABASE_USER}:{quote_plus(settings.SUPABASE_PASSWORD)}@{settings.SUPABASE_HOST}:{settings.SUPABASE_PORT}/{settings.SUPABASE_DBNAME}?sslmode=require"
+            else:
+                db_url = settings.DATABASE_URL
+                
+            vecs_client = vecs.create_client(db_url)
+            linkedin_profiles_collection = vecs_client.get_collection("linkedin_profiles")
+            
+            # Debug: Check collection stats and metadata structure
+            try:
+                # Check total collection size
+                test_query_all = linkedin_profiles_collection.query(
+                    data=keyphrase_embeddings[0][1] if keyphrase_embeddings else [],
+                    limit=5
+                )
+                print(f"🔍 Debug: Collection total results: {len(test_query_all)}")
+                
+                if test_query_all:
+                    # Check metadata structure of first result
+                    first_result = test_query_all[0]
+                    print(f"🔍 Debug: First result structure - ID: {first_result[0]}, Score: {first_result[1]}")
+                    if len(first_result) > 2:
+                        print(f"🔍 Debug: Metadata: {first_result[2]}")
+                
+                # Test with user filter
+                test_query_user = linkedin_profiles_collection.query(
+                    data=keyphrase_embeddings[0][1] if keyphrase_embeddings else [],
+                    limit=5,
+                    filters={"user_id": {"$eq": user_id}}
+                )
+                print(f"🔍 Debug: User-filtered results: {len(test_query_user)} for user {user_id}")
+                
+                # If no user results, try alternative filter formats
+                if not test_query_user:
+                    test_query_alt = linkedin_profiles_collection.query(
+                        data=keyphrase_embeddings[0][1] if keyphrase_embeddings else [],
+                        limit=5,
+                        filters={"user_id": user_id}  # Try without $eq
+                    )
+                    print(f"🔍 Debug: Alternative filter results: {len(test_query_alt)}")
+                    
+            except Exception as debug_e:
+                print(f"🔍 Debug query failed: {debug_e}")
+            
+            # Search with each keyphrase embedding
+            for keyphrase, embedding in keyphrase_embeddings:
+                try:
+                    vector_results = linkedin_profiles_collection.query(
+                        data=embedding,
+                        limit=5,  # Increase to 5 results per keyphrase
+                        filters={"user_id": {"$eq": user_id}},
+                        include_value=True  # Include similarity scores
+                    )
+                    
+                    # With include_value=True, returns list of tuples: (id, similarity_score)
+                    print(f"🔍 Debug vector_results type: {type(vector_results)}, content: {vector_results}")
+                    for result in vector_results:
+                        print(f"🔍 Debug result: {result}, type: {type(result)}, is_tuple: {isinstance(result, tuple)}, len: {len(result) if hasattr(result, '__len__') else 'N/A'}")
+                        
+                        if (isinstance(result, tuple) or hasattr(result, '__getitem__')) and len(result) >= 2:
+                            profile_id, similarity_score = result[0], result[1]
+                            print(f"✅ Parsing result - ID: {profile_id}, Score: {similarity_score}")
+                            try:
+                                all_vector_results.append({
+                                    "profile_id": profile_id,
+                                    "similarity_score": float(similarity_score),
+                                    "keyphrase": keyphrase
+                                })
+                                print(f"✅ Appended to all_vector_results. Current count: {len(all_vector_results)}")
+                            except Exception as append_e:
+                                print(f"❌ Failed to append result: {append_e}")
+                                print(f"   - profile_id: {profile_id} (type: {type(profile_id)})")
+                                print(f"   - similarity_score: {similarity_score} (type: {type(similarity_score)})")
+                                print(f"   - keyphrase: {keyphrase} (type: {type(keyphrase)})")
+                        elif isinstance(result, str):
+                            # Fallback for ID-only format
+                            print(f"✅ Parsing string - ID: {result}")
+                            all_vector_results.append({
+                                "profile_id": result,
+                                "similarity_score": 1.0,
+                                "keyphrase": keyphrase
+                            })
+                        else:
+                            print(f"❌ Unexpected result format: {result} (type: {type(result)})")
+                    
+                    print(f"✅ Found {len(vector_results)} results for keyphrase: '{keyphrase}'")
+                    
+                except Exception as e:
+                    print(f"❌ Vector search failed for keyphrase '{keyphrase}': {str(e)}")
+                    continue
+                    
+        except Exception as e:
+            print(f"❌ Vector DB connection failed: {str(e)}")
+        
+        # ===== STEP 4: Remove duplicates from vector results =====
+        print(f"STEP 4: Removing duplicates from {len(all_vector_results)} vector results")
+        
+        unique_vector_profiles = {}
+        for result in all_vector_results:
+            profile_id = result["profile_id"]
+            if profile_id not in unique_vector_profiles:
+                unique_vector_profiles[profile_id] = {
+                    "profile_id": profile_id,
+                    "max_similarity": result["similarity_score"],
+                    "matching_keyphrases": [result["keyphrase"]]
+                }
+            else:
+                # Update with higher similarity score and add keyphrase
+                if result["similarity_score"] > unique_vector_profiles[profile_id]["max_similarity"]:
+                    unique_vector_profiles[profile_id]["max_similarity"] = result["similarity_score"]
+                unique_vector_profiles[profile_id]["matching_keyphrases"].append(result["keyphrase"])
+        
+        vector_profile_ids = list(unique_vector_profiles.keys())
+        print(f"✅ After deduplication: {len(vector_profile_ids)} unique profiles from vector search")
+        
+        return OverallState(
+            messages=state["messages"],
+            intent=state["intent"],
+            format=state["format"],
+            search_query=state.get("search_query", []),
+            sql_queries=state.get("sql_queries", []),
+            web_research_result=state.get("web_research_result", []),
+            sources_gathered=state.get("sources_gathered", []),
+            current_message_id=state.get("current_message_id", ""),
+            agent_config=state["agent_config"],
+            chat_thread_id=state["chat_thread_id"],
+            user_id=state["user_id"],
+            agent_id=state["agent_id"],
+            weave_url=state["weave_url"],
+            max_research_loops=state["max_research_loops"],
+            initial_search_query_count=state["initial_search_query_count"],
+            number_of_results_returned=state["number_of_results_returned"],
+            world_connections=state["world_connections"],
+            query_analysis=state.get("query_analysis", {}),
+            user_query=state.get("user_query", ""),
+            vector_results=vector_profile_ids,
+            vector_similarity_data=unique_vector_profiles
+        )
+        
+    except Exception as e:
+        raise
+
+
+# ===== NODE 3: SQL Search (Parallel) =====
+@weave.op
+async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Generate SQL queries and execute keyword search."""
+    try:
+        if hasattr(state, "model_dump"):
+            state = state.model_dump()
+
+        print(f"NODE 3: SQL search with keyword matching")
+        
+        query_analysis = state.get("query_analysis", {})
+        agent_config = state["agent_config"]
+        user_id = agent_config["user_id"]
+        supabase_client = await get_async_supabase_client()
+        
+        # Extract traits and filters for keyword generation
+        filters = query_analysis.get("filters", {})
+        traits = query_analysis.get("traits", {}).get("traits", [])
+        
+        # Prepare search context for LLM
+        search_context = {
+            "filters": filters,
+            "traits": traits
+        }
+        
+        sql_system_instruction = """You are an expert SQL query generator for a connections database.
+
+IMPORTANT: Use ONLY these exact column names from the connections table:
+- first_name (text)
+- last_name (text) 
+- linkedin_url (text)
+- email_address (text)
+- company (text)
+- position (text)
+- connected_on (date)
+- headline (text)
+- about_section (text)
+- experience_json (jsonb)
+- education_json (jsonb)
+- skills (text[])
+- location (text)
+- profile_photo_url (text)
+- user_id (uuid)
+- created_at (timestamp)
+- embedding_generated_at (timestamp)
+
+Generate PostgreSQL-compatible queries that search across relevant fields for the given criteria."""
+
+        sql_user_prompt = f"""Generate a SQL query to find connections matching these criteria:
+
+User ID: {user_id}
+Search Context: {json.dumps(search_context, indent=2)}
+
+Requirements:
+- Always filter by user_id = '{user_id}'
+- Search across headline, about_section, experience_json, company, position, location
+- Use ILIKE for case-insensitive text matching
+- Use OR logic for broader matching (avoid overly restrictive AND conditions)
+- Order by relevance (embedding_generated_at DESC, created_at DESC)
+- Limit to 10 results
+- DO NOT use row_to_json() wrapper - return direct SELECT results
+
+Example format:
+SELECT id, first_name, last_name, headline, about_section, 
+       experience_json, education_json, skills, linkedin_url, 
+       company, position, location, profile_photo_url, embedding_generated_at
+FROM connections 
+WHERE user_id = '{user_id}' AND [your conditions]
+ORDER BY embedding_generated_at DESC, created_at DESC
+LIMIT 10;
+
+Return only the SQL query, no explanation."""
+
+        keyword_results = []
+        generated_sql = ""
+        try:            
+            sql_llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=sql_system_instruction)
+            sql_response = await sql_llm.ainvoke(sql_user_prompt)
+            
+            generated_sql = sql_response.content.strip()
+            # Clean up the SQL (remove markdown formatting if present)
+            if "```sql" in generated_sql:
+                generated_sql = generated_sql.split("```sql")[1].split("```")[0].strip()
+            elif "```" in generated_sql:
+                generated_sql = generated_sql.split("```")[1].strip()
+            
+            print(f"✅ Generated SQL query: {generated_sql[:100]}...")
+            
+            # Clean the SQL query by removing trailing semicolon
+            clean_query = generated_sql.strip().rstrip(';')
+            
+            # Execute the SQL query using JSON wrapper to avoid type mismatch
+            json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
+            
+            result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
+            
+            # Parse JSONB results
+            keyword_results = []
+            if result.data:
+                for row in result.data:
+                    if isinstance(row, dict) and 'to_jsonb' in row:
+                        keyword_results.append(row['to_jsonb'])
+                    else:
+                        keyword_results.append(row)
+            
+            print(f"✅ Keyword search found {len(keyword_results)} results")
+            
+        except Exception as e:
+            print(f"❌ SQL generation/execution failed: {str(e)}")
+            # Fallback: get basic results without complex filtering
+            try:
+                result = await supabase_client.table("connections").select(
+                    "id, first_name, last_name, headline, about_section, "
+                    "experience_json, education_json, skills, linkedin_url, "
+                    "company, position, location, profile_photo_url, embedding_generated_at"
+                ).eq("user_id", user_id).order("embedding_generated_at", desc=True).limit(10).execute()
+                print(f"✅ Fallback keyword search found {len(keyword_results)} results")
+            except Exception as fallback_e:
+                print(f"❌ Fallback search also failed: {str(fallback_e)}")
+        
+        return OverallState(
+            messages=state["messages"],
+            intent=state["intent"],
+            format=state["format"],
+            search_query=state.get("search_query", []),
+            sql_queries=[generated_sql],
+            web_research_result=state.get("web_research_result", []),
+            sources_gathered=state.get("sources_gathered", []),
+            current_message_id=state.get("current_message_id", ""),
+            agent_config=state["agent_config"],
+            chat_thread_id=state["chat_thread_id"],
+            user_id=state["user_id"],
+            agent_id=state["agent_id"],
+            weave_url=state["weave_url"],
+            max_research_loops=state["max_research_loops"],
+            initial_search_query_count=state["initial_search_query_count"],
+            number_of_results_returned=state["number_of_results_returned"],
+            world_connections=state["world_connections"],
+            query_analysis=state.get("query_analysis", {}),
+            user_query=state.get("user_query", ""),
+            sql_results=keyword_results
+        )
+        
+    except Exception as e:
+        raise
+
+# ===== NODE 4: Fusion Ranking (Combines Vector + SQL Results) =====
+@weave.op
+async def fusion_ranking(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Combine vector and SQL results, perform fusion ranking and LLM scoring."""
+    try:
+        if hasattr(state, "model_dump"):
+            state = state.model_dump()
+
+        print(f"NODE 4: Fusion ranking and LLM scoring")
+        
+        agent_config = state["agent_config"]
+        user_id = agent_config["user_id"]
+        supabase_client = await get_async_supabase_client()
+        
+        # Get results from parallel nodes
+        vector_profile_ids = state.get("vector_results", [])
+        vector_similarity_data = state.get("vector_similarity_data", {})
+        keyword_results = state.get("sql_results", [])
+        
+        # Get vector search profiles from database
+        vector_results = []
+        if vector_profile_ids:
+            try:
+                import uuid
+                valid_profile_ids = []
+                for profile_id in vector_profile_ids:
+                    try:
+                        uuid.UUID(str(profile_id))
+                        valid_profile_ids.append(profile_id)
+                    except (ValueError, TypeError):
+                        print(f"⚠️ Skipping invalid UUID: {profile_id}")
+                
+                if valid_profile_ids:
+                    result = await supabase_client.table("connections").select(
+                        "id, first_name, last_name, headline, about_section, "
+                        "experience_json, education_json, skills, linkedin_url, "
+                        "company, position, location, profile_photo_url, embedding_generated_at"
+                    ).eq("user_id", user_id).in_("id", valid_profile_ids).order(
+                        "embedding_generated_at", desc=True
+                    ).order("created_at", desc=True).execute()
+                    
+                    vector_results = result.data if result.data else []
+                    print(f"✅ Vector search found {len(vector_results)} results")
+            except Exception as e:
+                print(f"❌ Vector profile fetch failed: {str(e)}")
+        
+        # Fusion ranking - combine vector + keyword results
+        print(f"Fusion ranking - combining {len(vector_results)} vector + {len(keyword_results)} keyword results")
+        
+        # Debug: Print keyword results structure
+        if keyword_results:
+            print(f"🔍 Debug: First keyword result structure: {keyword_results[0]}")
+            if isinstance(keyword_results[0], dict) and 'result' in keyword_results[0]:
+                print(f"🔍 Debug: Nested result structure detected")
+            else:
+                print(f"🔍 Debug: Direct profile structure detected")
+        
+        fusion_profiles = {}
+        
+        # Add vector results with high base score
+        for i, profile in enumerate(vector_results):
+            profile_id = profile.get("id", "")
+            linkedin_url = profile.get("linkedin_url", "")
+            
+            # Use profile_id or linkedin_url as the key
+            match_key = profile_id if profile_id else linkedin_url
+            
+            if match_key:
+                vector_rank_score = 100 - (i * 5)
+                similarity_data = vector_similarity_data.get(profile_id, {})
+                
+                fusion_profiles[match_key] = {
+                    "profile": profile,
+                    "vector_score": vector_rank_score,
+                    "keyword_score": 0,
+                    "fusion_score": vector_rank_score * 0.6,
+                    "similarity_score": similarity_data.get("max_similarity", 0),
+                    "matching_keyphrases": similarity_data.get("matching_keyphrases", []),
+                    "source": "vector"
+                }
+        
+        # Add keyword results with moderate base score
+        for i, result_item in enumerate(keyword_results):
+            # Handle the nested structure: {'result': {...}} or direct profile
+            if isinstance(result_item, dict) and 'result' in result_item:
+                profile = result_item['result']
+            else:
+                profile = result_item
+            
+            profile_id = profile.get("id", "")
+            linkedin_url = profile.get("linkedin_url", "")
+            
+            # Use profile_id or linkedin_url for matching
+            match_key = profile_id if profile_id else linkedin_url
+            
+            if match_key:
+                keyword_rank_score = 80 - (i * 4)
+                
+                # Check if this profile exists in vector results (by ID or LinkedIn URL)
+                found_in_vector = False
+                vector_match_key = None
+                
+                for vector_key in fusion_profiles.keys():
+                    vector_profile = fusion_profiles[vector_key]["profile"]
+                    vector_id = vector_profile.get("id", "")
+                    vector_linkedin = vector_profile.get("linkedin_url", "")
+                    
+                    # Match by ID or LinkedIn URL
+                    if (profile_id and profile_id == vector_id) or \
+                       (linkedin_url and linkedin_url == vector_linkedin):
+                        found_in_vector = True
+                        vector_match_key = vector_key
+                        break
+                
+                if found_in_vector and vector_match_key:
+                    # Profile found in both - boost fusion score
+                    fusion_profiles[vector_match_key]["keyword_score"] = keyword_rank_score
+                    fusion_profiles[vector_match_key]["fusion_score"] = (
+                        fusion_profiles[vector_match_key]["vector_score"] * 0.6 + 
+                        keyword_rank_score * 0.4 + 
+                        20  # Bonus for appearing in both
+                    )
+                    fusion_profiles[vector_match_key]["source"] = "both"
+                else:
+                    # Keyword-only result
+                    fusion_profiles[match_key] = {
+                        "profile": profile,
+                        "vector_score": 0,
+                        "keyword_score": keyword_rank_score,
+                        "fusion_score": keyword_rank_score * 0.4,
+                        "similarity_score": 0,
+                        "matching_keyphrases": [],
+                        "source": "keyword"
+                    }
+        
+        # Sort by fusion score and take top results
+        sorted_profiles = sorted(
+            fusion_profiles.values(), 
+            key=lambda x: x["fusion_score"], 
+            reverse=True
+        )
+        
+        # Extract top profiles for final results
+        final_results = []
+        for item in sorted_profiles[:15]:  # Get top 15 for scoring
+            profile = item["profile"]
+            profile["fusion_score"] = item["fusion_score"]
+            profile["vector_score"] = item["vector_score"]
+            profile["keyword_score"] = item["keyword_score"]
+            profile["similarity_score"] = item["similarity_score"]
+            profile["matching_keyphrases"] = item["matching_keyphrases"]
+            profile["search_source"] = item["source"]
+            final_results.append(profile)
+        
+        print(f"✅ Fusion ranking complete: {len(final_results)} profiles ranked")
+        
+        return OverallState(
+            messages=state["messages"],
+            intent=state["intent"],
+            format=state["format"],
+            search_query=state.get("search_query", []),
+            sql_queries=state.get("sql_queries", []),
+            web_research_result=final_results,
+            sources_gathered=state.get("sources_gathered", []),
+            current_message_id=state.get("current_message_id", ""),
+            agent_config=state["agent_config"],
+            chat_thread_id=state["chat_thread_id"],
+            user_id=state["user_id"],
+            agent_id=state["agent_id"],
+            weave_url=state["weave_url"],
+            max_research_loops=state["max_research_loops"],
+            initial_search_query_count=state["initial_search_query_count"],
+            number_of_results_returned=state["number_of_results_returned"],
+            world_connections=state["world_connections"],
+            query_analysis=state.get("query_analysis", {}),
+            user_query=state.get("user_query", ""),
+            final_results=final_results
         )
         
     except Exception as e:
@@ -265,13 +689,11 @@ async def generate_sql_queries(state: OverallState, config: RunnableConfig) -> O
 
 @weave.op
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
-    """Fast answer finalization for SQL results - preserves all SQL data and only adds LLM scoring."""
+    """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):
         state = state.model_dump()
     
-    # Use fast model
     model = "gemini-2.5-pro"
-    
     supabase_client = await get_async_supabase_client()    
     agent_config = state.get("agent_config", {})
     user_id = agent_config.get("user_id", "")
@@ -279,141 +701,216 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     chat_thread_id = state.get("chat_thread_id", "")
     current_message_id = state.get("current_message_id", "")
     
-    # Get SQL results
-    sql_results = state.get("web_research_result", [])
+    profiles = state.get("web_research_result", [])
+    query_analysis = state.get("query_analysis", {})
+    user_query = get_research_topic(state["messages"])
     
-    if not sql_results:
-        # No results found
+    if not profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
         message_content = final_message.content
     else:
-        # Create system instruction for scoring only
-        scoring_system_instruction = f"""You are an AI assistant that analyzes connection data and provides relevance scores and reasoning.
+        # Enhanced scoring system with Yes/Maybe/No and quotes
+        scoring_system_instruction = """You are an expert at evaluating professional profiles against search criteria.
 
-Given a user query and connection data, you will:
-1. Analyze how well each connection matches the user's query
-2. Provide a relevance score (0-100) for each connection
-3. Provide clear reasoning for each score
+For each profile, analyze how well it matches the user's query and provide:
+1. A score: "yes" (strong match), "maybe" (partial match), or "no" (weak match)
+2. Confidence level (0-100)
+3. Supporting quotes from the profile data (specific text from experience, education, about section, etc.)
+4. Matching traits identified
 
-Return your response as a JSON array where each object has:
-- "index": the position in the original data (0-based)
-- "score": relevance score (0-100)
-- "reason": brief explanation of why this connection is relevant
+Be thorough in your analysis and provide specific evidence from the profile data.
 
-Be concise but specific in your reasoning."""
-        
-        # Create user prompt with SQL results and user query
-        user_query = get_research_topic(state["messages"])
-        scoring_user_prompt = f"""User Query: {user_query}
+For each profile, provide answer like this:
+Be thorough in your analysis and provide specific evidence from the profile data.
 
-Connection Data:
-{str(sql_results)}
+IMPORTANT: You MUST score ALL profiles provided in the input. Do not skip any profiles.
 
-Analyze each connection and provide scores and reasoning based on how well they match the user's query."""
-        
-        # Use Gemini client for scoring only
-        llm = GeminiChatModel(
-            model=model,
-            temperature=0,
-            system_instruction=scoring_system_instruction
-        )
+Return a JSON object with a "profiles" array containing one ScoredProfile object for each input profile.
+
+In all quotes, combine all the yes, maybe, no quotes into one list, remove duplicates
+
+Example format:
+if 10 profiles are there, then for each like this:
+
+
+"profile_id": "uuid-1",
+"linkedin_url": "https://www.linkedin.com/in/username",
+"yes_confidence": 85,
+"yes_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"],
+"yes_matching_traits": ["trait1", "trait2", "trait3"],
+"maybe_confidence": 60,
+"maybe_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"],
+"maybe_matching_traits": ["trait1", "trait2", "trait3"],
+"no_confidence": 40,
+"no_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"],
+"no_matching_traits": ["trait1", "trait2", "trait3"]
+"all_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"]
+
+"profile_id": "uuid-2", 
+"linkedin_url": "https://www.linkedin.com/in/username",
+"yes_confidence": 85,
+"yes_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"],
+"yes_matching_traits": ["trait1", "trait2", "trait3"],
+"maybe_confidence": 60,
+"maybe_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"],
+"maybe_matching_traits": ["trait1", "trait2", "trait3"],
+"no_confidence": 40,
+"no_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"],
+"no_matching_traits": ["trait1", "trait2", "trait3"]
+"all_quotes": ["Quote from profile", "Quote from profile", "Quote from profile"]
+
+All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything
+"""
+
+        user_prompt = f"""User Query: "{user_query}"
+
+Search Criteria:
+- Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
+- Traits: {json.dumps(query_analysis.get('traits', {}), indent=2)}
+- Keyphrases: {json.dumps(query_analysis.get('keyphrases', {}), indent=2)}
+
+Profiles to Score:
+{json.dumps(profiles, indent=2)}
+
+ """
+
+
+        llm = GeminiChatModel(model=model, temperature=0, system_instruction=scoring_system_instruction)
         
         try:
-            # Get LLM scoring
-            scoring_response = await llm.ainvoke(scoring_user_prompt)
-            usage_metadata = scoring_response.usage_metadata
-            
-            # Parse LLM response to extract scores and reasoning
-            scoring_content = scoring_response.content
-            
-            # Try to extract JSON from the response
-            import json
-            import re
-            
-            scores_and_reasons = []
-            try:
-                # Look for JSON array in the response
-                json_match = re.search(r'\[.*\]', scoring_content, re.DOTALL)
-                if json_match:
-                    scores_data = json.loads(json_match.group())
-                    scores_and_reasons = scores_data
-                else:
-                    # Fallback: create default scores
-                    for i in range(len(sql_results)):
-                        scores_and_reasons.append({
-                            "index": i,
-                            "score": 50,
-                            "reason": "Connection matches query criteria"
-                        })
-            except:
-                # Fallback: create default scores
-                for i in range(len(sql_results)):
-                    scores_and_reasons.append({
-                        "index": i,
-                        "score": 50,
-                        "reason": "Connection matches query criteria"
+            # Generate enhanced scores
+            scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
+            scored_profiles = []
+            for profile in scoring_response.profiles:
+                scored_profiles.append({
+                        "profile_id": str(profile.profile_id),
+                        "linkedin_url": profile.linkedin_url,
+                        "all_quotes": profile.all_quotes,
+                        "yes_confidence": profile.yes_confidence,
+                        "yes_quotes": profile.yes_quotes,
+                        "yes_matching_traits": profile.yes_matching_traits,
+                        "maybe_confidence": profile.maybe_confidence,
+                        "maybe_quotes": profile.maybe_quotes,
+                        "maybe_matching_traits": profile.maybe_matching_traits,
+                        "no_confidence": profile.no_confidence,
+                        "no_quotes": profile.no_quotes,
+                        "no_matching_traits": profile.no_matching_traits,
+                        "score_keyphrase_mapping": {
+                            "yes": {
+                                "confidence": profile.yes_confidence,
+                                "quotes": profile.yes_quotes,
+                                "matching_traits": profile.yes_matching_traits
+                            },
+                            "maybe": {
+                                "confidence": profile.maybe_confidence,
+                                "quotes": profile.maybe_quotes,
+                                "matching_traits": profile.maybe_matching_traits
+                            },
+                            "no": {
+                                "confidence": profile.no_confidence,
+                                "quotes": profile.no_quotes,
+                                "matching_traits": profile.no_matching_traits
+                            }
+                        }
                     })
             
-            # Combine SQL results with LLM scores
-            formatted_content = ""
-            print(sql_results)
-            for i, result in enumerate(sql_results):
-                # Find corresponding score and reason
-                score_data = next((item for item in scores_and_reasons if item.get("index") == i), 
-                                {"score": 50, "reason": "Connection matches query criteria"})
+            # Log costs
+            try:
+                input_tokens = usage_metadata.get("input_tokens", 0)
+                output_tokens = usage_metadata.get("output_tokens", 0)
+                cost_dollar = (input_tokens/1000000) * 0.15 + (output_tokens/1000000) * 0.60
+                cost_rupees = cost_dollar * 85.86
                 
-                # Extract fields from SQL result
-                if isinstance(result, dict):
-                    fname = result["result"].get("first_name", "N/A")
-                    lname = result["result"].get("last_name", "N/A")
-                    email = result["result"].get("email_address", "N/A")
-                    company = result["result"].get("company", "N/A")
-                    position = result["result"].get("position", "N/A")
-                    linkedin_url = result["result"].get("linkedin_url", "N/A")
-                    headline = result["result"].get("headline", "N/A")
-                else:
-                    fname = lname = email = company = position = linkedin_url = headline = "N/A"
+                await supabase_client.table("chat_costs").insert({
+                    "user_id": user_id, 
+                    "agent_id": agent_id, 
+                    "chat_thread_id": chat_thread_id,
+                    "message_id": current_message_id,
+                    "model": model,
+                    "node": "score_profiles",
+                    "model_input_tokens": float(input_tokens), 
+                    "model_output_tokens": float(output_tokens), 
+                    "model_cost_dollar": float(cost_dollar),
+                    "model_cost_rupees": float(cost_rupees),
+                    "weave_url": state["weave_url"]
+                }).execute()
+            except Exception as e:
+                pass
                 
-                formatted_content += f"FName : {fname}\n"
-                formatted_content += f"LName : {lname}\n"
-                formatted_content += f"Social links : {linkedin_url}\n"
-                formatted_content += f"Email : {email}\n"
-                formatted_content += f"Company : {company}\n"
-                formatted_content += f"Position : {position}\n"
-                formatted_content += f"Headline : {headline}\n"
-                formatted_content += f"Score : {score_data.get('score', 50)}\n"
-                formatted_content += f"Reason : {score_data.get('reason', 'Connection matches query criteria')}\n\n"
-            
         except Exception as e:
-            # Fallback: format SQL results without LLM scoring
-            formatted_content = ""
-            for i, result in enumerate(sql_results):
-                if isinstance(result, dict):
-                    fname = result["result"].get("first_name", "N/A")
-                    lname = result["result"].get("last_name", "N/A")
-                    email = result["result"].get("email_address", "N/A")
-                    company = result["result"].get("company", "N/A")
-                    position = result["result"].get("position", "N/A")
-                    linkedin_url = result["result"].get("linkedin_url", "N/A")
-                    headline = result["result"].get("headline", "N/A")
-                else:
-                    fname = lname = email = company = position = linkedin_url = headline = "N/A"
-                
-                formatted_content += f"FName : {fname}\n"
-                formatted_content += f"LName : {lname}\n"
-                formatted_content += f"Social links : {linkedin_url}\n"
-                formatted_content += f"Email : {email}\n"
-                formatted_content += f"Company : {company}\n"
-                formatted_content += f"Position : {position}\n"
-                formatted_content += f"Headline : {headline}\n"
-                formatted_content += f"Score : 50\n"
-                formatted_content += f"Reason : Connection matches query criteria\n\n"
-            
-            # Set default usage metadata
-            usage_metadata = {"input_tokens": 0, "output_tokens": 0}
+            # Fallback scoring
+            scored_profiles = []
+            for i, profile in enumerate(profiles[:10]):
+                scored_profiles.append({
+                    "profile_id": profile.get("id", ""),
+                    "linkedin_url": profile.get("linkedin_url", ""),
+                    "all_quotes": profile.get("all_quotes", []),
+                    "yes_confidence": 50,
+                    "yes_quotes": ["Profile matches basic criteria"],
+                    "confidence": 50,
+                    "quotes": ["Profile matches basic criteria"],
+                })
         
-        final_message = AIMessage(content=formatted_content.strip())
-        message_content = final_message.content
+        # Create enhanced formatted response matching the UI requirements
+        response_data = []
+        
+        # Combine profile data with enhanced scores
+        for profile in profiles:
+            profile_id = profile.get("id", "")
+            
+            # Find corresponding score by linkedin_url
+            score_data = next((s for s in scored_profiles if s.get("linkedin_url") == profile.get("linkedin_url", "")), 
+                            {
+                                "score_keyphrase_mapping": {
+                                    "yes": {"confidence": 50, "quotes": [], "matching_traits": []},
+                                    "maybe": {"confidence": 50, "quotes": [], "matching_traits": []},
+                                    "no": {"confidence": 50, "quotes": [], "matching_traits": []}
+                                },
+                                "all_quotes": []
+                            })
+            
+            # Extract scoring information for frontend rendering
+            score_mapping = score_data.get("score_keyphrase_mapping", {
+                "yes": {"confidence": 50, "quotes": [], "matching_traits": []},
+                "maybe": {"confidence": 50, "quotes": [], "matching_traits": []},
+                "no": {"confidence": 50, "quotes": [], "matching_traits": []}
+            })
+            all_quotes = score_data.get("all_quotes", [])
+            
+            profile_data = {
+                "id": profile_id,
+                "first_name": profile.get("first_name", ""),
+                "last_name": profile.get("last_name", ""),
+                "headline": profile.get("headline", ""),
+                "company": profile.get("company", ""),
+                "position": profile.get("position", ""),
+                "location": profile.get("location", ""),
+                "linkedin_url": profile.get("linkedin_url", ""),
+                "profile_photo_url": profile.get("profile_photo_url", ""),
+                "all_quotes": all_quotes,
+                "yes_score": {
+                    "confidence": score_mapping["yes"]["confidence"],
+                    "quotes": score_mapping["yes"]["quotes"],
+                    "matching_traits": score_mapping["yes"]["matching_traits"]
+                },
+                "maybe_score": {
+                    "confidence": score_mapping["maybe"]["confidence"],
+                    "quotes": score_mapping["maybe"]["quotes"],
+                    "matching_traits": score_mapping["maybe"]["matching_traits"]
+                },
+                "no_score": {
+                    "confidence": score_mapping["no"]["confidence"],
+                    "quotes": score_mapping["no"]["quotes"],
+                    "matching_traits": score_mapping["no"]["matching_traits"]
+                },
+                "mutual_connection": user_id  # Show current user as mutual connection
+            }
+            
+            response_data.append(profile_data)
+        
+        # Format as JSON for frontend consumption
+        message_content = json.dumps(response_data, indent=2)
+        final_message = AIMessage(content=message_content)
     
     try:
         # Update message in database
@@ -422,28 +919,7 @@ Analyze each connection and provide scores and reasoning based on how well they 
             "sources_gathered": state.get("sources_gathered", [])
         }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).eq("id", current_message_id).execute()
         
-        # Invalidate chat messages cache
         invalidate_chat_messages_cache(chat_thread_id)
-        
-        # Log costs
-        input_tokens = usage_metadata.get("input_tokens", 0)
-        output_tokens = usage_metadata.get("output_tokens", 0)
-        cost_dollar = (input_tokens/1000000) * 0.15 + (output_tokens/1000000) * 0.60
-        cost_rupees = cost_dollar * 85.86
-        
-        await supabase_client.table("chat_costs").insert({
-            "user_id": user_id, 
-            "agent_id": agent_id, 
-            "chat_thread_id": chat_thread_id,
-            "message_id": current_message_id,
-            "model": model,
-            "node": "finalize_sql_answer",
-            "weave_url": state["weave_url"],
-            "model_input_tokens": float(input_tokens), 
-            "model_output_tokens": float(output_tokens), 
-            "model_cost_dollar": float(cost_dollar),
-            "model_cost_rupees": float(cost_rupees),
-        }).execute()
     except Exception as e:
         pass
     
@@ -454,20 +930,29 @@ Analyze each connection and provide scores and reasoning based on how well they 
 
 
 # Create simplified SQL-only Agent Graph
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState)
 
-# Define nodes - only 2 nodes for maximum speed
-builder.add_node("generate_sql_queries", generate_sql_queries)
+# Add nodes for parallel execution
+builder.add_node("query_analysis", query_analysis)
+builder.add_node("vector_search", vector_search)
+builder.add_node("sql_search", sql_search)
+builder.add_node("fusion_ranking", fusion_ranking)
 builder.add_node("finalize_sql_answer", finalize_sql_answer)
 
 # Set the entrypoint
-builder.add_edge(START, "generate_sql_queries")
+builder.add_edge(START, "query_analysis")
 
-# Direct edge to finalization - no reflection loop for speed
-builder.add_edge("generate_sql_queries", "finalize_sql_answer")
+# Parallel execution: both vector_search and sql_search run after query_analysis
+builder.add_edge("query_analysis", "vector_search")
+builder.add_edge("query_analysis", "sql_search")
 
-# Finalize the answer
+# Both parallel nodes feed into fusion_ranking
+builder.add_edge("vector_search", "fusion_ranking")
+builder.add_edge("sql_search", "fusion_ranking")
+
+# Final answer generation
+builder.add_edge("fusion_ranking", "finalize_sql_answer")
 builder.add_edge("finalize_sql_answer", END)
 
-# Compile the simplified graph
-graph_2 = builder.compile(name="fast-sql-agent")
+# Compile the parallel graph
+graph_2 = builder.compile(name="parallel-search-agent")

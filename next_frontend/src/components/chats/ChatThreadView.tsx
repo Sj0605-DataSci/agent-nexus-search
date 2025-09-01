@@ -21,6 +21,7 @@ import TagCarousel, { TagCategories } from "./TagCarousel";
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
+import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
 
 const FeedbackModal = dynamic(() => import("./FeedbackModal"));
@@ -941,22 +942,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                       Query seems empty, Please Search again.
                                     </p>
                                   </div>
-                                ) : format === "table" &&
-                                  parseStructuredData(m.content) &&
-                                  /(fname|lname|link)/i.test(m.content) ? (
-                                  <div className="flex w-full">
-                                    {renderAsTable(
-                                      m.content,
-                                      false,
-                                      messagesContainerRef,
-                                      hasMoreMessages,
-                                      loadMoreMessages
-                                    )}
-                                  </div>
                                 ) : (
-                                  <StyledMarkdown
+                                  <EnhancedProfileRenderer
                                     content={m.content}
                                     sources={m.sources || m.sources_gathered}
+                                    onProfileSelect={(profile) => {
+                                      console.log("Selected profile:", profile);
+                                      // You can add additional profile selection logic here
+                                    }}
                                   />
                                 )}
                               </div>

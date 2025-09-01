@@ -1,0 +1,2 @@
+[console_scripts]
+linkedin-enrich = linkedin_enrichment_package.cli:main
