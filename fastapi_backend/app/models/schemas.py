@@ -17,15 +17,10 @@ class ScoredProfile(BaseModel):
     profile_id: str
     linkedin_url: str
     all_quotes: List[str]
-    yes_confidence: float
-    yes_quotes: List[str]
-    yes_matching_traits: List[str]
-    maybe_confidence: float
-    maybe_quotes: List[str]
-    maybe_matching_traits: List[str]
-    no_confidence: float
-    no_quotes: List[str]
-    no_matching_traits: List[str]
+    scoring: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of scoring traits with confidence, traitTitle, and traitDescription"
+    )
 
 class ScoredProfilesResponse(BaseModel):
     profiles: List[ScoredProfile]
