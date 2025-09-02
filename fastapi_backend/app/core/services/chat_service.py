@@ -9,7 +9,7 @@ import time
 import asyncio
 from app.core.config import settings
 from app.core.services.credit_service import CreditService
-from app.core.utils.llm_utils import GeminiChatModel
+from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
 from app.models.chat import IntentClassification
 from app.core.services.agent.prompts import query_title_generation
 from app.models.schemas import TitleAndIntentGeneratorOutput
@@ -283,7 +283,8 @@ class ChatService:
                 
             # Generate a title for the thread
             system_instruction = "You are {agent_config} and you are a people search engine."
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0,system_instruction=system_instruction)
+            # llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0,system_instruction=system_instruction)
+            llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0,system_instruction=system_instruction)
             title_gen_prompt = query_title_generation.format(latest_message=latest_message)
             response_title, usage_metadata = await llm.with_structured_output(schema_type=TitleAndIntentGeneratorOutput, prompt=title_gen_prompt)
             title = response_title.title
