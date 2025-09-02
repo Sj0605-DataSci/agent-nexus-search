@@ -836,11 +836,10 @@ Give this in json format
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
       ]
+<<<<<<< HEAD
       '''
-
-All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
-"""
-        user_prompt = f"""User Query: "{user_query}"
+=======
+```
 
 Search Criteria:
 - Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
@@ -872,11 +871,19 @@ Profiles to Score:
                     for trait in profile.scoring
                 ]
                 scored_profiles.append({
+<<<<<<< HEAD
                     "profile_id": str(profile.profile_id),
                     "linkedin_url": profile.linkedin_url,
                     "all_quotes": profile.all_quotes,
                     "scoring": scoring_dicts,
                 })
+=======
+                        "profile_id": str(profile.profile_id),
+                        "linkedin_url": profile.linkedin_url,
+                        "all_quotes": profile.all_quotes,
+                        "scoring": profile.scoring,
+                    })
+>>>>>>> f4c0b9a (adding relevant files for chatgroq)
             
             # Log costs
             try:
@@ -902,6 +909,7 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
+<<<<<<< HEAD
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
@@ -926,6 +934,17 @@ Profiles to Score:
             except Exception as e:
                 raise e
             
+=======
+            # Fallback scoring
+            scored_profiles = []
+            for i, profile in enumerate(profiles):
+                scored_profiles.append({
+                    "profile_id": profile.get("id", ""),
+                    "linkedin_url": profile.get("linkedin_url", ""),
+                    "all_quotes": profile.get("all_quotes", []),
+                    "scoring": profile.get("scoring", []),
+                })
+>>>>>>> f4c0b9a (adding relevant files for chatgroq)
         
         # Create enhanced formatted response matching the UI requirements
         response_data = []
@@ -965,6 +984,7 @@ Profiles to Score:
         # Format as JSON for frontend consumption
         print("Node 5: Finalize SQL Answer Completed")
         
+<<<<<<< HEAD
         # Ensure all data is JSON serializable
         for profile in response_data:
             if 'scoring' in profile and profile['scoring'] is not None:
@@ -979,6 +999,9 @@ Profiles to Score:
                 ]
         
         message_content = json.dumps(response_data, indent=2, ensure_ascii=False)
+=======
+        message_content = json.dumps(response_data, indent=2)
+>>>>>>> f4c0b9a (adding relevant files for chatgroq)
         final_message = AIMessage(content=message_content)
     
     try:
