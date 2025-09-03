@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
@@ -200,13 +200,9 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
         
-        from google import genai
-        gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        
-        # Get vecs client once and reuse
         print("Node 2: Vector Search Client")
         vecs_client = get_vecs_client()
-        linkedin_profiles_collection = vecs_client.get_collection("linkedin_profiles")
+        linkedin_profiles_collection = vecs_client.get_collection("linkedin_profiless")
         
         all_vector_results = []
         
@@ -214,15 +210,10 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         print("Node 2: Vector Search generating embeddings")
         for i, keyphrase in enumerate(keyphrases):  # Reduced from 9 to 5 for memory efficiency
             try:
-                # Generate single embedding
-                result = gemini_client.models.embed_content(
-                    model="gemini-embedding-001",
-                    contents=keyphrase
-                )
+                # Generate single embedding using Jina
+                embedding = await generate_jina_embedding(keyphrase)
                 
-                if result.embeddings and len(result.embeddings) > 0:
-                    embedding = result.embeddings[0].values
-                    
+                if embedding:
                     # Immediately search with this embedding
                     print("Node 2: Vector Search searching")
                     vector_results = linkedin_profiles_collection.query(
@@ -308,6 +299,34 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         
     except Exception as e:
         raise
+
+
+async def generate_jina_embedding(text: str) -> Optional[List[float]]:
+    """Generate embedding using Jina API"""
+    try:
+        import requests
+        from app.core.config import settings
+        
+        url = "https://api.jina.ai/v1/embeddings"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.JINA_API_KEY}",
+        }
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "text-matching",
+            "input": text,
+        }
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        
+        if "data" in result and len(result["data"]) > 0:
+            return result["data"][0]["embedding"]
+        return None
+    except Exception as e:
+        print(f"Error generating Jina embedding: {e}")
+        return None
 
 
 # ===== NODE 3: SQL Search (Parallel) =====
@@ -677,6 +696,8 @@ IMPORTANT:
 - Format trait titles and descriptions with HTML tags for better display in the UI
 - There can be multiple traits in each category (yes/maybe/no) - focus on confidence values to determine categorization
 - A profile can have all three yes traits, all three no traits, all three maybe traits, or any mix
+- Only use <b></b> tag, no other tags needed
+- Do not use any other HTML tags
 
 Return a JSON object with a "profiles" array containing one ScoredProfile object for each input profile.
 
@@ -763,15 +784,22 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-            # Fallback scoring
-            scored_profiles = []
-            for i, profile in enumerate(profiles):
-                scored_profiles.append({
-                    "profile_id": profile.get("id", ""),
-                    "linkedin_url": profile.get("linkedin_url", ""),
-                    "all_quotes": profile.get("all_quotes", []),
-                    "scoring": profile.get("scoring", []),
-                })
+            print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
+            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
+            try:
+                scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
+                scored_profiles = []
+                if scoring_response:
+                    for profile in scoring_response.profiles:
+                        scored_profiles.append({
+                                "profile_id": str(profile.profile_id),
+                                "linkedin_url": profile.linkedin_url,
+                            "all_quotes": profile.all_quotes,
+                        "scoring": profile.scoring,
+                    })
+            except Exception as e:
+                raise e
+            
         
         # Create enhanced formatted response matching the UI requirements
         response_data = []
