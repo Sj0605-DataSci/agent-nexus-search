@@ -414,6 +414,34 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
         return None
 
 
+async def generate_jina_embedding(text: str) -> Optional[List[float]]:
+    """Generate embedding using Jina API"""
+    try:
+        import requests
+        from app.core.config import settings
+        
+        url = "https://api.jina.ai/v1/embeddings"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.JINA_API_KEY}",
+        }
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "text-matching",
+            "input": text,
+        }
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        
+        if "data" in result and len(result["data"]) > 0:
+            return result["data"][0]["embedding"]
+        return None
+    except Exception as e:
+        print(f"Error generating Jina embedding: {e}")
+        return None
+
+
 # ===== NODE 3: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
@@ -912,12 +940,18 @@ Profiles to Score:
                 
         except Exception as e:
 <<<<<<< HEAD
+<<<<<<< HEAD
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
+=======
+            print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
+            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
+>>>>>>> feded23 (new vec store with indexing and JINA API)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
                 if scoring_response:
                     for profile in scoring_response.profiles:
+<<<<<<< HEAD
                         # Convert ScoringTrait objects to dicts for the fallback case too
                         scoring_dicts = [
                             {
@@ -947,6 +981,17 @@ Profiles to Score:
                     "scoring": profile.get("scoring", []),
                 })
 >>>>>>> f4c0b9a (adding relevant files for chatgroq)
+=======
+                        scored_profiles.append({
+                                "profile_id": str(profile.profile_id),
+                                "linkedin_url": profile.linkedin_url,
+                            "all_quotes": profile.all_quotes,
+                        "scoring": profile.scoring,
+                    })
+            except Exception as e:
+                raise e
+            
+>>>>>>> feded23 (new vec store with indexing and JINA API)
         
         # Create enhanced formatted response matching the UI requirements
         response_data = []
