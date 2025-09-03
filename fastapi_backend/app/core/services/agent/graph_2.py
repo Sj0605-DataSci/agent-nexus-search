@@ -14,9 +14,15 @@ import json
 import asyncio
 from urllib.parse import quote_plus
 from functools import lru_cache
+# Add imports for LangGraph caching
+from langgraph.cache.memory import InMemoryCache
+from langgraph.types import CachePolicy
+import pickle  # For serializing cache keys
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
+
+CACHE_TTL = 604800
 
 
 def get_vecs_client():
@@ -245,7 +251,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                                 "keyphrase": keyphrase
                             })
                         else:
-                            raise Exception(f"❌ Unexpected result format: {result} (type: {type(result)})")
+                            raise Exception(f"Unexpected result format: {result} (type: {type(result)})")
                     
                     # Explicitly delete embedding from memory
                     del embedding
@@ -825,15 +831,134 @@ Profiles to Score:
     }
 
 
+# Add custom key functions for caching
+def query_cache_key(state):
+    """Generate a cache key based on the user query.
+    
+    This ensures that identical queries use cached results even if other state elements differ.
+    """
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Extract user query from messages
+    messages = state.get("messages", [])
+    user_query = get_research_topic(messages)
+    
+    # Create a cache key based on user query and user_id to ensure user-specific caching
+    user_id = state.get("agent_config", {}).get("user_id", "")
+    
+    # Return a tuple that will be used as the cache key
+    return pickle.dumps((user_query, user_id))
+
+def vector_search_cache_key(state):
+    """Generate a cache key for vector search based on query analysis and user ID."""
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Use keyphrases from query analysis for the cache key
+    query_analysis = state.get("query_analysis", {})
+    keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
+    
+    # Include user_id to ensure user-specific caching
+    user_id = state.get("agent_config", {}).get("user_id", "")
+    
+    return pickle.dumps((keyphrases, user_id))
+
+def sql_search_cache_key(state):
+    """Generate a cache key for SQL search based on query analysis and user ID."""
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Use filters and traits from query analysis for the cache key
+    query_analysis = state.get("query_analysis", {})
+    filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
+    traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
+    
+    # Include user_id to ensure user-specific caching
+    user_id = state.get("agent_config", {}).get("user_id", "")
+    
+    return pickle.dumps((filters, traits, user_id))
+
+def fusion_ranking_cache_key(state):
+    """Generate a cache key for fusion ranking based on vector and SQL search results."""
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Use vector search and SQL search results for the cache key
+    vector_search_results = state.get("vector_search", {})
+    sql_search_results = state.get("sql_search", {})
+    
+    # Convert to strings for hashing
+    vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
+    sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
+    
+    # Include user_id to ensure user-specific caching
+    user_id = state.get("agent_config", {}).get("user_id", "")
+    
+    return pickle.dumps((vector_key, sql_key, user_id))
+
+def finalize_sql_answer_cache_key(state):
+    """Generate a cache key for final answer generation based on fusion ranking results."""
+    if hasattr(state, "model_dump"):
+        state = state.model_dump()
+    
+    # Use fusion ranking results for the cache key
+    fusion_results = state.get("fusion_ranking", {})
+    
+    # Convert to string for hashing
+    fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
+    
+    # Include user_id and original query to ensure user-specific and query-specific caching
+    user_id = state.get("agent_config", {}).get("user_id", "")
+    messages = state.get("messages", [])
+    user_query = get_research_topic(messages)
+    
+    return pickle.dumps((fusion_key, user_query, user_id))
+
 # Create simplified SQL-only Agent Graph
 builder = StateGraph(OverallState)
 
-# Add nodes for parallel execution
-builder.add_node("query_analysis", query_analysis)
-builder.add_node("vector_search", vector_search)
-builder.add_node("sql_search", sql_search)
-builder.add_node("fusion_ranking", fusion_ranking)
-builder.add_node("finalize_sql_answer", finalize_sql_answer)
+# Add nodes for parallel execution with caching
+builder.add_node(
+    "query_analysis", 
+    query_analysis, 
+    cache_policy=CachePolicy(
+        ttl=CACHE_TTL,  # TTL cache from environment variable
+        key_func=query_cache_key  # Custom key function
+    )
+)
+builder.add_node(
+    "vector_search", 
+    vector_search,
+    cache_policy=CachePolicy(
+        ttl=CACHE_TTL,  # TTL cache from environment variable
+        key_func=vector_search_cache_key
+    )
+)
+builder.add_node(
+    "sql_search", 
+    sql_search,
+    cache_policy=CachePolicy(
+        ttl=CACHE_TTL,  # TTL cache from environment variable
+        key_func=sql_search_cache_key
+    )
+)
+builder.add_node(
+    "fusion_ranking", 
+    fusion_ranking,
+    cache_policy=CachePolicy(
+        ttl=CACHE_TTL,  # TTL cache from environment variable
+        key_func=fusion_ranking_cache_key
+    )
+)
+builder.add_node(
+    "finalize_sql_answer", 
+    finalize_sql_answer,
+    cache_policy=CachePolicy(
+        ttl=CACHE_TTL,  # TTL cache from environment variable
+        key_func=finalize_sql_answer_cache_key
+    )
+)
 
 # Set the entrypoint
 builder.add_edge(START, "query_analysis")
@@ -850,5 +975,5 @@ builder.add_edge("sql_search", "fusion_ranking")
 builder.add_edge("fusion_ranking", "finalize_sql_answer")
 builder.add_edge("finalize_sql_answer", END)
 
-# Compile the parallel graph
-graph_2 = builder.compile(name="parallel-search-agent")
+# Compile the parallel graph with in-memory cache
+graph_2 = builder.compile(name="parallel-search-agent", cache=InMemoryCache())
