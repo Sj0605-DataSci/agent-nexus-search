@@ -20,6 +20,8 @@ from app.db.redis_client import redis_client
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
 
+CACHE_TTL = 604800
+
 
 def get_vecs_client():
     """Get vecs client without caching to reduce memory pressure."""
