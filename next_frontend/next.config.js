@@ -36,6 +36,12 @@ const nextConfig = {
         port: "",
         pathname: "/storage/v1/object/public/public-files/**",
       },
+      {
+        protocol: "https",
+        hostname: "media.licdn.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
   async headers() {

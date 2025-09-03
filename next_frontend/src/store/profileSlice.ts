@@ -2,6 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { UserProfile, ApiResponse, AuthResponse } from "@/integrations/fastapi/types";
 import { apiClient } from "@/integrations/fastapi/client";
 import { supabaseHandler } from "@/app/supabaseClient";
+import axiosInstance from "@/lib/api/axiosInstance";
 
 // Using the imported UserProfile type from types.ts
 interface ProfileState {
@@ -34,28 +35,34 @@ export const loginUser = createAsyncThunk(
   "profile/loginUser",
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const { data, error } = await supabaseHandler.auth.signInWithPassword({
+      // Use the FastAPI login endpoint with axiosInstance
+      const { data: responseData } = await axiosInstance.post("/auth/login", {
         email,
         password,
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!responseData.success) {
+        throw new Error(responseData.message || "Login failed");
       }
 
-      if (data.session) {
-        localStorage.setItem("discover_minds_access_token", data.session.access_token);
-        localStorage.setItem("discover_minds_refresh_token", data.session.refresh_token);
+      // Store tokens in localStorage
+      if (responseData.data.access_token) {
+        localStorage.setItem("discover_minds_access_token", responseData.data.access_token);
+      }
+      if (responseData.data.refresh_token) {
+        localStorage.setItem("discover_minds_refresh_token", responseData.data.refresh_token);
       }
 
+      // Fetch profile data after successful login
       const profileResponse = await apiClient.fetchProfile();
+
       return {
-        ...profileResponse,
+        ...responseData,
         data: {
           ...profileResponse.data,
-          access_token: data.session?.access_token,
-          refresh_token: data.session?.refresh_token,
-        }
+          access_token: responseData.data.access_token,
+          refresh_token: responseData.data.refresh_token,
+        },
       };
     } catch (error: any) {
       return rejectWithValue(error.message || "Login failed");

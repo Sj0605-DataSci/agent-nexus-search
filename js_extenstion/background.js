@@ -18,7 +18,7 @@ export async function dumpLinkedInCookies() {
     "api.linkedin.com",
     ".www.linkedin.com",
     "lnkd.in",
-    ".lnkd.in"
+    ".lnkd.in",
   ];
 
   console.log("[DEBUG] Checking domains:", domains);
@@ -58,7 +58,7 @@ export async function retrieveAndStoreJSessionId() {
     console.log("[DEBUG] Starting JSESSIONID retrieval...");
     const cookies = await dumpLinkedInCookies();
     console.log("[DEBUG] Found", cookies.length, "LinkedIn cookies");
-    
+
     const jsessionCookie = cookies.find(
       (cookie) => cookie.name === "JSESSIONID"
     );
@@ -67,10 +67,10 @@ export async function retrieveAndStoreJSessionId() {
       console.log("[DEBUG] Found JSESSIONID:", {
         domain: jsessionCookie.domain,
         path: jsessionCookie.path,
-        secure: jsessionCookie.secure
+        secure: jsessionCookie.secure,
       });
       await chrome.storage.local.set({
-        JSESSIONID_TOKEN: jsessionCookie.value
+        JSESSIONID_TOKEN: jsessionCookie.value,
       });
       return jsessionCookie.value;
     } else {
@@ -378,24 +378,39 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     return true;
   }
   if (message?.type === "linkedin-signin") {
-    try {
-      const signInResult = await linkedInSignIn();
-      const jsessionId = await retrieveAndStoreJSessionId();
-      
-      // Fetch and store Voyager profile
-      const voyagerProfile = await fetchVoyagerProfile(jsessionId);
-      await chrome.storage.local.set({ voyagerProfile });
-      
-      sendResponse({
-        ok: true,
-        tokens: signInResult,
-        profile: signInResult?.profile,
-        jsessionId,
-        voyagerProfile
-      });
-    } catch (err) {
-      sendResponse({ ok: false, error: err.message });
-    }
+    (async () => {
+      try {
+        const signInResult = await linkedInSignIn();
+        const jsessionId = await retrieveAndStoreJSessionId();
+        let voyagerProfile = null;
+
+        if (jsessionId) {
+          try {
+            voyagerProfile = await fetchVoyagerProfile(jsessionId);
+            await chrome.storage.local.set({ voyagerProfile });
+          } catch (profileError) {
+            console.error('Error fetching Voyager profile:', profileError);
+          }
+        }
+
+        chrome.runtime.sendMessage({
+          type: 'linkedin-signin-response',
+          ok: true,
+          tokens: signInResult,
+          profile: signInResult?.profile,
+          jsessionId,
+          voyagerProfile
+        });
+      } catch (err) {
+        console.error('Sign-in error:', err);
+        chrome.runtime.sendMessage({
+          type: 'linkedin-signin-response',
+          ok: false,
+          error: err.message || 'Sign-in failed'
+        });
+      }
+    })();
+    
     return true;
   }
 
@@ -513,17 +528,17 @@ async function getJSessionId() {
 }
 
 export async function fetchVoyagerProfile(jsessionId) {
-  const response = await fetch('https://www.linkedin.com/voyager/api/me', {
+  const response = await fetch("https://www.linkedin.com/voyager/api/me", {
     headers: {
-      'csrf-token': jsessionId,
-      'accept': 'application/vnd.linkedin.normalized+json+2.1'
+      "csrf-token": jsessionId,
+      accept: "application/vnd.linkedin.normalized+json+2.1",
     },
-    credentials: 'include'
+    credentials: "include",
   });
-  
+
   if (!response.ok) {
     throw new Error(`Voyager API failed with status ${response.status}`);
   }
-  
+
   return await response.json();
 }

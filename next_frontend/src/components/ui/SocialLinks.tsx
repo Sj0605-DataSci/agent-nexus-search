@@ -169,7 +169,6 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
   showTooltip = true,
   showLabels = true,
 }) => {
-  console.log("SocialLinks 123", socialLinks);
   const parsedEmail = email && email !== "NULL" && email !== "null" ? email : null;
   const links = parseSocialLinks(socialLinks).slice(0, maxLinks);
 

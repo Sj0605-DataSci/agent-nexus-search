@@ -64,14 +64,6 @@ const AuthComponent = () => {
 
   const isLoading = authLoading || profileLoading;
 
-  if (isLoading || (user && profile)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-indigo-600"></div>
-      </div>
-    );
-  }
-
   const formVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
@@ -213,7 +205,7 @@ const SuccessSignupModal = () => {
   const handleResendEmail = useCallback(async () => {
     if (lastSignupData && resendTimer === 0) {
       try {
-                const response: SignUpResponse = await apiClient.userSignUp(
+        const response: SignUpResponse = await apiClient.userSignUp(
           lastSignupData.email,
           lastSignupData.password,
           lastSignupData.name,
@@ -304,7 +296,7 @@ const SignUpFormComponent = ({
         // Format phone number as '91-8929495901'
         const phoneNumber = phoneValue;
 
-                const response: SignUpResponse = await apiClient.userSignUp(
+        const response: SignUpResponse = await apiClient.userSignUp(
           data.email,
           data.password,
           data.name,
@@ -482,10 +474,23 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
     setIsSubmitting(true);
     try {
       posthog.capture("login_attempted", { email: data.email });
-      const loginResult = await dispatch(loginUser(data)).unwrap();
 
-            if (loginResult.success && loginResult.status_code === 200) {
-        const profileData = loginResult.data;
+      const loginResult = await apiClient.login(data.email, data.password);
+
+      if (loginResult.success && loginResult.status_code === 200) {
+        if (loginResult.data.access_token) {
+          localStorage.setItem("discover_minds_access_token", loginResult.data.access_token);
+        }
+        if (loginResult.data.refresh_token) {
+          localStorage.setItem("discover_minds_refresh_token", loginResult.data.refresh_token);
+        }
+
+        router.replace("/chat/new");
+        const profileResponse = await apiClient.fetchProfile();
+        const profileData = profileResponse.data;
+
+        dispatch({ type: "profile/setProfileData", payload: profileData });
+
         posthog.identify(profileData.id, {
           email: profileData.email,
           name: profileData.full_name,
@@ -494,7 +499,6 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
           userId: profileData.id,
           hasConnections: profileData.has_connections,
         });
-        router.replace("/chat/new");
       } else {
         showErrorToast(loginResult.message || "Please check your credentials and try again.");
         posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });

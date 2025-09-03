@@ -56,7 +56,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
   const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
-  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
   const [chatPairs, setChatPairs] = useState<ChatPair[]>([]);
   const [messagesOffset, setMessagesOffset] = useState<number>(0);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
@@ -501,37 +500,51 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               updateMessageContent(currentContent);
               break;
 
-            case "token":
-              const tokenContent =
-                typeof update.content === "string"
-                  ? update.content
-                  : update.content && update.content.text
-                    ? update.content.text
-                    : "";
+            case "sql_search_results":
+              if (update.content && update.content.message) {
+                searchQueries.push(update.content.message);
+                setStreamingSearchQueries(prev => [...prev, update.content.message]);
+                setShowSearchQueries(true);
+              }
+              break;
 
-              if (tokenContent) {
-                if (update.content && update.content.text) {
-                  fullContent = tokenContent;
-                  currentContent = fullContent;
-                  hasExtractedFinalAnswer = true;
-                  setShowSearchQueries(false);
-                }
+            case "vector_search_results":
+              if (update.content && update.content.message) {
+                searchQueries.push(update.content.message);
+                setStreamingSearchQueries(prev => [...prev, update.content.message]);
+                setShowSearchQueries(true);
+              }
+              break;
 
-                if (format === "chat" || format === "table") {
-                  if (chatWorkerRef.current) {
-                    chatWorkerRef.current.postMessage({
-                      type: "process_message",
-                      data: {
-                        id:
-                          update.content.chat_thread_id ||
-                          update.content.thread_id ||
-                          newLoadingMessageId,
-                        content: currentContent,
-                      },
-                    });
-                  } else {
-                    updateMessageContent(currentContent);
-                  }
+            case "fusion_ranking":
+              if (update.content && update.content.message) {
+                searchQueries.push(update.content.message);
+                setStreamingSearchQueries(prev => [...prev, update.content.message]);
+                setShowSearchQueries(true);
+              }
+              break;
+
+            case "query_analysis":
+              if (update.content) {
+                const queryAnalysisMessage = `message: ${JSON.stringify(update.content)}`;
+                searchQueries.push(queryAnalysisMessage);
+                setStreamingSearchQueries(prev => [...prev, queryAnalysisMessage]);
+              }
+              break;
+
+            case "sql_query":
+              if (update.content) {
+                if (update.content.query) {
+                  const sqlQuery = update.content.query;
+                  const fullSqlQuery = sqlQuery;
+                  console.log("SQL Query:", fullSqlQuery);
+                  searchQueries.push(fullSqlQuery);
+                  setStreamingSearchQueries(prev => [...prev, fullSqlQuery]);
+                  setShowSearchQueries(true);
+                } else if (update.content.message) {
+                  searchQueries.push(update.content.message);
+                  setStreamingSearchQueries(prev => [...prev, update.content.message]);
+                  setShowSearchQueries(true);
                 }
               }
               break;
@@ -541,32 +554,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                 searchQueries.push(update.content.query);
                 setStreamingSearchQueries(prev => [...prev, update.content.query]);
                 setShowSearchQueries(true);
-                if (!hasExtractedFinalAnswer) {
-                  currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
-                  updateMessageContent(currentContent);
-                }
-              }
-              break;
-
-            case "source":
-              if (update.content) {
-                if (Array.isArray(update.content.sources)) {
-                  sources.push(...update.content.sources);
-                } else {
-                  sources.push(update.content);
-                }
-
-                if (!hasExtractedFinalAnswer) {
-                  currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
-                  updateMessageContent(currentContent);
-                }
-
-                if (sources.length > 0 && sources.length % 5 === 0 && chatWorkerRef.current) {
-                  chatWorkerRef.current.postMessage({
-                    type: "process_search_results",
-                    data: { sources },
-                  });
-                }
               }
               break;
 
@@ -596,37 +583,45 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               });
               break;
 
-            case "finalize_answer":
-              if (fullContent) {
-                updateMessageContent(fullContent);
-                if (update.content?.query) {
-                  setQuery(update.content.query);
-                }
-                if (chatWorkerRef.current) {
+            case "token":
+              if (update.content && update.content.text) {
+                // Update the current content with the received text
+                currentContent = update.content.text;
+                hasExtractedFinalAnswer = true;
+                setShowSearchQueries(false);
+
+                // Always update the message content regardless of format
+                updateMessageContent(currentContent);
+
+                // For table format, also process with the worker
+                if (format === "table" && chatWorkerRef.current) {
                   chatWorkerRef.current.postMessage({
                     type: "process_message",
                     data: {
                       id:
-                        update.content?.chat_thread_id ||
-                        update.content?.thread_id ||
+                        update.content.chat_thread_id ||
+                        update.content.thread_id ||
                         newLoadingMessageId,
-                      content: fullContent,
+                      content: currentContent,
                     },
                   });
                 }
+                setShowSearchQueries(false);
+                setIsStreaming(false);
+                // Force UI update to show the content immediately
+                setMessages(m => {
+                  if (m.length === 0) return m;
+                  const lastIndex = m.length - 1;
+                  const updatedMessages = [...m];
+                  updatedMessages[lastIndex] = {
+                    ...updatedMessages[lastIndex],
+                    content: currentContent,
+                    id: update.content.message_id || updatedMessages[lastIndex].id,
+                    ...(sources.length > 0 && { sources }),
+                  };
+                  return updatedMessages;
+                });
               }
-
-              setMessages(m => {
-                if (m.length === 0) return m;
-                const lastIndex = m.length - 1;
-                const updatedMessages = [...m];
-                updatedMessages[lastIndex] = {
-                  ...updatedMessages[lastIndex],
-                  id: update.content.message_id || updatedMessages[lastIndex].id,
-                  ...(sources.length > 0 && { sources }),
-                };
-                return updatedMessages;
-              });
 
               setShowSearchQueries(false);
 
@@ -644,53 +639,26 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               });
               break;
 
-            case "web_research_result":
-              if (update.content?.web_research_result?.length > 0) {
-                const researchContent = update.content.web_research_result.join("\n");
-                currentContent = researchContent;
-                updateMessageContent(currentContent);
-              }
-              break;
-
-            case "reflection":
-              if (update.content) {
-                const { is_sufficient, follow_up_queries = [], knowledge_gap } = update.content;
-
-                // Add reflection to the current message
-                const reflectionContent = [
-                  "## Research Reflection",
-                  `**Status:** ${is_sufficient ? "✅ Sufficient Information" : "⚠️ Additional Research Needed"}`,
-                  "",
-                  "### Knowledge Gaps",
-                  knowledge_gap,
-                  "",
-                  "### Follow-up Queries",
-                  ...follow_up_queries.map((q: string, i: number) => `- ${i + 1}. ${q}`),
-                ].join("\n");
-
-                // Update the message with reflection
-                setMessages(m => {
-                  if (m.length === 0) return m;
-                  const lastIndex = m.length - 1;
-                  const updatedMessages = [...m];
-                  updatedMessages[lastIndex] = {
-                    ...updatedMessages[lastIndex],
-                    content: updatedMessages[lastIndex].content + "\n\n" + reflectionContent,
-                  };
-                  return updatedMessages;
-                });
-
-                // Store follow-up queries for potential use
-                if (follow_up_queries.length > 0) {
-                  setStreamingSearchQueries(prev => [...prev, ...follow_up_queries]);
-                }
-              }
-              break;
-
             case "connected":
               console.log("Stream connected");
               break;
             case "done":
+              // If we're still showing a loading message or search queries when done
+              if (
+                currentContent.includes("Searching for information") ||
+                currentContent.includes("🔍 Searching") ||
+                !hasExtractedFinalAnswer
+              ) {
+                // Set a default completion message if we didn't get actual content
+                if (!hasExtractedFinalAnswer) {
+                  currentContent = "Search completed. No specific results to display.";
+                  updateMessageContent(currentContent);
+                  hasExtractedFinalAnswer = true;
+                }
+              }
+
+              // Always hide search queries and set streaming to false when done
+              setShowSearchQueries(false);
               setIsStreaming(false);
               break;
 
@@ -737,8 +705,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (query.trim() && !isStreaming) {
-      console.log("Submitting query:", query);
-      // Add your submission logic here
+      handleSearch();
     }
   };
 
@@ -870,6 +837,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             onKey={handleKeyDown}
             onSubmit={handleSubmit}
             isStreaming={isStreaming}
+            hideGroupOption={false}
           />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
@@ -929,41 +897,32 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                             />
                           )}
 
-                          {(!m.sources || m.sources.length === 0 || activeTab === "content") &&
-                            !isStreaming && (
-                              <div className="text-gray-700">
-                                {m.content === null ? (
-                                  <div className="flex items-center">
-                                    <div className="mr-2">
-                                      <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                                    </div>
-                                    <p className="italic">
-                                      Query seems empty, Please Search again.
-                                    </p>
+                          {(!m.sources || m.sources.length === 0) && !isStreaming && (
+                            <div className="text-gray-700">
+                              {m.content === null ? (
+                                <div className="flex items-center">
+                                  <div className="mr-2">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
                                   </div>
-                                ) : format === "table" &&
-                                  parseStructuredData(m.content) &&
-                                  /(fname|lname|link)/i.test(m.content) ? (
-                                  <div className="flex w-full">
-                                    {renderAsTable(
-                                      m.content,
-                                      false,
-                                      messagesContainerRef,
-                                      hasMoreMessages,
-                                      loadMoreMessages
-                                    )}
-                                  </div>
-                                ) : (
-                                  <StyledMarkdown
-                                    content={m.content}
-                                    sources={m.sources || m.sources_gathered}
-                                  />
-                                )}
-                              </div>
-                            )}
-
-                          {activeTab === "sources" && (
-                            <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
+                                  <p className="italic">Query seems empty, Please Search again.</p>
+                                </div>
+                              ) : format === "table" && /(fname|lname|link)/i.test(m.content) ? (
+                                <div className="flex w-full">
+                                  {renderAsTable(
+                                    m.content,
+                                    false,
+                                    messagesContainerRef,
+                                    hasMoreMessages,
+                                    loadMoreMessages
+                                  )}
+                                </div>
+                              ) : (
+                                <StyledMarkdown
+                                  content={m.content}
+                                  sources={m.sources || m.sources_gathered}
+                                />
+                              )}
+                            </div>
                           )}
 
                           <div className="mt-3 pb-4 px-3 flex justify-between items-center">

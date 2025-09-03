@@ -19,7 +19,8 @@ const baseMetadata = {
     default: "DiscoverMinds.ai - Unlock Your Network's Potential",
     template: "%s | DiscoverMinds.ai",
   },
-  description: "DiscoverMinds.ai is a mutual network-sharing platform designed to unlock hidden opportunities within your professional extended network through warm introductions.",
+  description:
+    "DiscoverMinds.ai is a mutual network-sharing platform designed to unlock hidden opportunities within your professional extended network through warm introductions.",
 };
 
 const productionMetadata: Metadata = {

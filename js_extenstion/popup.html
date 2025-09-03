@@ -38,7 +38,8 @@
           </div>
         </div>
 
-        <div id="profileContainer" class="hidden">
+        <!-- Profile Section (shown when user is signed in) -->
+        <div id="profileSection" class="card" style="display: none;">
           <div class="profile-header">
             <img id="profileImage" src="" alt="Profile" />
             <h2 id="profileName"></h2>
@@ -62,7 +63,8 @@
           </button>
         </div>
 
-        <div id="spinner" class="spinner-container" hidden>
+        <!-- Connecting Section (shown during sign in process) -->
+        <div id="connectingSection" class="spinner-container" style="display: none;">
           <div class="loader"></div>
           <p>Connecting to LinkedIn...</p>
         </div>

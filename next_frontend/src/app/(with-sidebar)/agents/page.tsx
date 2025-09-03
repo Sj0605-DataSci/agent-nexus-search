@@ -250,126 +250,6 @@ const Agents = () => {
 
         {hiredIds.length > 0 && agentsStatus !== "loading" && (
           <div className="max-w-7xl mx-auto">
-            {/* <div className="mb-12">
-              <div
-                className={`p-6 rounded-2xl backdrop-blur-sm border ${
-                  darkMode ? "bg-gray-800/40 border-gray-700/50" : "bg-white/60 border-gray-200/50"
-                }`}
-              >
-                <div className="flex items-center mb-6">
-                  <div
-                    className={`p-3 rounded-full mr-4 ${darkMode ? "bg-blue-600/20" : "bg-blue-100"}`}
-                  >
-                    <svg
-                      className={`w-6 h-6 ${darkMode ? "text-blue-300" : "text-blue-600"}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2
-                      className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}
-                    >
-                      Your Agent Team
-                    </h2>
-                    <p className={`text-sm ${darkMode ? "text-gray-200" : "text-gray-600"}`}>
-                      Select an agent to customize
-                    </p>
-                  </div>
-                  <div className="ml-auto flex items-center space-x-4">
-                    <div className="text-center">
-                      <div
-                        className={`text-2xl font-bold ${darkMode ? "text-green-400" : "text-green-500"}`}
-                      >
-                        {hiredIds.length}
-                      </div>
-                      <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-500"}`}>
-                        Active
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                  {hiredRaw.map((agentData, index) => (
-                    <button
-                      key={agentData.template_id}
-                      onClick={() => setSelectedAgent(agentData.template_id)}
-                      className={`group relative p-3 sm:p-4 rounded-xl transition-all duration-300 transform hover:scale-105 w-full text-left ${
-                        selectedAgent === agentData.template_id
-                          ? darkMode
-                            ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30 border-2 border-blue-500/50"
-                            : "bg-gradient-to-r from-blue-100 to-purple-100 border-2 border-blue-400/50"
-                          : darkMode
-                            ? "bg-gray-700/30 hover:bg-gray-700/50 border border-gray-600/30"
-                            : "bg-white/40 hover:bg-white/60 border border-gray-300/30"
-                      }`}
-                      style={{
-                        animation: `fadeSlideIn 0.6s ease-out ${index * 0.1}s both`,
-                      }}
-                    >
-                      {selectedAgent === agentData.template_id && (
-                        <div
-                          className={`absolute -inset-1 bg-gradient-to-r ${
-                            darkMode
-                              ? "from-blue-500/20 to-purple-500/20"
-                              : "from-blue-400/20 to-purple-400/20"
-                          } rounded-xl blur-lg`}
-                        />
-                      )}
-                      <div className="relative flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          {agentData.image_urls ? (
-                            <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                              <Image
-                                src={agentData.image_urls}
-                                alt={`${agentData.name} avatar`}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-2xl flex items-center justify-center w-10 h-10">
-                              {getAgentAvatar(agentData.expertise)}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-left">
-                          <div
-                            className={`font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}
-                          >
-                            {capitalizeText(agentData.name || "")}
-                          </div>
-                          <div
-                            className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
-                          >
-                            {capitalizeText(agentData.expertise || "")}
-                          </div>
-                        </div>
-                        {selectedAgent === agentData.template_id && (
-                          <div className="ml-2">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                darkMode ? "bg-blue-300" : "bg-blue-600"
-                              } animate-pulse`}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div> */}
-
             {currentAgent && currentConfig && (
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
                 <div className="lg:w-1/3">
@@ -460,12 +340,12 @@ const Agents = () => {
                         ))}
                       </div>
                     </div>
-                    {selectedAgent && (
+                    {/* {selectedAgent && (
                       <DocumentUploader
                         agentId={hiredRaw.find(a => a.template_id === selectedAgent)?.id || ""}
                         darkMode={darkMode}
                       />
-                    )}
+                    )} */}
                   </div>
                 </div>
 

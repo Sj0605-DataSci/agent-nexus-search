@@ -80,19 +80,9 @@ const Sidebar = () => {
     if (!profile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
 
     setLoadingMoreThreads(true);
-    dispatch(setLoading(false));
-    dispatch(loadMoreChatThreads())
-      .then(() => {
-        console.log("Successfully loaded more threads");
-      })
-      .catch(error => {
-        console.error("Error loading more threads:", error);
-      })
-      .finally(() => {
-        setTimeout(() => {
-          setLoadingMoreThreads(false);
-        }, 300);
-      });
+    dispatch(loadMoreChatThreads()).finally(() => {
+      setLoadingMoreThreads(false);
+    });
   }, [hasMoreThreads, loadingMoreThreads, dispatch]);
 
   useEffect(() => {
@@ -142,17 +132,16 @@ const Sidebar = () => {
     setIsLoggingOut(true);
     try {
       await apiClient.logout();
-      // Clear local storage and state
-      localStorage.removeItem("discover_minds_access_token");
-      localStorage.removeItem("discover_minds_refresh_token");
+      localStorage.clear();
       dispatch(clearProfile());
       await supabaseHandler.auth.signOut();
       posthog.reset();
-      // Redirect to auth page
-      router.push("/user-auth");
+      router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      posthog.reset();
+      router.push("/");
       setIsLoggingOut(false);
       setShowLogoutConfirm(false);
     }

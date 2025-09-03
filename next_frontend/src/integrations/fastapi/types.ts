@@ -9,9 +9,6 @@ export interface UsageStats {
   period_days: number;
   total_searches: number;
   basic_searches: number;
-  deep_searches: number;
-  total_credits_used: number;
-  total_credits_purchased: number;
 }
 
 // Agent Template types
