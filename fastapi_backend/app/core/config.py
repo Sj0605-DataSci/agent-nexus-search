@@ -80,6 +80,7 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
     APIFY_API_KEY: str = os.getenv("APIFY_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+    JINA_API_KEY: str = os.getenv("JINA_API_KEY", "")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     # Use Railway Redis environment variables if available
     REDIS_HOST: str = os.getenv("REDISHOST", "localhost")
