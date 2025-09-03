@@ -386,6 +386,34 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
         return None
 
 
+async def generate_jina_embedding(text: str) -> Optional[List[float]]:
+    """Generate embedding using Jina API"""
+    try:
+        import requests
+        from app.core.config import settings
+        
+        url = "https://api.jina.ai/v1/embeddings"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.JINA_API_KEY}",
+        }
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "text-matching",
+            "input": text,
+        }
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        
+        if "data" in result and len(result["data"]) > 0:
+            return result["data"][0]["embedding"]
+        return None
+    except Exception as e:
+        print(f"Error generating Jina embedding: {e}")
+        return None
+
+
 # ===== NODE 3: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
