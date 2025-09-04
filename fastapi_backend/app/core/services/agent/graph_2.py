@@ -15,7 +15,7 @@ import asyncio
 from urllib.parse import quote_plus
 from langsmith import traceable
 # Add imports for LangGraph caching
-from app.db.redis_client import cached
+from app.db.redis_client import redis_client
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
@@ -68,7 +68,6 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 # ===== NODE 1: Query Analysis =====
 @traceable(project_name="Discoverminds",name="query_analysis")
-@cached(ttl=CACHE_TTL, key_prefix="query_analysis")  # Cache for 1 hour
 async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
     """Analyze user query and extract filters, traits, and keyphrases.
     
@@ -93,7 +92,15 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
         
-        user_query = get_research_topic(state["messages"])        
+        user_query = get_research_topic(state["messages"]) 
+
+        cache_key = f"graph2:query_analysis:{user_id}:{user_query}"
+        
+        # Try to get from cache
+        cached_result = await redis_client.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+      
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
 Extract exactly 9 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
@@ -168,34 +175,36 @@ Please provide:
             pass
         
         print("Node 1: Query Analysis Completed")
-        return OverallState(
-            messages=state["messages"],
-            intent=state["intent"],
-            format=state["format"],
-            search_query=[],
-            sql_queries=[],
-            web_research_result=[],
-            sources_gathered=[],
-            current_message_id=current_message_id,
-            agent_config=agent_config,
-            chat_thread_id=chat_thread_id,
-            user_id=user_id,
-            agent_id=agent_id,
-            weave_url=state["weave_url"],
-            max_research_loops=state["max_research_loops"],
-            initial_search_query_count=state["initial_search_query_count"],
-            number_of_results_returned=state["number_of_results_returned"],
-            world_connections=state["world_connections"],
-            query_analysis=response.model_dump(),
-            user_query=user_query
-        )
+        result = {
+            "messages": state["messages"],
+            "intent": state["intent"],
+            "format": state["format"],
+            "search_query": [],
+            "sql_queries": [],
+            "web_research_result": [],
+            "sources_gathered": [],
+            "current_message_id": current_message_id,
+            "agent_config": agent_config,
+            "chat_thread_id": chat_thread_id,
+            "user_id": user_id,
+            "agent_id": agent_id,
+            "weave_url": state["weave_url"],
+            "max_research_loops": state["max_research_loops"],
+            "initial_search_query_count": state["initial_search_query_count"],
+            "number_of_results_returned": state["number_of_results_returned"],
+            "world_connections": state["world_connections"],
+            "query_analysis": response.model_dump() if hasattr(response, 'model_dump') else response,
+            "user_query": user_query
+        }
+        
+        await redis_client.set(cache_key, result, expire=3600)
+        return OverallState(**result)
         
     except Exception as e:
         raise
         
 # ===== NODE 2: Vector Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="vector_search")
-@cached(ttl=CACHE_TTL, key_prefix="vector_search")
 async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate embeddings and perform vector search only."""
     try:
@@ -207,6 +216,13 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         keyphrases = query_analysis.get("keyphrases", {}).get("keyphrases", [])
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
+        user_query = state["user_query"]
+        cache_key = f"graph2:vector_search:{user_id}:{user_query}"
+        
+        # Try to get from cache
+        cached_result = await redis_client.get(cache_key)
+        if cached_result is not None:
+            return OverallState(**cached_result)
         
         print("Node 2: Vector Search Client")
         vecs_client = get_vecs_client()
@@ -232,9 +248,9 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                     )
                     
                     # Process results immediately
-                    for result in vector_results:
-                        if (isinstance(result, tuple) or hasattr(result, '__getitem__')) and len(result) >= 2:
-                            profile_id, similarity_score = result[0], result[1]
+                    for vec_result in vector_results:
+                        if (isinstance(vec_result, tuple) or hasattr(vec_result, '__getitem__')) and len(vec_result) >= 2:
+                            profile_id, similarity_score = vec_result[0], vec_result[1]
                             try:
                                 all_vector_results.append({
                                     "profile_id": profile_id,
@@ -243,9 +259,9 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                                 })
                             except Exception as append_e:
                                 raise append_e
-                        elif isinstance(result, str):
+                        elif isinstance(vec_result, str):
                             all_vector_results.append({
-                                "profile_id": result,
+                                "profile_id": vec_result,
                                 "similarity_score": 1.0,
                                 "keyphrase": keyphrase
                             })
@@ -264,52 +280,55 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         # ===== STEP 4: Remove duplicates from vector results =====
         
         unique_vector_profiles = {}
-        for result in all_vector_results:
-            profile_id = result["profile_id"]
+        for vec_result in all_vector_results:
+            profile_id = vec_result["profile_id"]
             if profile_id not in unique_vector_profiles:
                 unique_vector_profiles[profile_id] = {
                     "profile_id": profile_id,
-                    "max_similarity": result["similarity_score"],
-                    "matching_keyphrases": [result["keyphrase"]]
+                    "max_similarity": vec_result["similarity_score"],
+                    "matching_keyphrases": [vec_result["keyphrase"]]
                 }
             else:
                 # Update with higher similarity score and add keyphrase
-                if result["similarity_score"] > unique_vector_profiles[profile_id]["max_similarity"]:
-                    unique_vector_profiles[profile_id]["max_similarity"] = result["similarity_score"]
-                unique_vector_profiles[profile_id]["matching_keyphrases"].append(result["keyphrase"])
+                if vec_result["similarity_score"] > unique_vector_profiles[profile_id]["max_similarity"]:
+                    unique_vector_profiles[profile_id]["max_similarity"] = vec_result["similarity_score"]
+                unique_vector_profiles[profile_id]["matching_keyphrases"].append(vec_result["keyphrase"])
         
         vector_profile_ids = list(unique_vector_profiles.keys())
         print("Node 2: Vector Search Completed")
         
-        return OverallState(
-            messages=state["messages"],
-            intent=state["intent"],
-            format=state["format"],
-            search_query=state.get("search_query", []),
-            sql_queries=state.get("sql_queries", []),
-            web_research_result=state.get("web_research_result", []),
-            sources_gathered=state.get("sources_gathered", []),
-            current_message_id=state.get("current_message_id", ""),
-            agent_config=state["agent_config"],
-            chat_thread_id=state["chat_thread_id"],
-            user_id=state["user_id"],
-            agent_id=state["agent_id"],
-            weave_url=state["weave_url"],
-            max_research_loops=state["max_research_loops"],
-            initial_search_query_count=state["initial_search_query_count"],
-            number_of_results_returned=state["number_of_results_returned"],
-            world_connections=state["world_connections"],
-            query_analysis=state.get("query_analysis", {}),
-            user_query=state.get("user_query", ""),
-            vector_results=vector_profile_ids,
-            vector_similarity_data=unique_vector_profiles
-        )
+        result={
+            "messages": state["messages"],
+            "intent": state["intent"],
+            "format": state["format"],
+            "search_query": state.get("search_query", []),
+            "sql_queries": state.get("sql_queries", []),
+            "web_research_result": state.get("web_research_result", []),
+            "sources_gathered": state.get("sources_gathered", []),
+            "current_message_id": state["current_message_id"],
+            "agent_config": state["agent_config"],
+            "chat_thread_id": state["chat_thread_id"],
+            "user_id": state["user_id"],
+            "agent_id": state["agent_id"],
+            "weave_url": state["weave_url"],
+            "max_research_loops": state["max_research_loops"],
+            "initial_search_query_count": state["initial_search_query_count"],
+            "number_of_results_returned": state["number_of_results_returned"],
+            "world_connections": state["world_connections"],
+            "query_analysis": state["query_analysis"],
+            "user_query": state["user_query"],
+            "vector_results": vector_profile_ids,
+            "vector_similarity_data": unique_vector_profiles
+        }
+
+
+        await redis_client.set(cache_key, result, expire=3600)
+        return OverallState(**result)
         
     except Exception as e:
         raise
 
 @traceable(project_name="Discoverminds",name="embedding gen")
-@cached(ttl=CACHE_TTL, key_prefix="generate_jina_embedding")
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding using Jina API"""
     try:
@@ -340,7 +359,6 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
 
 # ===== NODE 3: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
-@cached(ttl=CACHE_TTL, key_prefix="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
     try:
@@ -352,6 +370,14 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         query_analysis = state.get("query_analysis", {})
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
+        user_query = state.get("user_query", "")
+
+        cache_key = f"graph2:sql_search:{user_id}:{user_query}"
+        
+        cached_result = await redis_client.get(cache_key)
+        if cached_result is not None:
+            return OverallState(**cached_result)
+        
         supabase_client = await get_async_supabase_client()
         
         # Extract traits and filters for keyword generation
@@ -432,12 +458,12 @@ Return only the SQL query, no explanation."""
             # Execute the SQL query using JSON wrapper to avoid type mismatch
             json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
             
-            result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
+            keyword_result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
             
             # Parse JSONB results
             keyword_results = []
-            if result.data:
-                for row in result.data:
+            if keyword_result.data:
+                for row in keyword_result.data:
                     if isinstance(row, dict) and 'to_jsonb' in row:
                         keyword_results.append(row['to_jsonb'])
                     else:
@@ -455,35 +481,38 @@ Return only the SQL query, no explanation."""
                 raise fallback_e
         
         print("Node 3: SQL Search Completed")
-        return OverallState(
-            messages=state["messages"],
-            intent=state["intent"],
-            format=state["format"],
-            search_query=state.get("search_query", []),
-            sql_queries=[generated_sql],
-            web_research_result=keyword_results,
-            sources_gathered=state.get("sources_gathered", []),
-            current_message_id=state.get("current_message_id", ""),
-            agent_config=state["agent_config"],
-            chat_thread_id=state["chat_thread_id"],
-            user_id=state["user_id"],
-            agent_id=state["agent_id"],
-            weave_url=state["weave_url"],
-            max_research_loops=state["max_research_loops"],
-            initial_search_query_count=state["initial_search_query_count"],
-            number_of_results_returned=state["number_of_results_returned"],
-            world_connections=state["world_connections"],
-            query_analysis=state.get("query_analysis", {}),
-            user_query=state.get("user_query", ""),
-            sql_results=keyword_results
-        )
+
+        result = {
+            "messages":state["messages"],
+            "intent":state["intent"],
+            "format":state["format"],
+            "search_query":state.get("search_query", []),
+            "sql_queries":[generated_sql],
+            "web_research_result":keyword_results,
+            "sources_gathered":state.get("sources_gathered", []),
+            "current_message_id":state.get("current_message_id", ""),
+            "agent_config":state["agent_config"],
+            "chat_thread_id":state["chat_thread_id"],
+            "user_id":state["user_id"],
+            "agent_id":state["agent_id"],
+            "weave_url":state["weave_url"],
+            "max_research_loops":state["max_research_loops"],
+            "initial_search_query_count":state["initial_search_query_count"],
+            "number_of_results_returned":state["number_of_results_returned"],
+            "world_connections":state["world_connections"],
+            "query_analysis":state.get("query_analysis", {}),
+            "user_query":state.get("user_query", ""),
+            "sql_results":keyword_results
+        }
+
+        await redis_client.set(cache_key, result, expire=3600)
+        return OverallState(**result)
         
     except Exception as e:
         raise
 
 # ===== NODE 4: Fusion Ranking (Combines Vector + SQL Results) =====
 @traceable(project_name="Discoverminds",name="fusion_ranking")
-@cached(ttl=CACHE_TTL, key_prefix="fusion_ranking")
 async def fusion_ranking(state: OverallState, config: RunnableConfig) -> OverallState:
     """Combine vector and SQL results, perform fusion ranking and LLM scoring."""
     try:
@@ -493,6 +522,14 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
         print("Node 4: Fusion Ranking")
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
+        user_query = state.get("user_query", "")
+        
+        cache_key = f"graph2:fusion_ranking:{user_id}:{user_query}"
+        
+        cached_result = await redis_client.get(cache_key)
+        if cached_result is not None:
+            return OverallState(**cached_result)
+        
         supabase_client = await get_async_supabase_client()
         
         # Get results from parallel nodes
@@ -622,35 +659,36 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
             final_results.append(profile)
                 
         print("Node 4: Fusion Ranking Completed")
-        return OverallState(
-            messages=state["messages"],
-            intent=state["intent"],
-            format=state["format"],
-            search_query=state.get("search_query", []),
-            sql_queries=state.get("sql_queries", []),
-            web_research_result=final_results,
-            sources_gathered=state.get("sources_gathered", []),
-            current_message_id=state.get("current_message_id", ""),
-            agent_config=state["agent_config"],
-            chat_thread_id=state["chat_thread_id"],
-            user_id=state["user_id"],
-            agent_id=state["agent_id"],
-            weave_url=state["weave_url"],
-            max_research_loops=state["max_research_loops"],
-            initial_search_query_count=state["initial_search_query_count"],
-            number_of_results_returned=state["number_of_results_returned"],
-            world_connections=state["world_connections"],
-            query_analysis=state.get("query_analysis", {}),
-            user_query=state.get("user_query", ""),
-            final_results=final_results
-        )
+        result = {
+            "messages":state["messages"],
+            "intent":state["intent"],
+            "format":state["format"],
+            "search_query":state.get("search_query", []),
+            "sql_queries":state.get("sql_queries", []),
+            "web_research_result":final_results,
+            "sources_gathered":state.get("sources_gathered", []),
+            "current_message_id":state.get("current_message_id", ""),
+            "agent_config":state["agent_config"],
+            "chat_thread_id":state["chat_thread_id"],
+            "user_id":state["user_id"],
+            "agent_id":state["agent_id"],
+            "weave_url":state["weave_url"],
+            "max_research_loops":state["max_research_loops"],
+            "initial_search_query_count":state["initial_search_query_count"],
+            "number_of_results_returned":state["number_of_results_returned"],
+            "world_connections":state["world_connections"],
+            "query_analysis":state.get("query_analysis", {}),
+            "user_query":state.get("user_query", ""),
+            "final_results":final_results
+        }
+        await redis_client.set(cache_key, result, expire=CACHE_TTL)
+        return OverallState(**result)
         
     except Exception as e:
         raise
 
 
 @traceable(project_name="Discoverminds",name="finalize_sql_answer")
-@cached(ttl=CACHE_TTL, key_prefix="finalize_sql_answer")
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):
@@ -668,6 +706,12 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     profiles = state.get("web_research_result", [])
     query_analysis = state.get("query_analysis", {})
     user_query = get_research_topic(state["messages"])
+    
+    cache_key = f"graph2:finalize_sql_answer:{user_id}:{user_query}"
+    
+    cached_result = await redis_client.get(cache_key)
+    if cached_result is not None:
+        return cached_result
     
     if not profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
@@ -894,10 +938,12 @@ Profiles to Score:
         print(f"Error updating chat message: {str(e)}")
         raise  # Re-raise the exception to see the full traceback
     
-    return {
+    result = {
         "messages": [final_message],
         "sources_gathered": state.get("sources_gathered", []),
     }
+    await redis_client.set(cache_key, result, expire=CACHE_TTL)
+    return result
 
 
 # Add custom key functions for caching
