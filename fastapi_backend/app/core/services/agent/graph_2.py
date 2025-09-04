@@ -1078,6 +1078,7 @@ Profiles to Score:
 #     return pickle.dumps((fusion_key, user_query, user_id))
 
 # Add custom key functions for caching
+@traceable(project_name="Discoverminds",name="query caching inmem")
 def query_cache_key(state):
     """Generate a cache key based on the user query.
     
@@ -1096,6 +1097,7 @@ def query_cache_key(state):
     # Return a tuple that will be used as the cache key
     return pickle.dumps((user_query, user_id))
 
+@traceable(project_name="Discoverminds",name="vector caching inmem")
 def vector_search_cache_key(state):
     """Generate a cache key for vector search based on query analysis and user ID."""
     if hasattr(state, "model_dump"):
@@ -1110,6 +1112,7 @@ def vector_search_cache_key(state):
     
     return pickle.dumps((keyphrases, user_id))
 
+@traceable(project_name="Discoverminds",name="sql search caching inmem")
 def sql_search_cache_key(state):
     """Generate a cache key for SQL search based on query analysis and user ID."""
     if hasattr(state, "model_dump"):
@@ -1125,6 +1128,7 @@ def sql_search_cache_key(state):
     
     return pickle.dumps((filters, traits, user_id))
 
+@traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
 def fusion_ranking_cache_key(state):
     """Generate a cache key for fusion ranking based on vector and SQL search results."""
     if hasattr(state, "model_dump"):
@@ -1143,6 +1147,7 @@ def fusion_ranking_cache_key(state):
     
     return pickle.dumps((vector_key, sql_key, user_id))
 
+@traceable(project_name="Discoverminds",name="sql query answer caching inmem")
 def finalize_sql_answer_cache_key(state):
     """Generate a cache key for final answer generation based on fusion ranking results."""
     if hasattr(state, "model_dump"):
