@@ -13,6 +13,10 @@ import vecs
 import json
 import asyncio
 from urllib.parse import quote_plus
+<<<<<<< HEAD
+=======
+from functools import lru_cache
+>>>>>>> 61c6cd6 (added langsmith traceability)
 from langsmith import traceable
 # Add imports for LangGraph caching
 from app.db.redis_client import redis_client
@@ -941,9 +945,12 @@ Profiles to Score:
         except Exception as e:
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
 =======
             print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
+=======
+>>>>>>> 61c6cd6 (added langsmith traceability)
             llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
 >>>>>>> feded23 (new vec store with indexing and JINA API)
             try:
@@ -1073,6 +1080,7 @@ Profiles to Score:
 
 # Add custom key functions for caching
 <<<<<<< HEAD
+<<<<<<< HEAD
 # @traceable(project_name="Discoverminds",name="query caching inmem")
 # def query_cache_key(state):
 #     """Generate a cache key based on the user query.
@@ -1161,6 +1169,9 @@ Profiles to Score:
     
 #     return pickle.dumps((fusion_key, user_query, user_id))
 =======
+=======
+@traceable(project_name="Discoverminds",name="query caching inmem")
+>>>>>>> 61c6cd6 (added langsmith traceability)
 def query_cache_key(state):
     """Generate a cache key based on the user query.
     
@@ -1179,6 +1190,7 @@ def query_cache_key(state):
     # Return a tuple that will be used as the cache key
     return pickle.dumps((user_query, user_id))
 
+@traceable(project_name="Discoverminds",name="vector caching inmem")
 def vector_search_cache_key(state):
     """Generate a cache key for vector search based on query analysis and user ID."""
     if hasattr(state, "model_dump"):
@@ -1193,6 +1205,7 @@ def vector_search_cache_key(state):
     
     return pickle.dumps((keyphrases, user_id))
 
+@traceable(project_name="Discoverminds",name="sql search caching inmem")
 def sql_search_cache_key(state):
     """Generate a cache key for SQL search based on query analysis and user ID."""
     if hasattr(state, "model_dump"):
@@ -1208,6 +1221,7 @@ def sql_search_cache_key(state):
     
     return pickle.dumps((filters, traits, user_id))
 
+@traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
 def fusion_ranking_cache_key(state):
     """Generate a cache key for fusion ranking based on vector and SQL search results."""
     if hasattr(state, "model_dump"):
@@ -1226,6 +1240,7 @@ def fusion_ranking_cache_key(state):
     
     return pickle.dumps((vector_key, sql_key, user_id))
 
+@traceable(project_name="Discoverminds",name="sql query answer caching inmem")
 def finalize_sql_answer_cache_key(state):
     """Generate a cache key for final answer generation based on fusion ranking results."""
     if hasattr(state, "model_dump"):
