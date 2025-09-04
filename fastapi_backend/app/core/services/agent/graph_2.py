@@ -957,6 +957,7 @@ Profiles to Score:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
 =======
             print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
@@ -967,6 +968,9 @@ Profiles to Score:
 =======
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
 >>>>>>> ba8dee8 (resolved schema thing)
+=======
+            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
+>>>>>>> 26408f5 (added json serialisation)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
@@ -1059,6 +1063,9 @@ Profiles to Score:
         print("Node 5: Finalize SQL Answer Completed")
         
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 26408f5 (added json serialisation)
         # Ensure all data is JSON serializable
         for profile in response_data:
             if 'scoring' in profile and profile['scoring'] is not None:
@@ -1073,9 +1080,12 @@ Profiles to Score:
                 ]
         
         message_content = json.dumps(response_data, indent=2, ensure_ascii=False)
+<<<<<<< HEAD
 =======
         message_content = json.dumps(response_data, indent=2)
 >>>>>>> f4c0b9a (adding relevant files for chatgroq)
+=======
+>>>>>>> 26408f5 (added json serialisation)
         final_message = AIMessage(content=message_content)
     
     try:
