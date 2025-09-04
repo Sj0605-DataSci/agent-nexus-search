@@ -15,7 +15,7 @@ from supabase import create_client
 from app.core.config import settings
 
 USER_ID = "a5ee6e12-5c5b-4912-9207-8529ecdb8575"
-JINA_API_KEY = "jina_dc1a752d77824de09e0cb503da4f1db7Btwp3dUQLRL_cVnY5Obh2AbuW6yP"
+JINA_API_KEY = settings.JINA_API_KEY
 
 class EmbeddingGenerator:
     def __init__(self):
