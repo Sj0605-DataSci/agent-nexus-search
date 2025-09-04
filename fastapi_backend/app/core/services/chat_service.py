@@ -1,16 +1,13 @@
 from typing import Dict, Any, List, Union
+from langsmith import traceable, Client
 from app.core.services.agent.graph import graph
 from app.core.services.agent.graph_2 import graph_2
 from langchain_core.messages import HumanMessage, AIMessage
-import weave, wandb
 import uuid
 import json
-import time
-import asyncio
 from app.core.config import settings
 from app.core.services.credit_service import CreditService
 from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
-from app.models.chat import IntentClassification
 from app.core.services.agent.prompts import query_title_generation
 from app.models.schemas import TitleAndIntentGeneratorOutput
 from app.core.structured_logger import get_structured_logger
@@ -22,11 +19,10 @@ from app.core.utils.cache import (
     invalidate_chat_threads_cache, invalidate_chat_messages_cache
 )
 from app.db.redis_client import redis_client
+from langsmith.run_helpers import get_current_run_tree
 
 logger = get_structured_logger(__name__)
-
-wandb.login(key=settings.WANDB_API_KEY)
-weave.init("discover-minds/Deep-Search")
+langsmithclient = Client(api_key="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")
 
 class ChatService:
     """Service for handling agent template operations"""
@@ -216,7 +212,7 @@ class ChatService:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
     
-    @weave.op
+    @traceable(project_name="Discoverminds",name="stream_chat")
     async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
@@ -233,6 +229,15 @@ class ChatService:
             # Capture the Weave operation ID
                 # Check if user can perform this search
             credit_service = CreditService(client=self.client)
+            run_tree = get_current_run_tree()
+            if run_tree:
+                workspace_id = settings.LANGSMITH_WORKSPACE_ID
+                project_id=settings.LANGSMITH_PROJ_ID  # fetch from LangSmith API
+
+                run_url = (
+        f"https://smith.langchain.com/o/{workspace_id}/projects/p/{project_id}"
+        f"?peek={run_tree.id}&peeked_trace={run_tree.id}"
+    )
                     
             limit_check = await credit_service.check_search_limit(user_id, search_mode=search_mode)
                     
@@ -251,9 +256,8 @@ class ChatService:
                     }
                 }
                 return
-            op = weave.get_current_call()
-            op_id = op.id
-            weave_url = f"https://wandb.ai/discover-minds/Deep-Search/weave/calls/{op_id}" if op_id else None
+
+            weave_url = run_url
             
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)

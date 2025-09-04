@@ -7,13 +7,14 @@ from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
 from app.db.clients import get_async_supabase_client
 from app.core.config import settings
 from app.models.schemas import QueryAnalysis, ScoredProfilesResponse
-import weave
+from langsmith import traceable
 from app.core.utils.cache import invalidate_chat_messages_cache
 import vecs
 import json
 import asyncio
 from urllib.parse import quote_plus
 from functools import lru_cache
+from langsmith import traceable
 # Add imports for LangGraph caching
 from langgraph.cache.memory import InMemoryCache
 from langgraph.types import CachePolicy
@@ -39,7 +40,7 @@ def get_vecs_client():
     return client
 
 
-@weave.op
+@traceable(project_name="Discoverminds",name="get_research_topic")
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """Get the research topic from the messages."""
     if not messages or len(messages) == 0:
@@ -69,7 +70,7 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 
 # ===== NODE 1: Query Analysis =====
-@weave.op
+@traceable(project_name="Discoverminds",name="query_analysis")
 async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
     """Analyze user query and extract filters, traits, and keyphrases."""
     try:
@@ -187,7 +188,7 @@ Please provide:
         raise
         
 # ===== NODE 2: Vector Search (Parallel) =====
-@weave.op
+@traceable(project_name="Discoverminds",name="vector_search")
 async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate embeddings and perform vector search only."""
     try:
@@ -300,7 +301,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
     except Exception as e:
         raise
 
-
+@traceable(project_name="Discoverminds",name="embedding gen")
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding using Jina API"""
     try:
@@ -330,7 +331,7 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
 
 
 # ===== NODE 3: SQL Search (Parallel) =====
-@weave.op
+@traceable(project_name="Discoverminds",name="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
     try:
@@ -472,7 +473,7 @@ Return only the SQL query, no explanation."""
         raise
 
 # ===== NODE 4: Fusion Ranking (Combines Vector + SQL Results) =====
-@weave.op
+@traceable(project_name="Discoverminds",name="fusion_ranking")
 async def fusion_ranking(state: OverallState, config: RunnableConfig) -> OverallState:
     """Combine vector and SQL results, perform fusion ranking and LLM scoring."""
     try:
@@ -638,7 +639,7 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
         raise
 
 
-@weave.op
+@traceable(project_name="Discoverminds",name="finalize_sql_answer")
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):
@@ -784,7 +785,6 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-            print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
             llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
@@ -860,6 +860,7 @@ Profiles to Score:
 
 
 # Add custom key functions for caching
+@traceable(project_name="Discoverminds",name="query caching inmem")
 def query_cache_key(state):
     """Generate a cache key based on the user query.
     
@@ -878,6 +879,7 @@ def query_cache_key(state):
     # Return a tuple that will be used as the cache key
     return pickle.dumps((user_query, user_id))
 
+@traceable(project_name="Discoverminds",name="vector caching inmem")
 def vector_search_cache_key(state):
     """Generate a cache key for vector search based on query analysis and user ID."""
     if hasattr(state, "model_dump"):
@@ -892,6 +894,7 @@ def vector_search_cache_key(state):
     
     return pickle.dumps((keyphrases, user_id))
 
+@traceable(project_name="Discoverminds",name="sql search caching inmem")
 def sql_search_cache_key(state):
     """Generate a cache key for SQL search based on query analysis and user ID."""
     if hasattr(state, "model_dump"):
@@ -907,6 +910,7 @@ def sql_search_cache_key(state):
     
     return pickle.dumps((filters, traits, user_id))
 
+@traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
 def fusion_ranking_cache_key(state):
     """Generate a cache key for fusion ranking based on vector and SQL search results."""
     if hasattr(state, "model_dump"):
@@ -925,6 +929,7 @@ def fusion_ranking_cache_key(state):
     
     return pickle.dumps((vector_key, sql_key, user_id))
 
+@traceable(project_name="Discoverminds",name="sql query answer caching inmem")
 def finalize_sql_answer_cache_key(state):
     """Generate a cache key for final answer generation based on fusion ranking results."""
     if hasattr(state, "model_dump"):
