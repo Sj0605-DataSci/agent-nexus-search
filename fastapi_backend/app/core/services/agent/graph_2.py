@@ -871,6 +871,14 @@ Give this in json format
 =======
 ```
 
+<<<<<<< HEAD
+=======
+All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
+Pleaasure ensure to render right json.
+"""
+        user_prompt = f"""User Query: "{user_query}"
+
+>>>>>>> f4e64bf (resolved schema thing)
 Search Criteria:
 - Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
 - Traits: {json.dumps(query_analysis.get('traits', {}), indent=2)}
