@@ -13,17 +13,14 @@ import vecs
 import json
 import asyncio
 from urllib.parse import quote_plus
-from functools import lru_cache
 from langsmith import traceable
 # Add imports for LangGraph caching
-from langgraph.cache.memory import InMemoryCache
-from langgraph.types import CachePolicy
-import pickle  # For serializing cache keys
+from app.db.redis_client import cached
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
 
-CACHE_TTL = 604800
+CACHE_TTL = 604800  # 1 week
 
 
 def get_vecs_client():
@@ -71,14 +68,23 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 # ===== NODE 1: Query Analysis =====
 @traceable(project_name="Discoverminds",name="query_analysis")
+@cached(ttl=CACHE_TTL, key_prefix="query_analysis")  # Cache for 1 hour
 async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Analyze user query and extract filters, traits, and keyphrases."""
+    """Analyze user query and extract filters, traits, and keyphrases.
+    
+    Args:
+        state: The current state containing messages and other context
+        config: Configuration for the runnable
+        
+    Returns:
+        Updated state with query analysis results
+    """
     try:
         if hasattr(state, "model_dump"):
             state = state.model_dump()
 
         supabase_client = await get_async_supabase_client()
-        print("Node 1: Query Analysis")
+        print("Node 1: Query Analysis (Cache Miss - Computing)")
         
         model = "gemini-2.5-flash-lite"
         agent_config = state["agent_config"]
@@ -189,6 +195,7 @@ Please provide:
         
 # ===== NODE 2: Vector Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="vector_search")
+@cached(ttl=CACHE_TTL, key_prefix="vector_search")
 async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate embeddings and perform vector search only."""
     try:
@@ -302,6 +309,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         raise
 
 @traceable(project_name="Discoverminds",name="embedding gen")
+@cached(ttl=CACHE_TTL, key_prefix="generate_jina_embedding")
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding using Jina API"""
     try:
@@ -332,6 +340,7 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
 
 # ===== NODE 3: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
+@cached(ttl=CACHE_TTL, key_prefix="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
     try:
@@ -474,6 +483,7 @@ Return only the SQL query, no explanation."""
 
 # ===== NODE 4: Fusion Ranking (Combines Vector + SQL Results) =====
 @traceable(project_name="Discoverminds",name="fusion_ranking")
+@cached(ttl=CACHE_TTL, key_prefix="fusion_ranking")
 async def fusion_ranking(state: OverallState, config: RunnableConfig) -> OverallState:
     """Combine vector and SQL results, perform fusion ranking and LLM scoring."""
     try:
@@ -640,6 +650,7 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
 
 
 @traceable(project_name="Discoverminds",name="finalize_sql_answer")
+@cached(ttl=CACHE_TTL, key_prefix="finalize_sql_answer")
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):
@@ -700,17 +711,12 @@ IMPORTANT:
 - Only use <b></b> tag, no other tags needed
 - Do not use any other HTML tags
 
-Return a JSON object with a "profiles" array containing one ScoredProfile object for each input profile.
+Return answer like this 
 
 Example format:
 "profile_id": "uuid-2",
 "linkedin_url": "https://www.linkedin.com/in/username2",
-"all_quotes": [
-        "5 years of <b>product management experience</b>",
-        "Launched <b>3 successful products</b>",
-        "Some experience with <b>data analytics</b>",
-        "No <b>engineering background</b> mentioned"
-      ],
+"all_quotes": ["5 years of <b>product management experience</b>","Launched <b>3 successful products</b>","Some experience with <b>data analytics</b>","No <b>engineering background</b> mentioned"],
 "scoring": [
         {
           "confidence": 85,
@@ -728,10 +734,8 @@ Example format:
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
       ]
-```
 
 All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
-Pleaasure ensure to render right json.
 """
         user_prompt = f"""User Query: "{user_query}"
 
@@ -893,93 +897,93 @@ Profiles to Score:
 
 
 # Add custom key functions for caching
-@traceable(project_name="Discoverminds",name="query caching inmem")
-def query_cache_key(state):
-    """Generate a cache key based on the user query.
+# @traceable(project_name="Discoverminds",name="query caching inmem")
+# def query_cache_key(state):
+#     """Generate a cache key based on the user query.
     
-    This ensures that identical queries use cached results even if other state elements differ.
-    """
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
+#     This ensures that identical queries use cached results even if other state elements differ.
+#     """
+#     if hasattr(state, "model_dump"):
+#         state = state.model_dump()
     
-    # Extract user query from messages
-    messages = state.get("messages", [])
-    user_query = get_research_topic(messages)
+#     # Extract user query from messages
+#     messages = state.get("messages", [])
+#     user_query = get_research_topic(messages)
     
-    # Create a cache key based on user query and user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
+#     # Create a cache key based on user query and user_id to ensure user-specific caching
+#     user_id = state.get("agent_config", {}).get("user_id", "")
     
-    # Return a tuple that will be used as the cache key
-    return pickle.dumps((user_query, user_id))
+#     # Return a tuple that will be used as the cache key
+#     return pickle.dumps((user_query, user_id))
 
-@traceable(project_name="Discoverminds",name="vector caching inmem")
-def vector_search_cache_key(state):
-    """Generate a cache key for vector search based on query analysis and user ID."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
+# @traceable(project_name="Discoverminds",name="vector caching inmem")
+# def vector_search_cache_key(state):
+#     """Generate a cache key for vector search based on query analysis and user ID."""
+#     if hasattr(state, "model_dump"):
+#         state = state.model_dump()
     
-    # Use keyphrases from query analysis for the cache key
-    query_analysis = state.get("query_analysis", {})
-    keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
+#     # Use keyphrases from query analysis for the cache key
+#     query_analysis = state.get("query_analysis", {})
+#     keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
     
-    # Include user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
+#     # Include user_id to ensure user-specific caching
+#     user_id = state.get("agent_config", {}).get("user_id", "")
     
-    return pickle.dumps((keyphrases, user_id))
+#     return pickle.dumps((keyphrases, user_id))
 
-@traceable(project_name="Discoverminds",name="sql search caching inmem")
-def sql_search_cache_key(state):
-    """Generate a cache key for SQL search based on query analysis and user ID."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
+# @traceable(project_name="Discoverminds",name="sql search caching inmem")
+# def sql_search_cache_key(state):
+#     """Generate a cache key for SQL search based on query analysis and user ID."""
+#     if hasattr(state, "model_dump"):
+#         state = state.model_dump()
     
-    # Use filters and traits from query analysis for the cache key
-    query_analysis = state.get("query_analysis", {})
-    filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
-    traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
+#     # Use filters and traits from query analysis for the cache key
+#     query_analysis = state.get("query_analysis", {})
+#     filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
+#     traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
     
-    # Include user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
+#     # Include user_id to ensure user-specific caching
+#     user_id = state.get("agent_config", {}).get("user_id", "")
     
-    return pickle.dumps((filters, traits, user_id))
+#     return pickle.dumps((filters, traits, user_id))
 
-@traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
-def fusion_ranking_cache_key(state):
-    """Generate a cache key for fusion ranking based on vector and SQL search results."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
+# @traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
+# def fusion_ranking_cache_key(state):
+#     """Generate a cache key for fusion ranking based on vector and SQL search results."""
+#     if hasattr(state, "model_dump"):
+#         state = state.model_dump()
     
-    # Use vector search and SQL search results for the cache key
-    vector_search_results = state.get("vector_search", {})
-    sql_search_results = state.get("sql_search", {})
+#     # Use vector search and SQL search results for the cache key
+#     vector_search_results = state.get("vector_search", {})
+#     sql_search_results = state.get("sql_search", {})
     
-    # Convert to strings for hashing
-    vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
-    sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
+#     # Convert to strings for hashing
+#     vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
+#     sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
     
-    # Include user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
+#     # Include user_id to ensure user-specific caching
+#     user_id = state.get("agent_config", {}).get("user_id", "")
     
-    return pickle.dumps((vector_key, sql_key, user_id))
+#     return pickle.dumps((vector_key, sql_key, user_id))
 
-@traceable(project_name="Discoverminds",name="sql query answer caching inmem")
-def finalize_sql_answer_cache_key(state):
-    """Generate a cache key for final answer generation based on fusion ranking results."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
+# @traceable(project_name="Discoverminds",name="sql query answer caching inmem")
+# def finalize_sql_answer_cache_key(state):
+#     """Generate a cache key for final answer generation based on fusion ranking results."""
+#     if hasattr(state, "model_dump"):
+#         state = state.model_dump()
     
-    # Use fusion ranking results for the cache key
-    fusion_results = state.get("fusion_ranking", {})
+#     # Use fusion ranking results for the cache key
+#     fusion_results = state.get("fusion_ranking", {})
     
-    # Convert to string for hashing
-    fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
+#     # Convert to string for hashing
+#     fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
     
-    # Include user_id and original query to ensure user-specific and query-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
-    messages = state.get("messages", [])
-    user_query = get_research_topic(messages)
+#     # Include user_id and original query to ensure user-specific and query-specific caching
+#     user_id = state.get("agent_config", {}).get("user_id", "")
+#     messages = state.get("messages", [])
+#     user_query = get_research_topic(messages)
     
-    return pickle.dumps((fusion_key, user_query, user_id))
+#     return pickle.dumps((fusion_key, user_query, user_id))
 
 # Create simplified SQL-only Agent Graph
 builder = StateGraph(OverallState)
@@ -987,43 +991,23 @@ builder = StateGraph(OverallState)
 # Add nodes for parallel execution with caching
 builder.add_node(
     "query_analysis", 
-    query_analysis, 
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=query_cache_key  # Custom key function
-    )
+    query_analysis
 )
 builder.add_node(
     "vector_search", 
-    vector_search,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=vector_search_cache_key
-    )
+    vector_search
 )
 builder.add_node(
     "sql_search", 
-    sql_search,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=sql_search_cache_key
-    )
+    sql_search
 )
 builder.add_node(
     "fusion_ranking", 
-    fusion_ranking,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=fusion_ranking_cache_key
-    )
+    fusion_ranking
 )
 builder.add_node(
     "finalize_sql_answer", 
-    finalize_sql_answer,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=finalize_sql_answer_cache_key
-    )
+    finalize_sql_answer
 )
 
 # Set the entrypoint
@@ -1037,9 +1021,25 @@ builder.add_edge("query_analysis", "sql_search")
 builder.add_edge("vector_search", "fusion_ranking")
 builder.add_edge("sql_search", "fusion_ranking")
 
+# Fusion ranking feeds into finalize_sql_answer
+builder.add_edge("fusion_ranking", "finalize_sql_answer")
+
+# Set the exit point
+builder.add_edge("finalize_sql_answer", END)
+
+# Parallel execution: both vector_search and sql_search run after query_analysis
+builder.add_edge("query_analysis", "vector_search")
+builder.add_edge("query_analysis", "sql_search")
+
+# Both parallel nodes feed into fusion_ranking
+builder.add_edge("vector_search", "fusion_ranking")
+builder.add_edge("sql_search", "fusion_ranking")
+
 # Final answer generation
 builder.add_edge("fusion_ranking", "finalize_sql_answer")
 builder.add_edge("finalize_sql_answer", END)
 
-# Compile the parallel graph with in-memory cache
-graph_2 = builder.compile(name="parallel-search-agent", cache=InMemoryCache())
+# Compile the graph with shared Redis cache
+graph_2 = builder.compile(
+    name="parallel-search-agent"
+)

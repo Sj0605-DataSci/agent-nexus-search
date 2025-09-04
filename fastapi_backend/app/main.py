@@ -34,9 +34,12 @@ from contextlib import asynccontextmanager
 
 # Setup structured logging based on environment
 setup_structured_logging(
-    level="INFO",
+    level="INFO",  # Changed from INFO to DEBUG to capture cache-related logs
     enable_structured=getattr(settings, 'ENABLE_STRUCTURED_LOGGING', True)
 )
+
+# Enable debug logging for our cache module
+logging.getLogger("app.core.utils.shared_cache").setLevel(logging.DEBUG)
 logger = get_structured_logger(__name__)
 
 # Create FastAPI app with lifespan
