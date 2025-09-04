@@ -754,12 +754,21 @@ Profiles to Score:
             scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
             scored_profiles = []
             for profile in scoring_response.profiles:
+                # Convert ScoringTrait objects to dicts
+                scoring_dicts = [
+                    {
+                        "traitTitle": trait.traitTitle,
+                        "traitDescription": trait.traitDescription,
+                        "confidence": trait.confidence
+                    }
+                    for trait in profile.scoring
+                ]
                 scored_profiles.append({
-                        "profile_id": str(profile.profile_id),
-                        "linkedin_url": profile.linkedin_url,
-                        "all_quotes": profile.all_quotes,
-                        "scoring": profile.scoring,
-                    })
+                    "profile_id": str(profile.profile_id),
+                    "linkedin_url": profile.linkedin_url,
+                    "all_quotes": profile.all_quotes,
+                    "scoring": scoring_dicts,
+                })
             
             # Log costs
             try:
@@ -785,18 +794,27 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
+            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
                 if scoring_response:
                     for profile in scoring_response.profiles:
+                        # Convert ScoringTrait objects to dicts for the fallback case too
+                        scoring_dicts = [
+                            {
+                                "traitTitle": trait.traitTitle,
+                                "traitDescription": trait.traitDescription,
+                                "confidence": trait.confidence
+                            }
+                            for trait in profile.scoring
+                        ]
                         scored_profiles.append({
-                                "profile_id": str(profile.profile_id),
-                                "linkedin_url": profile.linkedin_url,
+                            "profile_id": str(profile.profile_id),
+                            "linkedin_url": profile.linkedin_url,
                             "all_quotes": profile.all_quotes,
-                        "scoring": profile.scoring,
-                    })
+                            "scoring": scoring_dicts,
+                        })
             except Exception as e:
                 raise e
             
