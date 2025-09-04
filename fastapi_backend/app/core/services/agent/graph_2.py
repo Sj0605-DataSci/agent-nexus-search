@@ -677,7 +677,7 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         scoring_system_instruction = """You are an expert at evaluating professional profiles against search criteria.
 
 For each profile, analyze how well it matches the user's query and provide:
-1. Assign top 3 confidence scores in ranges 70-100, 40-70, 0-40
+1. Assign confidence scores between 0 and 1 (e.g., 0.7 for strong match, 0.4 for partial match, 0.1 for no match)
 
 2. For each confidence score:
    - Supporting quotes from the profile data (specific text from experience, education, about section, etc.)
@@ -722,17 +722,17 @@ Give this in json format
 "all_quotes": ["5 years of <b>product management experience</b>","Launched <b>3 successful products</b>","Some experience with <b>data analytics</b>","No <b>engineering background</b> mentioned"],
 "scoring": [
         {
-          "confidence": 85,
+          "confidence": 0.85,
           "traitTitle": "<b>Experienced Product Manager</b> at Top Tech Company",
           "traitDescription": "Has <b>5+ years experience</b> managing successful products at <b>Google</b>"
         },
         {
-          "confidence": 45,
+          "confidence": 0.45,
           "traitTitle": "Basic <i>UX Design</i> Knowledge",
           "traitDescription": "Has <i>fundamental understanding</i> of user experience principles"
         },
         {
-          "confidence": 15,
+          "confidence": 0.15,
           "traitTitle": "No Healthcare Industry Experience",
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
