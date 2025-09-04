@@ -68,7 +68,6 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 # ===== NODE 1: Query Analysis =====
 @traceable(project_name="Discoverminds",name="query_analysis")
-@cached(ttl=CACHE_TTL, key_prefix="query_analysis")  # Cache for 1 hour
 async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
     """Analyze user query and extract filters, traits, and keyphrases.
     
@@ -206,7 +205,6 @@ Please provide:
         
 # ===== NODE 2: Vector Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="vector_search")
-@cached(ttl=CACHE_TTL, key_prefix="vector_search")
 async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate embeddings and perform vector search only."""
     try:
@@ -360,7 +358,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         raise
 
 @traceable(project_name="Discoverminds",name="embedding gen")
-@cached(ttl=CACHE_TTL, key_prefix="generate_jina_embedding")
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding using Jina API"""
     try:
@@ -419,7 +416,6 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
 
 # ===== NODE 3: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
-@cached(ttl=CACHE_TTL, key_prefix="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
     try:
@@ -571,7 +567,6 @@ Return only the SQL query, no explanation."""
 
 # ===== NODE 4: Fusion Ranking (Combines Vector + SQL Results) =====
 @traceable(project_name="Discoverminds",name="fusion_ranking")
-@cached(ttl=CACHE_TTL, key_prefix="fusion_ranking")
 async def fusion_ranking(state: OverallState, config: RunnableConfig) -> OverallState:
     """Combine vector and SQL results, perform fusion ranking and LLM scoring."""
     try:
@@ -740,7 +735,6 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
 
 
 @traceable(project_name="Discoverminds",name="finalize_sql_answer")
-@cached(ttl=CACHE_TTL, key_prefix="finalize_sql_answer")
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):
@@ -993,6 +987,8 @@ Profiles to Score:
         "messages": [final_message],
         "sources_gathered": state.get("sources_gathered", []),
     }
+    await redis_client.set(cache_key, result, expire=CACHE_TTL)
+    return result
 
 # Add custom key functions for caching
 # @traceable(project_name="Discoverminds",name="query caching inmem")
