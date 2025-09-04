@@ -830,6 +830,7 @@ Give this in json format
       '''
 
 All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
+Pleaasure ensure to render right json.
 """
         user_prompt = f"""User Query: "{user_query}"
 
