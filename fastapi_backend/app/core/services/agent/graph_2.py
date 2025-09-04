@@ -795,7 +795,7 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
+            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
@@ -858,7 +858,20 @@ Profiles to Score:
         # Format as JSON for frontend consumption
         print("Node 5: Finalize SQL Answer Completed")
         
-        message_content = json.dumps(response_data, indent=2)
+        # Ensure all data is JSON serializable
+        for profile in response_data:
+            if 'scoring' in profile and profile['scoring'] is not None:
+                # Convert any non-serializable objects in scoring to dicts
+                profile['scoring'] = [
+                    {
+                        'traitTitle': str(score.get('traitTitle', '')),
+                        'traitDescription': str(score.get('traitDescription', '')),
+                        'confidence': float(score.get('confidence', 0.0))
+                    }
+                    for score in profile['scoring']
+                ]
+        
+        message_content = json.dumps(response_data, indent=2, ensure_ascii=False)
         final_message = AIMessage(content=message_content)
     
     try:
@@ -870,7 +883,8 @@ Profiles to Score:
         
         invalidate_chat_messages_cache(chat_thread_id)
     except Exception as e:
-        pass
+        print(f"Error updating chat message: {str(e)}")
+        raise  # Re-raise the exception to see the full traceback
     
     return {
         "messages": [final_message],
