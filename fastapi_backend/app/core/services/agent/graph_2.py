@@ -905,7 +905,7 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
+            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
