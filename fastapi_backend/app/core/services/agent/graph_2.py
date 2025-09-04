@@ -714,6 +714,9 @@ IMPORTANT:
 Return answer like this 
 
 Example format:
+Give this in json format
+'''json
+{
 "profile_id": "uuid-2",
 "linkedin_url": "https://www.linkedin.com/in/username2",
 "all_quotes": ["5 years of <b>product management experience</b>","Launched <b>3 successful products</b>","Some experience with <b>data analytics</b>","No <b>engineering background</b> mentioned"],
@@ -734,6 +737,7 @@ Example format:
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
       ]
+      '''
 
 All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
 """
