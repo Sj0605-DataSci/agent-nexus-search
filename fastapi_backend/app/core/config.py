@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = os.getenv("REDISPASSWORD", "password")
     REDIS_URL: str = os.getenv("REDIS_URL", "")
     WANDB_API_KEY: str = os.getenv("WANDB_API_KEY", "")
+
+    LANGSMITH_PROJ_ID: str = os.getenv("LANGSMITH_PROJ_ID","")
+    LANGSMITH_ORG_ID: str = os.getenv("LANGSMITH_ORG_ID","")
+    LANGSMITH_WORKSPACE_ID: str = os.getenv("LANGSMITH_WORKSPACE_ID","")
     
     # Logging settings
     ENABLE_STRUCTURED_LOGGING: bool = os.getenv("ENABLE_STRUCTURED_LOGGING", "true").lower() == "true"

@@ -1,8 +1,8 @@
 from openai import AsyncOpenAI
 from app.core.config import settings
 from typing import Type, TypeVar, List, Dict, Any, Union, AsyncGenerator
-import weave
 import json
+from langsmith import traceable
 
 T = TypeVar('T')
 
@@ -41,8 +41,7 @@ class GeminiChatModel:
                     openai_messages.append(msg)
         
         return openai_messages
-    
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GeminiChatModel.with_structured_output")
     async def with_structured_output(self, schema_type: Type[T], prompt: Union[str, List[Dict[str, Any]]]) -> tuple[T, Dict[str, Any]]:
         """Get structured output from the model using a Pydantic schema
         
@@ -74,7 +73,7 @@ class GeminiChatModel:
         
         return response.choices[0].message.parsed, usage_metadata
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GeminiChatModel.ainvoke")
     async def ainvoke(self, messages: Union[str, List[Dict[str, Any]]]) -> Any:
         """Invoke the model with messages and return response"""
         openai_messages = self._prepare_messages(messages)
@@ -99,7 +98,7 @@ class GeminiChatModel:
         
         return CompatibleResponse(response.choices[0].message.content, usage_metadata)
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GeminiChatModel.astream")
     async def astream(self, messages: Union[str, List[Dict[str, Any]]]) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream responses from the model"""
         openai_messages = self._prepare_messages(messages)
@@ -118,7 +117,7 @@ class GeminiChatModel:
                     "type": "content"
                 }
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GeminiChatModel.with_tools")
     async def with_tools(self, messages: Union[str, List[Dict[str, Any]]], tools: List[Dict[str, Any]], tool_choice: str = "auto") -> Dict[str, Any]:
         """Invoke the model with tool calling capabilities
         
@@ -247,7 +246,7 @@ class GroqChatModel:
         
         return openai_messages
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GroqChatModel.with_structured_output")
     async def with_structured_output(self, schema_type: Type[T], prompt: Union[str, List[Dict[str, Any]]]) -> tuple[T, Dict[str, Any]]:
         """Get structured output from the model using a Pydantic schema
         
@@ -279,7 +278,7 @@ class GroqChatModel:
         
         return response.choices[0].message.parsed, usage_metadata
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GroqChatModel.ainvoke")
     async def ainvoke(self, messages: Union[str, List[Dict[str, Any]]]) -> Any:
         """Invoke the model with messages and return response"""
         openai_messages = self._prepare_messages(messages)
@@ -304,7 +303,7 @@ class GroqChatModel:
         
         return CompatibleResponse(response.choices[0].message.content, usage_metadata)
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GroqChatModel.astream")
     async def astream(self, messages: Union[str, List[Dict[str, Any]]]) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream responses from the model"""
         openai_messages = self._prepare_messages(messages)
@@ -323,7 +322,7 @@ class GroqChatModel:
                     "type": "content"
                 }
     
-    @weave.op
+    @traceable(project_name="Discoverminds", name="GroqChatModel.with_tools")
     async def with_tools(self, messages: Union[str, List[Dict[str, Any]]], tools: List[Dict[str, Any]], tool_choice: str = "auto") -> Dict[str, Any]:
         """Invoke the model with tool calling capabilities
         
