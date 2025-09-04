@@ -13,10 +13,6 @@ import vecs
 import json
 import asyncio
 from urllib.parse import quote_plus
-<<<<<<< HEAD
-=======
-from functools import lru_cache
->>>>>>> 61c6cd6 (added langsmith traceability)
 from langsmith import traceable
 # Add imports for LangGraph caching
 from app.db.redis_client import redis_client
@@ -906,11 +902,15 @@ Profiles to Score:
                 ]
                 scored_profiles.append({
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ba8dee8 (resolved schema thing)
                     "profile_id": str(profile.profile_id),
                     "linkedin_url": profile.linkedin_url,
                     "all_quotes": profile.all_quotes,
                     "scoring": scoring_dicts,
                 })
+<<<<<<< HEAD
 =======
                         "profile_id": str(profile.profile_id),
                         "linkedin_url": profile.linkedin_url,
@@ -918,6 +918,8 @@ Profiles to Score:
                         "scoring": profile.scoring,
                     })
 >>>>>>> f4c0b9a (adding relevant files for chatgroq)
+=======
+>>>>>>> ba8dee8 (resolved schema thing)
             
             # Log costs
             try:
@@ -946,6 +948,7 @@ Profiles to Score:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
 =======
             print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
@@ -953,12 +956,18 @@ Profiles to Score:
 >>>>>>> 61c6cd6 (added langsmith traceability)
             llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
 >>>>>>> feded23 (new vec store with indexing and JINA API)
+=======
+            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
+>>>>>>> ba8dee8 (resolved schema thing)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
                 if scoring_response:
                     for profile in scoring_response.profiles:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ba8dee8 (resolved schema thing)
                         # Convert ScoringTrait objects to dicts for the fallback case too
                         scoring_dicts = [
                             {
@@ -968,6 +977,7 @@ Profiles to Score:
                             }
                             for trait in profile.scoring
                         ]
+<<<<<<< HEAD
                         scored_profiles.append({
                             "profile_id": str(profile.profile_id),
                             "linkedin_url": profile.linkedin_url,
@@ -989,12 +999,14 @@ Profiles to Score:
                 })
 >>>>>>> f4c0b9a (adding relevant files for chatgroq)
 =======
+=======
+>>>>>>> ba8dee8 (resolved schema thing)
                         scored_profiles.append({
-                                "profile_id": str(profile.profile_id),
-                                "linkedin_url": profile.linkedin_url,
+                            "profile_id": str(profile.profile_id),
+                            "linkedin_url": profile.linkedin_url,
                             "all_quotes": profile.all_quotes,
-                        "scoring": profile.scoring,
-                    })
+                            "scoring": scoring_dicts,
+                        })
             except Exception as e:
                 raise e
             
