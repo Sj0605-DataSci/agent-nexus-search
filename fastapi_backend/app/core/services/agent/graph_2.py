@@ -20,8 +20,6 @@ from app.db.redis_client import redis_client
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
 
-CACHE_TTL = 604800
-
 
 def get_vecs_client():
     """Get vecs client without caching to reduce memory pressure."""
@@ -358,62 +356,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         raise
 
 @traceable(project_name="Discoverminds",name="embedding gen")
-async def generate_jina_embedding(text: str) -> Optional[List[float]]:
-    """Generate embedding using Jina API"""
-    try:
-        import requests
-        from app.core.config import settings
-        
-        url = "https://api.jina.ai/v1/embeddings"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.JINA_API_KEY}",
-        }
-        data = {
-            "model": "jina-embeddings-v3",
-            "task": "text-matching",
-            "input": text,
-        }
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        
-        if "data" in result and len(result["data"]) > 0:
-            return result["data"][0]["embedding"]
-        return None
-    except Exception as e:
-        print(f"Error generating Jina embedding: {e}")
-        return None
-
-
-async def generate_jina_embedding(text: str) -> Optional[List[float]]:
-    """Generate embedding using Jina API"""
-    try:
-        import requests
-        from app.core.config import settings
-        
-        url = "https://api.jina.ai/v1/embeddings"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.JINA_API_KEY}",
-        }
-        data = {
-            "model": "jina-embeddings-v3",
-            "task": "text-matching",
-            "input": text,
-        }
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        
-        if "data" in result and len(result["data"]) > 0:
-            return result["data"][0]["embedding"]
-        return None
-    except Exception as e:
-        print(f"Error generating Jina embedding: {e}")
-        return None
-
-
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding using Jina API"""
     try:
@@ -866,19 +808,12 @@ Give this in json format
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
       ]
-<<<<<<< HEAD
       '''
-=======
-```
 
-<<<<<<< HEAD
-=======
 All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
-Pleaasure ensure to render right json.
 """
         user_prompt = f"""User Query: "{user_query}"
 
->>>>>>> f4e64bf (resolved schema thing)
 Search Criteria:
 - Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
 - Traits: {json.dumps(query_analysis.get('traits', {}), indent=2)}
@@ -909,25 +844,11 @@ Profiles to Score:
                     for trait in profile.scoring
                 ]
                 scored_profiles.append({
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ba8dee8 (resolved schema thing)
                     "profile_id": str(profile.profile_id),
                     "linkedin_url": profile.linkedin_url,
                     "all_quotes": profile.all_quotes,
                     "scoring": scoring_dicts,
                 })
-<<<<<<< HEAD
-=======
-                        "profile_id": str(profile.profile_id),
-                        "linkedin_url": profile.linkedin_url,
-                        "all_quotes": profile.all_quotes,
-                        "scoring": profile.scoring,
-                    })
->>>>>>> f4c0b9a (adding relevant files for chatgroq)
-=======
->>>>>>> ba8dee8 (resolved schema thing)
             
             # Log costs
             try:
@@ -953,33 +874,12 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
             llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
-=======
-            print("Error scoring profiles from Llama, going for fallback, Gemini 2.5 flash", error=str(e))
-=======
->>>>>>> 61c6cd6 (added langsmith traceability)
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
->>>>>>> feded23 (new vec store with indexing and JINA API)
-=======
-            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
->>>>>>> ba8dee8 (resolved schema thing)
-=======
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=scoring_system_instruction)
->>>>>>> 26408f5 (added json serialisation)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
                 if scoring_response:
                     for profile in scoring_response.profiles:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ba8dee8 (resolved schema thing)
                         # Convert ScoringTrait objects to dicts for the fallback case too
                         scoring_dicts = [
                             {
@@ -989,7 +889,6 @@ Profiles to Score:
                             }
                             for trait in profile.scoring
                         ]
-<<<<<<< HEAD
                         scored_profiles.append({
                             "profile_id": str(profile.profile_id),
                             "linkedin_url": profile.linkedin_url,
@@ -999,30 +898,6 @@ Profiles to Score:
             except Exception as e:
                 raise e
             
-=======
-            # Fallback scoring
-            scored_profiles = []
-            for i, profile in enumerate(profiles):
-                scored_profiles.append({
-                    "profile_id": profile.get("id", ""),
-                    "linkedin_url": profile.get("linkedin_url", ""),
-                    "all_quotes": profile.get("all_quotes", []),
-                    "scoring": profile.get("scoring", []),
-                })
->>>>>>> f4c0b9a (adding relevant files for chatgroq)
-=======
-=======
->>>>>>> ba8dee8 (resolved schema thing)
-                        scored_profiles.append({
-                            "profile_id": str(profile.profile_id),
-                            "linkedin_url": profile.linkedin_url,
-                            "all_quotes": profile.all_quotes,
-                            "scoring": scoring_dicts,
-                        })
-            except Exception as e:
-                raise e
-            
->>>>>>> feded23 (new vec store with indexing and JINA API)
         
         # Create enhanced formatted response matching the UI requirements
         response_data = []
@@ -1062,10 +937,6 @@ Profiles to Score:
         # Format as JSON for frontend consumption
         print("Node 5: Finalize SQL Answer Completed")
         
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 26408f5 (added json serialisation)
         # Ensure all data is JSON serializable
         for profile in response_data:
             if 'scoring' in profile and profile['scoring'] is not None:
@@ -1080,12 +951,6 @@ Profiles to Score:
                 ]
         
         message_content = json.dumps(response_data, indent=2, ensure_ascii=False)
-<<<<<<< HEAD
-=======
-        message_content = json.dumps(response_data, indent=2)
->>>>>>> f4c0b9a (adding relevant files for chatgroq)
-=======
->>>>>>> 26408f5 (added json serialisation)
         final_message = AIMessage(content=message_content)
     
     try:
@@ -1109,8 +974,6 @@ Profiles to Score:
 
 
 # Add custom key functions for caching
-<<<<<<< HEAD
-<<<<<<< HEAD
 # @traceable(project_name="Discoverminds",name="query caching inmem")
 # def query_cache_key(state):
 #     """Generate a cache key based on the user query.
@@ -1198,97 +1061,6 @@ Profiles to Score:
 #     user_query = get_research_topic(messages)
     
 #     return pickle.dumps((fusion_key, user_query, user_id))
-=======
-=======
-@traceable(project_name="Discoverminds",name="query caching inmem")
->>>>>>> 61c6cd6 (added langsmith traceability)
-def query_cache_key(state):
-    """Generate a cache key based on the user query.
-    
-    This ensures that identical queries use cached results even if other state elements differ.
-    """
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    
-    # Extract user query from messages
-    messages = state.get("messages", [])
-    user_query = get_research_topic(messages)
-    
-    # Create a cache key based on user query and user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
-    
-    # Return a tuple that will be used as the cache key
-    return pickle.dumps((user_query, user_id))
-
-@traceable(project_name="Discoverminds",name="vector caching inmem")
-def vector_search_cache_key(state):
-    """Generate a cache key for vector search based on query analysis and user ID."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    
-    # Use keyphrases from query analysis for the cache key
-    query_analysis = state.get("query_analysis", {})
-    keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
-    
-    # Include user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
-    
-    return pickle.dumps((keyphrases, user_id))
-
-@traceable(project_name="Discoverminds",name="sql search caching inmem")
-def sql_search_cache_key(state):
-    """Generate a cache key for SQL search based on query analysis and user ID."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    
-    # Use filters and traits from query analysis for the cache key
-    query_analysis = state.get("query_analysis", {})
-    filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
-    traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
-    
-    # Include user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
-    
-    return pickle.dumps((filters, traits, user_id))
-
-@traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
-def fusion_ranking_cache_key(state):
-    """Generate a cache key for fusion ranking based on vector and SQL search results."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    
-    # Use vector search and SQL search results for the cache key
-    vector_search_results = state.get("vector_search", {})
-    sql_search_results = state.get("sql_search", {})
-    
-    # Convert to strings for hashing
-    vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
-    sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
-    
-    # Include user_id to ensure user-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
-    
-    return pickle.dumps((vector_key, sql_key, user_id))
-
-@traceable(project_name="Discoverminds",name="sql query answer caching inmem")
-def finalize_sql_answer_cache_key(state):
-    """Generate a cache key for final answer generation based on fusion ranking results."""
-    if hasattr(state, "model_dump"):
-        state = state.model_dump()
-    
-    # Use fusion ranking results for the cache key
-    fusion_results = state.get("fusion_ranking", {})
-    
-    # Convert to string for hashing
-    fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
-    
-    # Include user_id and original query to ensure user-specific and query-specific caching
-    user_id = state.get("agent_config", {}).get("user_id", "")
-    messages = state.get("messages", [])
-    user_query = get_research_topic(messages)
-    
-    return pickle.dumps((fusion_key, user_query, user_id))
->>>>>>> f426b2e (add inmem cache + cache policy in LG)
 
 # Create simplified SQL-only Agent Graph
 builder = StateGraph(OverallState)
@@ -1296,7 +1068,6 @@ builder = StateGraph(OverallState)
 # Add nodes for parallel execution with caching
 builder.add_node(
     "query_analysis", 
-<<<<<<< HEAD
     query_analysis
 )
 builder.add_node(
@@ -1314,45 +1085,6 @@ builder.add_node(
 builder.add_node(
     "finalize_sql_answer", 
     finalize_sql_answer
-=======
-    query_analysis, 
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=query_cache_key  # Custom key function
-    )
-)
-builder.add_node(
-    "vector_search", 
-    vector_search,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=vector_search_cache_key
-    )
-)
-builder.add_node(
-    "sql_search", 
-    sql_search,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=sql_search_cache_key
-    )
-)
-builder.add_node(
-    "fusion_ranking", 
-    fusion_ranking,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=fusion_ranking_cache_key
-    )
-)
-builder.add_node(
-    "finalize_sql_answer", 
-    finalize_sql_answer,
-    cache_policy=CachePolicy(
-        ttl=CACHE_TTL,  # TTL cache from environment variable
-        key_func=finalize_sql_answer_cache_key
-    )
->>>>>>> f426b2e (add inmem cache + cache policy in LG)
 )
 
 # Set the entrypoint
@@ -1384,12 +1116,7 @@ builder.add_edge("sql_search", "fusion_ranking")
 builder.add_edge("fusion_ranking", "finalize_sql_answer")
 builder.add_edge("finalize_sql_answer", END)
 
-<<<<<<< HEAD
 # Compile the graph with shared Redis cache
 graph_2 = builder.compile(
     name="parallel-search-agent"
 )
-=======
-# Compile the parallel graph with in-memory cache
-graph_2 = builder.compile(name="parallel-search-agent", cache=InMemoryCache())
->>>>>>> f426b2e (add inmem cache + cache policy in LG)
