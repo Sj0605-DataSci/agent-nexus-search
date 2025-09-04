@@ -20,8 +20,6 @@ from app.db.redis_client import redis_client
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
 
-CACHE_TTL = 604800  # 1 week
-
 
 def get_vecs_client():
     """Get vecs client without caching to reduce memory pressure."""
@@ -681,7 +679,7 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
             "user_query":state.get("user_query", ""),
             "final_results":final_results
         }
-        await redis_client.set(cache_key, result, expire=CACHE_TTL)
+        await redis_client.set(cache_key, result, expire=3600)
         return OverallState(**result)
         
     except Exception as e:
@@ -942,7 +940,7 @@ Profiles to Score:
         "messages": [final_message],
         "sources_gathered": state.get("sources_gathered", []),
     }
-    await redis_client.set(cache_key, result, expire=CACHE_TTL)
+    await redis_client.set(cache_key, result, expire=3600)
     return result
 
 
