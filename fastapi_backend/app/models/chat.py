@@ -309,6 +309,10 @@ class ChatRequest(BaseModel):
     world_connections: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="world")
     thread_id: Annotated[str, lambda x, y: y or x] = Field(description="The ID of the thread.")
 
+class PublicChatRequest(BaseModel):
+    """Model for chat request from client"""
+    messages: Annotated[Union[str, List[Dict[str, Any]]], lambda x, y: y or x] = Field(description="Message content or list of messages in the conversation")
+
 
 class StreamingChatRequest(ChatRequest):
     """Model for streaming chat request from client"""
@@ -316,6 +320,12 @@ class StreamingChatRequest(ChatRequest):
     search_mode: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="basic")
     world_connections: Annotated[str, lambda x, y: y or x] = Field(description="The search mode to be used.", default="world")
     thread_id: Annotated[str, lambda x, y: y or x] = Field(description="The ID of the thread.")
+
+
+class StreamingPublicChatRequest(PublicChatRequest):
+    """Model for streaming chat request from client"""
+    stream: Annotated[bool, lambda x, y: y or x] = Field(description="Whether to stream the response", default=True)
+    messages: Annotated[Union[str, List[Dict[str, Any]]], lambda x, y: y or x] = Field(description="Message content or list of messages in the conversation")
 
 
 class ChatResponse(BaseModel):
