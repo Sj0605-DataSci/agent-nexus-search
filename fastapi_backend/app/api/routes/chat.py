@@ -118,9 +118,9 @@ async def stream_chat(
             user_id=current_user.id,
             agent_id=request.agent_id,
             messages=request.messages,
-            format=request.format,
-            search_mode=request.search_mode,
-            world_connections=request.world_connections,
+            format="table",
+            search_mode="basic",
+            world_connections="connections",
             thread_id=request.thread_id
         )
         
