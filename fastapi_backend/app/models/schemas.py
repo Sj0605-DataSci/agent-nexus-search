@@ -258,11 +258,8 @@ class RefreshTokenRequest(BaseModel):
 
 # Waitlist Schema
 class WaitlistRequest(BaseModel):
-    name: str
     email: EmailStr
-    phone_number: str
     beta_tester: Optional[bool] = False
-    linkedin_url: Optional[str] = None
 
 class ResetPasswordRequest(BaseModel):
     """Request schema for initiating password reset"""

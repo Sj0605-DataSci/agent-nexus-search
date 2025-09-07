@@ -512,8 +512,7 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
     try:
         # Log waitlist join attempt
         logger.info("Waitlist join attempt", 
-                   email=waitlist_request.email, 
-                   user_name=waitlist_request.name)
+                   email=waitlist_request.email)
         
         try:
             # Check if email already exists in invitees
@@ -534,31 +533,10 @@ async def join_waitlist(waitlist_request: WaitlistRequest, client: AsyncClient =
                     status_code=status.HTTP_409_CONFLICT
                 )
             
-            # Check if phone number already exists in invitees
-            async with AsyncTimer("supabase.select.invitees.check_phone"):
-                phone_check = await client.table("invitees").select("id").eq("phone_number", waitlist_request.phone_number).execute()
-            
-            if phone_check.data and len(phone_check.data) > 0:
-                logger.warning("Waitlist join failed - phone number already exists", 
-                              email=waitlist_request.email)
-                
-                return StandardJSONResponse(
-                    StandardResponse(
-                        success=False,
-                        status_code=status.HTTP_409_CONFLICT,
-                        message="Phone number already registered in waitlist",
-                        data=None
-                    ),
-                    status_code=status.HTTP_409_CONFLICT
-                )
-            
             # Add user to invitees table
             invitee_data = {
-                "name": waitlist_request.name,
                 "email": waitlist_request.email,
-                "phone_number": waitlist_request.phone_number,
                 "beta_tester": waitlist_request.beta_tester,
-                "linkedin_url": waitlist_request.linkedin_url,
             }
             
             async with AsyncTimer("supabase.insert.invitees"):
