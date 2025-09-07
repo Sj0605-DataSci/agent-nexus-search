@@ -222,6 +222,35 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         if cached_result is not None:
             return OverallState(**cached_result)
         
+        # Skip vector search in PRODUCTION environment
+        if settings.ENVIRONMENT == "PRODUCTION":
+            print("Node 2: Vector Search skipped in PRODUCTION environment")
+            result = {
+                "messages": state["messages"],
+                "intent": state["intent"],
+                "format": state["format"],
+                "search_query": state.get("search_query", []),
+                "sql_queries": state.get("sql_queries", []),
+                "web_research_result": state.get("web_research_result", []),
+                "sources_gathered": state.get("sources_gathered", []),
+                "current_message_id": state["current_message_id"],
+                "agent_config": state["agent_config"],
+                "chat_thread_id": state["chat_thread_id"],
+                "user_id": state["user_id"],
+                "agent_id": state["agent_id"],
+                "weave_url": state["weave_url"],
+                "max_research_loops": state["max_research_loops"],
+                "initial_search_query_count": state["initial_search_query_count"],
+                "number_of_results_returned": state["number_of_results_returned"],
+                "world_connections": state["world_connections"],
+                "query_analysis": state["query_analysis"],
+                "user_query": state["user_query"],
+                "vector_results": [],
+                "vector_similarity_data": {}
+            }
+            await redis_client.set(cache_key, result, expire=3600)
+            return OverallState(**result)
+        
         print("Node 2: Vector Search Client")
         vecs_client = get_vecs_client()
         linkedin_profiles_collection = vecs_client.get_collection("linkedin_profiless")
