@@ -130,7 +130,7 @@ export interface Source {
 }
 
 export interface ChatRequest {
-  agent_id: string;
+  agent_id?: string;
   messages: string | Array<{ content: string; type: string }>;
   format?: string;
   search_mode?: string;
@@ -139,7 +139,7 @@ export interface ChatRequest {
 }
 
 export interface StreamingChatRequest extends ChatRequest {
-  stream: boolean;
+  stream?: boolean;
 }
 
 export interface ChatResponse {

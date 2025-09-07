@@ -51,10 +51,10 @@ const CustomAvatar: React.FC<CustomAvatarProps> = ({
   showBorder = false,
 }) => {
   const initials = name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase();
+    ?.split(' ')
+    ?.map((n) => n[0])
+    ?.join('')
+    ?.toUpperCase();
 
   const avatarUrl = src || getInitialsAvatar(initials || 'U');
   const sizeClass = sizeClasses[size] || sizeClasses.md;

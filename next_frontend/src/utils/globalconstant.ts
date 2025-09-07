@@ -14,3 +14,9 @@ export const capitalizeText = (text: string): string => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 };
+
+export const getBaseUrl = (): string => {
+  return (
+    (typeof window !== "undefined" && window.location.origin.replace(/\/reset-password$/, "")) || ""
+  );
+};

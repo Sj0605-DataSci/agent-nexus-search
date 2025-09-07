@@ -77,7 +77,7 @@ const StructuredContentRenderer: React.FC<StructuredContentRendererProps> = ({ c
 
     const scoreText = scoreMatch[0];
     const scoreValue = scoreMatch[1];
-    const [numerator, denominator] = scoreValue.split("/").map(Number);
+    const [numerator, denominator] = scoreValue.split("/")?.map(Number);
     const percentage = (numerator / denominator) * 100;
 
     return {

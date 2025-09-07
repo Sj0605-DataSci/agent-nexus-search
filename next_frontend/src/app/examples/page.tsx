@@ -1,7 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import HomeHeader from "@/components/Homepage/Header";
-import Footer from "@/components/Homepage/Footer";
+import Footer from "@/components/Footer/Footer";
+import NewFooter from "@/components/Footer/NewFooter";
 
 export const metadata = {
   title: "Examples | DiscoverMinds.ai",
@@ -181,7 +182,7 @@ export default function ExamplesPage() {
           </div>
         </section>
       </div>
-      <Footer />
+      <NewFooter />
     </>
   );
 }

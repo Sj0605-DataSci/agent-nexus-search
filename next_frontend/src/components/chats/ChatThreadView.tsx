@@ -1,62 +1,43 @@
 "use client";
-import React, { useState, useRef, useEffect, useCallback, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
+import { throttle } from "@/utils/throttle";
 import { ChatNavigationControls } from "./ChatNavigationControls";
-import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
-import { FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
-import { BsTextParagraph } from "react-icons/bs";
+import { showErrorToast } from "@/utils/toastManager";
+import { createUserFriendlyErrorMessage } from "@/utils/errorUtils";
+import { FiClock } from "react-icons/fi";
 import { SearchQueryDisplay } from "./SearchQueryDisplay";
-import SourcesList from "./SourcesList";
 import { getTimeBasedGreeting } from "../../utils/timeUtils";
 import posthog from "posthog-js";
-import { Button } from "@/components/ui/button";
 import SearchInputField from "./SearchInputField";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
 import { apiClient } from "@/integrations/fastapi/client";
-import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
+import { selectAgentCards } from "@/store/agentsSlice";
 import TagCarousel, { TagCategories } from "./TagCarousel";
-import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
+import { renderAsTable } from "./StructuredDataUtils";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
-import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
+import FeedbackModule from "./FeedbackModule"; // Import FeedbackModule component
 
-const FeedbackModal = dynamic(() => import("./FeedbackModal"));
 const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
 
-import {
-  ChatSource,
-  SearchMode,
-  FormatType,
-  WorldConnectionsMode,
-  FeedbackType,
-  MessageType,
-} from "@/types/chat";
+import { ChatSource, MessageType } from "@/types/chat";
 import { WorkerMessage } from "@/types/api";
 import { ChatPair, CachedThread, ChatThreadViewProps } from "@/types/chatThreadView";
+import { getStoredToken } from "@/utils/tokenManagement";
+import toast from "react-hot-toast";
 
-const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
+const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery = "" }) => {
   const chatWorkerRef = useRef<Worker | null>(null);
-  const router = useRouter();
-  const toggleBtnRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const userAccessToken = getStoredToken();
 
-  const [query, setQuery] = useState<string>("");
-  const [selectedAgent, setSelectedAgent] = useState<string>(
-    "00000000-0000-4000-a000-000000000000"
-  );
-  const [format, setFormat] = useState<FormatType>("table");
-  const [searchMode, setSearchMode] = useState<SearchMode>("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] =
-    useState<WorldConnectionsMode>("connections");
+  const [query, setQuery] = useState<string>(initialQuery ? initialQuery : "");
   const [messages, setMessages] = useState<MessageType[]>([]);
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
-  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
   const [chatPairs, setChatPairs] = useState<ChatPair[]>([]);
   const [messagesOffset, setMessagesOffset] = useState<number>(0);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
@@ -67,7 +48,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [streamingSearchQueries, setStreamingSearchQueries] = useState<string[]>([]);
   const [showSearchQueries, setShowSearchQueries] = useState<boolean>(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState<Record<string, boolean>>({});
 
   const MESSAGES_PER_PAGE = 50;
 
@@ -86,93 +66,19 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   }, []);
   const { profile } = useAppSelector(state => state.profile);
 
-  const userId = profile?.id;
-
-  const loadMoreMessages = async () => {
-    if (!threadId || !hasMoreMessages) return;
-
-    setIsLoading(true);
-    try {
-      const messagesResponse = await apiClient.getChatMessages(threadId);
-
-      if (messagesResponse.messages && messagesResponse.messages.length > 0) {
-        setChatPairs(prev => [...messagesResponse.messages, ...prev]);
-        setMessagesOffset(prev => prev + MESSAGES_PER_PAGE);
-        setHasMoreMessages(messagesOffset + MESSAGES_PER_PAGE < messagesResponse.total);
-      } else {
-        setHasMoreMessages(false);
-      }
-    } catch (error) {
-      console.error("Error loading more messages:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const [showAgentDropdown, setShowAgentDropdown] = useState(false);
-
   const sidebarCollapsed = useAppSelector(selectSidebarCollapsed);
 
   const dispatch = useAppDispatch();
-  const agentsStatus = useAppSelector(selectAgentsStatus);
   const agentCards = useAppSelector(selectAgentCards);
-
   useEffect(() => {
-    if (agentsStatus === "idle") dispatch(loadAgents());
-
     posthog.capture("chat_thread_viewed", {
       thread_id: threadId,
       is_new_thread: threadId === "new",
     });
-
-    if (typeof window !== "undefined") {
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then(registration => {
-            console.log("Service Worker registered with scope:", registration.scope);
-          })
-          .catch(error => {
-            console.error("Service Worker registration failed:", error);
-          });
-      }
-
-      if (window.Worker) {
-        chatWorkerRef.current = new Worker("/chatWorker.js");
-
-        chatWorkerRef.current.onmessage = event => {
-          const { type, data } = event.data;
-
-          switch (type) {
-            case "processed_message":
-              setMessages(prevMessages =>
-                prevMessages.map(msg =>
-                  msg.id === data.id ? { ...msg, content: data.content } : msg
-                )
-              );
-              break;
-
-            case "processed_search_results":
-              console.log("Processed search results:", data.sources);
-              break;
-
-            case "query_analysis":
-              console.log("Query analysis:", data);
-              break;
-          }
-        };
-      }
-    }
-
-    return () => {
-      if (chatWorkerRef.current) {
-        chatWorkerRef.current.terminate();
-      }
-    };
-  }, [agentsStatus, dispatch, threadId]);
+  }, [dispatch, threadId]);
 
   const fetchMessages = async (forceRefresh = false) => {
-    if (!threadId) return;
+    if (!threadId || threadId === "new") return;
 
     if (cachedThreads[threadId] && initialLoadComplete && !forceRefresh) {
       const { messages: cachedMessages, timestamp } = cachedThreads[threadId];
@@ -241,7 +147,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   };
 
   useEffect(() => {
-    if (threadId && threadId !== "new") {
+    if (threadId && threadId !== "new" && userAccessToken) {
       setIsLoading(true);
       setTimeout(() => {
         fetchMessages();
@@ -316,54 +222,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   }, [currentMessageIndex, chatPairs]);
 
-  useEffect(() => {
-    function handleClickAway(e: MouseEvent) {
-      if (!showAgentDropdown) return;
-
-      const target = e.target as Node;
-
-      const clickedOutside =
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target) &&
-        toggleBtnRef.current &&
-        !toggleBtnRef.current.contains(target);
-
-      if (clickedOutside) setShowAgentDropdown(false);
-    }
-
-    document.addEventListener("mousedown", handleClickAway);
-    return () => document.removeEventListener("mousedown", handleClickAway);
-  }, [showAgentDropdown]);
-
   const handleTagClick = (tag: string) => {
     if (!isStreaming) {
-      // Only update query if not streaming
       setQuery(tag);
     }
   };
-
-  const handleAgentSelect = (
-    e: React.MouseEvent<HTMLButtonElement>,
-    id: string,
-    hired: boolean
-  ) => {
-    e.stopPropagation();
-
-    if (!hired) {
-      posthog.capture("agent_marketplace_redirect", { agent_id: id });
-      router.push(`/marketplace?agent=${id}`);
-      return;
-    }
-
-    posthog.capture("agent_selected", {
-      agent_id: id,
-      thread_id: threadId,
-    });
-
-    setSelectedAgent(id);
-    setShowAgentDropdown(false);
-  };
-  const agentData = agentCards.find(a => a.id === selectedAgent) || agentCards[0];
 
   const handleSearch = async (incoming?: string) => {
     if (isStreaming) return;
@@ -371,14 +234,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     const q = incoming ?? query;
     if (!q.trim()) return;
 
-    if (threadId !== "new") {
+    if (threadId && threadId !== "new") {
       const newChatPair: ChatPair = {
         id: `temp-${Date.now()}`,
         main_query: q,
         message: "⏳ Searching for information...",
         created_at: new Date(),
         updated_at: new Date(),
-        world_connections: worldConnectionsMode,
+        world_connections: "connections",
       };
       setChatPairs(prev => [...prev, newChatPair]);
       setCurrentMessageIndex(chatPairs.length);
@@ -395,10 +258,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
 
     posthog.capture("search_initiated", {
       query: q,
-      agent_id: selectedAgent,
-      search_mode: searchMode,
-      world_connections_mode: worldConnectionsMode,
-      format: format,
+      agent_id: "arya",
+      search_mode: "basic",
+      world_connections_mode: "connections",
+      format: "table",
       thread_id: threadId,
     });
 
@@ -420,28 +283,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     setMessages([userMessage, agentMessage]);
 
     try {
-      if (!userId) {
-        console.error("No user ID found. User might not be authenticated.");
-        setMessages(m =>
-          m.map(msg =>
-            msg.id === newLoadingMessageId
-              ? {
-                  ...msg,
-                  content: "Error: You need to be logged in to use this feature.",
-                }
-              : msg
-          )
-        );
-        return;
-      }
-
       let currentContent = "⏳ Searching for information...";
-      let fullContent = "";
       let sources: ChatSource[] = [];
       let searchQueries: string[] = [];
       setStreamingSearchQueries([]);
       setShowSearchQueries(false);
-      let hasExtractedFinalAnswer = false;
       let lastUpdateTime = Date.now();
       let updateDebounceMs = 100;
 
@@ -451,7 +297,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         const now = Date.now();
         if (now - lastUpdateTime > updateDebounceMs) {
           setMessages(m =>
-            m.map(msg => {
+            m?.map(msg => {
               if (msg.id === newLoadingMessageId) {
                 return { ...msg, content };
               }
@@ -463,18 +309,15 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       };
 
       await apiClient.sendStreamingChatRequest(
-        agentData.id,
+        agentCards[0]?.id ?? null,
         q,
-        format,
-        searchMode,
-        worldConnectionsMode,
-        threadId,
+        threadId ?? null,
         (update: any) => {
           switch (update.type) {
             case "thread_id":
               if (update.content && update.content.thread_id) {
                 const newThreadId = update.content.thread_id;
-                if (newThreadId !== threadId) {
+                if (userAccessToken && newThreadId !== threadId) {
                   const newUrl = `/chat/${newThreadId}`;
                   window.history.replaceState({ path: newUrl }, "", newUrl);
 
@@ -499,13 +342,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             case "thinking":
               currentContent = "🧠 Thinking...";
               updateMessageContent(currentContent);
+              setShowSearchQueries(true);
               break;
 
             case "sql_search_results":
               if (update.content && update.content.message) {
                 searchQueries.push(update.content.message);
                 setStreamingSearchQueries(prev => [...prev, update.content.message]);
-                setShowSearchQueries(true);
               }
               break;
 
@@ -513,7 +356,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               if (update.content && update.content.message) {
                 searchQueries.push(update.content.message);
                 setStreamingSearchQueries(prev => [...prev, update.content.message]);
-                setShowSearchQueries(true);
               }
               break;
 
@@ -521,18 +363,15 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               if (update.content && update.content.message) {
                 searchQueries.push(update.content.message);
                 setStreamingSearchQueries(prev => [...prev, update.content.message]);
-                setShowSearchQueries(true);
               }
               break;
 
             case "query_analysis":
               if (update.content) {
-                const queryAnalysisMessage = `message: ${JSON.stringify(update.content)}`;
-                searchQueries.push(queryAnalysisMessage);
-                setStreamingSearchQueries(prev => [...prev, queryAnalysisMessage]);
+                searchQueries.push(update.content);
+                setStreamingSearchQueries(prev => [...prev, update.content]);
               }
               break;
-
             case "sql_query":
               if (update.content) {
                 if (update.content.query) {
@@ -541,126 +380,84 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                   console.log("SQL Query:", fullSqlQuery);
                   searchQueries.push(fullSqlQuery);
                   setStreamingSearchQueries(prev => [...prev, fullSqlQuery]);
-                  setShowSearchQueries(true);
                 } else if (update.content.message) {
                   searchQueries.push(update.content.message);
                   setStreamingSearchQueries(prev => [...prev, update.content.message]);
-                  setShowSearchQueries(true);
                 }
               }
-              break;
-
-            case "search_query":
-              if (update.content && update.content.query) {
-                searchQueries.push(update.content.query);
-                setStreamingSearchQueries(prev => [...prev, update.content.query]);
-                setShowSearchQueries(true);
-              }
-              break;
-
-            case "message":
-              if (update.content && update.content.content) {
-                currentContent = update.content.content;
-                updateMessageContent(currentContent);
-              }
-              if (update.thread_id && threadId === "new") {
-                router.replace(`/chat/${update.thread_id}`);
-              }
-              break;
-
-            case "error":
-              const errorMessage =
-                update.content && update.content.message
-                  ? update.content.message
-                  : "Something went wrong. Please try again.";
-
-              currentContent = `❌ Error: ${errorMessage}`;
-              updateMessageContent(currentContent);
-
-              posthog.capture("stream_error", {
-                query: q,
-                agent_id: selectedAgent,
-                error: errorMessage,
-              });
               break;
 
             case "token":
               if (update.content && update.content.text) {
-                // Update the current content with the received text
                 currentContent = update.content.text;
-                hasExtractedFinalAnswer = true;
-                setShowSearchQueries(false);
 
-                // Always update the message content regardless of format
                 updateMessageContent(currentContent);
 
-                // For table format, also process with the worker
-                if (format === "table" && chatWorkerRef.current) {
-                  chatWorkerRef.current.postMessage({
-                    type: "process_message",
-                    data: {
-                      id:
-                        update.content.chat_thread_id ||
-                        update.content.thread_id ||
-                        newLoadingMessageId,
-                      content: currentContent,
-                    },
-                  });
-                }
-                setShowSearchQueries(false);
-                setIsStreaming(false);
-                // Force UI update to show the content immediately
                 setMessages(m => {
                   if (m.length === 0) return m;
                   const lastIndex = m.length - 1;
                   const updatedMessages = [...m];
                   updatedMessages[lastIndex] = {
                     ...updatedMessages[lastIndex],
-                    content: currentContent,
                     id: update.content.message_id || updatedMessages[lastIndex].id,
-                    ...(sources.length > 0 && { sources }),
                   };
                   return updatedMessages;
                 });
+                setShowSearchQueries(false);
+                setIsStreaming(false);
               }
 
               setShowSearchQueries(false);
 
               posthog.capture("search_completed", {
                 query: q,
-                agent_id: selectedAgent,
-                search_mode: searchMode,
-                world_connections_mode: worldConnectionsMode,
-                format: format,
+                search_mode: "basic",
+                world_connections_mode: "connections",
+                format: "table",
                 thread_id: threadId,
                 duration_ms: Date.now() - searchStartTime,
                 sources_count: sources.length,
                 search_queries_count: searchQueries.length,
-                has_answer: hasExtractedFinalAnswer,
+                has_answer: true,
               });
               break;
 
             case "connected":
               console.log("Stream connected");
               break;
-            case "done":
-              // If we're still showing a loading message or search queries when done
-              if (
-                currentContent.includes("Searching for information") ||
-                currentContent.includes("🔍 Searching") ||
-                !hasExtractedFinalAnswer
-              ) {
-                // Set a default completion message if we didn't get actual content
-                if (!hasExtractedFinalAnswer) {
-                  currentContent = "Search completed. No specific results to display.";
-                  updateMessageContent(currentContent);
-                  hasExtractedFinalAnswer = true;
-                }
-              }
+            case "error":
+              const rawErrorMessage =
+                update.content && update.content.message
+                  ? update.content.message
+                  : "Something went wrong. Please try again.";
 
-              // Always hide search queries and set streaming to false when done
-              setShowSearchQueries(false);
+              currentContent = createUserFriendlyErrorMessage(rawErrorMessage);
+              updateMessageContent(currentContent);
+
+              posthog.capture("stream_error", {
+                query: q,
+                agent_id: "arya",
+                error: rawErrorMessage,
+              });
+              break;
+
+            case "done":
               setIsStreaming(false);
+              setIsLoading(false);
+              setShowSearchQueries(false);
+
+              if (update.content?.message_id) {
+                setMessages(m => {
+                  if (m.length === 0) return m;
+                  const lastIndex = m.length - 1;
+                  const updatedMessages = [...m];
+                  updatedMessages[lastIndex] = {
+                    ...updatedMessages[lastIndex],
+                    id: update.content.message_id,
+                  };
+                  return updatedMessages;
+                });
+              }
               break;
 
             default:
@@ -670,16 +467,16 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         }
       );
     } catch (error) {
+      toast.error(error as string);
       console.error("Error sending chat request:", error);
-
       posthog.capture("search_error", {
         query: q,
-        agent_id: selectedAgent,
+        agent_id: "arya",
         error: error instanceof Error ? error.message : String(error),
       });
 
       setMessages(m =>
-        m.map(msg =>
+        m?.map(msg =>
           msg.id === newLoadingMessageId
             ? {
                 ...msg,
@@ -703,16 +500,19 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   };
 
+  const throttledHandleSearch = useMemo(() => throttle(handleSearch, 1000), []);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (query.trim() && !isStreaming) {
-      handleSearch();
+    if (query?.trim() && !isStreaming) {
+      throttledHandleSearch();
     }
   };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setQuery(suggestion);
-  };
+  useEffect(() => {
+    if (initialQuery && query?.trim() && !isStreaming) {
+      throttledHandleSearch();
+    }
+  }, [initialQuery, throttledHandleSearch]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -734,79 +534,12 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   }, [query]);
 
-  const handleFeedback = useCallback(
-    (messageId: string, isPositive: boolean) => {
-      if (!messageId || feedbackSubmitted[messageId]) return;
-
-      posthog.capture("feedback_given", {
-        message_id: messageId,
-        thread_id: threadId,
-        feedback: isPositive ? "positive" : "negative",
-      });
-
-      setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
-
-      if (isPositive) {
-        handleFeedbackSubmit({
-          messageId,
-          isPositive,
-          comment: "",
-        });
-      } else {
-        setCurrentFeedback({
-          messageId,
-          isPositive,
-          comment: "",
-        });
-        setFeedbackModalOpen(true);
-      }
-    },
-    [threadId, feedbackSubmitted]
-  );
-
-  const handleFeedbackSubmit = async (feedback: FeedbackType) => {
-    try {
-      try {
-        const response = await apiClient.sendFeedback({
-          message_id: feedback.messageId,
-          is_positive: feedback.isPositive,
-          comment: feedback.comment || "",
-        });
-
-        if (response?.success) {
-          showSuccessToast("Feedback submitted successfully");
-          setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: true }));
-        }
-
-        posthog.capture("feedback_submitted", {
-          message_id: feedback.messageId,
-          thread_id: threadId,
-          is_positive: feedback.isPositive,
-          has_comment: !!feedback.comment,
-        });
-      } catch (error) {
-        console.error("Error submitting feedback:", error);
-        showErrorToast("Failed to submit feedback. Please try again.");
-        setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
-      }
-    } catch (error: any) {
-      const statusCode = error?.response?.status || 500;
-      showErrorToast("Failed to submit feedback", `Status: ${statusCode}`);
-      posthog.capture("feedback_submission_failed", {
-        message_id: feedback.messageId,
-        thread_id: threadId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
-    }
-  };
-
   return (
     <div>
       <div
         className={` relative z-10 ${sidebarCollapsed ? "md:ml-5" : "md:ml-12"} md:px-4 pt-8 flex flex-col`}
       >
-        {threadId === "new" && messages.length === 0 && !isStreaming && (
+        {threadId === "new" && messages?.length === 0 && !isStreaming && (
           <div className={`transition-all duration-500 text-center mb-8`}>
             <div className="items-center justify-center h-20 "></div>
             <h1 className={`font-bold -mt-3 mb-2 text-gray-900 text-2xl md:text-4xl`}>
@@ -829,7 +562,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           </div>
         )}
         <div
-          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
+          className={`max-w-4xl mx-auto w-full ${messages?.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
           <SearchInputField
             query={query}
@@ -838,7 +571,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             onKey={handleKeyDown}
             onSubmit={handleSubmit}
             isStreaming={isStreaming}
-            hideGroupOption={false} defaultSearchButton={false}          />
+            hideGroupOption={false}
+            defaultSearchButton={false}
+          />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[
@@ -855,40 +590,53 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               ))}
             </div>
           )}
-          <ChatNavigationControls
-            currentIndex={currentMessageIndex}
-            totalItems={chatPairs.length}
-            isStreaming={isStreaming || isLoading}
-            onPrevious={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
-            onNext={() => setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))}
-            onRefresh={() => {
-              if (isStreaming || isLoading) return;
-              setInitialLoadComplete(false);
-              setIsLoading(true);
-              fetchMessages(true);
-            }}
-            canNavigateNext={false}
-            canNavigatePrevious={false}
-          />
+          {messages?.length > 0 && (
+            <ChatNavigationControls
+              currentIndex={currentMessageIndex}
+              totalItems={chatPairs.length}
+              isStreaming={isStreaming || isLoading}
+              onPrevious={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
+              onNext={() =>
+                setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))
+              }
+              onRefresh={() => {
+                if (isStreaming || isLoading) return;
+                setInitialLoadComplete(false);
+                setIsLoading(true);
+                fetchMessages(true);
+              }}
+              canNavigateNext={false}
+              canNavigatePrevious={false}
+            />
+          )}
         </div>
       </div>
-      {!(threadId === "new" || isStreaming) && messages.length === 0 ? (
+      {!(threadId === "new" || isStreaming) && (messages.length === 0 || chatPairs.length === 0) ? (
         <div className="flex w-full h-full">
-          <MessagePlaceholder />
+          <MessagePlaceholder
+            message={
+              threadId !== "new" && initialLoadComplete
+                ? "No messages found for this conversation. Please try another search."
+                : undefined
+            }
+          />
         </div>
       ) : (
         <></>
       )}
-      {messages && messages.length > 0 && (
-        <div className="w-full md:px-20 overflow-y-scroll">
+      {messages && messages?.length > 0 && (
+        <div
+          ref={chatScrollContainerRef}
+          className="w-full md:px-20 overflow-y-scroll scrollbar-hide"
+        >
           <div className="space-y-6">
-            {messages.map(m => {
+            {messages?.map(m => {
               return (
-                m.type === "agent" && (
+                m?.type === "agent" && (
                   <>
-                    <div key={m.id} className="rounded-xl bg-white">
+                    <div key={m?.id || 1} className="rounded-xl bg-white">
                       <div className="flex items-start">
-                        <div className="flex-1 ">
+                        <div className="flex-1 h-full ">
                           {isStreaming && (
                             <SearchQueryDisplay
                               showSearchQueries={showSearchQueries}
@@ -899,23 +647,15 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
 
                           {(!m.sources || m.sources.length === 0) && !isStreaming && (
                             <div className="text-gray-700">
-                              {m.content === null ? (
+                              {m?.content === null ? (
                                 <div className="flex items-center">
                                   <div className="mr-2">
                                     <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
                                   </div>
                                   <p className="italic">Query seems empty, Please Search again.</p>
                                 </div>
-                              ) : format === "table" && /(fname|lname|link)/i.test(m.content) ? (
-                                <div className="flex w-full">
-                                  {renderAsTable(
-                                    m.content,
-                                    false,
-                                    messagesContainerRef,
-                                    hasMoreMessages,
-                                    loadMoreMessages
-                                  )}
-                                </div>
+                              ) : /(fname|lname|link)/i.test(m.content) ? (
+                                <div className="flex w-full">{renderAsTable(m.content)}</div>
                               ) : (
                                 <StyledMarkdown
                                   content={m.content}
@@ -933,28 +673,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                               <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
                               {formatTimestamp(m.timestamp)}
                             </span>
-                            <div className="flex items-center gap-2">
-                              {!isLoading && m.type === "agent" && !feedbackSubmitted[m.id] && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-full h-8 w-8 hover:bg-gray-100"
-                                    onClick={() => handleFeedback(m.id, true)}
-                                  >
-                                    <FiThumbsUp className="h-4 w-4 text-gray-500 hover:text-green-500" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-full h-8 w-8 hover:bg-gray-100"
-                                    onClick={() => handleFeedback(m.id, false)}
-                                  >
-                                    <FiThumbsDown className="h-4 w-4 text-gray-500 hover:text-red-500" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
+                            {!isLoading && m.type === "agent" && (
+                              <FeedbackModule
+                                messageId={m.id}
+                                threadId={threadId}
+                                setMessages={setMessages}
+                              />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -979,16 +704,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           }}
         />
       )}
-
-      <FeedbackModal
-        open={feedbackModalOpen}
-        onOpenChange={setFeedbackModalOpen}
-        initialFeedback={currentFeedback}
-        onSubmit={feedback => {
-          handleFeedbackSubmit(feedback);
-          setCurrentFeedback(null);
-        }}
-      />
     </div>
   );
 };

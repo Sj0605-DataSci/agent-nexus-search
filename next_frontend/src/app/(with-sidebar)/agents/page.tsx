@@ -13,15 +13,13 @@ import {
 import { Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
-import { showErrorToast, showInfoToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import Link from "next/link";
 import Image from "next/image";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
-import { capitalizeText } from "@/utils/globalconstant";
-import DocumentUploader from "@/components/agents/DocumentUploader";
 
 import React, { Suspense } from "react";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
@@ -63,15 +61,15 @@ const Agents = () => {
     if (hiredIds.length) setSelectedAgent(hiredIds[0]);
   }, [agentsStatus, hiredRaw]);
 
-  const templates = useAppSelector(selectTemplates);
+  const templates = useAppSelector(selectTemplates || []);
 
   const agentTemplates = Object.fromEntries(
-    templates.map(t => [
+    templates?.map(t => [
       t.id,
       {
         id: t.id,
-        name: t.name,
-        avatar: getAgentAvatar(t.category),
+        name: t.name || "Arya",
+        avatar: getAgentAvatar(t?.category),
         agentImageUrl: t.image_urls,
         defaultPersonality: "helpful",
         defaultTone: "professional",
@@ -126,17 +124,14 @@ const Agents = () => {
 
       dispatch(loadAgents());
 
-      showSuccessToast("Configuration saved", "Your agent configuration has been updated.");
+      toast.success("Your agent configuration has been updated.");
 
       setAgentConfigs(prev => ({
         ...prev,
         [selectedAgent]: { ...currentConfig },
       }));
     } catch (error: any) {
-      showErrorToast(
-        "Error saving configuration",
-        error.message || "An unexpected error occurred."
-      );
+      toast.error(error.message || "An unexpected error occurred.");
     } finally {
       setSaving(false);
     }
@@ -249,7 +244,7 @@ const Agents = () => {
         )}
 
         {hiredIds.length > 0 && agentsStatus !== "loading" && (
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             {currentAgent && currentConfig && (
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
                 <div className="lg:w-1/3">

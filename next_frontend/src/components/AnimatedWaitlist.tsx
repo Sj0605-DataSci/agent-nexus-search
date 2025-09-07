@@ -8,7 +8,7 @@ import Confetti from "react-confetti";
 import { AnimatePresence } from "framer-motion";
 import { FaUser, FaEnvelope, FaPhoneAlt } from "react-icons/fa";
 import { supabase } from "@/integrations/supabase/client";
-import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
 
 const schema = yup.object().shape({
@@ -60,9 +60,9 @@ export default function AnimatedWaitlist() {
       if (error) {
         if (error.code === "23505") {
           if (error.message.includes("email")) {
-            showErrorToast("This email is already registered");
+            toast.error("This email is already registered");
           } else if (error.message.includes("phone_number")) {
-            showErrorToast("This phone number is already registered");
+            toast.error("This phone number is already registered");
           }
         } else {
           setSubmitError("Oops! Something went wrong.");
@@ -70,7 +70,7 @@ export default function AnimatedWaitlist() {
         return;
       }
 
-      showSuccessToast("Successfully joined the waitlist!");
+      toast.success("Successfully joined the waitlist!");
       setIsSuccess(true);
       reset();
     } catch (e) {

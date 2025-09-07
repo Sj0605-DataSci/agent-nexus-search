@@ -121,8 +121,8 @@ const chatThreadsSlice = createSlice({
         if (!action.payload) return;
 
         // Filter out duplicates
-        const existingIds = new Set(state.threads.map(thread => thread.id));
-        const newThreads = action.payload.threads.filter(thread => !existingIds.has(thread.id));
+        const existingIds = new Set(state.threads?.map(thread => thread.id));
+        const newThreads = action.payload.threads?.filter(thread => !existingIds.has(thread.id));
 
         // Properly concatenate new threads to existing threads
         state.threads = [...state.threads, ...newThreads];

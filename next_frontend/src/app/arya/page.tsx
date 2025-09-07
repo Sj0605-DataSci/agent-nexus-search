@@ -3,11 +3,12 @@
 import React from "react";
 import Link from "next/link";
 import HomeHeader from "@/components/Homepage/Header";
-import Footer from "@/components/Homepage/Footer";
+import Footer from "@/components/Footer/Footer";
 import SearchModes from "@/components/Homepage/SearchModes";
 import UseCases from "@/components/Homepage/UseCases";
 import dynamic from "next/dynamic";
 import { ParallaxProvider } from "react-scroll-parallax";
+import NewFooter from "@/components/Footer/NewFooter";
 
 interface VideoPlayerProps {
   url: string;
@@ -89,7 +90,7 @@ export default function AryaPage() {
             </div>
           </section>
 
-          {/* Video Demo */}
+          {/* Video Demo
           <section className="py-20 px-4 bg-gray-50">
             <div className="max-w-4xl mx-auto text-center">
               <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8">
@@ -103,7 +104,7 @@ export default function AryaPage() {
                 className="w-full max-w-4xl mx-auto"
               />
             </div>
-          </section>
+          </section> */}
 
           {/* Search Modes */}
           <SearchModes />
@@ -171,7 +172,7 @@ export default function AryaPage() {
           </section>
         </div>
       </ParallaxProvider>
-      <Footer />
+      <NewFooter />
     </>
   );
 }

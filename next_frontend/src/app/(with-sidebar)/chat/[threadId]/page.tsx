@@ -11,7 +11,7 @@ export const revalidate = 60;
 
 const ChatThreadView = dynamic(() => import("@/components/chats/ChatThreadView"), {
   ssr: false,
-  loading: () => <FullScreenLoader isLoading={true} />,
+  loading: () => <></>,
 });
 
 interface PageProps {
@@ -27,7 +27,9 @@ export default async function ChatThreadPage({ params }: PageProps) {
   }
 
   return (
-    <Suspense fallback={<FullScreenLoader isLoading={true} />}>
+    <Suspense
+      fallback={<FullScreenLoader isLoading={true} label="Preparing your conversation..." />}
+    >
       <ChatThreadView threadId={threadId} />
     </Suspense>
   );

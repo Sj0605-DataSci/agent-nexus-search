@@ -393,7 +393,7 @@ const PersonCard = ({
             {person.scoring && Array.isArray(person.scoring) && person.scoring.length > 0 && (
               <>
                 {(person.scoring as ScoringItem[])
-                  .filter(item => item.confidence && item.traitTitle)
+                  ?.filter(item => item.confidence && item.traitTitle)
                   .sort((a, b) => b.confidence - a.confidence) // Sort by confidence in descending order
                   .slice(0, 3)
                   .map((scoreItem: ScoringItem, idx: number) => (
@@ -581,7 +581,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
 
       <div className="flex w-full overflow-y-auto">
         {/* Mobile view */}
-        <div className="block xl:hidden w-full">
+        <div className="block md:hidden w-full">
           {/* Mobile filter dropdown */}
           <div className="flex justify-end px-2 mb-3">
             <div className="flex items-center min-w-[120px]">
@@ -598,7 +598,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-white border-gray-100 border-1 w-40">
                   {["Name", "Score", "SocialLinks", "Email", "Reason"]
-                    .filter(col => columns.includes(col === "Name" ? "FName" : col))
+                    ?.filter(col => columns.includes(col === "Name" ? "FName" : col))
                     .map(col => (
                       <DropdownMenuItem
                         key={col}
@@ -646,7 +646,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
         </div>
 
         {/* Desktop view */}
-        <div className="hidden xl:block w-full">
+        <div className="hidden md:block w-full">
           <div className="rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)] transition-all duration-200 hover:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-2px_rgba(0,0,0,0.05)]">
             <div className="relative w-full overflow-auto rounded-xl">
               <table className="w-full caption-bottom text-sm border-separate border-spacing-0 [&_tr:not(:last-child)]:after:content-[''] [&_tr:not(:last-child)]:after:block [&_tr:not(:last-child)]:after:h-px [&_tr:not(:last-child)]:after:bg-gradient-to-r [&_tr:not(:last-child)]:after:from-transparent [&_tr:not(:last-child)]:after:via-gray-100 [&_tr:not(:last-child)]:after:to-transparent [&_tr:not(:last-child)]:after:mx-4">
@@ -815,9 +815,9 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                                           scoring: [scoreItem],
                                         }}
                                         type={
-                                          scoreItem.confidence > 70
+                                          scoreItem.confidence > 0.7
                                             ? "yes"
-                                            : scoreItem.confidence > 30
+                                            : scoreItem.confidence > 0.2
                                               ? "maybe"
                                               : "no"
                                         }
@@ -828,10 +828,10 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                           </div>
                         </td>
                         <td className="p-3 align-middle py-3">
-                          <div className="max-h-[130px] overflow-y-auto relative">
+                          <div className="max-h-[130px] overflow-hidden relative">
                             {all_quotes.length > 0 && (
                               <div className="mb-4">
-                                <ul className="list-disc pl-5 space-y-1">
+                                <ul className="list-disc pl-5 ">
                                   {all_quotes.slice(0, 5).map((quote: string, idx: number) => (
                                     <li key={idx} className="text-sm text-gray-700">
                                       <div
@@ -843,11 +843,6 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                                 </ul>
                               </div>
                             )}
-
-                            {/* {(quotes.length > 2 ||
-                              (person?.Reason && person.Reason.split("\n").length > 3)) && (
-                              <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent" />
-                            )} */}
                           </div>
                         </td>
                         <td className="p-3 align-middle py-3">
@@ -886,13 +881,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
   );
 };
 
-export const renderAsTable = (
-  content: string,
-  darkMode: boolean,
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>,
-  hasMoreMessages?: boolean,
-  loadMoreMessages?: () => void
-) => {
+export const renderAsTable = (content: string) => {
   const { people, columns, isStructured } = parseStructuredData(content);
 
   const processedPeople: Person[] = people.map(person => {
@@ -962,10 +951,7 @@ export const renderAsTable = (
             onClick={() => downloadAsCSV(people, columns)}
             variant="outline"
             size="sm"
-            className={`flex items-center gap-2 rounded-md px-3 ${
-              darkMode
-                ? "border-1 border-gray-100 text-gray-300 hover:bg-gray-800"
-                : "border-1 border-gray-100 text-gray-700 hover:bg-gray-50"
+            className={`flex items-center gap-2 rounded-md px-3 border-1 border-gray-100 text-gray-700 hover:bg-gray-50
             }`}
           >
             <Download className="h-4 w-4" />
@@ -976,7 +962,7 @@ export const renderAsTable = (
       <StructuredDataTable
         people={processedPeople}
         columns={columns}
-        darkMode={darkMode}
+        darkMode={false}
         onDownload={() => downloadAsCSV(people, columns)}
       />
     </div>

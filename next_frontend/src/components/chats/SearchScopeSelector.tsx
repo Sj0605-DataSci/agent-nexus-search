@@ -23,24 +23,42 @@ const groups = [
   },
 ];
 
-export const SearchScopeSelectorComponent = () => {
+interface SearchScopeSelectorProps {
+  disabled?: boolean;
+}
+
+export const SearchScopeSelectorComponent = ({}: SearchScopeSelectorProps) => {
   const [open, setOpen] = React.useState(false);
   const [selectedValues, setSelectedValues] = React.useState(new Set<string>());
-
+  const disabled = true;
   return (
     <div
-      className="overflow-hidden"
-      style={{ opacity: 1, height: "auto", marginBottom: "0.375rem" }}
+      className={cn(
+        "overflow-hidden transition-opacity",
+        disabled && "opacity-50 pointer-events-none"
+      )}
+      style={{ height: "auto", marginBottom: "0.375rem" }}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={disabled ? false : open} onOpenChange={disabled ? () => {} : setOpen}>
           <PopoverTrigger asChild>
-            <button className="inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-sm border border-primary bg-transparent p-0 text-sm font-medium  ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+            <button
+              className={cn(
+                "inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-sm border border-primary bg-transparent p-0 text-sm font-medium ring-offset-background transition-colors",
+                !disabled &&
+                  "hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                disabled ? "opacity-50 cursor-not-allowed" : ""
+              )}
+              disabled={disabled}
+            >
               <Plus className="size-4" />
             </button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[200px] border border-gray-400/50 bg-white p-0"
+            className={cn(
+              "w-[200px] border border-gray-400/50 bg-white p-0",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
             align="start"
           >
             <Command>
@@ -89,7 +107,9 @@ export const SearchScopeSelectorComponent = () => {
             </Command>
           </PopoverContent>
         </Popover>
-        <span className="text-xs text-muted-foreground">
+        <span
+          className={cn("text-xs", disabled ? "text-muted-foreground/50" : "text-muted-foreground")}
+        >
           {selectedValues.size > 0
             ? `Searching in: ${Array.from(selectedValues)
                 .map(value => groups.find(g => g.value === value)?.label)

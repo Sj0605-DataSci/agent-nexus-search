@@ -4,45 +4,36 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  FiLogOut,
-  FiLogIn,
-  FiChevronLeft,
-  FiChevronRight,
-  FiMessageSquare,
-  FiShoppingBag,
   FiUsers,
-  FiUser,
   FiSmile,
   FiZap,
-  FiPlus,
   FiMenu,
   FiX,
   FiGlobe,
-  FiAlertTriangle,
   FiSearch,
+  FiMail,
 } from "react-icons/fi";
+import { PiSidebarSimple } from "react-icons/pi";
 import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
 import posthog from "posthog-js";
+import { toast } from "react-hot-toast";
+import { EMAIL_REGEX, handleWaitlistSignup } from "@/utils/formUtils";
+import { apiClient } from "@/integrations/fastapi/client";
+import { useAppDispatch, useAppSelector } from "@/store";
+import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
+import { fetchChatThreads, loadMoreChatThreads } from "@/store/chatThreadsSlice";
+import { clearProfile } from "@/store/profileSlice";
+import { Button } from "@/components/ui/button";
+import { ChatThread } from "@/integrations/fastapi/types";
+import { supabaseHandler } from "@/app/supabaseClient";
+import ChatThreadsList from "./ChatThreadsList";
+import UserProfileSection from "./UserProfileSection";
 
 const LogoutConfirmation = lazy(() =>
   import("@/components/ui/LogoutConfirmation").then(module => ({
     default: module.LogoutConfirmation,
   }))
 );
-import { apiClient } from "@/integrations/fastapi/client";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
-import { fetchChatThreads, loadMoreChatThreads, setLoading } from "@/store/chatThreadsSlice";
-import { clearProfile } from "@/store/profileSlice";
-import { Button } from "@/components/ui/button";
-import ShimmerLoader from "./ShimmerLoader";
-import { ChatThread } from "@/integrations/fastapi/types";
-import { supabaseHandler } from "@/app/supabaseClient";
-
-const isAuthenticated = () => {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("discover_minds_access_token");
-};
 
 const Sidebar = () => {
   const collapsed = useAppSelector(selectSidebarCollapsed);
@@ -66,6 +57,7 @@ const Sidebar = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const threadsFetchedRef = useRef(false);
+  const isUserQueryRoute = pathname?.includes("user-query");
 
   const fetchThreads = () => {
     if (!profile?.id) return;
@@ -121,12 +113,21 @@ const Sidebar = () => {
     return `Chat ${thread.id.substring(0, 8)}`;
   };
 
-  const navItems = [
-    { href: "/agents", label: "Agents", icon: <FiZap /> },
-    { href: "/connections", label: "Connections", icon: <FiGlobe /> },
-    { href: "/friends", label: "Friends", icon: <FiSmile /> },
-    { href: "/groups", label: "Groups", icon: <FiUsers /> },
-  ];
+  const getNavItems = () => {
+    const items = [
+      { href: "/connections", label: "Connections", icon: <FiGlobe /> },
+      { href: "/friends", label: "Friends", icon: <FiSmile /> },
+      { href: "/groups", label: "Groups", icon: <FiUsers /> },
+    ];
+
+    if (profile?.id) {
+      items.unshift({ href: "/agents", label: "Agents", icon: <FiZap /> });
+    }
+
+    return items;
+  };
+
+  const navItems = getNavItems();
 
   const handleSignOut = async () => {
     setIsLoggingOut(true);
@@ -200,12 +201,14 @@ const Sidebar = () => {
         >
           {isMobileSidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </Button>
-        <Link
-          href="/chat/new"
-          className="flex items-center justify-center h-12 px-4 -mr-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 active:bg-indigo-50 rounded-lg transition-colors"
-        >
-          New Chat
-        </Link>
+        {profile?.id && (
+          <Link
+            href="/chat/new"
+            className="flex items-center justify-center h-12 px-4 -mr-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 active:bg-indigo-50 rounded-lg transition-colors"
+          >
+            New Chat
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -214,73 +217,118 @@ const Sidebar = () => {
     isMobile?: boolean;
   }
 
-  const SidebarContent: React.FC<SidebarContentProps> = ({ isMobile = false }) => (
-    <div
-      className="flex flex-col h-full overflow-y-auto overscroll-contain"
-      style={{ WebkitOverflowScrolling: "touch" }}
-    >
-      <div
-        className={`flex items-center justify-between pl-2 py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
-      >
-        <Link prefetch={true} href="/chat/new" className="flex items-center h-8 gap-2 group">
-          <Image
-            src="/icon.png"
-            alt="Logo"
-            width={32}
-            height={32}
-            className="w-8 h-8 object-contain rounded-md min-h-8 min-w-8"
-          />
-          {(!collapsed || isMobile) && (
-            <span className="text-lg font-bold tracking-tight group-hover:text-indigo-500">
-              DiscoverMinds.ai
-            </span>
-          )}
-        </Link>
-        {isMobile ? (
-          <Button
-            onClick={toggleMobileSidebar}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-500 hover:text-gray-700"
-          >
-            <FiX size={18} />
-          </Button>
-        ) : (
-          <button
-            onClick={() => dispatch(toggleSidebar())}
-            className="text-gray-500 mr-1 hover:text-gray-700"
-            title={collapsed ? "Expand" : "Collapse"}
-          >
-            {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
-          </button>
-        )}
-      </div>
+  const SidebarContent: React.FC<SidebarContentProps> = ({ isMobile = false }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const emailInputRef = useRef<HTMLInputElement>(null);
 
-      {/* New Chat Button */}
-      <div className="px-3 py-2">
-        <Link
-          href="/chat/new"
-          prefetch={true}
-          className={`w-full flex items-center mt-1 ${collapsed && !isMobile ? "justify-center p-2" : "justify-between px-3 py-1.5"} 
+    const handleWaitlistClick = async () => {
+      const emailValue = emailInputRef.current?.value.trim() || "";
+
+      if (!emailValue) {
+        emailInputRef.current?.focus();
+        toast.error("Please enter your email address");
+        return;
+      }
+
+      if (!EMAIL_REGEX.test(emailValue)) {
+        toast.error("Please enter a valid email address");
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        const { success, message } = await handleWaitlistSignup(emailValue);
+        if (success) {
+          toast.success("Thanks for joining our waitlist!");
+          if (emailInputRef.current) {
+            emailInputRef.current.value = "";
+          }
+        } else {
+          toast.error(message);
+        }
+      } catch (error) {
+        console.error("Waitlist signup error:", error);
+        toast.error("An error occurred. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <div
+        className="flex flex-col h-full overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div
+          className={`flex ${collapsed && !isMobile ? "flex-col items-center" : "items-center justify-between"} pl-2 py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
+        >
+          <div className="flex items-center justify-center w-full">
+            <Link
+              prefetch={true}
+              href={profile?.id ? "/chat/new" : "/"}
+              className="flex items-center h-8 gap-2 group"
+            >
+              <Image
+                src="/icon.png"
+                alt="Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain rounded-md min-h-8 min-w-8"
+              />
+              {(!collapsed || isMobile) && (
+                <span className="text-lg font-bold tracking-tight group-hover:text-indigo-500">
+                  DiscoverMinds.ai
+                </span>
+              )}
+            </Link>
+            {isMobile && (
+              <Button
+                onClick={toggleMobileSidebar}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-gray-500 hover:text-gray-700 ml-auto"
+              >
+                <PiSidebarSimple size={24} className="rotate-180" />
+              </Button>
+            )}
+          </div>
+          {!isMobile && (
+            <button
+              onClick={() => dispatch(toggleSidebar())}
+              className={`text-gray-500 hover:text-gray-700 ${collapsed ? "mt-2" : "mr-1"}`}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              <PiSidebarSimple size={24} className="rotate-180" />
+            </button>
+          )}
+        </div>
+
+        {profile?.id && (
+          <div className="px-3 py-2">
+            <Link
+              href="/chat/new"
+              prefetch={true}
+              className={`w-full flex items-center mt-1 ${collapsed && !isMobile ? "justify-center p-2" : "justify-between px-3 py-1.5"} 
             bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200
             border rounded-md transition-colors duration-200`}
-        >
-          <div className="flex items-center gap-2">
-            <FiSearch className="h-4 w-4 text-indigo-600" />
-            {(!collapsed || isMobile) && <span>New search</span>}
+            >
+              <div className="flex items-center gap-2">
+                <FiSearch className="h-4 w-4 text-indigo-600" />
+                {(!collapsed || isMobile) && <span>New search</span>}
+              </div>
+            </Link>
           </div>
-        </Link>
-      </div>
+        )}
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 ">
-        <ul className="space-y-[2px] pb-3">
-          {navItems.map(({ href, label, icon }) => (
-            <li key={href}>
-              <Link
-                prefetch={true}
-                href={href}
-                className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-2 ">
+          <ul className="space-y-[2px] pb-3">
+            {navItems.map(({ href, label, icon }) => (
+              <li key={href}>
+                <Link
+                  prefetch={true}
+                  href={href}
+                  className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
                   ${collapsed && !isMobile ? "justify-center" : "gap-3 pl-2 pr-4"}
                   ${
                     pathname.startsWith(href)
@@ -288,176 +336,92 @@ const Sidebar = () => {
                       : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                   }
                 `}
-              >
-                <span className="relative group">
-                  <span className="text-lg">{icon}</span>
-                </span>
-                {(!collapsed || isMobile) && <span>{label}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
+                >
+                  <span className="relative group">
+                    <span className="text-lg">{icon}</span>
+                  </span>
+                  {(!collapsed || isMobile) && <span>{label}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-        {profile && (
-          <div className="mb-4">
-            {(!collapsed || isMobile) && (
-              <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
-            )}
-            <div className="rounded-md mb-1">
-              {initialLoading ? (
-                <ShimmerLoader collapsed={collapsed && !isMobile} count={10} darkMode={false} />
-              ) : recentThreads.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-4 px-2 text-gray-500">
-                  {!collapsed || isMobile ? (
-                    <>
-                      <FiMessageSquare className="text-xl mb-1 opacity-60" />
-                      <p className="text-xs text-center">No recent conversations</p>
-                      <Link
-                        prefetch={true}
-                        href="/chat/new"
-                        className="mt-2 text-xs px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
-                      >
-                        Start chatting
-                      </Link>
-                    </>
-                  ) : (
-                    <FiMessageSquare className="text-xl opacity-60" />
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col space-y-1">
-                  <ul className="space-y-0.5 py-1">
-                    {recentThreads.map(thread => {
-                      const isActive = pathname === `/chat/${thread?.id}`;
-                      return (
-                        <li key={thread.id} className="px-1 h-[34px]">
-                          <Link
-                            href={`/chat/${thread.id}?title=${encodeURIComponent(getThreadPreview(thread).substring(0, 40))}`}
-                            className={`group flex items-center py-2 rounded-md text-sm transition-colors ${
-                              collapsed && !isMobile ? "justify-center" : "gap-2 px-2"
-                            } ${
-                              isActive
-                                ? "bg-indigo-50 text-indigo-800 border-l-2 border-indigo-500"
-                                : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                            }`}
-                            title={collapsed && !isMobile ? getThreadPreview(thread) : undefined}
-                          >
-                            <div className={`flex-shrink-0 ${isActive ? "text-indigo-600" : ""}`}>
-                              <FiMessageSquare size={collapsed && !isMobile ? 18 : 16} />
-                            </div>
-                            {(!collapsed || isMobile) && (
-                              <div className="flex-1 truncate">
-                                <div className="flex justify-between items-center">
-                                  <div
-                                    className={`truncate font-medium ${isActive ? "text-indigo-700" : ""}`}
-                                  >
-                                    {getThreadPreview(thread)}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-
-                  {hasMoreThreads && (
-                    <div
-                      ref={el => {
-                        if (!el) return;
-                        const observer = new IntersectionObserver(
-                          entries => {
-                            if (
-                              entries[0].isIntersecting &&
-                              !loadingMoreThreads &&
-                              !loadingThreads
-                            ) {
-                              console.log("Intersection observed, loading more threads");
-                              loadMoreThreads();
-                            }
-                          },
-                          { threshold: 0.1, rootMargin: "100px" }
-                        );
-                        observer.observe(el);
-                        return () => observer.disconnect();
-                      }}
-                      className="h-10 flex items-center justify-center mt-2"
-                    >
-                      {loadingMoreThreads && (
-                        <div className="py-2 text-center w-full">
-                          <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+          {profile?.id && (
+            <div className="mb-4">
+              {(!collapsed || isMobile) && (
+                <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
               )}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      <div className="mt-auto border-t border-gray-200/80">
-        <div className="p-2">
-          {useAppSelector(state => state.profile.loading) ? (
-            <div className="flex items-center justify-between">
-              <div
-                className={`flex items-center py-1 rounded-md ${collapsed && !isMobile ? "justify-center w-full" : "gap-2 flex-1"}`}
-              >
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center animate-pulse">
-                  <span className="sr-only">Loading profile</span>
-                </div>
-                {(!collapsed || isMobile) && (
-                  <div className="flex-1">
-                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
-                  </div>
-                )}
+              <div className="rounded-md mb-1">
+                <ChatThreadsList
+                  threads={recentThreads || []}
+                  initialLoading={initialLoading}
+                  loadingMoreThreads={loadingMoreThreads}
+                  loadingThreads={loadingThreads}
+                  hasMoreThreads={hasMoreThreads}
+                  collapsed={collapsed}
+                  isMobile={isMobile}
+                  loadMoreThreads={loadMoreThreads}
+                  getThreadPreview={getThreadPreview}
+                />
               </div>
             </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <Link
-                href="/profile"
-                prefetch={true}
-                className={`flex items-center py-1 rounded-md ${collapsed && !isMobile ? "justify-center w-full" : "gap-2 flex-1"} 
-                hover:bg-gray-100/80 text-gray-700 transition-colors`}
-                title={
-                  collapsed && !isMobile
-                    ? profile?.full_name
-                      ? profile.full_name.substring(0, 10) +
-                        (profile.full_name.length > 10 ? "..." : "")
-                      : "User"
-                    : undefined
-                }
-              >
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium flex-shrink-0">
-                  {profile?.full_name?.charAt(0).toUpperCase() || "U"}
-                </div>
-                {(!collapsed || isMobile) && (
-                  <div className="flex-1 truncate">
-                    <div className="text-sm font-medium truncate text-gray-700">
-                      {profile?.full_name?.split("@")[0] || "User"}
-                    </div>
-                  </div>
-                )}
-              </Link>
-
-              <Button
-                onClick={() => setShowLogoutConfirm(true)}
-                variant="ghost"
-                size="icon"
-                className={`${collapsed && !isMobile ? "hidden" : "flex"} h-8 w-8 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
-                title="Sign Out"
-              >
-                <FiLogOut size={16} />
-              </Button>
-            </div>
           )}
-        </div>
+        </nav>
+
+        {profile?.id ? (
+          <div className="mt-auto border-t border-gray-200/80">
+            <div className="p-2">
+              <UserProfileSection
+                profile={profile}
+                collapsed={collapsed}
+                isMobile={isMobile}
+                isUserQueryRoute={isUserQueryRoute}
+                onLogoutClick={() => setShowLogoutConfirm(true)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="mt-auto border-t border-gray-200/80 p-4">
+            {!collapsed || isMobile ? (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-gray-700">Join our waitlist</h3>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiMail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    ref={emailInputRef}
+                    type="email"
+                    placeholder="Enter your email"
+                    className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <button
+                  className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200 ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""}`}
+                  onClick={handleWaitlistClick}
+                  disabled={isSubmitting}
+                >
+                  Join Waitlist
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-center py-2">
+                <button
+                  className={`text-indigo-600 hover:text-indigo-700 ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""}`}
+                  title="Join Waitlist"
+                  onClick={handleWaitlistClick}
+                  disabled={isSubmitting}
+                >
+                  <FiMail className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -492,7 +456,7 @@ const Sidebar = () => {
       )}
 
       <aside
-        className={`hidden md:block fixed md:static overflow-y-auto max-h-screen inset-y-0 left-0 z-40 ${
+        className={`hidden md:block fixed md:static  max-h-screen inset-y-0 left-0 z-40 ${
           collapsed ? "w-16" : "w-64"
         } transition-all duration-200 flex-col
         border-r shadow-lg bg-white/95 backdrop-blur-sm border-gray-200/80 text-gray-900`}

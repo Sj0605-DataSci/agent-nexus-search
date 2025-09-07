@@ -76,7 +76,7 @@ export default function CompanyLogos() {
         }
       `}</style>
       <section className="bg-background py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-x-12 gap-y-8">
             <div className="flex-shrink-0 text-center lg:text-left">
               <p className="text-lg text-text-secondary leading-snug">Built and backed by</p>

@@ -3,20 +3,27 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import CreateGroupModal from "@/components/groups/CreateGroupModal";
+import { useAppSelector } from "@/store";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
+import { handleLinkClickSmartly } from "../friends/page";
 
 export default function Page() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleCreateGroup = (groupName: string) => {
-    console.log("Creating group:", groupName);
-    // Here you would typically make an API call to create the group
-    setIsModalOpen(false);
+    handleLinkClickSmartly();
+    // setIsModalOpen(false);
   };
+  const profile = useAppSelector(state => state.profile.profile);
+  const isAuthenticated = !!profile?.id;
 
   return (
     <>
-      <main>
-        <div className="container mx-auto max-w-screen-xl p-4 ">
+      <main className="relative">
+        {!isAuthenticated && <ComingSoonOverlay />}
+        <div
+          className={`container mx-auto  max-w-screen-xl p-4 ${!isAuthenticated ? "opacity-30 pointer-events-none" : ""}`}
+        >
           <div className="mb-6">
             <h1 className="text-2xl font-bold md:text-3xl">Groups</h1>
             <div className="text-sm text-muted-foreground md:text-base">
@@ -29,7 +36,7 @@ export default function Page() {
               role="button"
               aria-haspopup="dialog"
               aria-expanded={isModalOpen}
-              onClick={() => setIsModalOpen(true)}
+              // onClick={() => setIsModalOpen(true)}
             >
               <div className="flex items-center space-x-5">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f3f3ee]/60">
@@ -151,14 +158,18 @@ export default function Page() {
                     </div>
                   </div>
                   <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
-                    <a className="block" href="/slack">
-                      <button
+                    <button
+                      onClick={handleLinkClickSmartly}
+                      className="block"
+                      // href="/slack"
+                    >
+                      <div
                         className="inline-flex h-10 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#EDF4FE] px-6 py-2 text-sm font-medium text-[#5D9CEC] transition-colors hover:bg-[#DCE8FD] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5D9CEC]/30 disabled:pointer-events-none disabled:opacity-50 md:w-auto"
                         aria-label="Try the feature now"
                       >
                         Try it now
-                      </button>
-                    </a>
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -184,14 +195,18 @@ export default function Page() {
                     </div>
                   </div>
                   <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
-                    <a className="block" href="/email">
+                    <button
+                      className="block"
+                      //  href="/email"
+                      onClick={handleLinkClickSmartly}
+                    >
                       <button
                         className="inline-flex h-10 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#EDF4FE] px-6 py-2 text-sm font-medium text-[#5D9CEC] transition-colors hover:bg-[#DCE8FD] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5D9CEC]/30 disabled:pointer-events-none disabled:opacity-50 md:w-auto"
                         aria-label="Try the feature now"
                       >
                         Try it now
                       </button>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -218,6 +233,7 @@ export default function Page() {
                   </div>
                   <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
                     <button
+                      onClick={handleLinkClickSmartly}
                       className="inline-flex h-10 w-full items-center justify-center whitespace-nowrap rounded-md bg-[#EDF4FE] px-6 py-2 text-sm font-medium text-[#5D9CEC] transition-colors hover:bg-[#DCE8FD] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5D9CEC]/30 disabled:pointer-events-none disabled:opacity-50 md:w-auto"
                       aria-label="Try the feature now"
                     >

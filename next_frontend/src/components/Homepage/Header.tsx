@@ -45,8 +45,8 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { name: "Pricing", href: "/pricing" },
   // { name: "Examples", href: "/examples" },
-  { name: "About", href: "/about" },
-  { name: "Join Waitlist", href: "/join-waitlist", isButton: true },
+  // { name: "About", href: "/about" },
+  // { name: "Join Waitlist", href: "/join-waitlist", isButton: true },
 ];
 
 const HomeHeader: React.FC = () => {
@@ -125,14 +125,13 @@ const HomeHeader: React.FC = () => {
           transition={{ type: "spring", damping: 10, stiffness: 50 }}
         >
           <motion.div
-            className="mx-auto max-w-[1200px] bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100"
+            className="mx-auto max-w-6xl bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100"
             whileHover={{ backgroundColor: "rgba(255,255,255,1)" }}
             transition={{ duration: 0.6 }}
           >
             <div className="flex h-16 items-center justify-between px-6">
               <BrandLogo className="hover:scale-105 transition-transform duration-300" />
 
-              {/* Center Navigation */}
               <nav className="hidden md:block">
                 <ul className="flex items-center gap-8">
                   {NAV_LINKS.filter(link => !link.isButton).map(link => (
@@ -146,14 +145,14 @@ const HomeHeader: React.FC = () => {
                         className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 relative group"
                       >
                         {link.name}
-                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 transition-all duration-300 group-hover:w-full" />
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#0E3D15] transition-all duration-300 group-hover:w-full" />
                       </Link>
                     </motion.li>
                   ))}
                 </ul>
               </nav>
 
-              {/* Right CTA Button */}
+              {/* Right CTA Button
               <div className="hidden md:block">
                 {NAV_LINKS.filter(link => link.isButton).map(link => (
                   <motion.div
@@ -169,7 +168,7 @@ const HomeHeader: React.FC = () => {
                     </Link>
                   </motion.div>
                 ))}
-              </div>
+              </div> */}
 
               {/* Mobile Menu Button */}
               <MobileMenuIcon

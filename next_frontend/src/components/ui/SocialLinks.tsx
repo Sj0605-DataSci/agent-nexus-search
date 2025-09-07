@@ -146,7 +146,7 @@ const parseSocialLinks = (socialLinks?: string | string[] | null): SocialLink[] 
 
     // Handle comma-separated string (fallback)
     return socialLinks
-      .split(",")
+      ?.split(",")
       .map(link => link.trim().replace(/^['"]|['"]$/g, ""))
       .filter(Boolean)
       .map(link => ({

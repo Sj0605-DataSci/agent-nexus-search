@@ -60,7 +60,7 @@ const SourcesList = ({ sources, sourcesGathered }: SourcesListProps) => {
         </span>
       </div>
       <ul className="space-y-2">
-        {sourcesToShow.map((source, index) => {
+        {sourcesToShow?.map((source, index) => {
           const src: Source =
             typeof source === "string"
               ? {

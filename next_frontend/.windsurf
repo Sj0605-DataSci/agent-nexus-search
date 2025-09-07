@@ -8,39 +8,79 @@
     "enableTypeSafety": true,
     "useModularComponents": true,
     "keepDRY": true,
-    "handleErrorsGracefully": true
+    "handleErrorsGracefully": true,
+    "preferImmutableData": true,
+    "consistentImports": true
   },
   "windsurf": {
     "autoExecution": false,
     "promptFocus": "single task",
     "branching": {
       "useFeatureBranches": true,
-      "isolateChanges": true
+      "isolateChanges": true,
+      "autoMergeSafeChanges": true
     },
     "scoping": {
       "targetFiles": true,
-      "functionTargeting": true
+      "functionTargeting": true,
+      "componentLevelScoping": true
     },
     "validation": {
-      "runTestsBeforeCommit": true,
       "manualReviewRequired": true
     },
     "documentation": {
-      "updateDocumentationAfterChange": true
+      "updateDocumentationAfterChange": true,
+      "syncWithCodebase": true
     },
     "aiInteraction": {
       "usePrecisePrompts": true,
-      "limitMultiTasking": true
+      "limitMultiTasking": true,
+      "preferSingleResponsibilityOutputs": true
     }
   },
   "nextjsBestPractices": {
     "preferStaticGeneration": true,
     "useNextImageComponent": true,
     "dynamicImports": true,
-    "projectStructure": "feature-based"
+    "projectStructure": "feature-based",
+    "useAppRouter": true,
+    "edgeRuntime": true
   },
   "performance": {
     "lazyLoadComponents": true,
-    "optimizeImages": true
+    "optimizeImages": true,
+    "treeShaking": true,
+    "bundleSplitting": true,
+    "cacheAssets": true,
+    "minify": true,
+    "useCDN": true
+  },
+  "scalability": {
+    "modularFeatureFolders": true,
+    "reusableHooks": true,
+    "sharedUIComponents": true,
+    "centralizedConfig": true,
+    "envManagement": "secure"
+  },
+  "posthog": {
+    "enabled": true,
+    "capturePageViews": true,
+    "captureClicks": true,
+    "captureCustomEvents": true,
+    "sessionRecording": true,
+    "featureFlags": true,
+    "heatmaps": false,
+    "maskTextInputs": true,
+    "maskSensitiveData": true,
+    "useProxy": true,
+    "config": {
+      "apiHost": "https://app.posthog.com",
+      "autocapture": true,
+      "session_recording": {
+        "maskAllTextInputs": true,
+        "maskAllInputs": true
+      },
+      "persistence": "localStorage+cookie"
+    }
   }
 }

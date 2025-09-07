@@ -24,6 +24,7 @@ interface ScoreData {
 }
 
 interface ScoringItem {
+  traitDescription: React.JSX.Element;
   confidence: number;
   traitTitle: string;
 }
@@ -190,17 +191,17 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
                   <h3 className="mb-2 text-base font-semibold text-gray-800">Traits</h3>
                   <div>
                     {[...person.scoring]
-                      .sort((a, b) => b.confidence - a.confidence)
+                      ?.sort((a, b) => b.confidence - a.confidence)
                       .map((item, index) => (
                         <div key={index} className="mb-1 flex flex-row items-center">
                           <div className="bg-gray-100 text-gray-600 inline-block px-3 py-1 rounded-md font-medium text-sm mb-2">
                             <span dangerouslySetInnerHTML={{ __html: item.traitTitle }} />
                           </div>
                           <div>
-                            {item.traitDescription && (
+                            {item?.traitDescription && (
                               <div
                                 className="text-sm text-gray-700 -mt-2  ml-3 leading-relaxed"
-                                dangerouslySetInnerHTML={{ __html: item.traitDescription }}
+                                dangerouslySetInnerHTML={{ __html: item?.traitDescription }}
                               />
                             )}
                           </div>
