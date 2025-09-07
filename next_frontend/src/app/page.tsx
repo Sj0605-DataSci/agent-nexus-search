@@ -69,14 +69,20 @@ export default function Home() {
       />
       <Header />
       <main>
-        <Suspense fallback={<div className="flex items-center justify-center min-h-[50vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0E3D15]"></div></div>}>
-          <NewHeroSection />
-          <Offerings />
-          <HowItWorks />
+        <NewHeroSection />
+        <Offerings />
+        <HowItWorks />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center min-h-[50vh]">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0E3D15]"></div>
+            </div>
+          }
+        >
           <PricingPlans />
           <FaqSection />
-          <NewFooter />
         </Suspense>
+        <NewFooter />
       </main>
     </div>
   );
