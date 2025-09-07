@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from app.core.worker import enqueue_chat_task
 from app.core.services.stream_service import stream_service
 from app.db.redis_client import redis_client
+from app.core.config import settings
 
 CACHE_TTL_SECONDS = 2 * 24 * 60 * 60  # 2 days
 
@@ -179,8 +180,8 @@ async def public_stream_chat(
 
     try:
         request_id = await enqueue_chat_task(
-            user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575",
-            agent_id="e0563cd2-f372-41eb-9ed3-49e5b0abf6e8",
+            user_id=settings.ASHISH_USERID,
+            agent_id=settings.ASHISH_AGENTID,
             messages=request.messages,
             format="table",
             search_mode="basic",
