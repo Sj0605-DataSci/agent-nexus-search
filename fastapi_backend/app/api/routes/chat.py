@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Path, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Query, Body, Header
 from fastapi.responses import StreamingResponse
-from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate
+from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate, StreamingPublicChatRequest
 from app.models.models import Profile
 from app.core.services.chat_service import ChatService
-from typing import Annotated, AsyncGenerator, List, Dict, Any, Optional
-import traceback
-import logging
+from typing import List, Dict, Any, Optional
 from app.core.auth import get_current_user
 from app.core.utils.cache import (
     get_cached_chat_messages, cache_chat_messages, invalidate_chat_messages_cache,
@@ -15,6 +13,11 @@ from app.core.utils.cache import (
 from app.db.clients import get_async_supabase_client
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from pydantic import BaseModel
+from app.core.worker import enqueue_chat_task
+from app.core.services.stream_service import stream_service
+from app.db.redis_client import redis_client
+
+CACHE_TTL_SECONDS = 2 * 24 * 60 * 60  # 2 days
 
 # Define feedback model
 class FeedbackData(BaseModel):
@@ -96,8 +99,7 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
-    current_user: Profile = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service)
+    current_user: Profile = Depends(get_current_user)
 ) -> StreamingResponse:
     """
     Stream chat response as Server-Sent Events (SSE) using Redis-based background workers
@@ -116,9 +118,9 @@ async def stream_chat(
             user_id=current_user.id,
             agent_id=request.agent_id,
             messages=request.messages,
-            format=request.format,
-            search_mode=request.search_mode,
-            world_connections=request.world_connections,
+            format="table",
+            search_mode="basic",
+            world_connections="connections",
             thread_id=request.thread_id
         )
         
@@ -155,6 +157,64 @@ async def stream_chat(
             error_generator(),
             media_type="text/event-stream"
         )
+
+@router.post("/public/stream")
+async def public_stream_chat(
+    request: StreamingPublicChatRequest,
+    x_client_ip: str = Header(None, alias="X-Client-Ip"),
+    x_device_id: str = Header(..., alias="X-Device-Id"),
+    x_device_type: str = Header(..., alias="X-Device-Type")
+) -> StreamingResponse:
+    
+    cache_key = f"rate_limit:{x_device_id}:{x_client_ip}:{x_device_type}"
+
+    cached_result = await redis_client.get(cache_key)
+    search_count = int(cached_result) if cached_result is not None else 0
+
+    if search_count >= 3:
+        raise HTTPException(
+            status_code=429,
+            detail="You've reached the maximum number of free searches. Please try again later or sign up for more."
+        )
+
+    try:
+        request_id = await enqueue_chat_task(
+            user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575",
+            agent_id="e0563cd2-f372-41eb-9ed3-49e5b0abf6e8",
+            messages=request.messages,
+            format="table",
+            search_mode="basic",
+            world_connections="connections",
+            thread_id="new"
+        )
+        
+        logger.log_chat_event(
+            "public_chat_request",
+            user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575",
+            agent_id="e0563cd2-f372-41eb-9ed3-49e5b0abf6e8",
+            chat_thread_id="new",
+            request_id=request_id
+        )
+
+        # Increment the count and set TTL (only on first time or reset TTL)
+        await redis_client.set(cache_key, search_count + 1, expire=CACHE_TTL_SECONDS)
+        
+        return StreamingResponse(
+            stream_service.subscribe_to_chat_stream(request_id),
+            media_type="text/event-stream"
+        )
+
+    except Exception as e:
+        logger.exception(
+            "Error in public chat stream",
+            exception_type=type(e).__name__,
+            error_message=str(e),
+            user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing chat request"
+        )   
 
 
 @router.get("/threads", response_model=StandardResponse[Dict[str, Any]], response_class=StandardJSONResponse)

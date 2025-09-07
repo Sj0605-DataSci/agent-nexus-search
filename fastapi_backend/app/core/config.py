@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 import os
 from dotenv import load_dotenv
 
@@ -74,14 +75,23 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     SUPABASE_JWT_EXPIRY: int = int(os.getenv("SUPABASE_JWT_EXPIRY", "3600"))
+    
+    # LinkedIn Enrichment API Keys
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+    APIFY_API_KEY: str = os.getenv("APIFY_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+    JINA_API_KEY: str = os.getenv("JINA_API_KEY", "")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     # Use Railway Redis environment variables if available
     REDIS_HOST: str = os.getenv("REDISHOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDISPORT", "6379"))
     REDIS_PASSWORD: str = os.getenv("REDISPASSWORD", "password")
     REDIS_URL: str = os.getenv("REDIS_URL", "")
     WANDB_API_KEY: str = os.getenv("WANDB_API_KEY", "")
+
+    LANGSMITH_PROJ_ID: str = os.getenv("LANGSMITH_PROJ_ID","")
+    LANGSMITH_ORG_ID: str = os.getenv("LANGSMITH_ORG_ID","")
+    LANGSMITH_WORKSPACE_ID: str = os.getenv("LANGSMITH_WORKSPACE_ID","")
     
     # Logging settings
     ENABLE_STRUCTURED_LOGGING: bool = os.getenv("ENABLE_STRUCTURED_LOGGING", "true").lower() == "true"

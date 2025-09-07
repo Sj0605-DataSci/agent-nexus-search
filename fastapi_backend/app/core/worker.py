@@ -171,54 +171,54 @@ class ChatWorker:
                     )
                     await client.publish(channel, token_update.model_dump_json())
                     
-                elif update["type"] == "search_query":
-                    # For search query updates
-                    query_update = StreamingChatUpdate(
-                        type="search_query",
+                elif update["type"] == "query_analysis":
+                    # For query analysis updates from graph_2
+                    analysis_update = StreamingChatUpdate(
+                        type="query_analysis",
                         content=update["content"]
                     )
-                    await client.publish(channel, query_update.model_dump_json())
+                    await client.publish(channel, analysis_update.model_dump_json())
                     
-                elif update["type"] == "sources":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
-                        type="sources",
+                elif update["type"] == "vector_search_results":
+                    # For vector search results from graph_2
+                    vector_update = StreamingChatUpdate(
+                        type="vector_search_results",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json())
-
-                elif update["type"] == "web_research_result":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
-                        type="web_research_result",
+                    await client.publish(channel, vector_update.model_dump_json())
+                    
+                elif update["type"] == "sql_query":
+                    # For individual SQL query updates from graph_2
+                    sql_query_update = StreamingChatUpdate(
+                        type="sql_query",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json())
-
-                elif update["type"] == "sql_queries":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
-                        type="sql_queries",
+                    await client.publish(channel, sql_query_update.model_dump_json())
+                    
+                elif update["type"] == "sql_search_results":
+                    # For SQL search results from graph_2
+                    sql_results_update = StreamingChatUpdate(
+                        type="sql_search_results",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json())
-
-                elif update["type"] == "reflection":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
-                        type="reflection",
+                    await client.publish(channel, sql_results_update.model_dump_json())
+                    
+                elif update["type"] == "fusion_ranking":
+                    # For fusion ranking results from graph_2
+                    fusion_update = StreamingChatUpdate(
+                        type="fusion_ranking",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json()) 
-
+                    await client.publish(channel, fusion_update.model_dump_json())
+                    
                 elif update["type"] == "finalize_answer":
-                    # For source updates
-                    source_update = StreamingChatUpdate(
+                    # For final answer from graph_2
+                    finalize_update = StreamingChatUpdate(
                         type="finalize_answer",
                         content=update["content"]
                     )
-                    await client.publish(channel, source_update.model_dump_json())                 
-                    
+                    await client.publish(channel, finalize_update.model_dump_json())
+                
                 elif update["type"] == "message":
                     # For final message updates
                     message_update = StreamingChatUpdate(

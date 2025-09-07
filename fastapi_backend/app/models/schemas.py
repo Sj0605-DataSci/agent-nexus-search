@@ -12,6 +12,43 @@ logger = logging.getLogger(__name__)
 # Standard API Response Schemas
 T = TypeVar('T')
 
+# Pydantic models for enhanced search
+class ScoringTrait(BaseModel):
+    traitTitle: str = Field(..., description="Title of the scoring trait")
+    traitDescription: str = Field(..., description="Description of the scoring trait")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence score between 0 and 1")
+
+class ScoredProfile(BaseModel):
+    profile_id: str = Field(..., description="Unique identifier for the profile")
+    linkedin_url: str = Field(..., description="URL of the LinkedIn profile")
+    all_quotes: List[str] = Field(..., description="List of quotes related to this profile")
+    scoring: List[ScoringTrait] = Field(
+        default_factory=list,
+        description="List of scoring traits with confidence, traitTitle, and traitDescription"
+    )
+
+class ScoredProfilesResponse(BaseModel):
+    profiles: List[ScoredProfile]
+
+class SearchFilters(BaseModel):
+    location: Optional[List[str]] = []
+    work_experience: Optional[List[str]] = []
+    company: Optional[List[str]] = []
+    position: Optional[List[str]] = []
+    skills: Optional[List[str]] = []
+
+class SearchTraits(BaseModel):
+    traits: List[str] = []
+    descriptions: List[str] = []
+
+class SearchKeyphrases(BaseModel):
+    keyphrases: List[str] = []
+
+class QueryAnalysis(BaseModel):
+    filters: SearchFilters
+    traits: SearchTraits
+    keyphrases: SearchKeyphrases
+
 class StandardResponse(BaseModel, Generic[T]):
     """Standard response format for all API endpoints"""
     success: bool
@@ -221,11 +258,8 @@ class RefreshTokenRequest(BaseModel):
 
 # Waitlist Schema
 class WaitlistRequest(BaseModel):
-    name: str
     email: EmailStr
-    phone_number: str
     beta_tester: Optional[bool] = False
-    linkedin_url: Optional[str] = None
 
 class ResetPasswordRequest(BaseModel):
     """Request schema for initiating password reset"""

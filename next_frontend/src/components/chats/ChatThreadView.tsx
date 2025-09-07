@@ -1,9 +1,8 @@
 "use client";
-import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
 import { ChatNavigationControls } from "./ChatNavigationControls";
-import { AgentDropdown } from "./AgentDropdown";
 import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
 import { FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
 import { BsTextParagraph } from "react-icons/bs";
@@ -18,14 +17,11 @@ import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
 import { apiClient } from "@/integrations/fastapi/client";
 import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
-import SearchModeToggle from "./SearchModeToggle";
-import WorldConnectionsToggle from "./WorldConnectionsToggle";
-import FormatToggle from "./FormatToggle";
 import TagCarousel, { TagCategories } from "./TagCarousel";
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
-import OrbAura from "../OrbAura";
 import dynamic from "next/dynamic";
 import StyledMarkdown from "../common/StyledMarkdown";
+import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
 
 const FeedbackModal = dynamic(() => import("./FeedbackModal"));
@@ -55,7 +51,8 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   );
   const [format, setFormat] = useState<FormatType>("table");
   const [searchMode, setSearchMode] = useState<SearchMode>("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] = useState<WorldConnectionsMode>("world");
+  const [worldConnectionsMode, setWorldConnectionsMode] =
+    useState<WorldConnectionsMode>("connections");
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
@@ -257,8 +254,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   }, [threadId]);
 
   useEffect(() => {
-    const hasDismissed = localStorage.getItem("hasDismissedLinkedInModal");
-    if (profile && !profile.linkedin_url && hasDismissed !== "true") {
+    if (profile && !profile.linkedin_url) {
       setLinkedinModalOpen(true);
     }
   }, [profile]);
@@ -732,16 +728,23 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     }
   };
 
-  const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isStreaming) return;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!isStreaming) {
-        handleSearch();
-        posthog.capture("search_input_method", { method: "enter_key" });
-      }
-    } else if (e.key === "Enter" && e.shiftKey) {
+      handleSubmit(e as any);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (query.trim() && !isStreaming) {
+      console.log("Submitting query:", query);
+      // Add your submission logic here
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuery(suggestion);
   };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -850,8 +853,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             </h1>
             {!messages.length && (
               <p className="text-gray-600 text-sm md:text-lg mt-6">
-                Our AI filters through millions of profiles to surface truly relevant people, faster
-                and more precisely than traditional platforms.
+                Our AI-powered smart search unlocks hidden opportunities in your extended network,
+                <br />
+                connecting you through trusted warm introductions instead of ineffective cold
+                outreach.
               </p>
             )}
           </div>
@@ -859,56 +864,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         <div
           className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
-          <div className="relative flex justify-center w-full px-2 sm:px-0">
-            <div
-              className="flex flex-col rounded-2xl px-3 sm:px-6 py-3 sm:py-4 shadow-lg focus-within:shadow-xl w-full max-w-3xl border border-gray-200 bg-white hover:border-gray-300"
-              style={{ backdropFilter: "blur(10px)" }}
-            >
-              <SearchInputField
-                query={query}
-                setQuery={setQuery}
-                textareaRef={textareaRef}
-                onKey={onKey}
-                isStreaming={isStreaming}
-              />
-              <div className="flex flex-col sm:flex-row justify-between w-full mt-2 gap-2 sm:gap-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <SearchModeToggle
-                    searchMode={
-                      chatPairs[currentMessageIndex]?.main_query === query
-                        ? chatPairs[currentMessageIndex]?.search_mode
-                        : searchMode
-                    }
-                    disabled={
-                      isStreaming ||
-                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
-                    }
-                    setSearchMode={(mode: "basic" | "deep") => {
-                      posthog.capture("search_mode_changed", { mode });
-                      console.log("mode", mode);
-                      setSearchMode(mode);
-                    }}
-                  />
-                  <WorldConnectionsToggle
-                    worldConnectionsMode={
-                      chatPairs[currentMessageIndex]?.main_query === query
-                        ? chatPairs[currentMessageIndex]?.world_connections
-                        : worldConnectionsMode
-                    }
-                    disabled={
-                      !profile?.has_connections ||
-                      isStreaming ||
-                      (chatPairs[currentMessageIndex]?.main_query === query && query.trim() !== "")
-                    }
-                    setWorldConnectionsMode={(mode: "connections" | "world") => {
-                      posthog.capture("world_connections_mode_changed", { mode });
-                      setWorldConnectionsMode(mode);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <SearchInputField
+            query={query}
+            setQuery={setQuery}
+            textareaRef={textareaRef}
+            onKey={handleKeyDown}
+            onSubmit={handleSubmit}
+            isStreaming={isStreaming}
+          />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
               {[
@@ -951,10 +914,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
       )}
       {messages && messages.length > 0 && (
         <div className="w-full md:px-20 overflow-y-scroll">
-          <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-gray-900">Results</h2>
-          </div>
-
           <div className="space-y-6">
             {messages.map(m => {
               return (
@@ -970,41 +929,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                               isStreaming={isStreaming}
                             />
                           )}
-                          {m.sources && m.sources.length > 0 ? (
-                            <div className="mb-4 border-b border-gray-200">
-                              <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-                                <li className="mr-2">
-                                  <button
-                                    onClick={() => setActiveTab("content")}
-                                    className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
-                                      activeTab === "content"
-                                        ? "text-blue-600 border-blue-600 font-semibold"
-                                        : "text-gray-500 border-transparent hover:text-gray-600"
-                                    } duration-200`}
-                                  >
-                                    <BsTextParagraph className="w-4 h-4 mr-2" />
-                                    Content
-                                  </button>
-                                </li>
-                                <li className="mr-2">
-                                  <button
-                                    onClick={() => setActiveTab("sources")}
-                                    className={`inline-flex items-center justify-center p-2 px-3 border-b-1 ${
-                                      activeTab === "sources"
-                                        ? "text-blue-600 border-blue-600 font-semibold"
-                                        : "text-gray-500 border-transparent hover:text-gray-600"
-                                    } duration-200`}
-                                  >
-                                    <FiLink className="w-4 h-4 mr-2" />
-                                    Sources
-                                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
-                                      {m.sources.length}
-                                    </span>
-                                  </button>
-                                </li>
-                              </ul>
-                            </div>
-                          ) : null}
 
                           {(!m.sources || m.sources.length === 0 || activeTab === "content") &&
                             !isStreaming && (
@@ -1018,22 +942,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                                       Query seems empty, Please Search again.
                                     </p>
                                   </div>
-                                ) : format === "table" &&
-                                  parseStructuredData(m.content) &&
-                                  /(fname|lname|link)/i.test(m.content) ? (
-                                  <div className="flex w-full">
-                                    {renderAsTable(
-                                      m.content,
-                                      false,
-                                      messagesContainerRef,
-                                      hasMoreMessages,
-                                      loadMoreMessages
-                                    )}
-                                  </div>
                                 ) : (
-                                  <StyledMarkdown
+                                  <EnhancedProfileRenderer
                                     content={m.content}
                                     sources={m.sources || m.sources_gathered}
+                                    onProfileSelect={(profile) => {
+                                      console.log("Selected profile:", profile);
+                                      // You can add additional profile selection logic here
+                                    }}
                                   />
                                 )}
                               </div>
@@ -1043,7 +959,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
                             <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
                           )}
 
-                          <div className="mt-4  flex justify-between items-center">
+                          <div className="mt-3 pb-4 px-3 flex justify-between items-center">
                             <span
                               title={getFullTimestamp(m.timestamp)}
                               className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"

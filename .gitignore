@@ -52,3 +52,4 @@ coverage/
 .env.production.local
 .vercel
 fastapi_backend/docker-compose.yml
+fastapi_backend/generate_embeddings.py

@@ -6,8 +6,11 @@ const BACKEND =
 
 const SCOPES = ["openid", "profile", "email"];
 const AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization";
+let _jsessionCache = null;
+const JSESSION_STORAGE_KEY = "JSESSIONID_TOKEN";
 
 export async function dumpLinkedInCookies() {
+  console.log("[DEBUG] Dumping LinkedIn cookies...");
   const domains = [
     ".linkedin.com",
     "www.linkedin.com",
@@ -15,20 +18,28 @@ export async function dumpLinkedInCookies() {
     "api.linkedin.com",
     ".www.linkedin.com",
     "lnkd.in",
-    ".lnkd.in",
+    ".lnkd.in"
   ];
 
+  console.log("[DEBUG] Checking domains:", domains);
   const cookiePromises = domains.map((domain) =>
     chrome.cookies
       .getAll({ domain })
-      .then((cookies) => ({ domain, cookies }))
-      .catch((err) => ({ domain, error: err.message, cookies: [] }))
+      .then((cookies) => {
+        console.log("[DEBUG] Found", cookies.length, "cookies for", domain);
+        return { domain, cookies };
+      })
+      .catch((err) => {
+        console.log("[DEBUG] Error getting cookies for", domain, err.message);
+        return { domain, error: err.message, cookies: [] };
+      })
   );
 
   const results = await Promise.all(cookiePromises);
+  console.log("[DEBUG] Cookie collection complete");
 
   let allCookies = [];
-  const cookieMap = new Map(); // Use a map to track unique cookies by name+path
+  const cookieMap = new Map();
 
   for (const result of results) {
     for (const cookie of result.cookies) {
@@ -38,33 +49,36 @@ export async function dumpLinkedInCookies() {
   }
 
   allCookies = Array.from(cookieMap.values());
-
+  console.log("[DEBUG] Total unique cookies found:", allCookies.length);
   return allCookies;
 }
 
 export async function retrieveAndStoreJSessionId() {
   try {
-    console.log("Attempting to retrieve JSESSIONID...");
+    console.log("[DEBUG] Starting JSESSIONID retrieval...");
     const cookies = await dumpLinkedInCookies();
-
-    // Find the JSESSIONID cookie
+    console.log("[DEBUG] Found", cookies.length, "LinkedIn cookies");
+    
     const jsessionCookie = cookies.find(
       (cookie) => cookie.name === "JSESSIONID"
     );
 
     if (jsessionCookie) {
-      console.log("JSESSIONID found:", jsessionCookie.value);
-      // Store it in local storage
+      console.log("[DEBUG] Found JSESSIONID:", {
+        domain: jsessionCookie.domain,
+        path: jsessionCookie.path,
+        secure: jsessionCookie.secure
+      });
       await chrome.storage.local.set({
-        JSESSIONID_TOKEN: jsessionCookie.value,
+        JSESSIONID_TOKEN: jsessionCookie.value
       });
       return jsessionCookie.value;
     } else {
-      console.log("JSESSIONID not found in cookies");
+      console.log("[DEBUG] No JSESSIONID found in cookies");
       return null;
     }
   } catch (error) {
-    console.error("Error retrieving JSESSIONID:", error);
+    console.error("[ERROR] Retrieving JSESSIONID:", error);
     return null;
   }
 }
@@ -116,25 +130,36 @@ export async function linkedInSignIn() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, redirectUri }),
-  }).then((r) =>
-    r.ok
-      ? r.json()
-      : r.text().then((t) => {
-          throw new Error(t);
-        })
-  );
+  }).then(async (r) => {
+    if (r.ok) {
+      const data = await r.json();
+      // Store the token response data locally
+      await chrome.storage.local.set({
+        authData: {
+          ...data,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      console.log("Auth data stored successfully");
+      return data;
+    } else {
+      const errorText = await r.text();
+      console.error("Auth error:", errorText);
+      throw new Error(errorText);
+    }
+  });
 
   // LinkedIn's standard OAuth flow doesn't return id_token by default
   // Instead, we'll use the access_token and fetch the profile separately
   let profile = {};
-
+  console.log("tokenRes?.data?.access_token", tokenRes?.data?.access_token);
   try {
     // Fetch user profile using the access token
     const profileResponse = await fetch(
       "https://api.linkedin.com/v2/userinfo",
       {
         headers: {
-          Authorization: `Bearer ${tokenRes.access_token}`,
+          Authorization: `Bearer ${tokenRes?.data?.access_token}`,
           Accept: "application/json",
         },
       }
@@ -170,20 +195,83 @@ export async function linkedInSignIn() {
   return stored;
 }
 
-export async function fetchConnections({ start = 0, count = 50 } = {}) {
-  const { access_token } = await chrome.storage.local.get(["access_token"]);
-  if (!access_token) throw new Error("Not signed in");
+async function logAllLinkedInCookies() {
+  try {
+    const cookies = await chrome.cookies.getAll({
+      domain: ".linkedin.com",
+    });
 
-  const url = new URL("https://api.linkedin.com/v2/relationships/connections");
-  url.searchParams.set("q", "viewer");
-  url.searchParams.set("start", start);
-  url.searchParams.set("count", count);
+    console.group("LinkedIn Cookies:");
+    cookies.forEach((cookie) => {
+      console.log(`Name: ${cookie.name}`);
+      console.log(`Value: ${cookie.value}`);
+      console.log(`Domain: ${cookie.domain}`);
+      console.log(`Path: ${cookie.path}`);
+      console.log(`Secure: ${cookie.secure}`);
+      console.log(`HttpOnly: ${cookie.httpOnly}`);
+      console.log(
+        `Expires: ${
+          cookie.expirationDate
+            ? new Date(cookie.expirationDate * 1000)
+            : "Session"
+        }`
+      );
+      console.log("---");
+    });
+    console.groupEnd();
 
-  const r = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${access_token}` },
-  });
-  if (!r.ok) throw new Error("Connections fetch failed: " + r.status);
-  return r.json(); // { paging:{start,count,total}, elements:[…] }
+    return cookies;
+  } catch (error) {
+    console.error("Error fetching LinkedIn cookies:", error);
+    return [];
+  }
+}
+
+export async function fetchConnections() {
+  try {
+    const jsessionId = await getJSessionId();
+    if (!jsessionId) {
+      console.error("No JSESSIONID available for connections sync");
+      throw new Error("No JSESSIONID available");
+    }
+
+    console.log("Fetching LinkedIn connections with JSESSIONID");
+    const response = await fetch(
+      "https://www.linkedin.com/voyager/api/relationships/dash/connections?decorationId=com.linkedin.voyager.dash.deco.web.mynetwork.ConnectionListWithProfile-16&count=40&q=search&sortType=RECENTLY_ADDED",
+      {
+        headers: {
+          accept: "application/vnd.linkedin.normalized+json+2.1",
+          "csrf-token": jsessionId,
+          "x-restli-protocol-version": "2.0.0",
+          "x-li-lang": "en_US",
+        },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Connections API failed:",
+        response.status,
+        await response.text()
+      );
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const connections = await response.json();
+    console.log(
+      "Successfully fetched connections:",
+      connections.included?.length
+    );
+    await chrome.storage.local.set({
+      connections,
+      lastSyncTime: new Date().toISOString(),
+    });
+    return { ok: true, connections };
+  } catch (error) {
+    console.error("Failed to fetch connections:", error);
+    throw error;
+  }
 }
 
 export async function fetchFullProfile() {
@@ -290,26 +378,24 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     return true;
   }
   if (message?.type === "linkedin-signin") {
-    linkedInSignIn()
-      .then(async (signInResult) => {
-        try {
-          console.log("signInResult--->", signInResult?.profile);
-          await chrome.storage.local.set({ profile: signInResult?.profile });
-
-          // Try to get JSESSIONID immediately if not already retrieved
-          const jsessionId = await retrieveAndStoreJSessionId();
-
-          sendResponse({
-            ok: true,
-            tokens: signInResult,
-            profile: signInResult?.profile,
-            jsessionId: jsessionId,
-          });
-        } catch (err) {
-          sendResponse({ ok: false, error: err.message });
-        }
-      })
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    try {
+      const signInResult = await linkedInSignIn();
+      const jsessionId = await retrieveAndStoreJSessionId();
+      
+      // Fetch and store Voyager profile
+      const voyagerProfile = await fetchVoyagerProfile(jsessionId);
+      await chrome.storage.local.set({ voyagerProfile });
+      
+      sendResponse({
+        ok: true,
+        tokens: signInResult,
+        profile: signInResult?.profile,
+        jsessionId,
+        voyagerProfile
+      });
+    } catch (err) {
+      sendResponse({ ok: false, error: err.message });
+    }
     return true;
   }
 
@@ -364,4 +450,80 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
     return true; // Keep the message channel open for async response
   }
+  if (message?.type === "linkedin-get-voyager-profile") {
+    fetchVoyagerProfile()
+      .then((profile) => sendResponse({ ok: true, profile }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message?.type === "linkedin-sync-connections") {
+    (async () => {
+      try {
+        const result = await fetchConnections();
+        sendResponse(result);
+      } catch (error) {
+        console.error("Sync connections failed:", error);
+        sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true; // Keep message channel open
+  }
 });
+
+function stripOuterQuotes(str) {
+  return typeof str === "string" ? str.replace(/^"|"$/g, "") : str;
+}
+
+async function getJSessionId() {
+  if (_jsessionCache) return stripOuterQuotes(_jsessionCache);
+  // Try to get from storage first
+  const stored = await chrome.storage.local.get(JSESSION_STORAGE_KEY);
+  console.log("stored", stored);
+  _jsessionCache = stored[JSESSION_STORAGE_KEY] ?? null;
+
+  // If not found in storage, try to retrieve it automatically
+  if (!_jsessionCache) {
+    console.log(
+      "No JSESSIONID found in storage, attempting to retrieve automatically..."
+    );
+    try {
+      // Ask background script to retrieve JSESSIONID
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: "linkedin-get-jsessionid" },
+          resolve
+        );
+      });
+
+      if (response?.ok && response.jsessionId) {
+        _jsessionCache = response.jsessionId;
+        console.log("Successfully retrieved JSESSIONID automatically");
+      } else {
+        console.log(
+          "Failed to retrieve JSESSIONID automatically",
+          response?.error || "Unknown error"
+        );
+      }
+    } catch (error) {
+      console.error("Error retrieving JSESSIONID:", error);
+    }
+  }
+
+  return stripOuterQuotes(_jsessionCache);
+}
+
+export async function fetchVoyagerProfile(jsessionId) {
+  const response = await fetch('https://www.linkedin.com/voyager/api/me', {
+    headers: {
+      'csrf-token': jsessionId,
+      'accept': 'application/vnd.linkedin.normalized+json+2.1'
+    },
+    credentials: 'include'
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Voyager API failed with status ${response.status}`);
+  }
+  
+  return await response.json();
+}

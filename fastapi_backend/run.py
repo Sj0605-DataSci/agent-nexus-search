@@ -61,9 +61,9 @@ def run_development():
         os.environ.setdefault("PYTHONUNBUFFERED", "1")
         os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
         os.environ.setdefault("PYTHONHASHSEED", "random")
-        os.environ.setdefault("WEB_CONCURRENCY", "1")  # Reduced to 1 worker for debugging
+        os.environ.setdefault("WEB_CONCURRENCY", "4")  # 4 workers
         
-        # Gunicorn command matching Dockerfile
+        # Gunicorn command with memory leak prevention
         cmd = [
             "gunicorn",
             "--log-level=debug",  # Enable debug logging
@@ -71,11 +71,14 @@ def run_development():
             "--enable-stdio-inheritance",
             "--preload",          # Preload the application before forking workers
             "--worker-class", "uvicorn.workers.UvicornWorker",
-            "--workers", "1",     # Start with 1 worker for debugging
+            "--workers", "4",     # 4 workers to match Docker
             "--bind", "0.0.0.0:8000",
-            "--timeout", "120",
+            "--timeout", "1200",  # 20 minutes timeout
             "--graceful-timeout", "30",
-            "--worker-tmp-dir", "/tmp",
+            "--worker-tmp-dir", "/tmp",      # Use /tmp on macOS
+            "--max-requests", "1000",        # Allow 1000 requests before restart
+            "--max-requests-jitter", "100",  # Jitter for restart timing
+            "--worker-connections", "1000",  # Limit connections per worker
             "--reload",
             "--access-logfile", "-",
             "--error-logfile", "-",

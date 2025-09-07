@@ -12,24 +12,6 @@
   </head>
   <body>
     <div class="app-container">
-      <!-- <header class="app-header">
-        <div class="header-content">
-          <div class="logo-container">
-            <div class="logo">
-              <img
-                src="icon.png"
-                alt="DiscoverMinds.ai Logo"
-                style="border-radius: 4px"
-              />
-              <div>
-                <h1>DiscoverMinds.ai</h1>
-                <p class="subtitle">Smarter People Search</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header> -->
-
       <main>
         <div id="loginSection" class="card">
           <div class="card-content">
@@ -56,62 +38,27 @@
           </div>
         </div>
 
-        <div id="profileSection" class="card" hidden>
-          <div id="profileInfo" class="profile-info"></div>
-
-          <div class="connection-controls">
-            <button
-              id="linkedinGetDataApiBtn"
-              class="primary-button sync-button"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                style="margin-right: 8px"
-              >
-                <path
-                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
-                />
-              </svg>
-              Sync My Network
-            </button>
-            <div id="lastSync" class="last-sync">
-              Last synced: <span class="last-sync-time">Never</span>
-            </div>
+        <div id="profileContainer" class="hidden">
+          <div class="profile-header">
+            <img id="profileImage" src="" alt="Profile" />
+            <h2 id="profileName"></h2>
+            <div id="statusBadge" class="status-badge active">Active</div>
           </div>
 
-          <div class="benefits">
-            <h3>Now you can:</h3>
-            <ul>
-              <li>Search across all your connections in one place</li>
-              <li>Get intelligent recommendations</li>
-              <li>Discover hidden connections</li>
-            </ul>
+          <div class="sync-info">
+            <div id="syncStatusText"></div>
+            <div id="lastSyncTime" class="text-xs"></div>
+            <div id="nextSyncTime" class="text-xs"></div>
+            <button id="syncButton" class="text-button">Sync now</button>
           </div>
 
-          <button id="signOutBtn" class="text-button">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              style="margin-right: 6px"
-            >
-              <path
-                d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
-              />
-            </svg>
-            Sign out
+          <div
+            id="connectionCount"
+            class="text-center text-sm text-muted-foreground"
+          ></div>
+
+          <button id="disconnectButton" class="text-button">
+            Disconnect account
           </button>
         </div>
 
@@ -122,8 +69,12 @@
       </main>
 
       <div id="resultsContainer">
-        <div id="connectionCount" class="connection-count"></div>
-        <!-- <div id="connectionsList" class="connections-list"></div> -->
+        <div id="connectionsSection" class="mt-4">
+          <div
+            id="connectionCount"
+            class="text-center text-sm text-muted-foreground"
+          ></div>
+        </div>
       </div>
 
       <footer class="app-footer">
@@ -131,6 +82,6 @@
       </footer>
     </div>
 
-    <script type="module" src="popup.js"></script>
+    <script src="popup.js"></script>
   </body>
 </html>

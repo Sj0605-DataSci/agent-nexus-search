@@ -26,6 +26,7 @@ import {
   StreamingChatUpdate,
   UserProfile,
   UsageStats,
+  SignUpResponse,
 } from "./types";
 
 export const apiClient = {
@@ -187,7 +188,7 @@ export const apiClient = {
     fullName: string,
     linkedinUrl: string,
     phoneNumber: string
-  ) {
+  ): Promise<SignUpResponse> {
     try {
       const { supabaseHandler } = await import("@/app/supabaseClient");
       

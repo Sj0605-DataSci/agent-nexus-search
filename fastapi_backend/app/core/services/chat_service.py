@@ -1,15 +1,13 @@
 from typing import Dict, Any, List, Union
+from langsmith import traceable, Client
 from app.core.services.agent.graph import graph
+from app.core.services.agent.graph_2 import graph_2
 from langchain_core.messages import HumanMessage, AIMessage
-import weave, wandb
 import uuid
 import json
-import time
-import asyncio
 from app.core.config import settings
 from app.core.services.credit_service import CreditService
-from app.core.utils.llm_utils import GeminiChatModel
-from app.models.chat import IntentClassification
+from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
 from app.core.services.agent.prompts import query_title_generation
 from app.models.schemas import TitleAndIntentGeneratorOutput
 from app.core.structured_logger import get_structured_logger
@@ -21,11 +19,10 @@ from app.core.utils.cache import (
     invalidate_chat_threads_cache, invalidate_chat_messages_cache
 )
 from app.db.redis_client import redis_client
+from langsmith.run_helpers import get_current_run_tree
 
 logger = get_structured_logger(__name__)
-
-wandb.login(key=settings.WANDB_API_KEY)
-weave.init("discover-minds/Deep-Search")
+langsmithclient = Client(api_key="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")
 
 class ChatService:
     """Service for handling agent template operations"""
@@ -215,7 +212,7 @@ class ChatService:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
     
-    @weave.op
+    @traceable(project_name="Discoverminds",name="stream_chat")
     async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
@@ -232,6 +229,15 @@ class ChatService:
             # Capture the Weave operation ID
                 # Check if user can perform this search
             credit_service = CreditService(client=self.client)
+            run_tree = get_current_run_tree()
+            if run_tree:
+                workspace_id = settings.LANGSMITH_WORKSPACE_ID
+                project_id=settings.LANGSMITH_PROJ_ID  # fetch from LangSmith API
+
+                run_url = (
+        f"https://smith.langchain.com/o/{workspace_id}/projects/p/{project_id}"
+        f"?peek={run_tree.id}&peeked_trace={run_tree.id}"
+    )
                     
             limit_check = await credit_service.check_search_limit(user_id, search_mode=search_mode)
                     
@@ -250,9 +256,8 @@ class ChatService:
                     }
                 }
                 return
-            op = weave.get_current_call()
-            op_id = op.id
-            weave_url = f"https://wandb.ai/discover-minds/Deep-Search/weave/calls/{op_id}" if op_id else None
+
+            weave_url = run_url
             
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)
@@ -282,7 +287,8 @@ class ChatService:
                 
             # Generate a title for the thread
             system_instruction = "You are {agent_config} and you are a people search engine."
-            llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0,system_instruction=system_instruction)
+            # llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0,system_instruction=system_instruction)
+            llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0,system_instruction=system_instruction)
             title_gen_prompt = query_title_generation.format(latest_message=latest_message)
             response_title, usage_metadata = await llm.with_structured_output(schema_type=TitleAndIntentGeneratorOutput, prompt=title_gen_prompt)
             title = response_title.title
@@ -582,88 +588,79 @@ class ChatService:
                             "search_mode": search_mode
                         }
                     }
-            
-                async for chunk_type, chunk_data in graph.astream(
-                    initial_state, 
-                    stream_mode=["messages", "updates"]
-                ):
-                # Handle different types of streaming chunks
-                    if chunk_type == "messages":
-                        # This is a token from an LLM
-                        message_chunk, metadata = chunk_data
-                        if metadata.get("langgraph_node") == "sql_query_generation":
-                            pass
-                        elif metadata.get("langgraph_node") == "finalize_answer":
-                            pass
-                        else:
-                            if message_chunk.content:
-                                # Stream the token with metadata about which node it came from
-                                yield {
-                                "type": "token",
-                                "content": message_chunk.content,
-                            "node": metadata.get("langgraph_node"),
-                            "tags": metadata.get("tags", [])
-                            }
                     
-                    elif chunk_type == "updates":
-                        # This is a state update from a node
-                        node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
-                        node_data = chunk_data.get(node_name, {})
+                    # Stream the graph execution
+                    async for chunk in graph_2.astream(initial_state, stream_mode=["messages", "updates"]):
+                        chunk_type, chunk_data = chunk
                         
-                        # Handle different types of updates based on the node
-                        if node_name == "generate_query":
+                        # Handle different types of streaming chunks
+                        if chunk_type == "messages":
+                            # This is a token from an LLM
+                            message_chunk, metadata = chunk_data
+                            if metadata.get("langgraph_node") == "finalize_sql_answer":
+                                if message_chunk.content:
+                                    yield {
+                                        "type": "token",
+                                        "content": message_chunk.content,
+                                        "node": metadata.get("langgraph_node"),
+                                        "tags": metadata.get("tags", [])
+                                    }
+                        
+                        elif chunk_type == "updates":
+                            # This is a state update from a node
+                            node_name = list(chunk_data.keys())[0] if chunk_data else "unknown"
+                            node_data = chunk_data.get(node_name, {})
                             
-                            if "search_query" in node_data:
-                                # Stream search queries
-                                for query in node_data["search_query"]:
-                                    if isinstance(query, dict) and "query" in query:
-                                        yield {
-                                            "type": "search_query",
-                                            "content": {"query": query["query"]}
+                            # Handle only graph_2.py nodes
+                            if node_name == "query_analysis":
+                                # Stream keyphrases, traits, filters from query analysis
+                                if "query_analysis" in node_data:
+                                    analysis = node_data["query_analysis"]
+                                    yield {
+                                        "type": "query_analysis",
+                                        "content": {
+                                            "keyphrases": analysis.get("keyphrases", {}),
+                                            "traits": analysis.get("traits", {}),
+                                            "filters": analysis.get("filters", {})                                        }
+                                    }
+                            
+                            elif node_name == "vector_search":
+                                # Stream vector search progress and results
+                                if "vector_results" in node_data:
+                                    yield {
+                                        "type": "vector_search_results",
+                                        "content": {
+                                            "message": f"🔍 Found {len(node_data['vector_results'])} semantic matches"
                                         }
-                                    elif isinstance(query, str):
-                                        yield {
-                                            "type": "search_query",
-                                            "content": {"query": query}
+                                    }
+                            
+                            elif node_name == "sql_search":
+                                # Stream SQL queries and keyword search results
+                                if "sql_queries" in node_data:
+                                    for sql_query in node_data["sql_queries"]:
+                                        if isinstance(sql_query, str):
+                                            yield {
+                                                "type": "sql_query",
+                                                "content": {"query": sql_query}
+                                            }
+                                
+                                if "sql_results" in node_data:
+                                    yield {
+                                        "type": "sql_search_results",
+                                        "content": {
+                                            "message": f"📊 Found {len(node_data['sql_results'])} keyword matches"
                                         }
-                        if node_name == "web_research":                
-                            if "sources_gathered" in node_data:
-                                yield {
-                                    "type": "sources",
-                                    "content": {"sources": node_data["sources_gathered"]}
-                                }
-                            if "web_research_result" in node_data:
-                                yield {
-                                    "type": "web_research_result",
-                                    "content": {"web_research_result": node_data["web_research_result"]}
-                                }    
-                        if node_name == "sql_query_generation":                
-                            for query in node_data["sql_queries"]:
-                                    if isinstance(query, dict) and "query" in query:
-                                        yield {
-                                            "type": "sql_queries",
-                                            "content": {"query": query["query"]}
+                                    }
+                            
+                            elif node_name == "fusion_ranking":
+                                # Stream fusion ranking results
+                                if "final_results" in node_data:
+                                    yield {
+                                        "type": "fusion_ranking",
+                                        "content": {
+                                            "message": f"⚡ Merged and ranked {len(node_data['final_results'])} total results"
                                         }
-                                    elif isinstance(query, str):
-                                        yield {
-                                            "type": "sql_queries",
-                                            "content": {"query": query}
-                                        }
-                        if node_name == "sql_query_execution":                
-                            yield {
-                                "type": "web_research_result",
-                                "content": {"web_research_result": node_data["web_research_result"]}
-                            }    
-                        if node_name == "reflection":                
-                            yield {
-                                "type": "reflection",
-                                "content": {"is_sufficient": node_data["is_sufficient"], "follow_up_queries": node_data["follow_up_queries"], "knowledge_gap": node_data["knowledge_gap"]}
-                            }
-                        if node_name == "finalize_answer":                
-                            yield {
-                                "type": "finalize_answer",
-                                "content": {"messages": node_data["messages"], "sources_gathered": node_data["sources_gathered"]}
-                            }        
+                                    }       
             
                 # Get updated user subscription for final credit info
                 user_subscription = await credit_service.get_user_subscription_optimized(user_id)
@@ -696,7 +693,7 @@ class ChatService:
             yield {
                 "type": "error",
                 "content": {"message": f"Error: {str(e)}"}
-            }
+            }            
     
     async def generate_and_email_pdf_results(
         self,

@@ -11,10 +11,15 @@ import {
   FiMessageSquare,
   FiShoppingBag,
   FiUsers,
+  FiUser,
+  FiSmile,
+  FiZap,
   FiPlus,
   FiMenu,
   FiX,
+  FiGlobe,
   FiAlertTriangle,
+  FiSearch,
 } from "react-icons/fi";
 import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
 import posthog from "posthog-js";
@@ -127,8 +132,10 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    // { href: "/marketplace", label: "Marketplace", icon: <FiShoppingBag /> },
-    { href: "/agents", label: "Agents", icon: <FiUsers /> },
+    { href: "/agents", label: "Agents", icon: <FiZap /> },
+    { href: "/connections", label: "Connections", icon: <FiGlobe /> },
+    { href: "/friends", label: "Friends", icon: <FiSmile /> },
+    { href: "/groups", label: "Groups", icon: <FiUsers /> },
   ];
 
   const handleSignOut = async () => {
@@ -270,15 +277,15 @@ const Sidebar = () => {
             border rounded-md transition-colors duration-200`}
         >
           <div className="flex items-center gap-2">
-            <FiPlus className="h-4 w-4 text-indigo-600" />
-            {(!collapsed || isMobile) && <span>New chat</span>}
+            <FiSearch className="h-4 w-4 text-indigo-600" />
+            {(!collapsed || isMobile) && <span>New search</span>}
           </div>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
-        <ul className="space-y-1 pb-3">
+      <nav className="flex-1 overflow-y-auto px-2 ">
+        <ul className="space-y-[2px] pb-3">
           {navItems.map(({ href, label, icon }) => (
             <li key={href}>
               <Link

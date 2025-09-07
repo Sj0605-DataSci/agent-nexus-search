@@ -61,7 +61,7 @@ const UsageStatsCard = () => {
       : 0;
 
   return (
-    <Card className="transition-all duration-300 bg-white border-gray-200">
+    <div className="border rounded-lg bg-white border-gray-200 transition-all hover:shadow-md"> 
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-semibold text-gray-800">Usage Statistics</CardTitle>
         <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-100">
@@ -99,7 +99,7 @@ const UsageStatsCard = () => {
                 value={stats.total_searches}
                 icon={<Search className="h-5 w-5 text-gray-500" />}
               />
-              <StatBox
+              {/* <StatBox
                 title="Basic Searches"
                 value={stats.basic_searches}
                 icon={<Zap className="h-5 w-5 text-gray-500" />}
@@ -108,7 +108,7 @@ const UsageStatsCard = () => {
                 title="Deep Searches"
                 value={stats.deep_searches}
                 icon={<Star className="h-5 w-5 text-gray-500" />}
-              />
+              /> */}
             </div>
             <div className="p-4 rounded-lg bg-gray-50">
               <div className="flex justify-between items-center mb-2">
@@ -135,7 +135,7 @@ const UsageStatsCard = () => {
           </div>
         )}
       </CardContent>
-    </Card>
+    </div>
   );
 };
 

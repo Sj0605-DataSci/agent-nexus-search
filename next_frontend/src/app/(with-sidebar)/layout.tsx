@@ -43,7 +43,7 @@ const MainContent = ({
 
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="h-full overflow-y-auto p-6 sm:p-10 bg-white">{children}</div>
+      <div className="h-full overflow-y-auto p-2 sm:p-6 pt-20 md:pt-8 bg-white">{children}</div>
     </div>
   );
 };

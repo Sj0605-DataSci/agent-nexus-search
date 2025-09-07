@@ -1,32 +1,20 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const lockIsOn = process.env.NODE_ENV != "development";
-
-export function middleware(req: NextRequest) {
-  if (!lockIsOn) return NextResponse.next();
-  //Info: To prevent the middleware from running in prod mode
-  else {
-    return NextResponse.next();
-  }
-
-  const { pathname } = req.nextUrl;
-
-  // Info: It Allows wait-list, static assets and Next internals through
-  if (
-    pathname.startsWith("/join-waitlist") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.includes(".") ||
-    pathname === "/"
-  ) {
-    return NextResponse.next();
-  }
-
-  const url = req.nextUrl.clone();
-  url.pathname = "/join-waitlist";
-  return NextResponse.redirect(url);
+export function middleware(request: NextRequest) {
+  return NextResponse.next();
 }
 
+// import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+// const isProtectedRoute = createRouteMatcher([
+//   '/(with-sidebar)(.*)', // Protect all routes under /with-sidebar
+// ]);
+
+// export default clerkMiddleware((auth, req) => {
+//   if (isProtectedRoute(req)) auth.protect();
+// });
+
 export const config = {
-  matcher: "/:path*",
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 };

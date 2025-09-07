@@ -243,7 +243,7 @@ export const countryCodes: CountryCode[] = [
   { code: "WF", name: "Wallis and Futuna", flag: "🇼🇫", dialCode: "+681" },
   { code: "YE", name: "Yemen", flag: "🇾🇪", dialCode: "+967" },
   { code: "ZM", name: "Zambia", flag: "🇿🇲", dialCode: "+260" },
-  { code: "ZW", name: "Zimbabwe", flag: "🇿🇼", dialCode: "+263" }
+  { code: "ZW", name: "Zimbabwe", flag: "🇿🇼", dialCode: "+263" },
 ];
 
 export const DEFAULT_COUNTRY_CODE = "+91";
@@ -257,6 +257,6 @@ export const findCountryByCode = (code: string): CountryCode | undefined => {
 };
 
 export const getPopularCountryCodes = (): CountryCode[] => {
-  const popularCodes = ["IN", "US", "GB", "CA", "AU", "SG", "AE", "DE"];
+  const popularCodes = ["IN", "US", "AU", "AE"];
   return popularCodes.map(code => findCountryByCode(code)).filter(Boolean) as CountryCode[];
 };
