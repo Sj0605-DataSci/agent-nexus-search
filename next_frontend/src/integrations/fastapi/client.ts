@@ -1,16 +1,11 @@
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 import { handleAxiosError } from "@/lib/api/handleAxiosError";
+import { getDeviceInfo } from "@/utils/deviceInfo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { getStoredToken } from "@/utils/tokenManagement";
 
-// Add setAuthToken to axios instance
-export const setAuthToken = (token: string) => {
-  if (token) {
-    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  } else {
-    delete axiosInstance.defaults.headers.common["Authorization"];
-  }
-};
 import {
   AgentTemplate,
   AgentTemplateCreate,
@@ -28,6 +23,15 @@ import {
   UsageStats,
   SignUpResponse,
 } from "./types";
+
+// Add setAuthToken to axios instance
+export const setAuthToken = (token: string) => {
+  if (token) {
+    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete axiosInstance.defaults.headers.common["Authorization"];
+  }
+};
 
 export const apiClient = {
   async fetchAgentTemplates() {
@@ -191,7 +195,7 @@ export const apiClient = {
   ): Promise<SignUpResponse> {
     try {
       const { supabaseHandler } = await import("@/app/supabaseClient");
-      
+
       const { data, error } = await supabaseHandler.auth.signUp({
         email,
         password,
@@ -216,7 +220,7 @@ export const apiClient = {
           session: data.session,
           access_token: data.session?.access_token,
           refresh_token: data.session?.refresh_token,
-        }
+        },
       };
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
@@ -274,7 +278,7 @@ export const apiClient = {
     try {
       const res = await axiosInstance.post("/auth/reset-password", {
         email,
-        redirect_url: redirectUrl,
+        redirect_url: redirectUrl + "/update-password",
       });
       return res.data;
     } catch (error) {
@@ -477,83 +481,121 @@ export const apiClient = {
     }
   },
 
+  async joinWaitlistEmail(email: string): Promise<{
+    success: boolean;
+    status_code: number;
+    message: string;
+    data: { invitee_id?: string } | null;
+  }> {
+    try {
+      const data = {
+        email,
+      };
+      const res = await axiosInstance.post("/auth/join_waitlist", data);
+      return res.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 409) {
+          return error.response.data;
+        }
+        throw new Error(handleAxiosError(error));
+      }
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async sendStreamingChatRequest(
     agentId: string,
     message: string,
-    format: string = "table",
-    searchMode: string = "basic",
-    worldConnectionsMode: string = "connections",
     threadId: string = "",
     onUpdate: (update: StreamingChatUpdate) => void
   ): Promise<void> {
+    const { deviceId, ipAddress, deviceType } = await getDeviceInfo({ skipIpLookup: false });
+
+    const accessToken = await Promise.resolve(getStoredToken());
     const payload: StreamingChatRequest = {
-      agent_id: agentId,
       messages: message,
-      stream: true,
-      format: format,
-      search_mode: searchMode,
-      world_connections: worldConnectionsMode,
-      thread_id: threadId,
+      ...(!accessToken
+        ? {}
+        : {
+            stream: true,
+            agent_id: agentId,
+            format: "table",
+            search_mode: "basic",
+            world_connections: "connections",
+            thread_id: threadId,
+          }),
     };
+    const endpoint = accessToken ? "/chat/stream" : "/chat/public/stream";
 
-    // Use fetch directly for SSE support
-    const response = await fetch(`${axiosInstance.defaults.baseURL}/chat/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          (axiosInstance.defaults.headers.common["Authorization"] as string) ||
-          `Bearer ${localStorage.getItem("discover_minds_access_token")}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch(`${axiosInstance.defaults.baseURL}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          "X-Device-ID": deviceId,
+          "X-Device-Type": deviceType,
+          ...(ipAddress ? { "X-Client-IP": ipAddress } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} ${response.statusText}`);
-    }
-
-    // Handle the SSE stream
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) {
-      throw new Error("No reader available");
-    }
-
-    // Process the stream
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        break;
-      }
-
-      const text = decoder.decode(value);
-      const events = text.split("\n\n");
-
-      for (const event of events) {
-        if (event.trim() === "") continue;
-
-        // Parse the SSE event
-        const eventLines = event.split("\n");
-        let eventData = "";
-
-        for (const line of eventLines) {
-          if (line.startsWith("data: ")) {
-            eventData = line.slice(6); // Remove 'data: ' prefix
-          }
-        }
-
-        if (eventData) {
-          try {
-            const update = JSON.parse(eventData) as StreamingChatUpdate;
-            onUpdate(update);
-            console.log("Received SSE update:", update);
-          } catch (e) {
-            console.error("Error parsing SSE message:", e);
-          }
+      if (!response.ok) {
+        if (response.status === 499) {
+          toast.error("Maximum search limit reached. Please try again tomorrow.");
+          throw new Error("Maximum search limit reached");
+        } else {
+          toast.error("Something went wrong. Please try again later.");
+          throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No reader available");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        const text = decoder.decode(value);
+        const events = text.split("\n\n");
+
+        for (const event of events) {
+          if (event.trim() === "") continue;
+
+          // Parse the SSE event
+          const eventLines = event.split("\n");
+          let eventData = "";
+
+          for (const line of eventLines) {
+            if (line.startsWith("data: ")) {
+              eventData = line.slice(6); // Remove 'data: ' prefix
+            }
+          }
+
+          if (eventData) {
+            try {
+              const update = JSON.parse(eventData) as StreamingChatUpdate;
+              onUpdate(update);
+              console.log("Received SSE update:", update);
+            } catch (e) {
+              console.error("Error parsing SSE message:", e);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in streaming chat request:", error);
+      toast.error("Connection error. Please try again later.");
+      throw error;
     }
   },
 };

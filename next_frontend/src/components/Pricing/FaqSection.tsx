@@ -97,24 +97,24 @@ interface FaqItemProps {
 
 const FaqItem = ({ item, isOpen, onClick }: FaqItemProps) => {
   return (
-    <div className="border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+    <div className=" transition-all mb-6 duration-200 overflow-hidden">
       <button
         type="button"
-        className="text-lg group flex flex-1 items-center justify-between p-6 text-left font-medium transition-all hover:text-[#3B7DDD] w-full"
+        className="text-lg group flex flex-1 items-center  text-left font-medium transition-all hover:text-[#3B7DDD] w-full"
         onClick={onClick}
       >
-        <span className="flex-1 pr-2">{item.question}</span>
-        <span className="ml-2 text-xl font-bold text-[#4A89DC]">
+        <span className=" text-xl font-bold text-[#B2DC8A]">
           {isOpen ? <FaMinus /> : <FaPlus />}
         </span>
+        <span className="flex-1 pr-2 ml-4">{item.question}</span>
       </button>
       <div
-        className={`grid transition-all duration-500 ease-in-out ${
+        className={`grid transition-all ml-4 duration-500 ease-in-out ${
           isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >
         <div className="overflow-hidden">
-          <div className="pb-8 px-6 text-base text-gray-700">{item.answer}</div>
+          <div className=" px-6 text-base text-gray-700">{item.answer}</div>
         </div>
       </div>
     </div>
@@ -129,33 +129,23 @@ export default function FaqSection() {
   };
 
   return (
-    <section className="py-20  text-gray-800 bg-gray-50 relative overflow-hidden">
-      <div className="absolute inset-0 z-0 opacity-10">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#80A9F9]/50 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[#80A9F9]/30 rounded-full blur-3xl"></div>
-      </div>
+    <section className="py-14  text-gray-800 relative overflow-hidden">
       <div className="mx-auto max-w-6xl px-5 relative z-10">
-        <div className="flex flex-col items-center justify-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-[#80A9F9]/20 text-[#3B7DDD] text-sm font-medium mb-4">
-            Got questions?
-          </div>
-          <h4 className="text-3xl font-bold mb-4 text-center md:text-4xl">
-            Frequently Asked Questions
-          </h4>
-          <div className="w-20 h-1 bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] rounded-full mb-6"></div>
-          <p className="text-gray-600 text-center max-w-2xl">
-            Find answers to common questions about DiscoverMinds.ai, our features, and how we handle
-            your data.
-          </p>
+        <div className="flex  mb-6">
+          <h4 className="text-3xl font-bold text-center md:text-4xl">Got questions?</h4>
         </div>
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-2 max-w-6xl mx-auto">
           {faqData.map((item, index) => (
-            <FaqItem
-              key={index}
-              item={item}
-              isOpen={openIndex === index}
-              onClick={() => handleClick(index)}
-            />
+            <div key={index}>
+              <FaqItem
+                item={item}
+                isOpen={openIndex === index}
+                onClick={() => handleClick(index)}
+              />
+              {index !== faqData.length - 1 && (
+                <div className="w-full border-t mb-4 border-[#EFFBD7] mt-6"></div>
+              )}
+            </div>
           ))}
         </div>
       </div>

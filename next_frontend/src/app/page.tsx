@@ -1,16 +1,19 @@
-import HomeHeader from "@/components/Homepage/Header";
-import HeroSection from "@/components/Homepage/HeroSection";
-import WhyChooseUs from "@/components/Homepage/WhyChooseUs";
+import Header from "@/components/Homepage/Header";
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
-import Footer from "@/components/Homepage/Footer";
+import Offerings from "@/components/Homepage/Offerings";
+import HowItWorks from "@/components/Homepage/HowItWorks";
+import PricingPlans from "@/components/Homepage/PricingPlans";
+import NewHeroSection from "@/components/Homepage/NewHeroSection";
 import FaqSection from "@/components/Pricing/FaqSection";
+import NewFooter from "@/components/Footer/NewFooter";
+import React, { Suspense } from "react";
 
 export const dynamic = "force-static";
 
 const baseMetadata = {
   title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
-  description: "A mutual network-sharing platform to unlock hidden opportunities through warm introductions.",
+  description:
+    "A mutual network-sharing platform to unlock hidden opportunities through warm introductions.",
 };
 
 const productionMetadata: Metadata = {
@@ -58,17 +61,23 @@ function addStructuredData() {
 
 export default function Home() {
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={addStructuredData()}
         key="structured-data"
       />
-      <HomeHeader />
-      <HeroSection />
-      <FaqSection />
-      {/* <WhyChooseUs /> */}
-      <Footer />
-    </>
+      <Header />
+      <main>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-[50vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0E3D15]"></div></div>}>
+          <NewHeroSection />
+          <Offerings />
+          <HowItWorks />
+          <PricingPlans />
+          <FaqSection />
+          <NewFooter />
+        </Suspense>
+      </main>
+    </div>
   );
 }

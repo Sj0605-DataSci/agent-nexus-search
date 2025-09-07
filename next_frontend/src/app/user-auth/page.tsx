@@ -11,7 +11,7 @@ import Confetti from "react-confetti";
 import CountryCodeSelector from "@/components/CountryCodeSelector";
 import { apiClient } from "@/integrations/fastapi/client";
 import { SignUpResponse } from "@/integrations/fastapi/types";
-import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 import posthog from "posthog-js";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
@@ -48,29 +48,13 @@ const AuthComponent = () => {
     "signin"
   );
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-  const dispatch = useAppDispatch();
-  const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
-
+  const { profile } = useAppSelector(state => state.profile);
+  
   useEffect(() => {
-    if (!authLoading) {
-      if (user && profile) {
-        router.replace("/chat/new");
-      } else if (user && !profile) {
-        dispatch(fetchProfile());
-      }
+    if (profile) {
+      router.replace("/chat/new");
     }
-  }, [user, profile, authLoading, dispatch, router]);
-
-  const isLoading = authLoading || profileLoading;
-
-  if (isLoading || (user && profile)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-indigo-600"></div>
-      </div>
-    );
-  }
+  }, [profile]);
 
   const formVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -213,7 +197,7 @@ const SuccessSignupModal = () => {
   const handleResendEmail = useCallback(async () => {
     if (lastSignupData && resendTimer === 0) {
       try {
-                const response: SignUpResponse = await apiClient.userSignUp(
+        const response: SignUpResponse = await apiClient.userSignUp(
           lastSignupData.email,
           lastSignupData.password,
           lastSignupData.name,
@@ -223,12 +207,12 @@ const SuccessSignupModal = () => {
 
         if (response.success) {
           setResendTimer(60);
-          showSuccessToast("Verification email resent successfully!");
+          toast.success("Verification email resent successfully!");
         } else {
           throw new Error(response.message || "Failed to resend email");
         }
       } catch (error) {
-        showErrorToast("Failed to resend email. Please try again.");
+        toast.error("Failed to resend email. Please try again.");
         console.error("Resend email error:", error);
       }
     }
@@ -304,7 +288,7 @@ const SignUpFormComponent = ({
         // Format phone number as '91-8929495901'
         const phoneNumber = phoneValue;
 
-                const response: SignUpResponse = await apiClient.userSignUp(
+        const response: SignUpResponse = await apiClient.userSignUp(
           data.email,
           data.password,
           data.name,
@@ -321,7 +305,7 @@ const SignUpFormComponent = ({
           localStorage.setItem("lastSignupData", JSON.stringify(dataToSave));
           reset();
           successSignupSubmission();
-          showSuccessToast("Signup mail sent successfully! Check your email.");
+          toast.success("Signup mail sent successfully! Check your email.");
           return;
         }
 
@@ -330,15 +314,13 @@ const SignUpFormComponent = ({
           (response.status_code === 400 && msg.includes("already registered")) ||
           msg.includes("already exists")
         ) {
-          showErrorToast(
-            "This email is already registered. Please use a different email or try logging in."
-          );
+          toast.error("This email is already registered. Please use a different email or try logging in.");
         } else {
-          showErrorToast(response.message || "Signup failed. Please try again.");
+          toast.error(response.message || "Signup failed. Please try again.");
         }
       } catch (err: any) {
         console.error("Signup exception", err);
-        showErrorToast(err.message || "Something went wrong. Please try again.");
+        toast.error(err.message || "Something went wrong. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
@@ -482,10 +464,23 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
     setIsSubmitting(true);
     try {
       posthog.capture("login_attempted", { email: data.email });
-      const loginResult = await dispatch(loginUser(data)).unwrap();
 
-            if (loginResult.success && loginResult.status_code === 200) {
-        const profileData = loginResult.data;
+      const loginResult = await apiClient.login(data.email, data.password);
+
+      if (loginResult.success && loginResult.status_code === 200) {
+        if (loginResult.data.access_token) {
+          localStorage.setItem("discover_minds_access_token", loginResult.data.access_token);
+        }
+        if (loginResult.data.refresh_token) {
+          localStorage.setItem("discover_minds_refresh_token", loginResult.data.refresh_token);
+        }
+
+        router.replace("/chat/new");
+        const profileResponse = await apiClient.fetchProfile();
+        const profileData = profileResponse.data;
+
+        dispatch({ type: "profile/setProfileData", payload: profileData });
+
         posthog.identify(profileData.id, {
           email: profileData.email,
           name: profileData.full_name,
@@ -494,13 +489,12 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
           userId: profileData.id,
           hasConnections: profileData.has_connections,
         });
-        router.replace("/chat/new");
       } else {
-        showErrorToast(loginResult.message || "Please check your credentials and try again.");
+        toast.error(loginResult.message || "Please check your credentials and try again.");
         posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });
       }
     } catch (err: any) {
-      showErrorToast(err.message || "Please check your credentials and try again.");
+      toast.error(err.message || "Please check your credentials and try again.");
       posthog.capture("login_error", { reason: err.message || "Unknown error" });
       console.error(err);
     } finally {
@@ -625,13 +619,13 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
         setSubmittedEmail(email);
         setEmailSent(true);
         setResendTimer(60);
-        showSuccessToast("Password reset email sent!");
+        toast.success("Password reset email sent!");
         reset();
       } else {
-        showErrorToast(result.message || "Failed to send reset email.");
+        toast.error(result.message || "Failed to send reset email.");
       }
     } catch (error: any) {
-      showErrorToast(error.message || "An error occurred.");
+      toast.error(error.message || "An error occurred.");
     } finally {
       setIsLoading(false);
     }

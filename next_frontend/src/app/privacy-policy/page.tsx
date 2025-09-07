@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import privacyPolicy from "@/constant/privacy-policy.json";
-import Footer from "@/components/Homepage/Footer";
+import Footer from "@/components/Footer/Footer";
+import NewFooter from "@/components/Footer/NewFooter";
 
 export const revalidate = 60 * 60 * 24; // Revalidate every 24 hours
 
@@ -148,7 +149,7 @@ export default function PrivacyPolicyPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      <NewFooter />
     </div>
   );
 }

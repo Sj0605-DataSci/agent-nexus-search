@@ -52,7 +52,11 @@ const PlaceholderMobileCard = () => (
   </div>
 );
 
-const MessagePlaceholder = () => {
+interface MessagePlaceholderProps {
+  message?: string;
+}
+
+const MessagePlaceholder = ({ message }: MessagePlaceholderProps) => {
   return (
     <div className="w-full md:px-20 animate-pulse">
       <div className="rounded-xl bg-white">
@@ -91,11 +95,17 @@ const MessagePlaceholder = () => {
             </div>
 
             <div className="mt-6 flex justify-between items-center">
-              <div className="h-4 mb-3 w-28 bg-gray-200 rounded"></div>
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-              </div>
+              {message ? (
+                <div className="text-gray-500 text-center w-full py-4">{message}</div>
+              ) : (
+                <>
+                  <div className="h-4 mb-3 w-28 bg-gray-200 rounded"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                    <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

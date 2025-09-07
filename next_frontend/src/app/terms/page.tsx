@@ -2,11 +2,13 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import termsOfService from "@/constant/terms-of-service.json";
-import Footer from "@/components/Homepage/Footer";
+import Footer from "@/components/Footer/Footer";
+import NewFooter from "@/components/Footer/NewFooter";
 
 const baseMetadata = {
   title: "Terms of Service | DiscoverMinds.ai",
-  description: "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
+  description:
+    "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
 };
 
 const productionMetadata: Metadata = {
@@ -131,7 +133,7 @@ export default function TermsOfServicePage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {section.content.map((point, jdx) => (
+                    {section?.content?.map((point, jdx) => (
                       <p key={jdx} className="text-gray-700" itemProp="text">
                         {point}
                       </p>
@@ -162,7 +164,7 @@ export default function TermsOfServicePage() {
           </div>
         </div>
       </div>
-      <Footer />
+      <NewFooter />
     </div>
   );
 }

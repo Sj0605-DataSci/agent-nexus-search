@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
 import Aurora from "@/components/Aurora";
 import { apiClient } from "@/integrations/fastapi/client";
+import { getBaseUrl } from "@/utils/globalconstant";
 
 const RESEND_COOLDOWN = 30;
 
@@ -34,12 +35,6 @@ const schema = yup.object().shape({
     )
     .trim(),
 });
-
-const getBaseUrl = (): string => {
-  return (
-    (typeof window !== "undefined" && window.location.origin.replace(/\/reset-password$/, "")) || ""
-  );
-};
 
 export default function ResetPasswordForm() {
   const router = useRouter();

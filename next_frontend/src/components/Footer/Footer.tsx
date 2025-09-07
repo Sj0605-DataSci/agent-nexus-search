@@ -1,11 +1,13 @@
+"use client";
 import Link from "next/link";
 import BrandLogo from "../BrandLogo";
-import { FaTwitter, FaLinkedin, FaGithub } from "react-icons/fa";
+import { FaTwitter, FaLinkedin } from "react-icons/fa";
+import { useAppSelector } from "@/store";
+import { useRouter } from "next/navigation";
 
 const footerLinks = {
   product: [
-    { name: "Meet Arya", href: "/arya" },
-    // { name: "Examples", href: "/examples" },
+    // { name: "Meet Arya", href: "/arya" },
     { name: "Pricing", href: "/pricing" },
     { name: "Get Started", href: "/user-auth" },
   ],
@@ -25,6 +27,18 @@ const footerLinks = {
 };
 
 export default function Footer() {
+  const router = useRouter();
+  const profile = useAppSelector(state => state.profile.profile);
+
+  const handleGetStarted = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (profile) {
+      router.push("/chat/new");
+    } else {
+      router.push("/user-auth");
+    }
+  };
+
   return (
     <footer className="bg-gray-50 border-t border-gray-200">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -42,9 +56,19 @@ export default function Footer() {
             <ul className="mt-4 space-y-2">
               {footerLinks.product.map(link => (
                 <li key={link.name}>
-                  <Link href={link.href} className="text-base text-gray-500 hover:text-gray-900">
-                    {link.name}
-                  </Link>
+                  {link.name === "Get Started" ? (
+                    <a
+                      href={link.href}
+                      onClick={handleGetStarted}
+                      className="text-base text-gray-500 hover:text-gray-900"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Link href={link.href} className="text-base text-gray-500 hover:text-gray-900">
+                      {link.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

@@ -3,7 +3,7 @@ import Link from "next/link";
 const WhyChooseUs = () => {
   return (
     <section className="py-20 bg-gray-50">
-      <div className="mx-auto max-w-7xl px-5">
+      <div className="mx-auto max-w-6xl px-5">
         <div className="flex flex-col items-center justify-center mb-16">
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#80A9F9]/20 text-[#3B7DDD] text-sm font-medium mb-4">
             ⚔️ Why Choose Arya

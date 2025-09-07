@@ -21,6 +21,7 @@ export interface CachedThread {
 
 export interface ChatThreadViewProps {
   threadId: string;
+  initialQuery?: string;
 }
 
 export interface ChatThreadViewState {

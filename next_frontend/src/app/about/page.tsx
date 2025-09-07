@@ -2,11 +2,13 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import HomeHeader from "@/components/Homepage/Header";
-import Footer from "@/components/Homepage/Footer";
+import Footer from "@/components/Footer/Footer";
+import NewFooter from "@/components/Footer/NewFooter";
 
 const baseMetadata = {
   title: "About Us | DiscoverMinds.ai",
-  description: "Learn about our mission to unlock human potential through a mutual network-sharing platform.",
+  description:
+    "Learn about our mission to unlock human potential through a mutual network-sharing platform.",
 };
 
 const productionMetadata = {
@@ -43,7 +45,8 @@ const productionMetadata = {
   twitter: {
     card: "summary_large_image",
     title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
-    description: "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
+    description:
+      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
     images: ["/Logo.png"],
   },
   alternates: {
@@ -204,35 +207,8 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-
-        {/* CTA Section */}
-        <section className="py-20 px-4 bg-gray-900 text-white">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl md:text-6xl font-bold mb-8">
-              Experience the Future of People Search
-            </h2>
-            <p className="text-xl text-indigo-100 mb-12 max-w-2xl mx-auto">
-              Join professionals who trust DiscoverMinds.ai to find the right connections, faster
-              and smarter.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/user-auth"
-                className="px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full text-lg hover:bg-gray-100 transition-colors"
-              >
-                Get Started Free
-              </Link>
-              <Link
-                href="/#features"
-                className="px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-full text-lg hover:bg-white/10 transition-colors"
-              >
-                Learn More
-              </Link>
-            </div>
-          </div>
-        </section>
       </div>
-      <Footer />
+      <NewFooter />
     </>
   );
 }

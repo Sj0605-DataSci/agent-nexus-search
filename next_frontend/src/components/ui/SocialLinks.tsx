@@ -146,7 +146,7 @@ const parseSocialLinks = (socialLinks?: string | string[] | null): SocialLink[] 
 
     // Handle comma-separated string (fallback)
     return socialLinks
-      .split(",")
+      ?.split(",")
       .map(link => link.trim().replace(/^['"]|['"]$/g, ""))
       .filter(Boolean)
       .map(link => ({
@@ -169,7 +169,6 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
   showTooltip = true,
   showLabels = true,
 }) => {
-  console.log("SocialLinks 123", socialLinks);
   const parsedEmail = email && email !== "NULL" && email !== "null" ? email : null;
   const links = parseSocialLinks(socialLinks).slice(0, maxLinks);
 

@@ -1,8 +1,15 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import { Clock } from 'lucide-react';
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { Clock } from "lucide-react";
+import { useAppSelector } from "@/store";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
+import { handleLinkClickSmartly } from "../friends/page";
 
 export default function ConnectionsPage() {
+  const profile = useAppSelector(state => state.profile.profile);
+  const isAuthenticated = !!profile?.id;
   const connections = [
     {
       id: "gmail",
@@ -35,7 +42,13 @@ export default function ConnectionsPage() {
   ];
 
   return (
-    <div className="relative w-full flex-1">
+    <div className="relative">
+      {!isAuthenticated && <ComingSoonOverlay />}
+
+      <div
+        className={`container mx-auto px-4 ${!isAuthenticated ? "opacity-30 pointer-events-none" : ""}`}
+      ></div>
+      {/* // <div className="relative w-full flex-1"> */}
       <div className="absolute inset-0 flex flex-col">
         <main>
           <div className="container mx-auto max-w-screen-xl p-4 md:p-8">
@@ -95,6 +108,7 @@ export default function ConnectionsPage() {
                     <div className="w-full md:ml-4 md:w-auto md:flex-shrink-0">
                       <button
                         type="button"
+                        onClick={handleLinkClickSmartly}
                         className="inline-flex h-9 w-full items-center justify-center bg-[#EDF4FE] whitespace-nowrap rounded-md bg-primary/15 px-6 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 md:w-auto"
                       >
                         <span>Connect</span>

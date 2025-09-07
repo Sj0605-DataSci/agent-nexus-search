@@ -107,13 +107,16 @@ const agentsSlice = createSlice({
 });
 
 export default agentsSlice.reducer;
-export const selectTemplates = (s: RootState) => s.agents.templates; // ← all available
-export const selectHired = (s: RootState) => s.agents.hired; // ← hired only
+export const selectTemplates = (s: RootState) => s.agents.templates || []; 
+export const selectHired = (s: RootState) => s.agents.hired || []; 
 
 export const selectAgentsStatus = (s: RootState) => s.agents.status;
 export const selectAgentCards = (s: RootState) => {
-  const { templates, hired } = s.agents;
-  const tplById = new Map(templates.map(t => [t.id, t]));
+  const templates = s.agents.templates || [];
+  const hired = s.agents.hired || [];
+  
+  const tplById = new Map(templates?.map(t => [t.id, t]));
+  
   return [
     ...hired.map(h => {
       const t = tplById.get(h.template_id);
@@ -126,7 +129,7 @@ export const selectAgentCards = (s: RootState) => {
       };
     }),
     ...templates
-      .filter(t => !hired.some(h => h.template_id === t.id))
+      ?.filter(t => !hired.some(h => h.template_id === t.id))
       .map(t => ({
         id: t.id,
         name: t.name,

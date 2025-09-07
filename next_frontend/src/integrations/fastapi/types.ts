@@ -9,9 +9,6 @@ export interface UsageStats {
   period_days: number;
   total_searches: number;
   basic_searches: number;
-  deep_searches: number;
-  total_credits_used: number;
-  total_credits_purchased: number;
 }
 
 // Agent Template types
@@ -133,7 +130,7 @@ export interface Source {
 }
 
 export interface ChatRequest {
-  agent_id: string;
+  agent_id?: string;
   messages: string | Array<{ content: string; type: string }>;
   format?: string;
   search_mode?: string;
@@ -142,7 +139,7 @@ export interface ChatRequest {
 }
 
 export interface StreamingChatRequest extends ChatRequest {
-  stream: boolean;
+  stream?: boolean;
 }
 
 export interface ChatResponse {
