@@ -384,34 +384,6 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
         return None
 
 
-async def generate_jina_embedding(text: str) -> Optional[List[float]]:
-    """Generate embedding using Jina API"""
-    try:
-        import requests
-        from app.core.config import settings
-        
-        url = "https://api.jina.ai/v1/embeddings"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.JINA_API_KEY}",
-        }
-        data = {
-            "model": "jina-embeddings-v3",
-            "task": "text-matching",
-            "input": text,
-        }
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        
-        if "data" in result and len(result["data"]) > 0:
-            return result["data"][0]["embedding"]
-        return None
-    except Exception as e:
-        print(f"Error generating Jina embedding: {e}")
-        return None
-
-
 # ===== NODE 3: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
@@ -429,12 +401,15 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
 
         cache_key = f"graph2:sql_search:{user_id}:{user_query}"
         
+        cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             return OverallState(**cached_result)
         
         supabase_client = await get_async_supabase_client()
         
         # Extract traits and filters for keyword generation
+        filters = query_analysis.get("filters", {})
+        traits = query_analysis.get("traits", {}).get("traits", [])
         
         # Prepare search context for LLM
         search_context = {
@@ -582,7 +557,11 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
         if cached_result is not None:
             return OverallState(**cached_result)
         
+        supabase_client = await get_async_supabase_client()
         
+        # Get results from parallel nodes
+        vector_profile_ids = state.get("vector_results", [])
+        vector_similarity_data = state.get("vector_similarity_data", {})
         keyword_results = state.get("sql_results", [])
         
         # Get vector search profiles from database
@@ -600,7 +579,11 @@ async def fusion_ranking(state: OverallState, config: RunnableConfig) -> Overall
                 
                 if valid_profile_ids:
                     result = await supabase_client.table("connections").select(
+                        "id, first_name, last_name, headline, about_section, "
                         "experience_json, education_json, skills, linkedin_url, "
+                        "company, position, location, profile_photo_url, embedding_generated_at"
+                    ).eq("user_id", user_id).in_("id", valid_profile_ids).order(
+                        "embedding_generated_at", desc=True
                     ).order("created_at", desc=True).execute()
                     
                     vector_results = result.data if result.data else []
@@ -969,6 +952,7 @@ Profiles to Score:
         
         message_content = json.dumps(response_data, indent=2, ensure_ascii=False)
         final_message = AIMessage(content=message_content)
+    
     try:
         # Update message in database
         await supabase_client.table("chat_messages").update({
@@ -988,183 +972,6 @@ Profiles to Score:
     await redis_client.set(cache_key, result, expire=3600)
     return result
 
-# Add custom key functions for caching
-# @traceable(project_name="Discoverminds",name="query caching inmem")
-# def query_cache_key(state):
-#     """Generate a cache key based on the user query.
-    
-#     This ensures that identical queries use cached results even if other state elements differ.
-#     """
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Extract user query from messages
-#     messages = state.get("messages", [])
-#     user_query = get_research_topic(messages)
-    
-#     # Create a cache key based on user query and user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     # Return a tuple that will be used as the cache key
-#     return pickle.dumps((user_query, user_id))
-
-# @traceable(project_name="Discoverminds",name="vector caching inmem")
-# def vector_search_cache_key(state):
-#     """Generate a cache key for vector search based on query analysis and user ID."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use keyphrases from query analysis for the cache key
-#     query_analysis = state.get("query_analysis", {})
-#     keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((keyphrases, user_id))
-
-# @traceable(project_name="Discoverminds",name="sql search caching inmem")
-# def sql_search_cache_key(state):
-#     """Generate a cache key for SQL search based on query analysis and user ID."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use filters and traits from query analysis for the cache key
-#     query_analysis = state.get("query_analysis", {})
-#     filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
-#     traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((filters, traits, user_id))
-
-# @traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
-# def fusion_ranking_cache_key(state):
-#     """Generate a cache key for fusion ranking based on vector and SQL search results."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use vector search and SQL search results for the cache key
-#     vector_search_results = state.get("vector_search", {})
-#     sql_search_results = state.get("sql_search", {})
-    
-#     # Convert to strings for hashing
-#     vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
-#     sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((vector_key, sql_key, user_id))
-
-# @traceable(project_name="Discoverminds",name="sql query answer caching inmem")
-# def finalize_sql_answer_cache_key(state):
-#     """Generate a cache key for final answer generation based on fusion ranking results."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use fusion ranking results for the cache key
-#     fusion_results = state.get("fusion_ranking", {})
-    
-#     # Convert to string for hashing
-#     fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
-    
-#     # Include user_id and original query to ensure user-specific and query-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-#     messages = state.get("messages", [])
-#     user_query = get_research_topic(messages)
-    
-#     return pickle.dumps((fusion_key, user_query, user_id))
-
-# Add custom key functions for caching
-# @traceable(project_name="Discoverminds",name="query caching inmem")
-# def query_cache_key(state):
-#     """Generate a cache key based on the user query.
-    
-#     This ensures that identical queries use cached results even if other state elements differ.
-#     """
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Extract user query from messages
-#     messages = state.get("messages", [])
-#     user_query = get_research_topic(messages)
-    
-#     # Create a cache key based on user query and user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     # Return a tuple that will be used as the cache key
-#     return pickle.dumps((user_query, user_id))
-
-# @traceable(project_name="Discoverminds",name="vector caching inmem")
-# def vector_search_cache_key(state):
-#     """Generate a cache key for vector search based on query analysis and user ID."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use keyphrases from query analysis for the cache key
-#     query_analysis = state.get("query_analysis", {})
-#     keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((keyphrases, user_id))
-
-# @traceable(project_name="Discoverminds",name="sql search caching inmem")
-# def sql_search_cache_key(state):
-#     """Generate a cache key for SQL search based on query analysis and user ID."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use filters and traits from query analysis for the cache key
-#     query_analysis = state.get("query_analysis", {})
-#     filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
-#     traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((filters, traits, user_id))
-
-# @traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
-# def fusion_ranking_cache_key(state):
-#     """Generate a cache key for fusion ranking based on vector and SQL search results."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use vector search and SQL search results for the cache key
-#     vector_search_results = state.get("vector_search", {})
-#     sql_search_results = state.get("sql_search", {})
-    
-#     # Convert to strings for hashing
-#     vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
-#     sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((vector_key, sql_key, user_id))
-
-# @traceable(project_name="Discoverminds",name="sql query answer caching inmem")
-# def finalize_sql_answer_cache_key(state):
-#     """Generate a cache key for final answer generation based on fusion ranking results."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use fusion ranking results for the cache key
-#     fusion_results = state.get("fusion_ranking", {})
-    
-#     # Convert to string for hashing
-#     fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
-    
-#     # Include user_id and original query to ensure user-specific and query-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-#     messages = state.get("messages", [])
-#     user_query = get_research_topic(messages)
-    
-#     return pickle.dumps((fusion_key, user_query, user_id))
 
 # Add custom key functions for caching
 # @traceable(project_name="Discoverminds",name="query caching inmem")
