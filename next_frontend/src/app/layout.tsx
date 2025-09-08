@@ -70,6 +70,8 @@ const productionMetadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "DiscoverMinds.ai - Intelligent People Search",
+        type: "image/png",
+        secureUrl: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
       },
     ],
   },
@@ -79,7 +81,12 @@ const productionMetadata: Metadata = {
     description:
       "Discover and connect with professionals using our AI-powered people search engine.",
     images: [
-      "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+      {
+        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        width: 1200,
+        height: 630,
+        alt: "DiscoverMinds.ai - Intelligent People Search",
+      },
     ],
     creator: "@discovermindsai",
   },

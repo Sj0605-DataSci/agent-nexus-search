@@ -23,7 +23,7 @@ const PricingPlans = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
 
   const getProPlanPrice = (cycle: "monthly" | "yearly") => {
-    return cycle === "monthly" ? "$29" : "$23";
+    return cycle === "monthly" ? "$30" : "$24";
   };
 
   const getProPlanDetail = (cycle: "monthly" | "yearly") => {
