@@ -23,7 +23,7 @@ const PricingPlans = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
 
   const getProPlanPrice = (cycle: "monthly" | "yearly") => {
-    return cycle === "monthly" ? "$30" : "$24";
+    return cycle === "monthly" ? "$20" : "$15";
   };
 
   const getProPlanDetail = (cycle: "monthly" | "yearly") => {
@@ -143,7 +143,7 @@ const PricingPlans = () => {
                   color: billingCycle === "yearly" ? "#0E3D15" : "#111111",
                 }}
               >
-                20% off
+                25% off
               </span>
             </button>
 
