@@ -33,12 +33,12 @@ const productionMetadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
         alt: "DiscoverMinds.ai - Unlock Your Network's Hidden Opportunities",
         type: "image/png",
-        secureUrl: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        secureUrl: "https://discoverminds.ai/Images/og-image.png",
       },
     ],
   },
@@ -49,7 +49,7 @@ const productionMetadata: Metadata = {
       "Join a community where sharing your network leads to discovering new career paths, investment opportunities, and valuable connections.",
     images: [
       {
-        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
         alt: "DiscoverMinds.ai - Unlock Your Network's Hidden Opportunities",

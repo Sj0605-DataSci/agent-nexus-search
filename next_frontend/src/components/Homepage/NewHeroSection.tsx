@@ -103,6 +103,8 @@ const NewHeroSection = () => {
                     alt={company}
                     className="h-full w-auto object-contain"
                     loading="lazy"
+                    data-nosnippet="true"
+                    fetchPriority="low"
                   />
                 </div>
               ))}

@@ -55,6 +55,8 @@ const productionMetadata: Metadata = {
   },
   icons: {
     icon: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+    shortcut: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+    apple: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
   },
   openGraph: {
     type: "website",
@@ -66,12 +68,12 @@ const productionMetadata: Metadata = {
       "Discover and connect with professionals using our AI-powered people search engine.",
     images: [
       {
-        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
         alt: "DiscoverMinds.ai - Intelligent People Search",
         type: "image/png",
-        secureUrl: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        secureUrl: "https://discoverminds.ai/Images/og-image.png",
       },
     ],
   },
@@ -82,7 +84,7 @@ const productionMetadata: Metadata = {
       "Discover and connect with professionals using our AI-powered people search engine.",
     images: [
       {
-        url: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+        url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
         alt: "DiscoverMinds.ai - Intelligent People Search",
