@@ -160,17 +160,6 @@ class ChatWorker:
                     )
                     await client.publish(channel, thread_id_update.model_dump_json())
                     
-                elif update["type"] == "token":
-                    # For token updates
-                    token_update = StreamingChatUpdate(
-                        type="token",
-                        content={
-                            "text": update["content"],
-                            "node": update["node"]
-                        }
-                    )
-                    await client.publish(channel, token_update.model_dump_json())
-                    
                 elif update["type"] == "query_analysis":
                     # For query analysis updates from graph_2
                     analysis_update = StreamingChatUpdate(
@@ -203,22 +192,14 @@ class ChatWorker:
                     )
                     await client.publish(channel, sql_results_update.model_dump_json())
                     
-                elif update["type"] == "fusion_ranking":
+                elif update["type"] == "final_answer":
                     # For fusion ranking results from graph_2
                     fusion_update = StreamingChatUpdate(
-                        type="fusion_ranking",
+                        type="final_answer",
                         content=update["content"]
                     )
                     await client.publish(channel, fusion_update.model_dump_json())
                     
-                elif update["type"] == "finalize_answer":
-                    # For final answer from graph_2
-                    finalize_update = StreamingChatUpdate(
-                        type="finalize_answer",
-                        content=update["content"]
-                    )
-                    await client.publish(channel, finalize_update.model_dump_json())
-                
                 elif update["type"] == "message":
                     # For final message updates
                     message_update = StreamingChatUpdate(

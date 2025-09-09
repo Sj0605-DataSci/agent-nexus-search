@@ -652,13 +652,13 @@ class ChatService:
                                         }
                                     }
                             
-                            elif node_name == "fusion_ranking":
+                            elif node_name == "finalize_sql_answer":
                                 # Stream fusion ranking results
                                 if "final_results" in node_data:
                                     yield {
-                                        "type": "fusion_ranking",
+                                        "type": "final_answer",
                                         "content": {
-                                            "message": f"⚡ Merged and ranked {len(node_data['final_results'])} total results"
+                                            "message": node_data["messages"]
                                         }
                                     }       
             
