@@ -16,6 +16,7 @@ T = TypeVar('T')
 class ScoringTrait(BaseModel):
     traitTitle: str = Field(..., description="Title of the scoring trait")
     traitDescription: str = Field(..., description="Description of the scoring trait")
+    filter: Optional[str] = Field(..., description="Filter for the scoring trait")
     confidence: float = Field(..., ge=0, le=1, description="Confidence score between 0 and 1")
 
 class ScoredProfile(BaseModel):
