@@ -271,21 +271,33 @@ Requirements:
 - Limit to 50 results
 - DO NOT use row_to_json() wrapper - return direct SELECT results
 - Always give id as well in sql query
-- Always check about_section and experience_json should not be empty
 
 Example format:
+Query: find me Designers in Delhi with 6 years of experience
+
 SELECT 
     id, first_name, last_name, headline, about_section, 
     experience_json, education_json, skills, linkedin_url, 
     company, position, location, profile_photo_url
 FROM 
-    connections 
+    connections
 WHERE 
-    user_id = '{user_id}'
-    AND jsonb_array_length(experience_json) > 0
-    AND about_section IS NOT NULL
-    AND about_section <> ''
-LIMIT 50;
+    user_id = {user_id}
+    AND (
+        location ILIKE '%Delhi%' 
+        OR company ILIKE '%Designer%' 
+        OR position ILIKE '%Designer%' 
+        OR headline ILIKE '%Experienced designer%' 
+        OR headline ILIKE '%Designer%' 
+        OR (about_section IS NOT NULL AND about_section ILIKE '%Experienced designer%') 
+        OR (about_section IS NOT NULL AND about_section ILIKE '%Designer%') 
+        OR (experience_json IS NOT NULL AND experience_json::text ILIKE '%6 years%') 
+        OR (experience_json IS NOT NULL AND experience_json::text ILIKE '%Designer%') 
+        OR (experience_json IS NOT NULL AND experience_json::text ILIKE '%Delhi%') 
+        OR company ILIKE '%Delhi%' 
+        OR position ILIKE '%Delhi%'
+    )
+LIMIT 50;;
 
 Return only the SQL query, no explanation.
 Always gives id as well in sql query
@@ -384,35 +396,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             return OverallState(**cached_result)
-        
-        # Skip vector search in PRODUCTION environment
-        if settings.ENVIRONMENT == "PRODUCTION":
-            print("Node 2: Vector Search skipped in PRODUCTION environment")
-            result = {
-                "messages": state["messages"],
-                "intent": state["intent"],
-                "format": state["format"],
-                "search_query": state.get("search_query", []),
-                "sql_queries": state.get("sql_queries", []),
-                "web_research_result": state.get("web_research_result", []),
-                "sources_gathered": state.get("sources_gathered", []),
-                "current_message_id": state["current_message_id"],
-                "agent_config": state["agent_config"],
-                "chat_thread_id": state["chat_thread_id"],
-                "user_id": state["user_id"],
-                "agent_id": state["agent_id"],
-                "weave_url": state["weave_url"],
-                "max_research_loops": state["max_research_loops"],
-                "initial_search_query_count": state["initial_search_query_count"],
-                "number_of_results_returned": state["number_of_results_returned"],
-                "world_connections": state["world_connections"],
-                "query_analysis": state["query_analysis"],
-                "user_query": state["user_query"],
-                "vector_results": [],
-                "vector_similarity_data": {}
-            }
-            await redis_client.set(cache_key, result, expire=3600)
-            return OverallState(**result)
         
         # Get SQL search results from state
         keyword_results = state.get("web_research_result", [])
