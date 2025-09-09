@@ -268,7 +268,7 @@ Requirements:
 - Search across headline, about_section, experience_json, company, position, location
 - Use ILIKE for case-insensitive text matching
 - Use OR logic for broader matching (avoid overly restrictive AND conditions)
-- Limit to 50 results
+- Limit to 20 results
 - DO NOT use row_to_json() wrapper - return direct SELECT results
 - Always give id as well in sql query
 
@@ -278,29 +278,33 @@ Query: find me Designers in Delhi with 6 years of experience
 SELECT 
     id, first_name, last_name, headline, about_section, 
     experience_json, education_json, skills, linkedin_url, 
-    company, position, location, profile_photo_url
+    company, position, location, profile_photo_url, embedding_generated_at
 FROM 
     connections
 WHERE 
     user_id = {user_id}
+    AND embedding_generated_at IS NOT NULL
     AND (
         location ILIKE '%Delhi%' 
         OR company ILIKE '%Designer%' 
         OR position ILIKE '%Designer%' 
         OR headline ILIKE '%Experienced designer%' 
         OR headline ILIKE '%Designer%' 
-        OR (about_section IS NOT NULL AND about_section ILIKE '%Experienced designer%') 
-        OR (about_section IS NOT NULL AND about_section ILIKE '%Designer%') 
-        OR (experience_json IS NOT NULL AND experience_json::text ILIKE '%6 years%') 
-        OR (experience_json IS NOT NULL AND experience_json::text ILIKE '%Designer%') 
-        OR (experience_json IS NOT NULL AND experience_json::text ILIKE '%Delhi%') 
+        OR about_section ILIKE '%Experienced designer%' 
+        OR about_section ILIKE '%Designer%' 
+        OR experience_json::text ILIKE '%6 years%' 
+        OR experience_json::text ILIKE '%Designer%' 
+        OR experience_json::text ILIKE '%Delhi%' 
         OR company ILIKE '%Delhi%' 
         OR position ILIKE '%Delhi%'
     )
-LIMIT 50;;
+    AND about_section is NOT NULL
+    AND experience_json is NOT NULL
+LIMIT 20;
 
 Return only the SQL query, no explanation.
 Always gives id as well in sql query
+Always have about_section NOT NULL, and Experience json not null + embedding_generated_at NOT NULL
 """
 
         keyword_results = []
@@ -461,7 +465,8 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                 
                 if not embedding:
                     continue
-                
+                if embedding:
+                    print(f"Node 2: Generated embedding for keyphrase {keyphrase}")
                 # Convert embedding to a list for JSON serialization
                 embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else list(embedding)
                 
@@ -556,7 +561,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                                 'p_user_id': user_id,
                                 'p_profile_ids': keyword_profile_ids,
                                 'p_embedding': embedding_list,
-                                'p_limit': 10
+                                'p_limit': 50
                             }
                         ).execute()
                     except Exception as create_e:
@@ -618,7 +623,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
             unique_vector_profiles.items(), 
             key=lambda x: x[1]["max_similarity"], 
             reverse=True
-        )[:20]
+        )[:10]
         
         # Extract profile IDs from sorted results
         vector_profile_ids = [profile_id for profile_id, _ in sorted_profiles]
@@ -628,7 +633,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         # If no vector results, fall back to keyword results
         if not vector_profile_ids and keyword_profile_ids:
             print("Node 2: No vector results, falling back to keyword results")
-            vector_profile_ids = keyword_profile_ids[:20]  # Limit to top 20
+            vector_profile_ids = keyword_profile_ids[:10]
             for profile_id in vector_profile_ids:
                 unique_vector_profiles[profile_id] = {
                     "profile_id": profile_id,
@@ -762,8 +767,7 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     combined_profiles.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
     
     # Limit to top results based on agent config
-    number_of_results = agent_config.get("number_of_results_returned", 5)
-    final_profiles = combined_profiles[:number_of_results]
+    final_profiles = combined_profiles
     
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
     
@@ -817,10 +821,14 @@ IMPORTANT:
 - A profile can have all three yes traits, all three no traits, all three maybe traits, or any mix
 - Only use <b></b> tag, no other tags needed
 - Do not use any other HTML tags
+- Also you have filters in the query analysis, also give out same filter from them for the profile
+- Always give 3 scores in scoring array
+- Use filters from user query for the profile
 
 Return answer like this 
 
 Example format:
+
 Give this in json format
 '''json
 {
@@ -830,20 +838,24 @@ Give this in json format
 "scoring": [
         {
           "confidence": 0.85,
+          "filter": " Suitable Filter from user query",
           "traitTitle": "<b>Experienced Product Manager</b> at Top Tech Company",
           "traitDescription": "Has <b>5+ years experience</b> managing successful products at <b>Google</b>"
         },
         {
           "confidence": 0.45,
+          "filter": "Suitable Filter from user query",
           "traitTitle": "Basic <i>UX Design</i> Knowledge",
           "traitDescription": "Has <i>fundamental understanding</i> of user experience principles"
         },
         {
           "confidence": 0.15,
+          "filter": "Suitable Filter from user query",
           "traitTitle": "No Healthcare Industry Experience",
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
       ]
+}
       '''
 
 All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
@@ -851,9 +863,9 @@ All profile ids should get all the three scores, it can be permutation, can be a
         user_prompt = f"""User Query: "{user_query}"
 
 Search Criteria:
-- Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
 - Traits: {json.dumps(query_analysis.get('traits', {}), indent=2)}
 - Keyphrases: {json.dumps(query_analysis.get('keyphrases', {}), indent=2)}
+- Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
 
 Profiles to Score:
 {json.dumps(final_profiles, indent=2)}
@@ -875,7 +887,8 @@ Profiles to Score:
                     {
                         "traitTitle": trait.traitTitle,
                         "traitDescription": trait.traitDescription,
-                        "confidence": trait.confidence
+                        "confidence": trait.confidence,
+                        "filter": trait.filter
                     }
                     for trait in profile.scoring
                 ]
@@ -921,7 +934,8 @@ Profiles to Score:
                             {
                                 "traitTitle": trait.traitTitle,
                                 "traitDescription": trait.traitDescription,
-                                "confidence": trait.confidence
+                                "confidence": trait.confidence,
+                                "filter": trait.filter
                             }
                             for trait in profile.scoring
                         ]
@@ -981,7 +995,8 @@ Profiles to Score:
                     {
                         'traitTitle': str(score.get('traitTitle', '')),
                         'traitDescription': str(score.get('traitDescription', '')),
-                        'confidence': float(score.get('confidence', 0.0))
+                        'confidence': float(score.get('confidence', 0.0)),
+                        'filter': str(score.get('filter', ''))
                     }
                     for score in profile['scoring']
                 ]
