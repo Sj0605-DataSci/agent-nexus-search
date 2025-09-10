@@ -37,7 +37,7 @@ const productionMetadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "DiscoverMinds.ai - Unlock Your Network's Hidden Opportunities",
-        type: "image/png",
+        type: "image/png",                    
         secureUrl: "https://discoverminds.ai/Images/og-image.png",
       },
     ],

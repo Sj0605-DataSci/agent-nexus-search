@@ -11,6 +11,7 @@ import {
   Instagram,
   X,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import PaginationControls from "./PaginationControls";
 import CustomAvatar from "../ui/CustomAvatar";
@@ -107,10 +108,24 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
             <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button className="h-9 px-4 py-2 text-sm font-medium bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-1.5">
+            <button 
+              onClick={() => toast.success("Share feature is under development", {
+                duration: 3000,
+                position: "top-center",
+                icon: "🚧",
+              })} 
+              className="h-9 px-4 py-2 text-sm font-medium bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-1.5"
+            >
               <Share className="size-4" />
             </button>
-            <button className="h-9 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1.5">
+            <button 
+              onClick={() => toast.success("Get an intro feature is under development", {
+                duration: 3000,
+                position: "top-center",
+                icon: "🚧",
+              })} 
+              className="h-9 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1.5"
+            >
               Get an intro
             </button>
             <button
@@ -123,7 +138,7 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
         </div>
         <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           <div>
-            <div className="mb-6 flex items-start gap-4">
+            <div className="mb-6 flex items-center gap-4">
               {person.Avatar ? (
                 <div className="relative h-12 w-12 mt-8 rounded-full overflow-hidden">
                   <Image
@@ -242,9 +257,7 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
                         <span className="text-xs font-medium text-green-700">A</span>
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-gray-800">
-                      Ashish Gupta
-                    </span>
+                    <span className="text-sm font-medium text-gray-800">Ashish Gupta</span>
                   </div>
                 </div>
               )}

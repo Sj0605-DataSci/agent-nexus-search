@@ -49,7 +49,7 @@ const UserProfileSection: React.FC<UserProfileSectionProps> = ({
     <div className="flex items-center justify-between">
       <Link
         href="/profile"
-        prefetch={true}
+        prefetch={false}
         className={`flex items-center py-1 rounded-md ${collapsed && !isMobile ? "justify-center w-full" : "gap-2 flex-1"} 
         hover:bg-gray-100/80 text-gray-700 transition-colors`}
         title={

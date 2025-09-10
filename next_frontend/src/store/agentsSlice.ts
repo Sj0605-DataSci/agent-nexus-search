@@ -19,7 +19,6 @@ const initialState: AgentsState = {
 };
 
 export const loadAgents = createAsyncThunk("agents/loadAll", async () => {
-  // 👉 fetch straight from your existing apiClient
   const [templates, hired] = await Promise.all([
     apiClient.fetchAgentTemplates(),
     apiClient.getHiredAgents(),
@@ -57,15 +56,15 @@ const agentsSlice = createSlice({
   reducers: {},
   extraReducers: builder => {
     builder
-      .addCase(loadAgents.pending, state => {
+      .addCase(loadAgents?.pending, state => {
         state.status = "loading";
       })
-      .addCase(loadAgents.fulfilled, (state, action) => {
+      .addCase(loadAgents?.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.templates = action.payload.templates;
         state.hired = action.payload.hired;
       })
-      .addCase(loadAgents.rejected, (state, action) => {
+      .addCase(loadAgents?.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.error.message ?? "Unknown error";
       })
@@ -87,10 +86,10 @@ const agentsSlice = createSlice({
         state.error = (action.payload as string) || "Failed to fetch agent templates";
       })
       // Handle fetchHiredAgents thunk
-      .addCase(fetchHiredAgents.pending, state => {
+      .addCase(fetchHiredAgents?.pending, state => {
         state.status = "loading";
       })
-      .addCase(fetchHiredAgents.fulfilled, (state, action) => {
+      .addCase(fetchHiredAgents?.fulfilled, (state, action) => {
         if (action.payload.success && action.payload.status_code === 200) {
           state.status = "succeeded";
           state.hired = action.payload.data;
@@ -99,7 +98,7 @@ const agentsSlice = createSlice({
           state.error = action.payload.message || "Failed to fetch hired agents";
         }
       })
-      .addCase(fetchHiredAgents.rejected, (state, action) => {
+      .addCase(fetchHiredAgents?.rejected, (state, action) => {
         state.status = "failed";
         state.error = (action.payload as string) || "Failed to fetch hired agents";
       });
@@ -107,16 +106,16 @@ const agentsSlice = createSlice({
 });
 
 export default agentsSlice.reducer;
-export const selectTemplates = (s: RootState) => s.agents.templates || []; 
-export const selectHired = (s: RootState) => s.agents.hired || []; 
+export const selectTemplates = (s: RootState) => s.agents?.templates || [];
+export const selectHired = (s: RootState) => s.agents?.hired || [];
 
-export const selectAgentsStatus = (s: RootState) => s.agents.status;
+export const selectAgentsStatus = (s: RootState) => s.agents?.status;
 export const selectAgentCards = (s: RootState) => {
-  const templates = s.agents.templates || [];
-  const hired = s.agents.hired || [];
-  
+  const templates = s.agents?.templates || [];
+  const hired = s.agents?.hired || [];
+
   const tplById = new Map(templates?.map(t => [t.id, t]));
-  
+
   return [
     ...hired.map(h => {
       const t = tplById.get(h.template_id);
@@ -129,7 +128,7 @@ export const selectAgentCards = (s: RootState) => {
       };
     }),
     ...templates
-      ?.filter(t => !hired.some(h => h.template_id === t.id))
+      ?.filter(t => !hired.some(h => h.template_id === t?.id))
       .map(t => ({
         id: t.id,
         name: t.name,

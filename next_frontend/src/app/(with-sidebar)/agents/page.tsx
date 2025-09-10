@@ -64,18 +64,20 @@ const Agents = () => {
   const templates = useAppSelector(selectTemplates || []);
 
   const agentTemplates = Object.fromEntries(
-    templates?.map(t => [
-      t.id,
-      {
-        id: t.id,
-        name: t.name || "Arya",
-        avatar: getAgentAvatar(t?.category),
-        agentImageUrl: t.image_urls,
-        defaultPersonality: "helpful",
-        defaultTone: "professional",
-        skills: ["Deep Research"],
-      },
-    ])
+    templates?.length > 0
+      ? templates?.map(t => [
+          t.id,
+          {
+            id: t.id,
+            name: t.name || "Arya",
+            avatar: getAgentAvatar(t?.category),
+            agentImageUrl: t.image_urls,
+            defaultPersonality: "helpful",
+            defaultTone: "professional",
+            skills: ["Deep Research"],
+          },
+        ])
+      : []
   ) as Record<
     string,
     {
@@ -202,48 +204,7 @@ const Agents = () => {
           </div>
         )}
 
-        {hiredIds.length === 0 && agentsStatus !== "loading" && (
-          <div className="text-center py-10 z-10">
-            <div className="relative inline-block mb-8">
-              <div
-                className={`text-8xl opacity-50 ${darkMode ? "text-gray-500" : "text-gray-400"}`}
-              >
-                🤖
-              </div>
-            </div>
-            <h2 className={`text-3xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-700"}`}>
-              Your Agent Fleet Awaits
-            </h2>
-            <p
-              className={`text-xl mb-8 max-w-2xl mx-auto ${
-                darkMode ? "text-gray-200" : "text-gray-500"
-              }`}
-            >
-              Ready to build your dream team? Explore our marketplace and hire AI agents that match
-              your vision.
-            </p>
-            <Link
-              href="/marketplace"
-              className={`inline-flex items-center px-8 py-4 rounded-xl font-semibold text-white 
-            bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 
-            transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl
-            focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 
-            focus-visible:ring-blue-500 ${darkMode ? "focus-visible:ring-offset-gray-900" : ""}`}
-            >
-              <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Explore Marketplace
-            </Link>
-          </div>
-        )}
-
-        {hiredIds.length > 0 && agentsStatus !== "loading" && (
+        {!!hiredIds &&hiredIds.length > 0&& (
           <div className="max-w-6xl mx-auto">
             {currentAgent && currentConfig && (
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">

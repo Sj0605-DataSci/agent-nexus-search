@@ -1,11 +1,11 @@
 "use client";
 
-import React, { memo, useState, useEffect } from "react";
+import React, { memo } from "react";
 import { FiSend } from "react-icons/fi";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { SearchScopeSelector } from "./SearchScopeSelector";
 import { useTypingEffect } from "@/hooks/useTypingEffect";
+import { useAppSelector } from "@/store";
 
 export interface SearchInputFieldProps {
   query: string;
@@ -31,11 +31,16 @@ const SearchInputField = memo(
     previousQuery = "",
     defaultSearchButton = true,
   }: SearchInputFieldProps) => {
+    const profile = useAppSelector(state => state.profile.profile);
+    const isAuthenticated = !!profile?.id;
+
     const placeholderPhrases = [
-      "Tech founders in Bangalore who raised a pre-seed round.",
-      "Startup founders who pivoted their business model.",
-      "Angel investors interested in climate tech.",
-      "SaaS founders with B2B experience in healthcare.",
+      "Tech founders in Bangalore with 5+ years of experience who raised a pre-seed round in the last 2 years.",
+      "Startup founders in fintech who pivoted their business model after Series A and have experience in regulatory compliance.",
+      "Angel investors in Mumbai with portfolio companies in climate tech and sustainable energy solutions.",
+      "SaaS founders with B2B experience in healthcare who previously worked at established medical technology companies.",
+      "Product managers with experience in AI products who transitioned from engineering roles at FAANG companies.",
+      "Marketing directors in e-commerce with expertise in conversion optimization and customer retention strategies.",
     ];
 
     const placeholderText = useTypingEffect({
@@ -66,7 +71,7 @@ const SearchInputField = memo(
               minHeight: defaultSearchButton ? "120px" : "auto",
             }}
           >
-            {!hideGroupOption && <SearchScopeSelector disabled={isStreaming} />}
+            {!hideGroupOption && <SearchScopeSelector disabled={!isAuthenticated && isStreaming} />}
             <form onSubmit={onSubmit}>
               <div className="relative">
                 <Textarea
@@ -88,7 +93,7 @@ const SearchInputField = memo(
               flex bg-transparent text-lg resize-none
               border-none focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0 shadow-none
               ${!defaultSearchButton ? "min-h-[100px]" : "min-h-[80px]"} w-full p-1
-              placeholder:text-foreground/70
+              placeholder:text-gray-500
               ${isStreaming ? "opacity-60 cursor-not-allowed" : ""}
             `}
                 />

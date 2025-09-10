@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig, AxiosRequestConfig } fro
 import { supabase } from "@/integrations/supabase/client";
 import { getStoredToken, saveTokens, clearTokens, getRefreshToken } from "@/utils/tokenManagement";
 import { getDeviceInfo } from "@/utils/deviceInfo";
+import toast from "react-hot-toast";
 
 const baseURL =
   process.env.NODE_ENV === "production"
@@ -58,7 +59,7 @@ axiosInstance.interceptors.request.use(
         }
 
         try {
-          const info = await getDeviceInfo({ skipIpLookup: false }); 
+          const info = await getDeviceInfo({ skipIpLookup: false });
           config.headers["X-Device-ID"] = info.deviceId;
           config.headers["X-Device-Type"] = info.deviceType;
           if (info.ipAddress) {
@@ -102,6 +103,30 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    if (error.response?.status === 429) {
+      console.error("Rate limit exceeded (429):", error.response.data);
+      
+      try {
+        if (typeof window !== "undefined") {
+          let errorMessage = "You've reached the maximum number of free searches.";
+          
+          const responseData = error.response.data as any;
+          if (responseData && typeof responseData === 'object' && responseData.message) {
+            errorMessage = responseData.message;
+          }
+          
+          toast.error(errorMessage, { 
+            id: "rate-limit-error",
+            duration: 5000
+          });
+        }
+      } catch (toastError) {
+        console.error("Error showing toast notification:", toastError);
+      }
+      
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 403) {
       console.error("Access forbidden (403):", error.response.data);
       if (typeof window !== "undefined") {
@@ -129,7 +154,7 @@ axiosInstance.interceptors.response.use(
       originalRequest.url?.includes(path)
     );
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isUnauthenticatedEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

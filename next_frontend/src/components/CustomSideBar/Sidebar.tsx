@@ -3,18 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  FiUsers,
-  FiSmile,
-  FiZap,
-  FiMenu,
-  FiX,
-  FiGlobe,
-  FiSearch,
-  FiMail,
-} from "react-icons/fi";
+import { FiUsers, FiSmile, FiZap, FiMenu, FiX, FiGlobe, FiSearch, FiMail } from "react-icons/fi";
 import { PiSidebarSimple } from "react-icons/pi";
 import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
+import "@/styles/scrollbar-hide.css";
 import posthog from "posthog-js";
 import { toast } from "react-hot-toast";
 import { EMAIL_REGEX, handleWaitlistSignup } from "@/utils/formUtils";
@@ -38,7 +30,9 @@ const LogoutConfirmation = lazy(() =>
 const Sidebar = () => {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const dispatch = useAppDispatch();
+
   const profile = useAppSelector(state => state.profile.profile);
+  const profileLoading = useAppSelector(state => state.profile.loading);
   const router = useRouter();
   const pathname = usePathname();
   const [touchStartX, setTouchStartX] = useState(0);
@@ -132,17 +126,21 @@ const Sidebar = () => {
   const handleSignOut = async () => {
     setIsLoggingOut(true);
     try {
+      setTimeout(() => {
+        router.replace("/");
+      }, 1500);
       await apiClient.logout();
+      await supabaseHandler.auth.signOut();
       localStorage.clear();
       dispatch(clearProfile());
-      await supabaseHandler.auth.signOut();
       posthog.reset();
-      router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      posthog.reset();
-      router.push("/");
+      localStorage.clear();
+      setTimeout(() => {
+        router.replace("/");
+      }, 1500);
       setIsLoggingOut(false);
       setShowLogoutConfirm(false);
     }
@@ -196,10 +194,14 @@ const Sidebar = () => {
           onClick={toggleMobileSidebar}
           variant="ghost"
           size="icon"
-          className="h-12 w-12 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100"
+          className="h-16 w-16 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100"
           aria-label={isMobileSidebarOpen ? "Close menu" : "Open menu"}
         >
-          {isMobileSidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          {isMobileSidebarOpen ? (
+            <FiX size={24} />
+          ) : (
+            <PiSidebarSimple size={24} className="rotate-180" />
+          )}
         </Button>
         {profile?.id && (
           <Link
@@ -253,7 +255,6 @@ const Sidebar = () => {
         setIsSubmitting(false);
       }
     };
-
     return (
       <div
         className="flex flex-col h-full overflow-y-auto overscroll-contain"
@@ -264,7 +265,7 @@ const Sidebar = () => {
         >
           <div className="flex items-center justify-center w-full">
             <Link
-              prefetch={true}
+              prefetch={false}
               href={profile?.id ? "/chat/new" : "/"}
               className="flex items-center h-8 gap-2 group"
             >
@@ -288,7 +289,7 @@ const Sidebar = () => {
                 size="icon"
                 className="h-8 w-8 text-gray-500 hover:text-gray-700 ml-auto"
               >
-                <PiSidebarSimple size={24} className="rotate-180" />
+                <PiSidebarSimple size={24} />
               </Button>
             )}
           </div>
@@ -298,7 +299,7 @@ const Sidebar = () => {
               className={`text-gray-500 hover:text-gray-700 ${collapsed ? "mt-2" : "mr-1"}`}
               title={collapsed ? "Expand" : "Collapse"}
             >
-              <PiSidebarSimple size={24} className="rotate-180" />
+              <PiSidebarSimple size={24} className={collapsed ? "rotate-180" : ""} />
             </button>
           )}
         </div>
@@ -307,7 +308,7 @@ const Sidebar = () => {
           <div className="px-3 py-2">
             <Link
               href="/chat/new"
-              prefetch={true}
+              prefetch={false}
               className={`w-full flex items-center mt-1 ${collapsed && !isMobile ? "justify-center p-2" : "justify-between px-3 py-1.5"} 
             bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200
             border rounded-md transition-colors duration-200`}
@@ -321,12 +322,12 @@ const Sidebar = () => {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 ">
+        <nav className="flex-1 overflow-y-auto px-2 hide-scrollbar">
           <ul className="space-y-[2px] pb-3">
             {navItems.map(({ href, label, icon }) => (
               <li key={href}>
                 <Link
-                  prefetch={true}
+                  prefetch={false}
                   href={href}
                   className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
                   ${collapsed && !isMobile ? "justify-center" : "gap-3 pl-2 pr-4"}
@@ -346,7 +347,7 @@ const Sidebar = () => {
             ))}
           </ul>
 
-          {profile?.id && (
+          {profile?.id && recentThreads && recentThreads.length > 0 && (
             <div className="mb-4">
               {(!collapsed || isMobile) && (
                 <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
@@ -368,7 +369,23 @@ const Sidebar = () => {
           )}
         </nav>
 
-        {profile?.id ? (
+        {profileLoading ? (
+          <div className="mt-auto border-t border-gray-200/80">
+            <div className="p-2">
+              <div
+                className={`flex items-center py-1 rounded-md ${collapsed && !isMobile ? "justify-center w-full" : "gap-2 flex-1"}`}
+              >
+                <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+                {(!collapsed || isMobile) && (
+                  <div className="flex-1">
+                    <div className="h-3 bg-gray-200 rounded animate-pulse w-24 mb-1"></div>
+                    <div className="h-2 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : profile?.id ? (
           <div className="mt-auto border-t border-gray-200/80">
             <div className="p-2">
               <UserProfileSection

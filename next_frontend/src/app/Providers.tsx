@@ -117,6 +117,18 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
         const profileResult = await dispatch(fetchProfile()).unwrap();
 
         if (profileResult.success && profileResult.status_code === 200) {
+          const profileData = profileResult.data;
+          
+          posthog.identify(profileData.id, {
+            email: profileData.email,
+            name: profileData.full_name,
+          });
+          
+          posthog.capture("login_successful", {
+            userId: profileData.id,
+            hasConnections: profileData.has_connections,
+          });
+          
           posthog.capture("profile_fetch_successful", {
             hasProfile: !!profileResult.data,
           });

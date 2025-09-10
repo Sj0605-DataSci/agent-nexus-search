@@ -27,10 +27,9 @@ interface SearchScopeSelectorProps {
   disabled?: boolean;
 }
 
-export const SearchScopeSelectorComponent = ({}: SearchScopeSelectorProps) => {
+export const SearchScopeSelectorComponent = ({ disabled = true }: SearchScopeSelectorProps) => {
   const [open, setOpen] = React.useState(false);
   const [selectedValues, setSelectedValues] = React.useState(new Set<string>());
-  const disabled = true;
   return (
     <div
       className={cn(

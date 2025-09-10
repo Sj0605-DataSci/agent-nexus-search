@@ -3,6 +3,7 @@ import { FiSearch, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { FaDatabase, FaNetworkWired, FaSort } from "react-icons/fa";
 import { MdOutlineQueryStats } from "react-icons/md";
 import { TbBrain } from "react-icons/tb";
+import { format } from "sql-formatter";
 
 import "../../styles/search-animations.css";
 
@@ -200,7 +201,7 @@ export const SearchQueryDisplay = ({
     }
 
     return (
-      <div className="space-y-4 text-xs">
+      <div className="space-y-4 w-full text-xs">
         {/* Keyphrases Section */}
         {parsedQuery?.keyphrases?.keyphrases?.length > 0 && (
           <div className="mb-4">
@@ -476,7 +477,7 @@ export const SearchQueryDisplay = ({
   };
 
   return (
-    <div className="mb-4 transition-all duration-300 ease-in-out">
+    <div className="mb-4 transition-all duration-300 w-full ease-in-out">
       <div
         className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-200"
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -572,7 +573,6 @@ export const SearchQueryDisplay = ({
               </li>
               {streamingSearchQueries.map((query, index) => {
                 const { queryIcon, queryColor, queryType } = getQueryTypeInfo(query);
-
                 const animationDelay = `${index * 150}ms`;
 
                 return (
@@ -600,19 +600,31 @@ export const SearchQueryDisplay = ({
                                 className={`relative mt-3 ml-[7px] max-w-[calc(100vw-6rem)] border-l-1 border-gray-200 pl-3 ${transitionStyle} ${collapsedSections["sql-query-" + index] ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[800px] opacity-100"}`}
                               >
                                 <div className="whitespace-pre bg-muted/50 p-3 font-mono text-xs text-muted-foreground rounded-md">
-                                  {query.split("\n").map((line, i) => {
-                                    const highlightedLine = line.replace(
-                                      /\b(SELECT|FROM|WHERE|AND|OR|LIKE|IN|JOIN|ON|GROUP BY|ORDER BY|HAVING|LIMIT|OFFSET|TRUE|FALSE)\b/gi,
-                                      match => `<span class="text-foreground">${match}</span>`
-                                    );
+                                  {(() => {
+                                    try {
 
-                                    return (
-                                      <div
-                                        key={i}
-                                        dangerouslySetInnerHTML={{ __html: highlightedLine }}
-                                      />
-                                    );
-                                  })}
+                                      const formattedQuery = format(query, {
+                                        language: "postgresql",
+                                        indent: "  ",
+                                      });
+                                      return (
+                                        <div className="whitespace-pre bg-muted/50 p-3 font-mono text-xs text-muted-foreground rounded-md">
+                                          <div
+                                            dangerouslySetInnerHTML={{
+                                              __html: formattedQuery.replace(
+                                                /\b(SELECT|FROM|WHERE|AND|OR|LIKE|IN|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|GROUP BY|ORDER BY|HAVING|LIMIT|OFFSET|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TABLE|VIEW|INDEX|DISTINCT|UNION|ALL|AS|WITH|CASE|WHEN|THEN|ELSE|END|IS|NULL|NOT|BETWEEN|EXISTS|COUNT|SUM|AVG|MIN|MAX|COALESCE|CAST|EXTRACT|DATE|TIMESTAMP|INTERVAL|TRUE|FALSE)\b/gi,
+                                                match =>
+                                                  `<span class="text-foreground">${match}</span>`
+                                              ),
+                                            }}
+                                          />
+                                        </div>
+                                      );
+                                    } catch (e) {
+                                      // Fallback if formatting fails
+                                      return <div>{query}</div>;
+                                    }
+                                  })()}
                                 </div>
                               </div>
                             </div>
