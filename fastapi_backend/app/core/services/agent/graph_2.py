@@ -101,13 +101,13 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
       
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
-Extract exactly 9 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
+Extract exactly 5 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
 
 Given a user's search query, you need to:
 1. Paraphrase the query in a clear, professional manner
 2. Extract relevant filters (location, work experience, company, position, skills)
 3. Identify key traits the user is looking for in people
-4. Extract exactly 9 important keyphrases for semantic search (or fewer if query is simple)
+4. Extract exactly 5 important keyphrases for semantic search (or fewer if query is simple)
 
 Lets say i searched : Tech founders in NYC who raised a pre-seed round
 
@@ -125,7 +125,7 @@ Please provide:
 1. A paraphrased version of the query
 2. Filters for location, work experience, company, position, skills
 3. Key traits the user is looking for (e.g., "tech founder", "startup experience", "AI expertise")
-4. Exactly 9 important keyphrases for semantic matching (or fewer if query is simple)
+4. Exactly 5 important keyphrases for semantic matching (or fewer if query is simple)
 """
 
         # llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction)
@@ -200,191 +200,8 @@ Please provide:
         
     except Exception as e:
         raise
-        
-# ===== NODE 2: Vector Search (Parallel) =====
-@traceable(project_name="Discoverminds",name="vector_search")
-async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Generate embeddings and perform vector search only."""
-    try:
-        print("Node 2: Vector Search")
-        if hasattr(state, "model_dump"):
-            state = state.model_dump()
 
-        query_analysis = state.get("query_analysis", {})
-        keyphrases = query_analysis.get("keyphrases", {}).get("keyphrases", [])
-        agent_config = state["agent_config"]
-        user_id = agent_config["user_id"]
-        user_query = state["user_query"]
-        cache_key = f"graph2:vector_search:{user_id}:{user_query}"
-        
-        # Try to get from cache
-        cached_result = await redis_client.get(cache_key)
-        if cached_result is not None:
-            return OverallState(**cached_result)
-        
-        # Skip vector search in PRODUCTION environment
-        if settings.ENVIRONMENT == "PRODUCTION":
-            print("Node 2: Vector Search skipped in PRODUCTION environment")
-            result = {
-                "messages": state["messages"],
-                "intent": state["intent"],
-                "format": state["format"],
-                "search_query": state.get("search_query", []),
-                "sql_queries": state.get("sql_queries", []),
-                "web_research_result": state.get("web_research_result", []),
-                "sources_gathered": state.get("sources_gathered", []),
-                "current_message_id": state["current_message_id"],
-                "agent_config": state["agent_config"],
-                "chat_thread_id": state["chat_thread_id"],
-                "user_id": state["user_id"],
-                "agent_id": state["agent_id"],
-                "weave_url": state["weave_url"],
-                "max_research_loops": state["max_research_loops"],
-                "initial_search_query_count": state["initial_search_query_count"],
-                "number_of_results_returned": state["number_of_results_returned"],
-                "world_connections": state["world_connections"],
-                "query_analysis": state["query_analysis"],
-                "user_query": state["user_query"],
-                "vector_results": [],
-                "vector_similarity_data": {}
-            }
-            await redis_client.set(cache_key, result, expire=3600)
-            return OverallState(**result)
-        
-        print("Node 2: Vector Search Client")
-        vecs_client = get_vecs_client()
-        linkedin_profiles_collection = vecs_client.get_collection("linkedin_profiless")
-        
-        all_vector_results = []
-        
-        # Streaming approach: generate embedding -> search -> delete -> repeat
-        print("Node 2: Vector Search generating embeddings")
-        for i, keyphrase in enumerate(keyphrases):  # Reduced from 9 to 5 for memory efficiency
-            try:
-                # Generate single embedding using Jina
-                embedding = await generate_jina_embedding(keyphrase)
-                
-                if embedding:
-                    # Immediately search with this embedding
-                    print("Node 2: Vector Search searching")
-                    vector_results = linkedin_profiles_collection.query(
-                        data=embedding,
-                        limit=3,  # Reduced limit per keyphrase to balance total results
-                        filters={"user_id": {"$eq": user_id}},
-                        include_value=True  # Include similarity scores
-                    )
-                    
-                    # Process results immediately
-                    for vec_result in vector_results:
-                        if (isinstance(vec_result, tuple) or hasattr(vec_result, '__getitem__')) and len(vec_result) >= 2:
-                            profile_id, similarity_score = vec_result[0], vec_result[1]
-                            try:
-                                all_vector_results.append({
-                                    "profile_id": profile_id,
-                                    "similarity_score": float(similarity_score),
-                                    "keyphrase": keyphrase
-                                })
-                            except Exception as append_e:
-                                raise append_e
-                        elif isinstance(vec_result, str):
-                            all_vector_results.append({
-                                "profile_id": vec_result,
-                                "similarity_score": 1.0,
-                                "keyphrase": keyphrase
-                            })
-                        else:
-                            raise Exception(f"Unexpected result format: {result} (type: {type(result)})")
-                    
-                    # Explicitly delete embedding from memory
-                    del embedding
-                    del vector_results
-                
-                await asyncio.sleep(0.2)
-                
-            except Exception as e:
-                raise e
-        
-        # ===== STEP 4: Remove duplicates from vector results =====
-        
-        unique_vector_profiles = {}
-        for vec_result in all_vector_results:
-            profile_id = vec_result["profile_id"]
-            if profile_id not in unique_vector_profiles:
-                unique_vector_profiles[profile_id] = {
-                    "profile_id": profile_id,
-                    "max_similarity": vec_result["similarity_score"],
-                    "matching_keyphrases": [vec_result["keyphrase"]]
-                }
-            else:
-                # Update with higher similarity score and add keyphrase
-                if vec_result["similarity_score"] > unique_vector_profiles[profile_id]["max_similarity"]:
-                    unique_vector_profiles[profile_id]["max_similarity"] = vec_result["similarity_score"]
-                unique_vector_profiles[profile_id]["matching_keyphrases"].append(vec_result["keyphrase"])
-        
-        vector_profile_ids = list(unique_vector_profiles.keys())
-        print("Node 2: Vector Search Completed")
-        
-        result={
-            "messages": state["messages"],
-            "intent": state["intent"],
-            "format": state["format"],
-            "search_query": state.get("search_query", []),
-            "sql_queries": state.get("sql_queries", []),
-            "web_research_result": state.get("web_research_result", []),
-            "sources_gathered": state.get("sources_gathered", []),
-            "current_message_id": state["current_message_id"],
-            "agent_config": state["agent_config"],
-            "chat_thread_id": state["chat_thread_id"],
-            "user_id": state["user_id"],
-            "agent_id": state["agent_id"],
-            "weave_url": state["weave_url"],
-            "max_research_loops": state["max_research_loops"],
-            "initial_search_query_count": state["initial_search_query_count"],
-            "number_of_results_returned": state["number_of_results_returned"],
-            "world_connections": state["world_connections"],
-            "query_analysis": state["query_analysis"],
-            "user_query": state["user_query"],
-            "vector_results": vector_profile_ids,
-            "vector_similarity_data": unique_vector_profiles
-        }
-
-
-        await redis_client.set(cache_key, result, expire=3600)
-        return OverallState(**result)
-        
-    except Exception as e:
-        raise
-
-@traceable(project_name="Discoverminds",name="embedding gen")
-async def generate_jina_embedding(text: str) -> Optional[List[float]]:
-    """Generate embedding using Jina API"""
-    try:
-        import requests
-        from app.core.config import settings
-        
-        url = "https://api.jina.ai/v1/embeddings"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.JINA_API_KEY}",
-        }
-        data = {
-            "model": "jina-embeddings-v3",
-            "task": "text-matching",
-            "input": text,
-        }
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        
-        if "data" in result and len(result["data"]) > 0:
-            return result["data"][0]["embedding"]
-        return None
-    except Exception as e:
-        print(f"Error generating Jina embedding: {e}")
-        return None
-
-
-# ===== NODE 3: SQL Search (Parallel) =====
+# ===== NODE 2: SQL Search (Parallel) =====
 @traceable(project_name="Discoverminds",name="sql_search")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
@@ -392,7 +209,7 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         if hasattr(state, "model_dump"):
             state = state.model_dump()
         
-        print("Node 3: SQL Search")
+        print("Node 2: SQL Search")
         
         query_analysis = state.get("query_analysis", {})
         agent_config = state["agent_config"]
@@ -420,6 +237,7 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         sql_system_instruction = """You are an expert SQL query generator for a connections database.
 
 IMPORTANT: Use ONLY these exact column names from the connections table:
+- id (uuid)
 - first_name (text)
 - last_name (text) 
 - linkedin_url (text)
@@ -450,20 +268,44 @@ Requirements:
 - Search across headline, about_section, experience_json, company, position, location
 - Use ILIKE for case-insensitive text matching
 - Use OR logic for broader matching (avoid overly restrictive AND conditions)
-- Order by relevance (embedding_generated_at DESC, created_at DESC)
 - Limit to 20 results
 - DO NOT use row_to_json() wrapper - return direct SELECT results
+- Always give id as well in sql query
 
 Example format:
-SELECT id, first_name, last_name, headline, about_section, 
-       experience_json, education_json, skills, linkedin_url, 
-       company, position, location, profile_photo_url, embedding_generated_at
-FROM connections 
-WHERE user_id = '{user_id}' AND [your conditions]
-ORDER BY embedding_generated_at DESC, created_at DESC
+Query: find me Designers in Delhi with 6 years of experience
+
+SELECT 
+    id, first_name, last_name, headline, about_section, 
+    experience_json, education_json, skills, linkedin_url, 
+    company, position, location, profile_photo_url, embedding_generated_at
+FROM 
+    connections
+WHERE 
+    user_id = {user_id}
+    AND embedding_generated_at IS NOT NULL
+    AND (
+        location ILIKE '%Delhi%' 
+        OR company ILIKE '%Designer%' 
+        OR position ILIKE '%Designer%' 
+        OR headline ILIKE '%Experienced designer%' 
+        OR headline ILIKE '%Designer%' 
+        OR about_section ILIKE '%Experienced designer%' 
+        OR about_section ILIKE '%Designer%' 
+        OR experience_json::text ILIKE '%6 years%' 
+        OR experience_json::text ILIKE '%Designer%' 
+        OR experience_json::text ILIKE '%Delhi%' 
+        OR company ILIKE '%Delhi%' 
+        OR position ILIKE '%Delhi%'
+    )
+    AND about_section is NOT NULL
+    AND experience_json is NOT NULL
 LIMIT 20;
 
-Return only the SQL query, no explanation."""
+Return only the SQL query, no explanation.
+Always gives id as well in sql query
+Always have about_section NOT NULL, and Experience json not null + embedding_generated_at NOT NULL
+"""
 
         keyword_results = []
         generated_sql = ""
@@ -538,181 +380,328 @@ Return only the SQL query, no explanation."""
     except Exception as e:
         raise
 
-# ===== NODE 4: Fusion Ranking (Combines Vector + SQL Results) =====
-@traceable(project_name="Discoverminds",name="fusion_ranking")
-async def fusion_ranking(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Combine vector and SQL results, perform fusion ranking and LLM scoring."""
+# ===== NODE 3: Vector Search (Parallel) =====
+@traceable(project_name="Discoverminds",name="vector_search")
+async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Perform vector search on keyword results using basic_info_embedding and experience_embedding."""
     try:
+        print("Node 3: Reranking from vectors")
         if hasattr(state, "model_dump"):
             state = state.model_dump()
-        
-        print("Node 4: Fusion Ranking")
+
+        query_analysis = state.get("query_analysis", {})
+        keyphrases = query_analysis.get("keyphrases", {}).get("keyphrases", [])
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
-        user_query = state.get("user_query", "")
+        user_query = state["user_query"]
+        cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
-        cache_key = f"graph2:fusion_ranking:{user_id}:{user_query}"
-        
+        # Try to get from cache
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             return OverallState(**cached_result)
         
+        # Get SQL search results from state
+        keyword_results = state.get("web_research_result", [])
+        
+        # Extract profile IDs from keyword results
+        keyword_profile_ids = []
+        for result_item in keyword_results:
+            # Handle different possible structures of the results
+            if isinstance(result_item, dict):
+                # Direct profile object
+                profile_id = result_item.get("result", {}).get("id", "")
+                if profile_id:
+                    keyword_profile_ids.append(profile_id)
+            elif isinstance(result_item, str):
+                # Just the ID as string
+                keyword_profile_ids.append(result_item)
+        
+        # Log the extracted profile IDs
+        print(f"Extracted {len(keyword_profile_ids)} profile IDs from SQL results")
+        
+        print(f"Node 2: Found {len(keyword_profile_ids)} profiles from keyword search")
+        
+        # If no keyword results, return empty results
+        if not keyword_profile_ids:
+            print("Node 2: No keyword results to perform vector search on")
+            result = {
+                "messages": state["messages"],
+                "intent": state["intent"],
+                "format": state["format"],
+                "search_query": state.get("search_query", []),
+                "sql_queries": state.get("sql_queries", []),
+                "web_research_result": state.get("web_research_result", []),
+                "sources_gathered": state.get("sources_gathered", []),
+                "current_message_id": state["current_message_id"],
+                "agent_config": state["agent_config"],
+                "chat_thread_id": state["chat_thread_id"],
+                "user_id": state["user_id"],
+                "agent_id": state["agent_id"],
+                "weave_url": state["weave_url"],
+                "max_research_loops": state["max_research_loops"],
+                "initial_search_query_count": state["initial_search_query_count"],
+                "number_of_results_returned": state["number_of_results_returned"],
+                "world_connections": state["world_connections"],
+                "query_analysis": state["query_analysis"],
+                "user_query": state["user_query"],
+                "vector_results": [],
+                "vector_similarity_data": {}
+            }
+            await redis_client.set(cache_key, result, expire=3600)
+            return OverallState(**result)
+        
+        # Initialize Supabase client
         supabase_client = await get_async_supabase_client()
         
-        # Get results from parallel nodes
-        vector_profile_ids = state.get("vector_results", [])
-        vector_similarity_data = state.get("vector_similarity_data", {})
-        keyword_results = state.get("sql_results", [])
+        # Generate embeddings for each keyphrase (limit to 5 for efficiency)
+        all_vector_results = []
+        print("Node 2: Generating embeddings for vector search")
         
-        # Get vector search profiles from database
-        vector_results = []
-        if vector_profile_ids:
+        for i, keyphrase in enumerate(keyphrases):
             try:
-                import uuid
-                valid_profile_ids = []
-                for profile_id in vector_profile_ids:
-                    try:
-                        uuid.UUID(str(profile_id))
-                        valid_profile_ids.append(profile_id)
-                    except (ValueError, TypeError):
-                        raise Exception(f"Invalid UUID: {profile_id}")
+                # Generate embedding using Jina
+                embedding = await generate_jina_embedding(keyphrase)
                 
-                if valid_profile_ids:
-                    result = await supabase_client.table("connections").select(
-                        "id, first_name, last_name, headline, about_section, "
-                        "experience_json, education_json, skills, linkedin_url, "
-                        "company, position, location, profile_photo_url, embedding_generated_at"
-                    ).eq("user_id", user_id).in_("id", valid_profile_ids).order(
-                        "embedding_generated_at", desc=True
-                    ).order("created_at", desc=True).execute()
+                if not embedding:
+                    continue
+                if embedding:
+                    print(f"Node 2: Generated embedding for keyphrase {keyphrase}")
+                # Convert embedding to a list for JSON serialization
+                embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else list(embedding)
+                
+                # Call the vector_search_profiles RPC function
+                try:
+                    vector_result = await supabase_client.rpc(
+                        'vector_search_profiles',
+                        {
+                            'p_user_id': user_id,
+                            'p_profile_ids': keyword_profile_ids,
+                            'p_embedding': embedding_list,
+                            'p_limit': 10
+                        }
+                    ).execute()
+                except Exception as e:
+                    print(f"Error calling vector_search_profiles RPC: {str(e)}")
+                    # Create a fallback RPC function if it doesn't exist
+                    create_rpc_query = f"""
+                    CREATE OR REPLACE FUNCTION vector_search_profiles(
+                        p_user_id UUID,
+                        p_profile_ids UUID[],
+                        p_embedding FLOAT[],
+                        p_limit INT DEFAULT 10
+                    ) RETURNS JSONB AS $$
+                    DECLARE
+                        result JSONB;
+                    BEGIN
+                        WITH vector_scores AS (
+                            SELECT 
+                                id, 
+                                first_name, 
+                                last_name, 
+                                headline, 
+                                about_section, 
+                                experience_json, 
+                                education_json, 
+                                skills, 
+                                linkedin_url, 
+                                company, 
+                                position, 
+                                location, 
+                                profile_photo_url,
+                                1 - (basic_info_embedding <=> p_embedding::vector) AS basic_info_score,
+                                1 - (experience_embedding <=> p_embedding::vector) AS experience_score
+                            FROM 
+                                connections
+                            WHERE 
+                                user_id = p_user_id
+                                AND id = ANY(p_profile_ids)
+                                AND (basic_info_embedding IS NOT NULL OR experience_embedding IS NOT NULL)
+                        )
+                        SELECT jsonb_agg(t) INTO result
+                        FROM (
+                            SELECT 
+                                id, 
+                                first_name, 
+                                last_name, 
+                                headline, 
+                                about_section, 
+                                experience_json, 
+                                education_json, 
+                                skills, 
+                                linkedin_url, 
+                                company, 
+                                position, 
+                                location, 
+                                profile_photo_url,
+                                COALESCE(basic_info_score, 0) AS basic_info_score,
+                                COALESCE(experience_score, 0) AS experience_score,
+                                GREATEST(COALESCE(basic_info_score, 0), COALESCE(experience_score, 0)) AS max_score
+                            FROM 
+                                vector_scores
+                            ORDER BY 
+                                max_score DESC
+                            LIMIT p_limit
+                        ) t;
+                        
+                        RETURN COALESCE(result, '[]'::jsonb);
+                    END;
+                    $$ LANGUAGE plpgsql;
+                    """
                     
-                    vector_results = result.data if result.data else []
-            except Exception as e:
-                raise e
-        
-        fusion_profiles = {}
-        for i, profile in enumerate(vector_results):
-            profile_id = profile.get("id", "")
-            linkedin_url = profile.get("linkedin_url", "")
-            
-            # Use profile_id or linkedin_url as the key
-            match_key = profile_id if profile_id else linkedin_url
-            
-            if match_key:
-                vector_rank_score = 100 - (i * 5)
-                similarity_data = vector_similarity_data.get(profile_id, {})
+                    try:
+                        # Try to create the RPC function
+                        await supabase_client.rpc('execute_dynamic_sql', {'query_text': create_rpc_query}).execute()
+                        print("Created vector_search_profiles RPC function")
+                        
+                        # Try the RPC call again
+                        vector_result = await supabase_client.rpc(
+                            'vector_search_profiles',
+                            {
+                                'p_user_id': user_id,
+                                'p_profile_ids': keyword_profile_ids,
+                                'p_embedding': embedding_list,
+                                'p_limit': 50
+                            }
+                        ).execute()
+                    except Exception as create_e:
+                        print(f"Error creating RPC function: {str(create_e)}")
+                        # Fallback to empty result
+                        vector_result = type('obj', (object,), {'data': []})
                 
-                fusion_profiles[match_key] = {
-                    "profile": profile,
-                    "vector_score": vector_rank_score,
-                    "keyword_score": 0,
-                    "fusion_score": vector_rank_score * 0.6,
-                    "similarity_score": similarity_data.get("max_similarity", 0),
-                    "matching_keyphrases": similarity_data.get("matching_keyphrases", []),
-                    "source": "vector"
+                # Process results
+                if vector_result.data:
+                    for row in vector_result.data:
+                        profile_id = row.get("id")
+                        basic_info_score = row.get("basic_info_score", 0)
+                        experience_score = row.get("experience_score", 0)
+                        max_score = row.get("max_score", 0)
+                        
+                        if profile_id and max_score > 0:
+                            all_vector_results.append({
+                                "profile_id": profile_id,
+                                "basic_info_score": float(basic_info_score),
+                                "experience_score": float(experience_score),
+                                "similarity_score": float(max_score),
+                                "keyphrase": keyphrase
+                            })
+                
+                # Clean up memory
+                del embedding
+                
+                # Small delay to avoid rate limiting
+                await asyncio.sleep(0.2)
+                
+            except Exception as e:
+                print(f"Error in vector search for keyphrase {keyphrase}: {str(e)}")
+        
+        # Remove duplicates and combine scores
+        unique_vector_profiles = {}
+        for vec_result in all_vector_results:
+            profile_id = vec_result["profile_id"]
+            if profile_id not in unique_vector_profiles:
+                unique_vector_profiles[profile_id] = {
+                    "profile_id": profile_id,
+                    "max_similarity": vec_result["similarity_score"],
+                    "basic_info_score": vec_result["basic_info_score"],
+                    "experience_score": vec_result["experience_score"],
+                    "matching_keyphrases": [vec_result["keyphrase"]]
+                }
+            else:
+                # Update with higher similarity score
+                if vec_result["similarity_score"] > unique_vector_profiles[profile_id]["max_similarity"]:
+                    unique_vector_profiles[profile_id]["max_similarity"] = vec_result["similarity_score"]
+                    unique_vector_profiles[profile_id]["basic_info_score"] = vec_result["basic_info_score"]
+                    unique_vector_profiles[profile_id]["experience_score"] = vec_result["experience_score"]
+                
+                # Add keyphrase to matching list
+                if vec_result["keyphrase"] not in unique_vector_profiles[profile_id]["matching_keyphrases"]:
+                    unique_vector_profiles[profile_id]["matching_keyphrases"].append(vec_result["keyphrase"])
+        
+        # Sort profiles by similarity score and take top 20
+        sorted_profiles = sorted(
+            unique_vector_profiles.items(), 
+            key=lambda x: x[1]["max_similarity"], 
+            reverse=True
+        )[:10]
+        
+        # Extract profile IDs from sorted results
+        vector_profile_ids = [profile_id for profile_id, _ in sorted_profiles]
+        
+        print(f"Node 2: Vector Search Completed - Found {len(vector_profile_ids)} profiles")
+        
+        # If no vector results, fall back to keyword results
+        if not vector_profile_ids and keyword_profile_ids:
+            print("Node 2: No vector results, falling back to keyword results")
+            vector_profile_ids = keyword_profile_ids[:10]
+            for profile_id in vector_profile_ids:
+                unique_vector_profiles[profile_id] = {
+                    "profile_id": profile_id,
+                    "max_similarity": 0.5,  # Default similarity score
+                    "basic_info_score": 0.5,
+                    "experience_score": 0.5,
+                    "matching_keyphrases": ["keyword_match"]
                 }
         
-        # Add keyword results with moderate base score
-        for i, result_item in enumerate(keyword_results):
-            # Handle the nested structure: {'result': {...}} or direct profile
-            if isinstance(result_item, dict) and 'result' in result_item:
-                profile = result_item['result']
-            else:
-                profile = result_item
-            
-            profile_id = profile.get("id", "")
-            linkedin_url = profile.get("linkedin_url", "")
-            
-            # Use profile_id or linkedin_url for matching
-            match_key = profile_id if profile_id else linkedin_url
-            
-            if match_key:
-                keyword_rank_score = 80 - (i * 4)
-                
-                # Check if this profile exists in vector results (by ID or LinkedIn URL)
-                found_in_vector = False
-                vector_match_key = None
-                
-                for vector_key in fusion_profiles.keys():
-                    vector_profile = fusion_profiles[vector_key]["profile"]
-                    vector_id = vector_profile.get("id", "")
-                    vector_linkedin = vector_profile.get("linkedin_url", "")
-                    
-                    # Match by ID or LinkedIn URL
-                    if (profile_id and profile_id == vector_id) or \
-                       (linkedin_url and linkedin_url == vector_linkedin):
-                        found_in_vector = True
-                        vector_match_key = vector_key
-                        break
-                
-                if found_in_vector and vector_match_key:
-                    # Profile found in both - boost fusion score
-                    fusion_profiles[vector_match_key]["keyword_score"] = keyword_rank_score
-                    fusion_profiles[vector_match_key]["fusion_score"] = (
-                        fusion_profiles[vector_match_key]["vector_score"] * 0.6 + 
-                        keyword_rank_score * 0.4 + 
-                        20  # Bonus for appearing in both
-                    )
-                    fusion_profiles[vector_match_key]["source"] = "both"
-                else:
-                    # Keyword-only result
-                    fusion_profiles[match_key] = {
-                        "profile": profile,
-                        "vector_score": 0,
-                        "keyword_score": keyword_rank_score,
-                        "fusion_score": keyword_rank_score * 0.4,
-                        "similarity_score": 0,
-                        "matching_keyphrases": [],
-                        "source": "keyword"
-                    }
-        
-        # Sort by fusion score and take top results
-        sorted_profiles = sorted(
-            fusion_profiles.values(), 
-            key=lambda x: x["fusion_score"], 
-            reverse=True
-        )
-        
-        # Extract top profiles for final results
-        final_results = []
-        for item in sorted_profiles[:20]:  # Get top 15 for scoring
-            profile = item["profile"]
-            profile["fusion_score"] = item["fusion_score"]
-            profile["vector_score"] = item["vector_score"]
-            profile["keyword_score"] = item["keyword_score"]
-            profile["similarity_score"] = item["similarity_score"]
-            profile["matching_keyphrases"] = item["matching_keyphrases"]
-            profile["search_source"] = item["source"]
-            final_results.append(profile)
-                
-        print("Node 4: Fusion Ranking Completed")
+        # Prepare result
         result = {
-            "messages":state["messages"],
-            "intent":state["intent"],
-            "format":state["format"],
-            "search_query":state.get("search_query", []),
-            "sql_queries":state.get("sql_queries", []),
-            "web_research_result":final_results,
-            "sources_gathered":state.get("sources_gathered", []),
-            "current_message_id":state.get("current_message_id", ""),
-            "agent_config":state["agent_config"],
-            "chat_thread_id":state["chat_thread_id"],
-            "user_id":state["user_id"],
-            "agent_id":state["agent_id"],
-            "weave_url":state["weave_url"],
-            "max_research_loops":state["max_research_loops"],
-            "initial_search_query_count":state["initial_search_query_count"],
-            "number_of_results_returned":state["number_of_results_returned"],
-            "world_connections":state["world_connections"],
-            "query_analysis":state.get("query_analysis", {}),
-            "user_query":state.get("user_query", ""),
-            "final_results":final_results
+            "messages": state["messages"],
+            "intent": state["intent"],
+            "format": state["format"],
+            "search_query": state.get("search_query", []),
+            "sql_queries": state.get("sql_queries", []),
+            "web_research_result": state.get("web_research_result", []),
+            "sources_gathered": state.get("sources_gathered", []),
+            "current_message_id": state["current_message_id"],
+            "agent_config": state["agent_config"],
+            "chat_thread_id": state["chat_thread_id"],
+            "user_id": state["user_id"],
+            "agent_id": state["agent_id"],
+            "weave_url": state["weave_url"],
+            "max_research_loops": state["max_research_loops"],
+            "initial_search_query_count": state["initial_search_query_count"],
+            "number_of_results_returned": state["number_of_results_returned"],
+            "world_connections": state["world_connections"],
+            "query_analysis": state["query_analysis"],
+            "user_query": state["user_query"],
+            "vector_results": vector_profile_ids,
+            "vector_similarity_data": unique_vector_profiles
         }
+
         await redis_client.set(cache_key, result, expire=3600)
         return OverallState(**result)
         
     except Exception as e:
+        print(f"Error in vector_search: {str(e)}")
         raise
+
+@traceable(project_name="Discoverminds",name="embedding gen")
+async def generate_jina_embedding(text: str) -> Optional[List[float]]:
+    """Generate embedding using Jina API"""
+    try:
+        import requests
+        from app.core.config import settings
+        
+        url = "https://api.jina.ai/v1/embeddings"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.JINA_API_KEY}",
+        }
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "text-matching",
+            "input": text,
+        }
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        
+        if "data" in result and len(result["data"]) > 0:
+            return result["data"][0]["embedding"]
+        return None
+    except Exception as e:
+        print(f"Error generating Jina embedding: {e}")
+        return None
 
 
 @traceable(project_name="Discoverminds",name="finalize_sql_answer")
@@ -730,7 +719,58 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     chat_thread_id = state.get("chat_thread_id", "")
     current_message_id = state.get("current_message_id", "")
     
-    profiles = state.get("web_research_result", [])
+    # Get vector search results
+    vector_results = state.get("vector_results", [])
+    vector_similarity_data = state.get("vector_similarity_data", {})
+    
+    # Get keyword search results
+    keyword_results = state.get("web_research_result", [])
+    
+    # Combine results from both sources
+    combined_profiles = []
+    
+    # First add vector results with their similarity scores
+    if vector_results:
+        print(f"Node 5: Processing {len(vector_results)} vector results")
+        for profile_id in vector_results:
+            # Get the profile data from keyword results
+            profile_data = None
+            for result in keyword_results:
+                if isinstance(result, dict) and result.get("result", {}).get("id") == profile_id:
+                    profile_data = result.get("result", {})
+                    break
+            
+            if profile_data:
+                # Add similarity data from vector search
+                similarity_info = vector_similarity_data.get(profile_id, {})
+                profile_data["similarity_score"] = similarity_info.get("max_similarity", 0)
+                profile_data["basic_info_score"] = similarity_info.get("basic_info_score", 0)
+                profile_data["experience_score"] = similarity_info.get("experience_score", 0)
+                profile_data["matching_keyphrases"] = similarity_info.get("matching_keyphrases", [])
+                profile_data["search_source"] = "vector"
+                
+                combined_profiles.append(profile_data)
+    
+    # Add any remaining keyword results that weren't in vector results
+    if keyword_results:
+        print(f"Node 5: Processing keyword results")
+        for result in keyword_results:
+            if isinstance(result, dict):
+                profile_id = result.get("result", {}).get("id")
+                # Check if this profile is already in combined_profiles
+                if not any(p.get("id") == profile_id for p in combined_profiles):
+                    result["search_source"] = "keyword"
+                    result["similarity_score"] = 0
+                    combined_profiles.append(result)
+    
+    # Sort combined profiles by similarity score (if available) or default order
+    combined_profiles.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
+    
+    # Limit to top results based on agent config
+    final_profiles = combined_profiles
+    
+    print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
+    
     query_analysis = state.get("query_analysis", {})
     user_query = get_research_topic(state["messages"])
     
@@ -738,9 +778,9 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     
     cached_result = await redis_client.get(cache_key)
     if cached_result is not None:
-        return cached_result
+        return OverallState(**cached_result)
     
-    if not profiles:
+    if not final_profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
         message_content = final_message.content
     else:
@@ -781,10 +821,14 @@ IMPORTANT:
 - A profile can have all three yes traits, all three no traits, all three maybe traits, or any mix
 - Only use <b></b> tag, no other tags needed
 - Do not use any other HTML tags
+- Also you have filters in the query analysis, also give out same filter from them for the profile
+- Always give 3 scores in scoring array
+- Use filters from user query for the profile
 
 Return answer like this 
 
 Example format:
+
 Give this in json format
 '''json
 {
@@ -794,20 +838,24 @@ Give this in json format
 "scoring": [
         {
           "confidence": 0.85,
+          "filter": " Suitable Filter from user query",
           "traitTitle": "<b>Experienced Product Manager</b> at Top Tech Company",
           "traitDescription": "Has <b>5+ years experience</b> managing successful products at <b>Google</b>"
         },
         {
           "confidence": 0.45,
+          "filter": "Suitable Filter from user query",
           "traitTitle": "Basic <i>UX Design</i> Knowledge",
           "traitDescription": "Has <i>fundamental understanding</i> of user experience principles"
         },
         {
           "confidence": 0.15,
+          "filter": "Suitable Filter from user query",
           "traitTitle": "No Healthcare Industry Experience",
           "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
         }
       ]
+}
       '''
 
 All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
@@ -815,12 +863,12 @@ All profile ids should get all the three scores, it can be permutation, can be a
         user_prompt = f"""User Query: "{user_query}"
 
 Search Criteria:
-- Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
 - Traits: {json.dumps(query_analysis.get('traits', {}), indent=2)}
 - Keyphrases: {json.dumps(query_analysis.get('keyphrases', {}), indent=2)}
+- Filters: {json.dumps(query_analysis.get('filters', {}), indent=2)}
 
 Profiles to Score:
-{json.dumps(profiles, indent=2)}
+{json.dumps(final_profiles, indent=2)}
 
  """
 
@@ -839,7 +887,8 @@ Profiles to Score:
                     {
                         "traitTitle": trait.traitTitle,
                         "traitDescription": trait.traitDescription,
-                        "confidence": trait.confidence
+                        "confidence": trait.confidence,
+                        "filter": trait.filter
                     }
                     for trait in profile.scoring
                 ]
@@ -885,7 +934,8 @@ Profiles to Score:
                             {
                                 "traitTitle": trait.traitTitle,
                                 "traitDescription": trait.traitDescription,
-                                "confidence": trait.confidence
+                                "confidence": trait.confidence,
+                                "filter": trait.filter
                             }
                             for trait in profile.scoring
                         ]
@@ -906,7 +956,7 @@ Profiles to Score:
         scored_profiles_dict = {profile.get("linkedin_url", ""): profile for profile in scored_profiles}
         
         # Only include profiles that have scores
-        for profile in profiles:
+        for profile in final_profiles:
             linkedin_url = profile.get("linkedin_url", "")
             
             # Skip profiles without a linkedin_url or without a score
@@ -945,7 +995,8 @@ Profiles to Score:
                     {
                         'traitTitle': str(score.get('traitTitle', '')),
                         'traitDescription': str(score.get('traitDescription', '')),
-                        'confidence': float(score.get('confidence', 0.0))
+                        'confidence': float(score.get('confidence', 0.0)),
+                        'filter': str(score.get('filter', ''))
                     }
                     for score in profile['scoring']
                 ]
@@ -968,9 +1019,29 @@ Profiles to Score:
     result = {
         "messages": [final_message],
         "sources_gathered": state.get("sources_gathered", []),
+        "intent": state["intent"],
+        "format": state["format"],
+        "search_query": state.get("search_query", []),
+        "sql_queries": state.get("sql_queries", []),
+        "web_research_result": state.get("web_research_result", []),
+        "sources_gathered": state.get("sources_gathered", []),
+        "current_message_id": state["current_message_id"],
+        "agent_config": state["agent_config"],
+        "chat_thread_id": state["chat_thread_id"],
+        "user_id": state["user_id"],
+        "agent_id": state["agent_id"],
+        "weave_url": state["weave_url"],
+        "max_research_loops": state["max_research_loops"],
+        "initial_search_query_count": state["initial_search_query_count"],
+        "number_of_results_returned": state["number_of_results_returned"],
+        "world_connections": state["world_connections"],
+        "query_analysis": state["query_analysis"],
+        "user_query": state["user_query"],
+        "vector_results": state["vector_results"],
+        "vector_similarity_data": state["vector_similarity_data"]
     }
     await redis_client.set(cache_key, result, expire=3600)
-    return result
+    return OverallState(**result)
 
 
 # Add custom key functions for caching
@@ -1079,10 +1150,6 @@ builder.add_node(
     sql_search
 )
 builder.add_node(
-    "fusion_ranking", 
-    fusion_ranking
-)
-builder.add_node(
     "finalize_sql_answer", 
     finalize_sql_answer
 )
@@ -1091,29 +1158,13 @@ builder.add_node(
 builder.add_edge(START, "query_analysis")
 
 # Parallel execution: both vector_search and sql_search run after query_analysis
-builder.add_edge("query_analysis", "vector_search")
 builder.add_edge("query_analysis", "sql_search")
+builder.add_edge("sql_search", "vector_search")
 
 # Both parallel nodes feed into fusion_ranking
-builder.add_edge("vector_search", "fusion_ranking")
-builder.add_edge("sql_search", "fusion_ranking")
-
-# Fusion ranking feeds into finalize_sql_answer
-builder.add_edge("fusion_ranking", "finalize_sql_answer")
+builder.add_edge("vector_search", "finalize_sql_answer")
 
 # Set the exit point
-builder.add_edge("finalize_sql_answer", END)
-
-# Parallel execution: both vector_search and sql_search run after query_analysis
-builder.add_edge("query_analysis", "vector_search")
-builder.add_edge("query_analysis", "sql_search")
-
-# Both parallel nodes feed into fusion_ranking
-builder.add_edge("vector_search", "fusion_ranking")
-builder.add_edge("sql_search", "fusion_ranking")
-
-# Final answer generation
-builder.add_edge("fusion_ranking", "finalize_sql_answer")
 builder.add_edge("finalize_sql_answer", END)
 
 # Compile the graph with shared Redis cache

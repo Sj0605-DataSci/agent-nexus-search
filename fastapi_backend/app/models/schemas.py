@@ -16,6 +16,7 @@ T = TypeVar('T')
 class ScoringTrait(BaseModel):
     traitTitle: str = Field(..., description="Title of the scoring trait")
     traitDescription: str = Field(..., description="Description of the scoring trait")
+    filter: Optional[str] = Field(..., description="Filter for the scoring trait")
     confidence: float = Field(..., ge=0, le=1, description="Confidence score between 0 and 1")
 
 class ScoredProfile(BaseModel):
@@ -30,12 +31,28 @@ class ScoredProfile(BaseModel):
 class ScoredProfilesResponse(BaseModel):
     profiles: List[ScoredProfile]
 
+class SectionFilters(BaseModel):
+    basic_info: Optional[List[str]] = []
+    experience: Optional[List[str]] = []
+    education: Optional[List[str]] = []
+    skills: Optional[List[str]] = []
+
 class SearchFilters(BaseModel):
+    # Legacy fields for backward compatibility
     location: Optional[List[str]] = []
     work_experience: Optional[List[str]] = []
     company: Optional[List[str]] = []
     position: Optional[List[str]] = []
     skills: Optional[List[str]] = []
+    
+    # New section-based filters
+    sections: Optional[SectionFilters] = None
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Initialize sections if not provided
+        if self.sections is None:
+            self.sections = SectionFilters()
 
 class SearchTraits(BaseModel):
     traits: List[str] = []
