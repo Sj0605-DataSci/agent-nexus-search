@@ -21,6 +21,7 @@ import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
 import BrandLogo from "@/components/BrandLogo";
 import { supabaseHandler } from "../supabaseClient";
 import { DEFAULT_COUNTRY_CODE } from "@/utils/countryCodes";
+import { saveTokens } from "@/utils/tokenManagement";
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 48 48">
@@ -47,14 +48,15 @@ const AuthComponent = () => {
   const [formToShow, setFormToShow] = useState<"signup" | "signin" | "reset" | "hidetoggle">(
     "signin"
   );
+
   const router = useRouter();
   const { profile } = useAppSelector(state => state.profile);
-  
+
   useEffect(() => {
     if (profile) {
       router.replace("/chat/new");
     }
-  }, [profile]);
+  }, [profile, router]);
 
   const formVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -177,12 +179,19 @@ type FormData = yup.InferType<typeof schema>;
 const SuccessSignupModal = () => {
   const [resendTimer, setResendTimer] = useState(5);
   const [lastSignupData, setLastSignupData] = useState<FormData | null>(null);
-  const { width, height } = useWindowSize();
+  const { width = 800, height = 600 } = useWindowSize();
 
   useEffect(() => {
-    const storedData = localStorage.getItem("lastSignupData");
-    if (storedData) {
-      setLastSignupData(JSON.parse(storedData));
+    if (typeof window !== 'undefined') {
+      const storedData = localStorage.getItem("lastSignupData");
+      if (storedData) {
+        try {
+          setLastSignupData(JSON.parse(storedData));
+        } catch (error) {
+          console.error("Error parsing lastSignupData:", error);
+          localStorage.removeItem("lastSignupData");
+        }
+      }
     }
 
     let interval: NodeJS.Timeout;
@@ -220,7 +229,9 @@ const SuccessSignupModal = () => {
 
   return (
     <div className="text-center py-8">
-      <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />
+      {typeof window !== 'undefined' && (
+        <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />
+      )}
       <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
         <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white">
           <svg
@@ -286,7 +297,13 @@ const SignUpFormComponent = ({
       setIsSubmitting(true);
       try {
         // Format phone number as '91-8929495901'
-        const phoneNumber = phoneValue;
+        const phoneNumber = phoneValue || "";
+
+        if (!data.email || !data.password || !data.name) {
+          toast.error("Please fill in all required fields");
+          setIsSubmitting(false);
+          return;
+        }
 
         const response: SignUpResponse = await apiClient.userSignUp(
           data.email,
@@ -302,7 +319,13 @@ const SignUpFormComponent = ({
             ...data,
             phone_number: fullPhoneNumber,
           };
-          localStorage.setItem("lastSignupData", JSON.stringify(dataToSave));
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem("lastSignupData", JSON.stringify(dataToSave));
+            } catch (error) {
+              console.error("Error saving signup data to localStorage:", error);
+            }
+          }
           reset();
           successSignupSubmission();
           toast.success("Signup mail sent successfully! Check your email.");
@@ -314,7 +337,9 @@ const SignUpFormComponent = ({
           (response.status_code === 400 && msg.includes("already registered")) ||
           msg.includes("already exists")
         ) {
-          toast.error("This email is already registered. Please use a different email or try logging in.");
+          toast.error(
+            "This email is already registered. Please use a different email or try logging in."
+          );
         } else {
           toast.error(response.message || "Signup failed. Please try again.");
         }
@@ -463,41 +488,43 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
   const onSubmit = async (data: yup.InferType<typeof signInSchema>) => {
     setIsSubmitting(true);
     try {
-      posthog.capture("login_attempted", { email: data.email });
+      if (!data.email || !data.password) {
+        toast.error("Please enter both email and password");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      try {
+        posthog.capture("login_attempted", { email: data.email });
+      } catch (err) {
+        console.error("Error capturing analytics:", err);
+      }
 
       const loginResult = await apiClient.login(data.email, data.password);
 
-      if (loginResult.success && loginResult.status_code === 200) {
-        if (loginResult.data.access_token) {
-          localStorage.setItem("discover_minds_access_token", loginResult.data.access_token);
+      if (loginResult.success) {
+        if (loginResult.data?.access_token && loginResult.data?.refresh_token) {
+          saveTokens(loginResult.data.access_token, loginResult.data.refresh_token);
         }
-        if (loginResult.data.refresh_token) {
-          localStorage.setItem("discover_minds_refresh_token", loginResult.data.refresh_token);
+        
+        try {
+          router.replace("/chat/new");
+        } catch (routerError) {
+          console.error("Navigation error:", routerError);
+          // Fallback for navigation errors
+          if (typeof window !== 'undefined') {
+            window.location.href = "/chat/new";
+          }
         }
-
-        router.replace("/chat/new");
-        const profileResponse = await apiClient.fetchProfile();
-        const profileData = profileResponse.data;
-
-        dispatch({ type: "profile/setProfileData", payload: profileData });
-
-        posthog.identify(profileData.id, {
-          email: profileData.email,
-          name: profileData.full_name,
-        });
-        posthog.capture("login_successful", {
-          userId: profileData.id,
-          hasConnections: profileData.has_connections,
-        });
       } else {
         toast.error(loginResult.message || "Please check your credentials and try again.");
         posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });
       }
+      setIsSubmitting(false);
     } catch (err: any) {
       toast.error(err.message || "Please check your credentials and try again.");
       posthog.capture("login_error", { reason: err.message || "Unknown error" });
       console.error(err);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -527,7 +554,13 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
           console.error("Sign in error:", error);
         }}
       /> */}
-      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-2">
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          handleSubmit(onSubmit)(e);
+        }}
+        className="grid gap-2"
+      >
         <div>
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -613,7 +646,10 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
   const sendResetLink = async (email: string) => {
     setIsLoading(true);
     try {
-      const baseUrl = window.location.origin;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      if (!baseUrl) {
+        throw new Error('Could not determine base URL');
+      }
       const result = await apiClient.resetPassword(email, baseUrl);
       if (result.success) {
         setSubmittedEmail(email);
@@ -631,8 +667,12 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
     }
   };
 
-  const onSubmit = (data: { email: string }) => {
-    sendResetLink(data.email);
+  const onSubmit = async (data: { email: string }) => {
+    if (data && data.email) {
+      sendResetLink(data.email);
+    } else {
+      toast.error("Please enter a valid email address");
+    }
   };
 
   const handleResend = () => {
@@ -764,14 +804,15 @@ const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError })
   // };
   const handleSocialAuth = async () => {
     // Track login attempt with PostHog if available
-    if (typeof window !== "undefined" && window.posthog) {
-      window.posthog.capture("login_attempt", { provider: "google" });
-    }
     try {
+      if (typeof window !== "undefined" && posthog) {
+        posthog.capture("login_attempt", { provider: "google" });
+      }
+      
       const { data, error } = await supabaseHandler.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${typeof window !== "undefined" ? window.location.origin : ''}/auth/callback`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -786,10 +827,13 @@ const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError })
 
       if (error) {
         console.error("Error signing in with Google:", error);
+        throw error;
       }
     } catch (error) {
-      localStorage.removeItem("oauth_loading");
-      localStorage.removeItem("oauth_state");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("oauth_loading");
+        localStorage.removeItem("oauth_state");
+      }
       onError?.(error as Error);
     } finally {
       if (typeof window !== "undefined") {

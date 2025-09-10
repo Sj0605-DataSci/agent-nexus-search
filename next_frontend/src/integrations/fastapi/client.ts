@@ -542,11 +542,23 @@ export const apiClient = {
       });
 
       if (!response.ok) {
-        if (response.status === 499) {
-          toast.error("Maximum search limit reached. Please try again tomorrow.");
-          throw new Error("Maximum search limit reached");
-        } else {
-          toast.error("Something went wrong. Please try again later.");
+        try {
+          const errorData = await response.json();
+
+          if (response.status === 429 || response.status === 499) {
+            const errorMessage =
+              errorData?.message ||
+              "You've reached the maximum number of free searches. Please try again later or sign up for more.";
+            toast.error(errorMessage, { id: "rate-limit-error", duration: 5000 });
+            throw new Error(errorMessage);
+          } else {
+            const errorMessage =
+              errorData?.message || "Something went wrong. Please try again later.";
+            toast.error(errorMessage);
+            throw new Error(`Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+          }
+        } catch (parseError) {
+          // toast.error("Something went wrong. Please try again later.");
           throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
       }
@@ -592,10 +604,43 @@ export const apiClient = {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in streaming chat request:", error);
-      toast.error("Connection error. Please try again later.");
-      throw error;
+      toast.dismiss();
+      if (
+        error.message &&
+        (error.message.includes("429") ||
+          error.message.includes("rate limit") ||
+          error.message.includes("maximum number of free searches"))
+      ) {
+        const errorMessage = error.message.includes("Error:")
+          ? error.message.split(" - ")[1]
+          : error.message;
+        toast.error(
+          errorMessage ||
+            "You've reached the maximum number of free searches. Please try again later.",
+          {
+            id: "rate-limit-error",
+            duration: 5000,
+          }
+        );
+      } else {
+        toast.error("Connection error. Please try again later.", {
+          id: "connection-error",
+          duration: 3000,
+        });
+      }
+
+      return Promise.reject({
+        error: true,
+        message: error.message || "Connection error",
+        isRateLimit:
+          error.message &&
+          (error.message.includes("429") ||
+            error.message.includes("rate limit") ||
+            error.message.includes("maximum number of free searches")),
+        originalError: error,
+      });
     }
   },
 };

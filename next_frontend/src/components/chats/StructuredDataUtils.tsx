@@ -48,11 +48,9 @@ export interface Person {
  * Parses text to determine if it contains structured data with people information
  */
 export const parseStructuredData = (text: string) => {
-  // First try to parse as JSON
   try {
     const jsonData = JSON.parse(text);
 
-    // Check if it's an array of person objects with the expected structure
     if (Array.isArray(jsonData) && jsonData.length > 0 && jsonData[0].id) {
       const people = jsonData.map((person): Person => {
         // Calculate score from scoring array
@@ -313,16 +311,9 @@ const PersonCard = ({
   onPersonClick?: (person: Person) => void;
 }) => {
   const fullName = `${person.FName || ""} ${person.LName || ""}`.trim();
-  const scoreValue = person.Score ? parseInt(person.Score) : 0;
-  const scoreColor =
-    scoreValue >= 70 ? "bg-[#00C853]" : scoreValue >= 40 ? "bg-yellow-500" : "bg-red-500";
 
   // Get quotes from all_quotes
-  const quotes = person.all_quotes || [];
-
-  // Show headline if available
   const headline = person.Headline || "";
-  const location = person.Location || "";
 
   return (
     <div
@@ -388,12 +379,12 @@ const PersonCard = ({
           </div>
         </div>
 
-        <td className="p-2 align-middle py-2">
+        <div className="p-2 align-middle py-2">
           <div className="flex flex-col items-center gap-0.5">
             {person.scoring && Array.isArray(person.scoring) && person.scoring.length > 0 && (
               <>
                 {(person.scoring as ScoringItem[])
-                  ?.filter(item => item.confidence && item.traitTitle)
+                  .filter(item => item.confidence && item.traitTitle)
                   .sort((a, b) => b.confidence - a.confidence) // Sort by confidence in descending order
                   .slice(0, 3)
                   .map((scoreItem: ScoringItem, idx: number) => (
@@ -404,9 +395,9 @@ const PersonCard = ({
                         scoring: [scoreItem],
                       }}
                       type={
-                        scoreItem.confidence > 70
+                        scoreItem.confidence > 0.7
                           ? "yes"
-                          : scoreItem.confidence > 30
+                          : scoreItem.confidence > 0.3
                             ? "maybe"
                             : "no"
                       }
@@ -415,12 +406,12 @@ const PersonCard = ({
               </>
             )}
           </div>
-        </td>
+        </div>
 
         {person.MutualConnection && (
           <div className="flex items-center mt-2">
-            <div className="flex items-center text-xs justify-center h-5 w-5 rounded-full bg-blue-100 text-blue-800 font-medium mr-1">
-              A
+            <div className="flex items-center text-xs justify-center text-sm h-6 w-6 rounded-full bg-blue-100 text-blue-800 font-medium mr-1">
+              AG
             </div>
           </div>
         )}
@@ -453,7 +444,6 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
   });
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [selectedPersonIndex, setSelectedPersonIndex] = useState<number | null>(null);
-  const [expandedQuotes, setExpandedQuotes] = useState<Record<string, boolean>>({});
 
   const requestSort = useCallback((key: string) => {
     setSortConfig(prevConfig => ({
@@ -505,6 +495,9 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
           if (!aStr) return 1;
           if (!bStr) return -1;
           return bStr.localeCompare(aStr);
+        case "Company":
+          // For company: A to Z (ascending order)
+          return aStr.localeCompare(bStr);
         case "Headline":
         case "Location":
           // Alphabetical order
@@ -672,7 +665,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                               <ChevronDown className="h-4 w-4 opacity-50 transition-transform" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-gray-50 border-gray-100 border-1">
-                              {["Name", "Score", "YesScore", "Company", "Location", "SocialLinks"]
+                              {["Name", "Score", "YesScore", "Company"]
                                 .filter(col => columns.includes(col === "Name" ? "FName" : col))
                                 .map(col => (
                                   <DropdownMenuItem
@@ -758,7 +751,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                                 />
                               ) : (
                                 <span className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-primary text-base">
-                                  {initials.slice(0, 2)}
+                                  <CustomAvatar name={fullName} size="md" />
                                 </span>
                               )}
                             </a>
@@ -817,7 +810,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                                         type={
                                           scoreItem.confidence > 0.7
                                             ? "yes"
-                                            : scoreItem.confidence > 0.2
+                                            : scoreItem.confidence > 0.3
                                               ? "maybe"
                                               : "no"
                                         }
@@ -828,7 +821,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                           </div>
                         </td>
                         <td className="p-3 align-middle py-3">
-                          <div className="max-h-[130px] overflow-hidden relative">
+                          <div className="max-h-[180px] overflow-hidden relative">
                             {all_quotes.length > 0 && (
                               <div className="mb-4">
                                 <ul className="list-disc pl-5 ">
@@ -935,12 +928,15 @@ export const renderAsTable = (content: string) => {
     return processedPerson;
   });
 
+  // Debug logs removed
+
   if (!isStructured || people.length === 0) {
     return <div className="whitespace-pre-wrap">{content}</div>;
   }
+
   return (
-    <div className="flex w-full h-full flex-col">
-      <div className="mb-4 px-3 flex justify-between items-center">
+    <div>
+      <div className="mb-4 flex justify-between items-center">
         <h2 className="text-xl font-medium text-gray-600">
           {!!processedPeople?.length && processedPeople?.length > 0
             ? `I have found ${processedPeople?.length} results`
@@ -951,8 +947,7 @@ export const renderAsTable = (content: string) => {
             onClick={() => downloadAsCSV(people, columns)}
             variant="outline"
             size="sm"
-            className={`flex items-center gap-2 rounded-md px-3 border-1 border-gray-100 text-gray-700 hover:bg-gray-50
-            }`}
+            className={`flex items-center gap-2 rounded-md px-3 border-1 border-gray-100 text-gray-700 hover:bg-gray-50`}
           >
             <Download className="h-4 w-4" />
           </Button>

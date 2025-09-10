@@ -58,7 +58,7 @@ interface MessagePlaceholderProps {
 
 const MessagePlaceholder = ({ message }: MessagePlaceholderProps) => {
   return (
-    <div className="w-full md:px-20 animate-pulse">
+    <div className="w-full  animate-pulse">
       <div className="rounded-xl bg-white">
         <div className="flex items-start">
           <div className="flex-1">

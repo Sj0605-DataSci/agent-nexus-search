@@ -14,7 +14,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
 import { apiClient } from "@/integrations/fastapi/client";
-import { selectAgentCards } from "@/store/agentsSlice";
+import { selectAgentCards, selectHired } from "@/store/agentsSlice";
 import TagCarousel, { TagCategories } from "./TagCarousel";
 import { renderAsTable } from "./StructuredDataUtils";
 import dynamic from "next/dynamic";
@@ -22,6 +22,7 @@ import StyledMarkdown from "../common/StyledMarkdown";
 import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
 import FeedbackModule from "./FeedbackModule"; // Import FeedbackModule component
+import { format } from "sql-formatter";
 
 const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
 
@@ -52,6 +53,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
   const MESSAGES_PER_PAGE = 50;
 
+  const hiredRaw = useAppSelector(selectHired);
+  const hiredIds = hiredRaw.map(h => h.template_id);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
@@ -70,7 +74,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
   const sidebarCollapsed = useAppSelector(selectSidebarCollapsed);
 
   const dispatch = useAppDispatch();
-  const agentCards = useAppSelector(selectAgentCards);
   useEffect(() => {
     posthog.capture("chat_thread_viewed", {
       thread_id: threadId,
@@ -308,172 +311,192 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
           lastUpdateTime = now;
         }
       };
+      const accessToken = await Promise.resolve(getStoredToken());
+      let agentId = hiredIds[0] ?? null;
+      if (accessToken && hiredIds && !hiredIds[0]) {
+        updateMessageContent("⏳ Initializing agent...");
 
-      await apiClient.sendStreamingChatRequest(
-        agentCards[0]?.id ?? null,
-        q,
-        threadId ?? null,
-        (update: any) => {
-          switch (update.type) {
-            case "thread_id":
-              if (update.content && update.content.thread_id) {
-                const newThreadId = update.content.thread_id;
-                if (userAccessToken && newThreadId !== threadId) {
-                  const newUrl = `/chat/${newThreadId}`;
-                  window.history.replaceState({ path: newUrl }, "", newUrl);
-
-                  dispatch(
-                    addChatThread({
-                      id: newThreadId,
-                      query: q,
-                    })
-                  );
-                } else if (threadId && update.content.messages) {
-                  setChatPairs(prev => {
-                    const newMessages = Array.isArray(update.content.messages)
-                      ? update.content.messages
-                      : [];
-                    return [...newMessages, ...prev];
-                  });
-                  setCurrentMessageIndex(prev => prev + 1);
-                }
-              }
-              break;
-
-            case "thinking":
-              currentContent = "🧠 Thinking...";
-              updateMessageContent(currentContent);
-              setShowSearchQueries(true);
-              break;
-
-            case "sql_search_results":
-              if (update.content && update.content.message) {
-                searchQueries.push(update.content.message);
-                setStreamingSearchQueries(prev => [...prev, update.content.message]);
-              }
-              break;
-
-            case "vector_search_results":
-              if (update.content && update.content.message) {
-                searchQueries.push(update.content.message);
-                setStreamingSearchQueries(prev => [...prev, update.content.message]);
-              }
-              break;
-
-            case "fusion_ranking":
-              if (update.content && update.content.message) {
-                searchQueries.push(update.content.message);
-                setStreamingSearchQueries(prev => [...prev, update.content.message]);
-              }
-              break;
-
-            case "query_analysis":
-              if (update.content) {
-                searchQueries.push(update.content);
-                setStreamingSearchQueries(prev => [...prev, update.content]);
-              }
-              break;
-            case "sql_query":
-              if (update.content) {
-                if (update.content.query) {
-                  const sqlQuery = update.content.query;
-                  const fullSqlQuery = sqlQuery;
-                  console.log("SQL Query:", fullSqlQuery);
-                  searchQueries.push(fullSqlQuery);
-                  setStreamingSearchQueries(prev => [...prev, fullSqlQuery]);
-                } else if (update.content.message) {
-                  searchQueries.push(update.content.message);
-                  setStreamingSearchQueries(prev => [...prev, update.content.message]);
-                }
-              }
-              break;
-
-            case "token":
-              if (update.content && update.content.text) {
-                currentContent = update.content.text;
-
-                updateMessageContent(currentContent);
-
-                setMessages(m => {
-                  if (m.length === 0) return m;
-                  const lastIndex = m.length - 1;
-                  const updatedMessages = [...m];
-                  updatedMessages[lastIndex] = {
-                    ...updatedMessages[lastIndex],
-                    id: update.content.message_id || updatedMessages[lastIndex].id,
-                  };
-                  return updatedMessages;
-                });
-                setShowSearchQueries(false);
-                setIsStreaming(false);
-              }
-
-              setShowSearchQueries(false);
-
-              posthog.capture("search_completed", {
-                query: q,
-                search_mode: "basic",
-                world_connections_mode: "connections",
-                format: "table",
-                thread_id: threadId,
-                duration_ms: Date.now() - searchStartTime,
-                sources_count: sources.length,
-                search_queries_count: searchQueries.length,
-                has_answer: true,
-              });
-              break;
-
-            case "connected":
-              console.log("Stream connected");
-              break;
-            case "error":
-              const rawErrorMessage =
-                update.content && update.content.message
-                  ? update.content.message
-                  : "Something went wrong. Please try again.";
-
-              currentContent = createUserFriendlyErrorMessage(rawErrorMessage);
-              updateMessageContent(currentContent);
-
-              posthog.capture("stream_error", {
-                query: q,
-                agent_id: "arya",
-                error: rawErrorMessage,
-              });
-              break;
-
-            case "done":
-              setIsStreaming(false);
-              setIsLoading(false);
-              setShowSearchQueries(false);
-
-              if (update.content?.message_id) {
-                setMessages(m => {
-                  if (m.length === 0) return m;
-                  const lastIndex = m.length - 1;
-                  const updatedMessages = [...m];
-                  updatedMessages[lastIndex] = {
-                    ...updatedMessages[lastIndex],
-                    id: update.content.message_id,
-                  };
-                  return updatedMessages;
-                });
-              }
-              break;
-
-            default:
-              console.warn("Unknown update type:", update.type);
-              break;
-          }
+        let attempts = 0;
+        const maxAttempts = 10; // 10 attempts * 500ms = 5 seconds max wait time
+        while (!agentId && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          agentId = hiredIds[0] ?? null;
+          attempts++;
         }
-      );
-    } catch (error) {
-      toast.error(error as string);
+
+        if (!agentId) {
+          console.warn("Could not get agent ID after waiting");
+        }
+      }
+
+      await apiClient.sendStreamingChatRequest(agentId, q, threadId ?? null, (update: any) => {
+        switch (update.type) {
+          case "thread_id":
+            if (update.content && update.content.thread_id) {
+              const newThreadId = update.content.thread_id;
+              if (userAccessToken && newThreadId !== threadId) {
+                const newUrl = `/chat/${newThreadId}`;
+                window.history.replaceState({ path: newUrl }, "", newUrl);
+
+                dispatch(
+                  addChatThread({
+                    id: newThreadId,
+                    query: q,
+                  })
+                );
+              } else if (threadId && update.content.messages) {
+                setChatPairs(prev => {
+                  const newMessages = Array.isArray(update.content.messages)
+                    ? update.content.messages
+                    : [];
+                  return [...newMessages, ...prev];
+                });
+                setCurrentMessageIndex(prev => prev + 1);
+              }
+            }
+            break;
+
+          case "thinking":
+            currentContent = "🧠 Thinking...";
+            updateMessageContent(currentContent);
+            setShowSearchQueries(true);
+            break;
+
+          case "sql_search_results":
+            if (update.content && update.content.message) {
+              searchQueries.push(update.content.message);
+              setStreamingSearchQueries(prev => [...prev, update.content.message]);
+            }
+            break;
+
+          case "vector_search_results":
+            if (update.content && update.content.message) {
+              searchQueries.push(update.content.message);
+              setStreamingSearchQueries(prev => [...prev, update.content.message]);
+            }
+            break;
+
+          case "fusion_ranking":
+            if (update.content && update.content.message) {
+              searchQueries.push(update.content.message);
+              setStreamingSearchQueries(prev => [...prev, update.content.message]);
+            }
+            break;
+
+          case "query_analysis":
+            if (update.content) {
+              searchQueries.push(update.content);
+              setStreamingSearchQueries(prev => [...prev, update.content]);
+            }
+            break;
+          case "sql_query":
+            if (update.content) {
+              if (update.content.query) {
+                const sqlQuery = update.content.query;
+                const fullSqlQuery = sqlQuery;
+                console.log("SQL Query:", fullSqlQuery);
+                searchQueries.push(fullSqlQuery);
+                setStreamingSearchQueries(prev => [...prev, fullSqlQuery]);
+              } else if (update.content.message) {
+                searchQueries.push(update.content.message);
+                setStreamingSearchQueries(prev => [...prev, update.content.message]);
+              }
+            }
+            break;
+          case "final_answer":
+            console.log("Final Answer1---", update.content.message);
+            console.log("Final Answer:", update.content.message[0].content);
+            if (update.content && update.content.message[0]?.content) {
+              currentContent = update.content.message[0].content;
+              updateMessageContent(currentContent);
+
+              setMessages(m => {
+                if (m.length === 0) return m;
+                const lastIndex = m.length - 1;
+                const updatedMessages = [...m];
+                updatedMessages[lastIndex] = {
+                  ...updatedMessages[lastIndex],
+                  id: update.content.message_id || updatedMessages[lastIndex].id,
+                };
+                return updatedMessages;
+              });
+              setShowSearchQueries(false);
+              setIsStreaming(false);
+            }
+
+            setShowSearchQueries(false);
+
+            posthog.capture("search_completed", {
+              query: q,
+              search_mode: "basic",
+              world_connections_mode: "connections",
+              format: "table",
+              thread_id: threadId,
+              duration_ms: Date.now() - searchStartTime,
+              sources_count: sources.length,
+              search_queries_count: searchQueries.length,
+              has_answer: true,
+            });
+            break;
+
+          case "connected":
+            console.log("Stream connected");
+            break;
+          case "error":
+            const rawErrorMessage =
+              update.content && update.content.message
+                ? update.content.message
+                : "Something went wrong. Please try again.";
+
+            currentContent = createUserFriendlyErrorMessage(rawErrorMessage);
+            updateMessageContent(currentContent);
+
+            posthog.capture("stream_error", {
+              query: q,
+              agent_id: "arya",
+              error: rawErrorMessage,
+            });
+            break;
+
+          case "done":
+            setIsStreaming(false);
+            setIsLoading(false);
+            setShowSearchQueries(false);
+
+            if (update.content?.message_id) {
+              setMessages(m => {
+                if (m.length === 0) return m;
+                const lastIndex = m.length - 1;
+                const updatedMessages = [...m];
+                updatedMessages[lastIndex] = {
+                  ...updatedMessages[lastIndex],
+                  id: update.content.message_id,
+                };
+                return updatedMessages;
+              });
+            }
+            break;
+
+          default:
+            console.warn("Unknown update type:", update.type);
+            break;
+        }
+      });
+    } catch (error: any) {
       console.error("Error sending chat request:", error);
+
+      const isRateLimitError =
+        error?.isRateLimit ||
+        (error?.message &&
+          (error.message.includes("429") ||
+            error.message.includes("rate limit") ||
+            error.message.includes("maximum number of free searches")));
+
       posthog.capture("search_error", {
         query: q,
         agent_id: "arya",
         error: error instanceof Error ? error.message : String(error),
+        isRateLimit: isRateLimitError,
       });
 
       setMessages(m =>
@@ -481,8 +504,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
           msg.id === newLoadingMessageId
             ? {
                 ...msg,
-                content:
-                  "Sorry, there was an error processing your request. Please try again later.",
+                content: isRateLimitError
+                  ? "⚠️ Search limit reached. Please try again later or upgrade your plan."
+                  : "⚠️ An error occurred while searching. Please try again later.",
+                error: true,
               }
             : msg
         )
@@ -506,14 +531,14 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (query?.trim() && !isStreaming) {
-      throttledHandleSearch();
+      handleSearch();
     }
   };
   useEffect(() => {
     if (initialQuery && query?.trim() && !isStreaming) {
-      throttledHandleSearch();
+      handleSearch();
     }
-  }, [initialQuery, throttledHandleSearch]);
+  }, [initialQuery]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -537,9 +562,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
   return (
     <div>
-      <div
-        className={` relative z-10 ${sidebarCollapsed ? "md:ml-5" : "md:ml-12"} md:px-4 pt-8 flex flex-col`}
-      >
+      <div className={` relative z-10  md:px-4 pt-4 flex flex-col`}>
         {threadId === "new" && messages?.length === 0 && !isStreaming && (
           <div className={`transition-all duration-500 text-center mb-8`}>
             <div className="items-center justify-center h-20 "></div>
@@ -573,7 +596,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
             onSubmit={handleSubmit}
             isStreaming={isStreaming}
             hideGroupOption={false}
-            defaultSearchButton={false}
+            defaultSearchButton={true}
           />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
@@ -612,13 +635,15 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
           )}
         </div>
       </div>
-      {!(threadId === "new" || isStreaming) && (messages.length === 0 || chatPairs.length === 0) ? (
-        <div className="flex w-full h-full">
+      {!(threadId === "new" || isStreaming) && messages.length === 0 && isLoading ? (
+        <div className="flex w-full  max-w-4xl mx-auto h-full">
           <MessagePlaceholder
             message={
-              threadId !== "new" && initialLoadComplete
-                ? "No messages found for this conversation. Please try another search."
-                : undefined
+              isLoading
+                ? undefined
+                : threadId !== "new" && initialLoadComplete
+                  ? "No messages found for this conversation. Please try another search."
+                  : undefined
             }
           />
         </div>
@@ -628,68 +653,65 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
       {messages && messages?.length > 0 && (
         <div
           ref={chatScrollContainerRef}
-          className="w-full md:px-20 overflow-y-scroll scrollbar-hide"
+          className="max-w-4xl mx-auto px-2 w-full  md:px-0 overflow-y-scroll scrollbar-hide"
         >
-          <div className="space-y-6">
-            {messages?.map(m => {
-              return (
-                m?.type === "agent" && (
-                  <>
-                    <div key={m?.id || 1} className="rounded-xl bg-white">
-                      <div className="flex items-start">
-                        <div className="flex-1 h-full ">
-                          {isStreaming && (
-                            <SearchQueryDisplay
-                              showSearchQueries={showSearchQueries}
-                              streamingSearchQueries={streamingSearchQueries}
-                              isStreaming={isStreaming}
-                            />
-                          )}
+          {messages?.map(m => {
+            return (
+              m?.type === "agent" && (
+                <>
+                  <div
+                    key={m?.id || 1}
+                    className="rounded-xl  flex-col flex-1 h-full w-full space-y-4 overflow-hidden flex items-start bg-white"
+                  >
+                    {isStreaming && (
+                      <SearchQueryDisplay
+                        showSearchQueries={showSearchQueries}
+                        streamingSearchQueries={streamingSearchQueries}
+                        isStreaming={isStreaming}
+                      />
+                    )}
 
-                          {(!m.sources || m.sources.length === 0) && !isStreaming && (
-                            <div className="text-gray-700">
-                              {m?.content === null ? (
-                                <div className="flex items-center">
-                                  <div className="mr-2">
-                                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                                  </div>
-                                  <p className="italic">Query seems empty, Please Search again.</p>
-                                </div>
-                              ) : /(fname|lname|link)/i.test(m.content) ? (
-                                <div className="flex w-full">{renderAsTable(m.content)}</div>
-                              ) : (
-                                <StyledMarkdown
-                                  content={m.content}
-                                  sources={m.sources || m.sources_gathered}
-                                />
-                              )}
+                    {(!m.sources || m.sources.length === 0) && !isStreaming && (
+                      <div className="text-gray-700">
+                        {m?.content === null ? (
+                          <div className="flex items-center">
+                            <div className="mr-2">
+                              <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
                             </div>
-                          )}
-
-                          <div className="mt-3 pb-4 px-3 flex justify-between items-center">
-                            <span
-                              title={getFullTimestamp(m.timestamp)}
-                              className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"
-                            >
-                              <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
-                              {formatTimestamp(m.timestamp)}
-                            </span>
-                            {!isLoading && m.type === "agent" && (
-                              <FeedbackModule
-                                messageId={m.id}
-                                threadId={threadId}
-                                setMessages={setMessages}
-                              />
-                            )}
+                            <p className="italic">Query seems empty, Please Search again.</p>
                           </div>
-                        </div>
+                        ) : /(first_name|last_name)/i.test(m.content) ? (
+                          <div className="flex w-full">{renderAsTable(m.content)}</div>
+                        ) : (
+                          <StyledMarkdown
+                            content={m.content}
+                            sources={m.sources || m.sources_gathered}
+                          />
+                        )}
                       </div>
+                    )}
+
+                    <div className="mt-3 pb-4 px-3 flex w-full justify-between items-center">
+                      <span
+                        title={getFullTimestamp(m.timestamp)}
+                        className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"
+                      >
+                        <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
+                        {formatTimestamp(m.timestamp)}
+                      </span>
+                      {!isLoading && m.type === "agent" && (
+                        <FeedbackModule
+                          messageId={m.id}
+                          threadId={threadId}
+                          setMessages={setMessages}
+                        />
+                      )}
                     </div>
-                  </>
-                )
-              );
-            })}
-          </div>
+                  </div>
+                </>
+              )
+            );
+          })}
         </div>
       )}
 

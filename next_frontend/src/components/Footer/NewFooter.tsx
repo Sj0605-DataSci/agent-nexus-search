@@ -76,7 +76,7 @@ export default function NewFooter() {
     <footer className="bg-[#0E3D15] pt-16 px-3">
       <div className="max-w-6xl mx-auto px-4 lg:px-0  py-20 bg-white items-center rounded-xl flex flex-col">
         <h2 className="text-[32px] font-medium text-gray-900 mb-4">
-          Start making your warm intro moreimpacting
+          Make your warm intro more impactful
         </h2>
         <p className="text-gray-600 text-md  mb-10">
           AI that maps your network, delivers warm intros effortlessly.

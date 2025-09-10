@@ -8,6 +8,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfessionalProfile from "@/components/profile/ProfessionalProfile";
 import UsageStatsCard from "@/components/profile/UsageStatsCard";
 import ImportConnectionsModal from "@/components/profile/ImportConnectionsModal";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 
 function ProfilePage() {
   const router = useRouter();
@@ -25,6 +26,10 @@ function ProfilePage() {
 
   return (
     <div>
+      {!profile?.id && <ComingSoonOverlay />}
+      <div
+        className={`container mx-auto px-4 ${!profile?.id ? "opacity-30 pointer-events-none" : ""}`}
+      ></div>
       <div className="container mx-auto px-4 pt-8 pb-16 max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-gray-900">My Profile</h1>
 

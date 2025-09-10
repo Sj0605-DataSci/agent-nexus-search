@@ -1,8 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { FaHandshake } from "react-icons/fa6";
-import { BsMegaphone } from "react-icons/bs";
-import { GiSpiderWeb } from "react-icons/gi";
 import { FiCheckCircle, FiSearch, FiArrowRight } from "react-icons/fi";
 import { FaCrown } from "react-icons/fa";
 import { BsShieldCheck, BsBuilding } from "react-icons/bs";
@@ -105,10 +102,17 @@ const PricingPlans = () => {
   };
 
   return (
-    <div className="bg-white items-center justify-center py-24" id="pricing">
+    <section
+      className="bg-white items-center justify-center py-24"
+      id="pricing"
+      aria-labelledby="pricing-heading"
+    >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 max-w-[662px] mx-auto">
-          <h2 className="text-3xl md:text-4xl lg:text-[48px] font-[500] text-[#0E3D15] mb-2 md:mb-4">
+          <h2
+            className="text-3xl md:text-4xl lg:text-[48px] font-[500] text-[#0E3D15] mb-2 md:mb-4"
+            id="pricing-heading"
+          >
             Simple & transparent pricing for all business sizes
           </h2>
         </div>
@@ -171,6 +175,7 @@ const PricingPlans = () => {
                 <h3
                   className={`text-md md:text-[22px] font-bold uppercase tracking-wider text-[#0E3D15] 
                                transition-all duration-300 origin-left`}
+                  id="hunter-plan-heading"
                 >
                   Hunter plan
                 </h3>
@@ -256,6 +261,7 @@ const PricingPlans = () => {
                 <h3
                   className={`text-md md:text-[22px] font-bold uppercase tracking-wider text-white 
                                transition-all duration-300 origin-left`}
+                  id="pro-plan-heading"
                 >
                   Pro plan
                 </h3>
@@ -341,6 +347,7 @@ const PricingPlans = () => {
                 <h3
                   className={`text-md md:text-[22px] font-bold uppercase tracking-wider text-[#0E3D15] 
                                transition-all duration-300 origin-left`}
+                  id="enterprise-plan-heading"
                 >
                   Enterprise plan
                 </h3>
@@ -412,7 +419,7 @@ const PricingPlans = () => {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

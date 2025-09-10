@@ -1,15 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { FiLock } from "react-icons/fi";
+import { useAppSelector } from "@/store";
+import { selectSidebarCollapsed } from "@/store/uiSlice";
 
 interface ComingSoonOverlayProps {
   onClose?: () => void;
 }
 
 export default function ComingSoonOverlay({ onClose }: ComingSoonOverlayProps) {
+  const collapsed = useAppSelector(selectSidebarCollapsed);
   return (
-    <div className="fixed inset-0 md:left-64 z-40 flex items-center justify-center p-4">
+    <div
+      className={`fixed inset-0 top-15 md:top-0 ${collapsed ? "md:left-15" : "md:left-64"} z-40 flex items-center justify-center p-4`}
+    >
       <div className="absolute inset-0 backdrop-blur-[3px] "></div>
       <div className="relative w-full max-w-lg bg-white p-8 rounded-xl shadow-xl border border-gray-100">
         <div className="text-center">
