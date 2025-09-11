@@ -20,7 +20,7 @@ const NewHeroSection = () => {
 
       setTimeout(() => {
         emailInput.focus();
-      }, 800);
+      }, 100);
     }
   };
 
@@ -58,7 +58,7 @@ const NewHeroSection = () => {
       if (label?.trim()) {
         router.push(`/user-query?q=${encodeURIComponent(label?.trim())}`);
       }
-    }, 500);
+    }, 100);
   };
 
   return (

@@ -602,10 +602,9 @@ export const SearchQueryDisplay = ({
                                 <div className="whitespace-pre bg-muted/50 p-3 font-mono text-xs text-muted-foreground rounded-md">
                                   {(() => {
                                     try {
-
                                       const formattedQuery = format(query, {
                                         language: "postgresql",
-                                        indent: "  ",
+                                        tabWidth: 2,
                                       });
                                       return (
                                         <div className="whitespace-pre bg-muted/50 p-3 font-mono text-xs text-muted-foreground rounded-md">

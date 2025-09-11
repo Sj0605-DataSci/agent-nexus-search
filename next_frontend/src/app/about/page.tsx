@@ -73,8 +73,8 @@ export default function AboutPage() {
                 searching for a needle in a haystack.
               </p>
               <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
-                What separates great companies from good ones is how precisely they can connect with
-                the right people at the right time.
+                What separates great people and companies from average ones is how efficiently they
+                can connect with the right people at the right time.
               </p>
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function AboutPage() {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
-                  Arya isn't just another search tool. She's your relentless tracker—sharp,
+                  Arya isn't just another search tool. She's your relentless tracker-sharp,
                   adaptive, and always learning.
                 </p>
                 <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
@@ -102,9 +102,7 @@ export default function AboutPage() {
               </div>
               <div className="text-center">
                 <div className="text-8xl mb-4">⚔️</div>
-                <p className="text-lg text-gray-500 italic">
-                  "A search agent that evolves with you"
-                </p>
+                <p className="text-lg text-gray-500 italic">A search agent that evolves with you</p>
               </div>
             </div>
           </div>

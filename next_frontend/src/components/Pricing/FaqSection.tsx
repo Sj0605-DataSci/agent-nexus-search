@@ -14,11 +14,9 @@ const faqData: FaqItemData[] = [
     answer: (
       <>
         <p>
-          DiscoverMinds.ai is a mutual network-sharing platform designed to unlock hidden
-          opportunities within your professional extended network. It addresses the fragmentation of
-          professional networks across platforms like LinkedIn, Twitter, and personal contacts,
-          helping you leverage warm introductions to access the 70-85% of jobs and opportunities in
-          the hidden market.
+          DiscoverMinds.ai brings all your professional contacts - LinkedIn, Twitter, and personal,
+          into one smart, searchable hub. Easily find the right people and unlock new opportunities
+          through trusted connections.
         </p>
       </>
     ),

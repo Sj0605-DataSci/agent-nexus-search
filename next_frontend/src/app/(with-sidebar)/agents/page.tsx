@@ -204,7 +204,7 @@ const Agents = () => {
           </div>
         )}
 
-        {!!hiredIds &&hiredIds.length > 0&& (
+        {!!hiredIds && hiredIds.length > 0 && (
           <div className="max-w-6xl mx-auto">
             {currentAgent && currentConfig && (
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
