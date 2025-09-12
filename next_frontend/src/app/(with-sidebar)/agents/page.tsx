@@ -16,7 +16,6 @@ import { apiClient } from "@/integrations/fastapi/client";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
-import Link from "next/link";
 import Image from "next/image";
 import { loadAgents, selectAgentsStatus, selectHired, selectTemplates } from "@/store/agentsSlice";
 import { getAgentAvatar } from "@/constant/getAgentAvatar";
