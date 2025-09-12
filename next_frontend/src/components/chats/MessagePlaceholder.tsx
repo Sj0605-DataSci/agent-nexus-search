@@ -13,7 +13,7 @@ const PlaceholderDesktopRow = () => (
     </td>
     <td className="p-3 min-w-40 py-3">
       <div className="flex items-center justify-center">
-        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
+        <div className="h-7 w-7 -ml-7 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
       </div>
     </td>
     <td className="p-3 w-full  py-3">

@@ -72,7 +72,7 @@ const SearchInputField = memo(
               minHeight: defaultSearchButton ? "120px" : "auto",
             }}
           >
-            {!hideGroupOption && <SearchScopeSelector disabled={isAuthenticated || isStreaming} />}
+            {!hideGroupOption && <SearchScopeSelector disabled={!isAuthenticated || isStreaming} />}
             <form onSubmit={onSubmit}>
               <div className="relative">
                 <Textarea

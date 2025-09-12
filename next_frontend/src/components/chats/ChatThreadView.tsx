@@ -31,6 +31,19 @@ import { WorkerMessage } from "@/types/api";
 import { ChatPair, CachedThread, ChatThreadViewProps } from "@/types/chatThreadView";
 import { getStoredToken } from "@/utils/tokenManagement";
 
+const isEmptyOrErrorMessage = (content: string | null | undefined): boolean => {
+  if (!content) return true;
+  
+  const errorMessages = [
+    "null",
+    "No matching connections found for your query.",
+    "⚠️ An error occurred while searching. Please try again later.",
+    "⏳ Searching for information..."
+  ];
+  
+  return errorMessages.includes(content);
+};
+
 const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery = "" }) => {
   const chatWorkerRef = useRef<Worker | null>(null);
   const userAccessToken = getStoredToken();
@@ -725,10 +738,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
                   {(!m.sources || m.sources.length === 0) && !isStreaming && (
                     <div className="text-gray-700 w-full ">
-                      {m?.content === null ||
-                      m?.content === "null" ||
-                      m?.content === "No matching connections found for your query." ||
-                      m?.content === "⏳ Searching for information..." ||
+                      {isEmptyOrErrorMessage(m?.content) ||
                       m?.content === "" ? (
                         <div className="flex flex-col items-center justify-center w-full py-10  px-4 mx-auto">
                           <Image

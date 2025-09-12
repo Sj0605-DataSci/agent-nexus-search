@@ -41,7 +41,7 @@ const ChatThreadItem: React.FC<ChatThreadItemProps> = ({
             ? "bg-indigo-50 text-indigo-800 border-l-2 border-indigo-500 shadow-sm"
             : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
         }`}
-        prefetch={false}
+        prefetch={true}
         title={collapsed && !isMobile ? threadPreview : undefined}
       >
         <div
