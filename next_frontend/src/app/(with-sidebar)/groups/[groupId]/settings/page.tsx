@@ -98,7 +98,7 @@ export default function SettingsPage({ params }: SettingsPageProps) {
       </div>
 
       <div className="w-full">
-        <TabNavigation groupId={groupId} activeTab="settings" />
+        <TabNavigation groupId={groupId} />
         <div className="space-y-6">
           {/* Group Settings Card */}
           <div className="rounded-lg border border-gray-300/50 bg-card text-card-foreground">
