@@ -19,10 +19,7 @@ export default function GlobalError({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <ErrorFallback 
-          error={error} 
-          resetErrorBoundary={reset} 
-        />
+        <ErrorFallback error={error} resetErrorBoundary={reset} />
       </body>
     </html>
   );

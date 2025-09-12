@@ -33,14 +33,14 @@ import { getStoredToken } from "@/utils/tokenManagement";
 
 const isEmptyOrErrorMessage = (content: string | null | undefined): boolean => {
   if (!content) return true;
-  
+
   const errorMessages = [
     "null",
     "No matching connections found for your query.",
     "⚠️ An error occurred while searching. Please try again later.",
-    "⏳ Searching for information..."
+    "⏳ Searching for information...",
   ];
-  
+
   return errorMessages.includes(content);
 };
 
@@ -738,8 +738,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
                   {(!m.sources || m.sources.length === 0) && !isStreaming && (
                     <div className="text-gray-700 w-full ">
-                      {isEmptyOrErrorMessage(m?.content) ||
-                      m?.content === "" ? (
+                      {isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
                         <div className="flex flex-col items-center justify-center w-full py-10  px-4 mx-auto">
                           <Image
                             src="/search/NoDataFound.svg"

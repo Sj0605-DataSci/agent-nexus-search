@@ -55,8 +55,7 @@ const UserProfileSection: React.FC<UserProfileSectionProps> = ({
         title={
           collapsed && !isMobile
             ? profile?.full_name
-              ? profile.full_name.substring(0, 10) +
-                (profile.full_name.length > 10 ? "..." : "")
+              ? profile.full_name.substring(0, 10) + (profile.full_name.length > 10 ? "..." : "")
               : "User"
             : undefined
         }

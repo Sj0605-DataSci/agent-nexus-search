@@ -28,6 +28,12 @@ export interface EnhancedProfileResponse {
   filters_applied?: Record<string, any>;
 }
 
-export type ProfileMatchType = 'yes' | 'maybe' | 'no';
-export type ProfileSortOption = 'relevance' | 'name' | 'company' | 'yes_score' | 'maybe_score' | 'no_score';
-export type ProfileViewMode = 'grid' | 'list';
+export type ProfileMatchType = "yes" | "maybe" | "no";
+export type ProfileSortOption =
+  | "relevance"
+  | "name"
+  | "company"
+  | "yes_score"
+  | "maybe_score"
+  | "no_score";
+export type ProfileViewMode = "grid" | "list";

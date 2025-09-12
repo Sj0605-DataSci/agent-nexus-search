@@ -15,7 +15,7 @@ export const handleLinkClickSmartly = () => {
 export default function FriendsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState("");
-  
+
   const profile = useAppSelector(state => state.profile.profile);
   const isAuthenticated = !!profile?.id;
 

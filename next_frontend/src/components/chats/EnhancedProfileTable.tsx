@@ -17,12 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CustomAvatar from "@/components/ui/CustomAvatar";
 import { EnhancedProfile, ProfileSortOption } from "@/types/enhancedProfile";
 
@@ -47,25 +42,25 @@ const downloadEnhancedProfilesCSV = (profiles: EnhancedProfile[]) => {
   const csvHeaders = [
     "Name",
     "Company",
-    "Position", 
+    "Position",
     "Location",
     "LinkedIn URL",
     "Yes Score",
     "Yes Confidence",
     "Yes Traits",
-    "Maybe Score", 
+    "Maybe Score",
     "Maybe Confidence",
     "Maybe Traits",
     "No Score",
-    "No Confidence", 
+    "No Confidence",
     "No Traits",
     "All Quotes",
-    "Mutual Connection"
+    "Mutual Connection",
   ];
 
   const csvRows = profiles.map(profile => {
     const fullName = `${profile.first_name} ${profile.last_name}`.trim();
-    
+
     return [
       fullName,
       profile.company || "",
@@ -76,13 +71,13 @@ const downloadEnhancedProfilesCSV = (profiles: EnhancedProfile[]) => {
       profile.yes_score.confidence.toString(),
       profile.yes_score.matching_traits.join("; "),
       profile.maybe_score.confidence.toString(),
-      profile.maybe_score.confidence.toString(), 
+      profile.maybe_score.confidence.toString(),
       profile.maybe_score.matching_traits.join("; "),
       profile.no_score.confidence.toString(),
       profile.no_score.confidence.toString(),
       profile.no_score.matching_traits.join("; "),
       profile.all_quotes.join("; "),
-      profile.mutual_connection || ""
+      profile.mutual_connection || "",
     ].map(field => {
       // Escape CSV fields that contain commas, quotes, or newlines
       const escapedField = String(field).replace(/"/g, '""');
@@ -93,10 +88,7 @@ const downloadEnhancedProfilesCSV = (profiles: EnhancedProfile[]) => {
     });
   });
 
-  const csvContent = [
-    csvHeaders.join(","),
-    ...csvRows.map(row => row.join(","))
-  ].join("\r\n");
+  const csvContent = [csvHeaders.join(","), ...csvRows.map(row => row.join(","))].join("\r\n");
 
   // Create and download file
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -110,21 +102,21 @@ const downloadEnhancedProfilesCSV = (profiles: EnhancedProfile[]) => {
   document.body.removeChild(link);
 };
 
-const ScoreCell: React.FC<{ 
+const ScoreCell: React.FC<{
   score: { confidence: number; quotes: string[]; matching_traits: string[] };
-  type: 'yes' | 'maybe' | 'no';
+  type: "yes" | "maybe" | "no";
 }> = ({ score, type }) => {
   const getColorClasses = (type: string, confidence: number) => {
     if (confidence === 0) {
       return "bg-gray-300 text-gray-600 border-gray-400";
     }
-    
+
     switch (type) {
-      case 'yes':
+      case "yes":
         return "bg-blue-600 text-white border-blue-700"; // Dark blue
-      case 'maybe':
+      case "maybe":
         return "bg-blue-300 text-blue-900 border-blue-400"; // Light blue
-      case 'no':
+      case "no":
         return "bg-gray-400 text-gray-800 border-gray-500"; // Grey
       default:
         return "bg-gray-300 text-gray-600 border-gray-400";
@@ -151,7 +143,9 @@ const ScoreCell: React.FC<{
           <div className="text-sm font-medium">Supporting Quotes:</div>
           <div className="text-xs">
             {score.quotes.slice(0, 2).map((quote, idx) => (
-              <div key={idx} className="italic">"{quote}"</div>
+              <div key={idx} className="italic">
+                "{quote}"
+              </div>
             ))}
             {score.quotes.length > 2 && (
               <div className="text-gray-400">+{score.quotes.length - 2} more</div>
@@ -166,11 +160,13 @@ const ScoreCell: React.FC<{
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`
+          <div
+            className={`
             inline-flex items-center justify-center w-8 h-8 rounded-full border-2 
             font-semibold text-sm transition-all duration-200 hover:scale-110 cursor-pointer
             ${getColorClasses(type, score.confidence)}
-          `}>
+          `}
+          >
             {score.confidence}
           </div>
         </TooltipTrigger>
@@ -185,18 +181,18 @@ const ScoreCell: React.FC<{
 const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
   profiles,
   title = "Enhanced Profile Results",
-  onProfileSelect
+  onProfileSelect,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "relevance",
     direction: "desc",
   });
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   const requestSort = useCallback((key: ProfileSortOption) => {
     setSortConfig(prevConfig => ({
       key,
-      direction: prevConfig.key === key && prevConfig.direction === 'desc' ? 'asc' : 'desc',
+      direction: prevConfig.key === key && prevConfig.direction === "desc" ? "asc" : "desc",
     }));
   }, []);
 
@@ -205,47 +201,58 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
       let aValue: any, bValue: any;
 
       switch (sortConfig.key) {
-        case 'name':
+        case "name":
           aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
           bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
           break;
-        case 'company':
-          aValue = a.company?.toLowerCase() || '';
-          bValue = b.company?.toLowerCase() || '';
+        case "company":
+          aValue = a.company?.toLowerCase() || "";
+          bValue = b.company?.toLowerCase() || "";
           break;
-        case 'yes_score':
+        case "yes_score":
           aValue = a.yes_score.confidence;
           bValue = b.yes_score.confidence;
           break;
-        case 'maybe_score':
+        case "maybe_score":
           aValue = a.maybe_score.confidence;
           bValue = b.maybe_score.confidence;
           break;
-        case 'no_score':
+        case "no_score":
           aValue = a.no_score.confidence;
           bValue = b.no_score.confidence;
           break;
-        case 'relevance':
+        case "relevance":
         default:
           // Sort by highest confidence score across all categories
-          aValue = Math.max(a.yes_score.confidence, a.maybe_score.confidence, a.no_score.confidence);
-          bValue = Math.max(b.yes_score.confidence, b.maybe_score.confidence, b.no_score.confidence);
+          aValue = Math.max(
+            a.yes_score.confidence,
+            a.maybe_score.confidence,
+            a.no_score.confidence
+          );
+          bValue = Math.max(
+            b.yes_score.confidence,
+            b.maybe_score.confidence,
+            b.no_score.confidence
+          );
           break;
       }
 
-      if (typeof aValue === 'string') {
-        return sortConfig.direction === 'asc' 
+      if (typeof aValue === "string") {
+        return sortConfig.direction === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
 
-      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
     });
   }, [profiles, sortConfig]);
 
-  const handleProfileClick = useCallback((profile: EnhancedProfile) => {
-    onProfileSelect?.(profile);
-  }, [onProfileSelect]);
+  const handleProfileClick = useCallback(
+    (profile: EnhancedProfile) => {
+      onProfileSelect?.(profile);
+    },
+    [onProfileSelect]
+  );
 
   return (
     <div className="w-full">
@@ -255,27 +262,27 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
           <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
           <p className="text-sm text-gray-600">{profiles.length} profiles found</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setViewMode('table')}
+              onClick={() => setViewMode("table")}
               className={`p-2 rounded-md transition-colors ${
-                viewMode === 'table' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+                viewMode === "table"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
               title="Table View"
             >
               <List className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setViewMode('cards')}
+              onClick={() => setViewMode("cards")}
               className={`p-2 rounded-md transition-colors ${
-                viewMode === 'cards' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+                viewMode === "cards"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
               title="Card View"
             >
@@ -297,7 +304,7 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
       </div>
 
       {/* Table View */}
-      {viewMode === 'table' && (
+      {viewMode === "table" && (
         <div className="rounded-xl bg-white shadow-sm border border-gray-200">
           <div className="overflow-auto">
             <table className="w-full">
@@ -305,16 +312,14 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                     <button
-                      onClick={() => requestSort('name')}
+                      onClick={() => requestSort("name")}
                       className="flex items-center gap-1 hover:text-gray-900"
                     >
                       Profile
                       <ArrowUpDown className="w-3 h-3" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
-                    Score
-                  </th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Score</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                     <div className="flex items-center gap-1">
                       <Quote className="w-4 h-4" />
@@ -335,9 +340,9 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
               <tbody className="divide-y divide-gray-200">
                 {sortedProfiles.map((profile, index) => {
                   const fullName = `${profile.first_name} ${profile.last_name}`.trim();
-                  
+
                   return (
-                    <tr 
+                    <tr
                       key={profile.id || index}
                       className="hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() => handleProfileClick(profile)}
@@ -349,28 +354,31 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
                               src={profile.profile_photo_url}
                               alt={fullName}
                               className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                              onError={(e) => {
+                              onError={e => {
                                 const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.nextElementSibling?.classList.remove('hidden');
+                                target.style.display = "none";
+                                target.nextElementSibling?.classList.remove("hidden");
                               }}
                             />
                           ) : null}
                           <CustomAvatar
                             name={fullName}
                             size="md"
-                            className={`w-10 h-10 ${profile.profile_photo_url ? 'hidden' : ''}`}
+                            className={`w-10 h-10 ${profile.profile_photo_url ? "hidden" : ""}`}
                           />
                           <div className="min-w-0 flex-1">
                             <div className="font-medium text-gray-900 truncate">{fullName}</div>
                             <div className="text-sm text-gray-500 truncate">{profile.headline}</div>
                             {profile.company && (
                               <div className="text-xs text-gray-400 truncate">
-                                {profile.position && `${profile.position} at `}{profile.company}
+                                {profile.position && `${profile.position} at `}
+                                {profile.company}
                               </div>
                             )}
                             {profile.location && (
-                              <div className="text-xs text-gray-400 truncate">{profile.location}</div>
+                              <div className="text-xs text-gray-400 truncate">
+                                {profile.location}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -387,7 +395,9 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
                           {profile.all_quotes.length > 0 ? (
                             <div className="space-y-1">
                               {profile.all_quotes.slice(0, 2).map((quote, idx) => (
-                                <div key={idx} className="truncate italic">"{quote}"</div>
+                                <div key={idx} className="truncate italic">
+                                  "{quote}"
+                                </div>
                               ))}
                               {profile.all_quotes.length > 2 && (
                                 <div className="text-xs text-gray-400">
@@ -417,7 +427,7 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:text-blue-800 transition-colors"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={e => e.stopPropagation()}
                             >
                               <ExternalLink className="w-4 h-4" />
                             </a>
@@ -434,10 +444,13 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
       )}
 
       {/* Card View - Reuse existing EnhancedProfileList component */}
-      {viewMode === 'cards' && (
+      {viewMode === "cards" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedProfiles.map((profile, index) => (
-            <div key={profile.id || index} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 p-6">
+            <div
+              key={profile.id || index}
+              className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 p-6"
+            >
               {/* This would be the EnhancedProfileCard component content */}
               <div className="text-center">
                 <div className="font-medium text-gray-900">

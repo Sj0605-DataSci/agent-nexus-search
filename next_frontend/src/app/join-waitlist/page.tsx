@@ -23,7 +23,7 @@ export default function Waitlist() {
       <div className="grid grid-cols-1 md:grid-cols-2 h-screen">
         <div className="flex justify-center items-center p-4 sm:p-6 lg:p-8">
           <div className="w-full max-w-md">
-            <BrandLogo size="large" showCrossIcon={true}/>
+            <BrandLogo size="large" showCrossIcon={true} />
             {/* <div className="relative flex justify-between items-center mb-8">
               <button
                 onClick={() => router.push("/")}

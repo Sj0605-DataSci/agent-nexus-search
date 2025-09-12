@@ -23,9 +23,9 @@ const AuthenticatedMainContent = withAuth(MainContent);
 function WithSidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const profile = useAppSelector(state => state.profile.profile);
-  const [authState, setAuthState] = useState<{ token: string | null, isLoading: boolean }>({
+  const [authState, setAuthState] = useState<{ token: string | null; isLoading: boolean }>({
     token: null,
-    isLoading: true
+    isLoading: true,
   });
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function WithSidebarLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isPublicRoute = pathname ? PUBLIC_ROUTES.some(route => pathname.includes(route)) : false;
-  
+
   const shouldRenderDirectly = isPublicRoute || Boolean(authState.token || profile);
 
   if (authState.isLoading) {

@@ -30,26 +30,31 @@ A mutual network-sharing platform with consent-based discovery to help users fin
 DiscoverMinds.ai is more than a search tool; it's a complete system for network intelligence.
 
 ### **Unified Contact Hub: Import & Integrate**
--   **One-Click Sync**: Seamlessly import and sync contacts from all your professional platforms—LinkedIn, Twitter, Gmail, and even your phone's contact list.
--   **Centralized View**: See all your connections in one place, eliminating the need to switch between apps and creating a single source of truth for your professional network.
+
+- **One-Click Sync**: Seamlessly import and sync contacts from all your professional platforms—LinkedIn, Twitter, Gmail, and even your phone's contact list.
+- **Centralized View**: See all your connections in one place, eliminating the need to switch between apps and creating a single source of truth for your professional network.
 
 ### **Consent-Based Mutual Sharing**
--   **Build Your Inner Circle**: Invite trusted friends and colleagues to a mutual network-sharing group where you can grant access to each other's connections.
--   **Reciprocal Value**: It's a two-way street. You give access, you get access. This creates a powerful, shared pool of opportunities that benefits everyone involved.
+
+- **Build Your Inner Circle**: Invite trusted friends and colleagues to a mutual network-sharing group where you can grant access to each other's connections.
+- **Reciprocal Value**: It's a two-way street. You give access, you get access. This creates a powerful, shared pool of opportunities that benefits everyone involved.
 
 ### **AI-Powered Smart Search**
--   **Natural Language Queries**: Forget complicated filters. Just ask what you need in plain English: _"Find me a software engineer in London who has worked at Google and is in my 2nd-degree network."_
--   **Context-Aware Matching**: Our AI doesn't just match keywords; it understands your intent, surfacing the most relevant people and opportunities based on relationship strength and context.
--   **Proactive Suggestions**: DiscoverMinds.ai learns from your activity and proactively suggests new connections and opportunities you might have missed.
+
+- **Natural Language Queries**: Forget complicated filters. Just ask what you need in plain English: _"Find me a software engineer in London who has worked at Google and is in my 2nd-degree network."_
+- **Context-Aware Matching**: Our AI doesn't just match keywords; it understands your intent, surfacing the most relevant people and opportunities based on relationship strength and context.
+- **Proactive Suggestions**: DiscoverMinds.ai learns from your activity and proactively suggests new connections and opportunities you might have missed.
 
 ### **Streamlined Warm Introductions**
--   **Visualize the Path**: Instantly see the shortest and strongest referral path to any person in your extended network. No more guessing who knows whom.
--   **Trackable Requests**: Request and manage introductions through a built-in tracking system. See the status of every request and follow up with ease.
+
+- **Visualize the Path**: Instantly see the shortest and strongest referral path to any person in your extended network. No more guessing who knows whom.
+- **Trackable Requests**: Request and manage introductions through a built-in tracking system. See the status of every request and follow up with ease.
 
 ### **Privacy-First by Design**
--   **You Own Your Data**: Your data is yours. Period. You have full control over what you share and who can see it.
--   **Granular Permissions**: Decide exactly which contacts or network segments you want to share with your trusted circle. All sharing is opt-in and can be revoked at any time.
--   **Double Opt-In Introductions**: Introductions only happen when both parties agree, ensuring that all connections are welcome and respectful of everyone's time.
+
+- **You Own Your Data**: Your data is yours. Period. You have full control over what you share and who can see it.
+- **Granular Permissions**: Decide exactly which contacts or network segments you want to share with your trusted circle. All sharing is opt-in and can be revoked at any time.
+- **Double Opt-In Introductions**: Introductions only happen when both parties agree, ensuring that all connections are welcome and respectful of everyone's time.
 
 ---
 
@@ -65,9 +70,11 @@ DiscoverMinds.ai is more than a search tool; it's a complete system for network 
 ## 6. Business Model
 
 ### Hunter Plan (Free)
+
 - Access to DiscoverMinds Search.
 
 ### Pro Plan ($15/month per user)
+
 - Unlimited Searches Per Month
 - Unlimited Connected Accounts
 - Slack Integrations

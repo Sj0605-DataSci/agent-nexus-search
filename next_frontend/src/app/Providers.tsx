@@ -172,15 +172,15 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const fetchData = async () => {
       if (isMounted) {
         await fetchProfileData();
       }
     };
-    
+
     fetchData();
-    
+
     return () => {
       isMounted = false;
     };
@@ -222,8 +222,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
         console.error("Error handling OAuth redirect:", error);
       }
     };
-
-  }, [dispatch, profile]);  
+  }, [dispatch, profile]);
 
   return <>{children}</>;
 }
@@ -251,7 +250,7 @@ export function Providers({ children }: { children: ReactNode }) {
       console.error("Unhandled error:", event.error);
     };
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.addEventListener("error", handleError);
 
       return () => {

@@ -4,10 +4,10 @@ import { getSupabaseConfig } from "@/config/supabase";
 
 export const createClient = () => {
   const { supabaseUrl, supabaseKey: supabaseAnonKey } = getSupabaseConfig();
-  
+
   try {
     const cookieStore = cookies();
-    
+
     return createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         get(name: string) {
@@ -40,7 +40,7 @@ export const createClient = () => {
     });
   } catch (error) {
     console.error("Failed to initialize Supabase client with cookies:", error);
-    
+
     // Fallback to a client without cookie access
     return createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {

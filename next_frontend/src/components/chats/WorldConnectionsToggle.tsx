@@ -22,7 +22,7 @@ export default function WorldConnectionsToggle({
   useEffect(() => {
     setWorldConnectionsMode(worldConnectionsMode);
   }, [worldConnectionsMode]);
-  
+
   let tooltipText = "";
   if (disabled) {
     const hasNoConnections = worldConnectionsMode === "world" && !isConnections;

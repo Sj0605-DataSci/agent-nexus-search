@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { 
-  BriefcaseBusiness, 
-  MapPin, 
-  ExternalLink, 
+import {
+  BriefcaseBusiness,
+  MapPin,
+  ExternalLink,
   Quote,
   Users,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { EnhancedProfile, ProfileScore } from "@/types/enhancedProfile";
@@ -18,54 +18,54 @@ interface EnhancedProfileCardProps {
 
 const ScoreCircle: React.FC<{
   score: ProfileScore;
-  type: 'yes' | 'maybe' | 'no';
-  size?: 'sm' | 'md' | 'lg';
-}> = ({ score, type, size = 'md' }) => {
+  type: "yes" | "maybe" | "no";
+  size?: "sm" | "md" | "lg";
+}> = ({ score, type, size = "md" }) => {
   const getColorClasses = (type: string, confidence: number) => {
     if (confidence === 0) {
       return {
-        bg: 'bg-gray-300',
-        border: 'border-gray-400',
-        text: 'text-gray-600'
+        bg: "bg-gray-300",
+        border: "border-gray-400",
+        text: "text-gray-600",
       };
     }
-    
+
     switch (type) {
-      case 'yes':
+      case "yes":
         return {
-          bg: 'bg-blue-600',
-          border: 'border-blue-700',
-          text: 'text-white'
+          bg: "bg-blue-600",
+          border: "border-blue-700",
+          text: "text-white",
         };
-      case 'maybe':
+      case "maybe":
         return {
-          bg: 'bg-blue-300',
-          border: 'border-blue-400',
-          text: 'text-blue-900'
+          bg: "bg-blue-300",
+          border: "border-blue-400",
+          text: "text-blue-900",
         };
-      case 'no':
+      case "no":
         return {
-          bg: 'bg-gray-400',
-          border: 'border-gray-500',
-          text: 'text-gray-800'
+          bg: "bg-gray-400",
+          border: "border-gray-500",
+          text: "text-gray-800",
         };
       default:
         return {
-          bg: 'bg-gray-300',
-          border: 'border-gray-400',
-          text: 'text-gray-600'
+          bg: "bg-gray-300",
+          border: "border-gray-400",
+          text: "text-gray-600",
         };
     }
   };
 
   const sizeClasses = {
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base'
+    sm: "w-8 h-8 text-xs",
+    md: "w-10 h-10 text-sm",
+    lg: "w-12 h-12 text-base",
   };
 
   const colors = getColorClasses(type, score.confidence);
-  
+
   const tooltipContent = (
     <div className="max-w-xs">
       <div className="font-semibold mb-2 capitalize">
@@ -106,7 +106,7 @@ const ScoreCircle: React.FC<{
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div 
+          <div
             className={`
               ${sizeClasses[size]} 
               ${colors.bg} 
@@ -128,22 +128,19 @@ const ScoreCircle: React.FC<{
   );
 };
 
-const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ 
-  profile, 
-  onViewDetails 
-}) => {
+const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onViewDetails }) => {
   const [showAllQuotes, setShowAllQuotes] = useState(false);
-  
+
   const fullName = `${profile.first_name} ${profile.last_name}`.trim();
   const displayQuotes = showAllQuotes ? profile.all_quotes : profile.all_quotes.slice(0, 2);
-  
+
   // Get the highest confidence score to determine primary match
   const scores = [
-    { type: 'yes' as const, score: profile.yes_score },
-    { type: 'maybe' as const, score: profile.maybe_score },
-    { type: 'no' as const, score: profile.no_score }
+    { type: "yes" as const, score: profile.yes_score },
+    { type: "maybe" as const, score: profile.maybe_score },
+    { type: "no" as const, score: profile.no_score },
   ];
-  const primaryMatch = scores.reduce((prev, current) => 
+  const primaryMatch = scores.reduce((prev, current) =>
     current.score.confidence > prev.score.confidence ? current : prev
   );
 
@@ -158,19 +155,20 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({
               src={profile.profile_photo_url}
               alt={fullName}
               className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-              onError={(e) => {
+              onError={e => {
                 // Fallback to initials if image fails to load
                 const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                target.nextElementSibling?.classList.remove('hidden');
+                target.style.display = "none";
+                target.nextElementSibling?.classList.remove("hidden");
               }}
             />
           ) : null}
           {/* Fallback initials avatar */}
-          <div 
-            className={`w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg border-2 border-gray-200 ${profile.profile_photo_url ? 'hidden' : ''}`}
+          <div
+            className={`w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg border-2 border-gray-200 ${profile.profile_photo_url ? "hidden" : ""}`}
           >
-            {profile.first_name?.[0]}{profile.last_name?.[0]}
+            {profile.first_name?.[0]}
+            {profile.last_name?.[0]}
           </div>
         </div>
 
@@ -178,24 +176,21 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">
-                {fullName}
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 truncate">{fullName}</h3>
               <p className="text-sm text-gray-600 mb-1">{profile.headline}</p>
-              
+
               {/* Company and Position */}
               {(profile.company || profile.position) && (
                 <div className="flex items-center text-sm text-gray-500 mb-1">
                   <BriefcaseBusiness className="w-4 h-4 mr-1 flex-shrink-0" />
                   <span className="truncate">
-                    {profile.position && profile.company 
+                    {profile.position && profile.company
                       ? `${profile.position} at ${profile.company}`
-                      : profile.position || profile.company
-                    }
+                      : profile.position || profile.company}
                   </span>
                 </div>
               )}
-              
+
               {/* Location */}
               {profile.location && (
                 <div className="flex items-center text-sm text-gray-500">
@@ -229,15 +224,21 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({
           <ScoreCircle score={profile.maybe_score} type="maybe" />
           <ScoreCircle score={profile.no_score} type="no" />
         </div>
-        
+
         {/* Primary match indicator */}
         <div className="ml-auto">
-          <span className={`
+          <span
+            className={`
             px-2 py-1 rounded-full text-xs font-medium
-            ${primaryMatch.type === 'yes' ? 'bg-blue-100 text-blue-800' : 
-              primaryMatch.type === 'maybe' ? 'bg-blue-50 text-blue-700' : 
-              'bg-gray-100 text-gray-700'}
-          `}>
+            ${
+              primaryMatch.type === "yes"
+                ? "bg-blue-100 text-blue-800"
+                : primaryMatch.type === "maybe"
+                  ? "bg-blue-50 text-blue-700"
+                  : "bg-gray-100 text-gray-700"
+            }
+          `}
+          >
             {primaryMatch.score.confidence}% {primaryMatch.type}
           </span>
         </div>
@@ -288,9 +289,7 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({
             <span className="text-sm font-medium text-gray-700">Mutual Connection</span>
           </div>
           <div className="bg-blue-50 rounded-md p-3">
-            <p className="text-sm text-blue-800">
-              Connected through: {profile.mutual_connection}
-            </p>
+            <p className="text-sm text-blue-800">Connected through: {profile.mutual_connection}</p>
           </div>
         </div>
       )}

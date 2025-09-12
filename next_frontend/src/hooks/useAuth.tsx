@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
 
     const checkAuth = async () => {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         const token = localStorage.getItem("discover_minds_access_token");
 
         if (token && profile) {
@@ -208,7 +208,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+          redirectTo:
+            typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
           scopes: "email profile",
           queryParams: {
             access_type: "offline",

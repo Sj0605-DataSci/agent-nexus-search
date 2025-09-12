@@ -41,12 +41,8 @@ const ChatThreadsList: React.FC<ChatThreadsListProps> = ({
       }
 
       observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (
-            entries[0].isIntersecting &&
-            !loadingMoreThreads &&
-            !loadingThreads
-          ) {
+        entries => {
+          if (entries[0].isIntersecting && !loadingMoreThreads && !loadingThreads) {
             loadMoreThreads();
           }
         },
@@ -87,7 +83,7 @@ const ChatThreadsList: React.FC<ChatThreadsListProps> = ({
   return (
     <div className="flex flex-col space-y-1">
       <ul className="space-y-0.5 py-1">
-        {threads.map((thread) => (
+        {threads.map(thread => (
           <ChatThreadItem
             key={thread.id}
             thread={thread}
@@ -99,10 +95,7 @@ const ChatThreadsList: React.FC<ChatThreadsListProps> = ({
       </ul>
 
       {hasMoreThreads && (
-        <div
-          ref={handleObserver}
-          className="h-10 flex items-center justify-center mt-2"
-        >
+        <div ref={handleObserver} className="h-10 flex items-center justify-center mt-2">
           {loadingMoreThreads && (
             <div className="py-2 text-center w-full">
               <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />

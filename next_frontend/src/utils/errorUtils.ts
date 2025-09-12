@@ -13,7 +13,7 @@ export const formatErrorMessage = (errorMessage: any): string => {
   }
 
   // Handle string error messages
-  if (typeof errorMessage === 'string') {
+  if (typeof errorMessage === "string") {
     // Handle Python errors that come in specific format
     if (errorMessage.includes("Error:")) {
       const match = errorMessage.match(/Error:\s*(.+?)(?:'\s*is\s*an|$)/i);
@@ -25,7 +25,7 @@ export const formatErrorMessage = (errorMessage: any): string => {
   }
 
   // Handle error objects
-  if (typeof errorMessage === 'object') {
+  if (typeof errorMessage === "object") {
     if (errorMessage.message) {
       return formatErrorMessage(errorMessage.message);
     }
@@ -46,20 +46,23 @@ export const formatErrorMessage = (errorMessage: any): string => {
  */
 export const createUserFriendlyErrorMessage = (errorMessage: any): string => {
   const formattedError = formatErrorMessage(errorMessage);
-  
+
   // Check for specific error types and provide tailored messages
   if (formattedError.toLowerCase().includes("invalid keyword argument")) {
     return `⚠️ There was an issue with processing your request. The system encountered an invalid parameter.\n\nPlease try rephrasing your question or try a different query.`;
   }
-  
-  if (formattedError.toLowerCase().includes("timeout") || formattedError.toLowerCase().includes("timed out")) {
+
+  if (
+    formattedError.toLowerCase().includes("timeout") ||
+    formattedError.toLowerCase().includes("timed out")
+  ) {
     return `⚠️ Your request timed out. This might happen with complex queries.\n\nPlease try simplifying your question or try again later.`;
   }
-  
+
   if (formattedError.toLowerCase().includes("rate limit")) {
     return `⚠️ You've reached the rate limit for requests.\n\nPlease wait a moment before trying again.`;
   }
-  
+
   // Default message for other errors
   return `⚠️ We encountered an issue: ${formattedError}\n\nPlease try rephrasing your question or try again later.`;
 };

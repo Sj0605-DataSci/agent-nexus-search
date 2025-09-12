@@ -14,8 +14,8 @@ declare global {
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams?.get('error');
-  const code = searchParams?.get('code');
+  const error = searchParams?.get("error");
+  const code = searchParams?.get("code");
 
   useEffect(() => {
     const handleAuth = async () => {
@@ -28,10 +28,13 @@ function AuthCallbackContent() {
         // Handle OAuth code flow (for server-side auth)
         if (code) {
           try {
-            const { data: { session }, error: sessionError } = await supabaseHandler.auth.exchangeCodeForSession(code);
-            
+            const {
+              data: { session },
+              error: sessionError,
+            } = await supabaseHandler.auth.exchangeCodeForSession(code);
+
             if (sessionError) throw sessionError;
-            if (!session) throw new Error('No session returned from OAuth');
+            if (!session) throw new Error("No session returned from OAuth");
 
             // Store tokens in localStorage
             localStorage.setItem("discover_minds_access_token", session.access_token);
@@ -40,13 +43,13 @@ function AuthCallbackContent() {
 
             // Clear the URL parameters
             const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, '', cleanUrl);
+            window.history.replaceState({}, "", cleanUrl);
 
             // Redirect to chat
             router.push("/chat/new");
             return;
           } catch (err) {
-            console.error('Error exchanging code for session:', err);
+            console.error("Error exchanging code for session:", err);
             throw err;
           }
         }
@@ -82,7 +85,7 @@ function AuthCallbackContent() {
 
               // Clear the URL hash
               const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, '', cleanUrl);
+              window.history.replaceState({}, "", cleanUrl);
 
               // Redirect to chat
               router.push("/chat/new");
@@ -95,7 +98,10 @@ function AuthCallbackContent() {
         }
 
         // If we get here with no code or hash, check for existing session
-        const { data: { session }, error: sessionError } = await supabaseHandler.auth.getSession();
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabaseHandler.auth.getSession();
 
         if (sessionError) {
           throw new Error("Session error: " + sessionError.message);
@@ -109,7 +115,6 @@ function AuthCallbackContent() {
 
         // No session or tokens found
         throw new Error("No authentication data found");
-
       } catch (error) {
         console.error("Authentication error:", error);
         // Clear any partial auth state
@@ -117,7 +122,7 @@ function AuthCallbackContent() {
         localStorage.removeItem("discover_minds_refresh_token");
 
         // Redirect to error page with error details
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         const errorHash = window.location.hash
           ? `&hash=${encodeURIComponent(window.location.hash)}`
           : "";
@@ -137,11 +142,13 @@ function AuthCallbackContent() {
 
 export default function AuthCallback() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen grid place-items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      }
+    >
       <AuthCallbackContent />
     </Suspense>
   );

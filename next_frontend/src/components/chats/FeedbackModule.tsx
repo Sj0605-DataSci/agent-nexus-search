@@ -11,14 +11,10 @@ import toast from "react-hot-toast";
 interface FeedbackModuleProps {
   messageId: string;
   threadId: string;
-  setMessages: React.Dispatch<React.SetStateAction<any[]>>; 
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-const FeedbackModule = ({
-  messageId,
-  threadId,
-  setMessages,
-}: FeedbackModuleProps) => {
+const FeedbackModule = ({ messageId, threadId, setMessages }: FeedbackModuleProps) => {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [comment, setComment] = useState("");
@@ -33,10 +29,10 @@ const FeedbackModule = ({
     });
 
     setFeedbackSubmitted(true);
-    
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? {...msg, feedbackSubmitted: true} : msg
-    ));
+
+    setMessages(prev =>
+      prev.map(msg => (msg.id === messageId ? { ...msg, feedbackSubmitted: true } : msg))
+    );
 
     if (isPositive) {
       await submitFeedback(true);
@@ -64,11 +60,11 @@ const FeedbackModule = ({
       console.error("Error submitting feedback:", error);
       toast.error("Failed to submit feedback. Please try again.");
       setFeedbackSubmitted(false);
-      
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId ? {...msg, feedbackSubmitted: false} : msg
-      ));
-      
+
+      setMessages(prev =>
+        prev.map(msg => (msg.id === messageId ? { ...msg, feedbackSubmitted: false } : msg))
+      );
+
       posthog.capture("feedback_submission_failed", {
         message_id: messageId,
         thread_id: threadId,
