@@ -3,14 +3,12 @@
 import { ReactNode, useState, useEffect, useCallback } from "react";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ToastContainer } from "react-toastify";
 import { Provider as ReduxProvider } from "react-redux";
 import { store } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { fetchProfile } from "@/store/profileSlice";
 import { fetchAgentTemplates, fetchHiredAgents } from "@/store/agentsSlice";
 import { useRouter } from "next/navigation";
-import "react-toastify/dist/ReactToastify.css";
 import { usePathname } from "next/navigation";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
@@ -18,7 +16,7 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import posthog from "posthog-js";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
-import { supabaseHandler } from "./supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { resetAxiosInstanceState } from "@/lib/api/axiosInstance";
 import toast from "react-hot-toast";
@@ -118,17 +116,17 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
         if (profileResult.success && profileResult.status_code === 200) {
           const profileData = profileResult.data;
-          
+
           posthog.identify(profileData.id, {
             email: profileData.email,
             name: profileData.full_name,
           });
-          
+
           posthog.capture("login_successful", {
             userId: profileData.id,
             hasConnections: profileData.has_connections,
           });
-          
+
           posthog.capture("profile_fetch_successful", {
             hasProfile: !!profileResult.data,
           });
@@ -173,7 +171,19 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
   }, [isInitialized, session, profile, dispatch, agentsStatus]);
 
   useEffect(() => {
-    fetchProfileData();
+    let isMounted = true;
+    
+    const fetchData = async () => {
+      if (isMounted) {
+        await fetchProfileData();
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [fetchProfileData, user, pathname]);
 
   useEffect(() => {
@@ -199,10 +209,8 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
               console.error("Failed to set Supabase session:", supabaseError);
             }
 
-            // Clean up URL
             window.history.replaceState({}, document.title, window.location.pathname);
 
-            // Refresh profile data if needed
             if (!profile) {
               dispatch(fetchProfile());
             }
@@ -215,8 +223,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
       }
     };
 
-    // handleOAuthRedirect();
-  }, [dispatch, profile]);
+  }, [dispatch, profile]);  
 
   return <>{children}</>;
 }
@@ -244,64 +251,52 @@ export function Providers({ children }: { children: ReactNode }) {
       console.error("Unhandled error:", event.error);
     };
 
-    window.addEventListener("error", handleError);
+    if (typeof window !== 'undefined') {
+      window.addEventListener("error", handleError);
 
-    return () => {
-      window.removeEventListener("error", handleError);
-    };
+      return () => {
+        window.removeEventListener("error", handleError);
+      };
+    }
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ReduxProvider store={store}>
-        <ThemeProvider attribute="class" forcedTheme="light">
-          {/* <ClerkProvider> */}
-          <AuthProvider>
-            <Toaster
-              position="top-center"
-              reverseOrder={false}
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: "#fff",
-                  color: "#000",
-                },
-              }}
-            />
-            <ProfileDataFetcher>
-              <PostHogProvider>
-                <AnalyticsProvider>
-                  {isMounted && (
-                    <>
-                      <ToastContainer
-                        position="top-right"
-                        autoClose={5000}
-                        hideProgressBar={false}
-                        closeOnClick
-                        pauseOnHover
-                        limit={4}
-                        draggable
-                        theme="light"
-                      />
-                      <ServiceWorkerRegistration />
-                    </>
-                  )}
-                  <ErrorBoundary
-                    FallbackComponent={ErrorFallback}
-                    onError={logError}
-                    onReset={() => {
-                      window.location.reload();
-                    }}
-                  >
-                    <main>{children}</main>
-                  </ErrorBoundary>
-                </AnalyticsProvider>
-              </PostHogProvider>
-            </ProfileDataFetcher>
-          </AuthProvider>
-          {/* </ClerkProvider> */}
-        </ThemeProvider>
-      </ReduxProvider>
-    </QueryClientProvider>
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onError={logError}
+      onReset={() => {
+        window.location.reload();
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ReduxProvider store={store}>
+          <ThemeProvider attribute="class" forcedTheme="light">
+            {/* <ClerkProvider> */}
+            <AuthProvider>
+              <Toaster
+                position="top-center"
+                reverseOrder={false}
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: "#fff",
+                    color: "#000",
+                  },
+                }}
+              />
+              <ProfileDataFetcher>
+                <PostHogProvider>
+                  <AnalyticsProvider>
+                    {isMounted && <ServiceWorkerRegistration />}
+                    <main suppressHydrationWarning>{children}</main>
+                  </AnalyticsProvider>
+                </PostHogProvider>
+              </ProfileDataFetcher>
+            </AuthProvider>
+            {/* </ClerkProvider> */}
+          </ThemeProvider>
+        </ReduxProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

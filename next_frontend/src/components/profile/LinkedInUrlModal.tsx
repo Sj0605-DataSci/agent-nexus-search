@@ -1,10 +1,7 @@
 "use client";
 import React, { useState } from "react";
-import { useAppDispatch } from "@/store";
-import { setProfileData } from "@/store/profileSlice";
 import { apiClient } from "@/integrations/fastapi/client";
-import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
-import Image from "next/image";
+import toast from "react-hot-toast";
 import { FiLinkedin, FiCheck } from "react-icons/fi";
 import {
   Dialog,
@@ -46,11 +43,11 @@ const LinkedInUrlModal: React.FC<LinkedInUrlModalProps> = ({ open, onOpenChange 
     setIsUpdatingProfile(true);
     try {
       await apiClient.updateProfile({ linkedin_url: linkedinUrl });
-      showSuccessToast("LinkedIn URL updated successfully");
+      toast.success("LinkedIn URL updated successfully");
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error updating LinkedIn URL:", error);
-      showErrorToast("Failed to update LinkedIn URL", error?.message || "Please try again");
+      toast.error(error?.message || "Failed to update LinkedIn URL. Please try again.");
     } finally {
       setIsUpdatingProfile(false);
     }

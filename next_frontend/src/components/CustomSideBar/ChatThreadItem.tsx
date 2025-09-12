@@ -26,7 +26,7 @@ const ChatThreadItem: React.FC<ChatThreadItemProps> = ({
   const threadPreview = getThreadPreview(thread);
 
   return (
-    <motion.li 
+    <motion.li
       className="px-1 h-[34px]"
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
@@ -41,11 +41,14 @@ const ChatThreadItem: React.FC<ChatThreadItemProps> = ({
             ? "bg-indigo-50 text-indigo-800 border-l-2 border-indigo-500 shadow-sm"
             : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
         }`}
+        prefetch={true}
         title={collapsed && !isMobile ? threadPreview : undefined}
       >
-        <div className={`flex-shrink-0 ${isActive ? "text-indigo-600" : ""} transition-colors duration-200`}>
-          <FiMessageSquare 
-            size={collapsed && !isMobile ? 18 : 16} 
+        <div
+          className={`flex-shrink-0 ${isActive ? "text-indigo-600" : ""} transition-colors duration-200`}
+        >
+          <FiMessageSquare
+            size={collapsed && !isMobile ? 18 : 16}
             className={`${isActive ? "transform scale-110" : ""} transition-transform duration-200`}
           />
         </div>

@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import HomeHeader from "@/components/Homepage/Header";
-import Footer from "@/components/Footer/Footer";
+import Navbar from "@/components/Homepage/Navbar";
 import NewFooter from "@/components/Footer/NewFooter";
 
 export const metadata = {
@@ -12,7 +11,7 @@ export const metadata = {
 export default function ExamplesPage() {
   return (
     <>
-      <HomeHeader />
+      <Navbar />
       <div className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="pt-32 pb-20 px-4">

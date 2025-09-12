@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import posthog from "posthog-js";
 import { apiClient } from "@/integrations/fastapi/client";
-import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 
 interface FeedbackModuleProps {
   messageId: string;
@@ -53,7 +53,7 @@ const FeedbackModule = ({
         comment,
       });
 
-      showSuccessToast("Feedback submitted successfully");
+      toast.success("Feedback submitted successfully");
       posthog.capture("feedback_submitted", {
         message_id: messageId,
         thread_id: threadId,
@@ -62,7 +62,7 @@ const FeedbackModule = ({
       });
     } catch (error: any) {
       console.error("Error submitting feedback:", error);
-      showErrorToast("Failed to submit feedback. Please try again.");
+      toast.error("Failed to submit feedback. Please try again.");
       setFeedbackSubmitted(false);
       
       setMessages(prev => prev.map(msg => 

@@ -3,6 +3,7 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "./Providers";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,8 +20,7 @@ const baseMetadata = {
     default: "DiscoverMinds.ai - Unlock Your Network's Potential",
     template: "%s | DiscoverMinds.ai",
   },
-  description:
-    "DiscoverMinds.ai is a mutual network-sharing platform designed to unlock hidden opportunities within your professional extended network through warm introductions.",
+  description: "",
 };
 
 const productionMetadata: Metadata = {
@@ -54,9 +54,11 @@ const productionMetadata: Metadata = {
     canonical: "/",
   },
   icons: {
-    icon: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
-    shortcut: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
-    apple: "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+    icon: "https://discoverminds.ai/Logo.png",
+    shortcut:
+      "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+    apple:
+      "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
   },
   openGraph: {
     type: "website",
@@ -129,7 +131,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={`${inter.variable} ${robotoMono.variable} antialiased`}>
+      {process.env.NODE_ENV === "production" && <GoogleAnalytics />}
+      <body
+        className={`${inter.variable} ${robotoMono.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <Providers>{children}</Providers>
         <Analytics />
       </body>

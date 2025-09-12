@@ -19,7 +19,7 @@ import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { useAuth } from "@/hooks/useAuth";
 import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
 import BrandLogo from "@/components/BrandLogo";
-import { supabaseHandler } from "../supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import { DEFAULT_COUNTRY_CODE } from "@/utils/countryCodes";
 import { saveTokens } from "@/utils/tokenManagement";
 
@@ -182,7 +182,7 @@ const SuccessSignupModal = () => {
   const { width = 800, height = 600 } = useWindowSize();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const storedData = localStorage.getItem("lastSignupData");
       if (storedData) {
         try {
@@ -229,7 +229,7 @@ const SuccessSignupModal = () => {
 
   return (
     <div className="text-center py-8">
-      {typeof window !== 'undefined' && (
+      {typeof window !== "undefined" && (
         <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />
       )}
       <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
@@ -319,7 +319,7 @@ const SignUpFormComponent = ({
             ...data,
             phone_number: fullPhoneNumber,
           };
-          if (typeof window !== 'undefined') {
+          if (typeof window !== "undefined") {
             try {
               localStorage.setItem("lastSignupData", JSON.stringify(dataToSave));
             } catch (error) {
@@ -493,7 +493,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
         setIsSubmitting(false);
         return;
       }
-      
+
       try {
         posthog.capture("login_attempted", { email: data.email });
       } catch (err) {
@@ -506,13 +506,13 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
         if (loginResult.data?.access_token && loginResult.data?.refresh_token) {
           saveTokens(loginResult.data.access_token, loginResult.data.refresh_token);
         }
-        
+
         try {
           router.replace("/chat/new");
         } catch (routerError) {
           console.error("Navigation error:", routerError);
           // Fallback for navigation errors
-          if (typeof window !== 'undefined') {
+          if (typeof window !== "undefined") {
             window.location.href = "/chat/new";
           }
         }
@@ -646,9 +646,9 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
   const sendResetLink = async (email: string) => {
     setIsLoading(true);
     try {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
       if (!baseUrl) {
-        throw new Error('Could not determine base URL');
+        throw new Error("Could not determine base URL");
       }
       const result = await apiClient.resetPassword(email, baseUrl);
       if (result.success) {
@@ -808,11 +808,11 @@ const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError })
       if (typeof window !== "undefined" && posthog) {
         posthog.capture("login_attempt", { provider: "google" });
       }
-      
+
       const { data, error } = await supabaseHandler.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${typeof window !== "undefined" ? window.location.origin : ''}/auth/callback`,
+          redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",

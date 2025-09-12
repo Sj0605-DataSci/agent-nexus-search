@@ -1,5 +1,5 @@
 import React from "react";
-import HomeHeader from "@/components/Homepage/Header";
+import Navbar from "@/components/Homepage/Navbar";
 import FaqSection from "@/components/Pricing/FaqSection";
 import PricingPlans from "@/components/Homepage/PricingPlans";
 import NewFooter from "@/components/Footer/NewFooter";
@@ -13,7 +13,7 @@ export const metadata = {
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white">
-      <HomeHeader />
+      <Navbar />
       <div className="pt-10 md:pt-20" />
       <main>
         <div className="text-center">

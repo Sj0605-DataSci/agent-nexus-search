@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { supabaseHandler } from "../../supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import { setAuthToken } from "@/integrations/fastapi/client";
 
 type AuthErrorType =

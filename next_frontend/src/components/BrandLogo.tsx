@@ -60,6 +60,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             src="/icon.png"
             alt="DiscoverMinds Logo"
             width={iconSize}
+            priority={true}
             height={iconSize}
             className={iconClass}
           />

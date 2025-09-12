@@ -1,0 +1,30 @@
+# DiscoverMinds.ai
+
+> DiscoverMinds.ai is a mutual network-sharing platform that helps users find the right professional connections through AI-powered search. The platform maps networks, facilitates warm introductions, and helps users discover hidden opportunities within their trusted networks.
+
+DiscoverMinds.ai uses advanced AI technology to analyze professional networks and provide targeted search results. The platform allows users to search for specific roles, skills, or companies and receive relevant professional connections. Key features include:
+
+- AI-powered search for finding professionals based on detailed criteria
+- Network mapping to visualize connections
+- Warm introduction facilitation
+- Privacy-focused approach to network sharing
+
+## Main Pages
+
+- [Homepage](https://discoverminds.ai/): Overview of the platform's capabilities and value proposition
+- [About](https://discoverminds.ai/about): Information about the company, team, and mission
+- [Pricing](https://discoverminds.ai/pricing): Subscription plans and pricing details
+
+## Features
+
+- [Search Interface](https://discoverminds.ai/user-query): AI-powered search interface for finding professional connections
+- [User Authentication](https://discoverminds.ai/user-auth): User login and registration system
+
+## Legal
+
+- [Terms of Service](https://discoverminds.ai/terms): User agreement and platform terms
+- [Privacy Policy](https://discoverminds.ai/privacy-policy): Data handling practices and user privacy information
+
+## Optional
+
+- [Sitemap](https://discoverminds.ai/sitemap.xml): Complete site structure in XML format

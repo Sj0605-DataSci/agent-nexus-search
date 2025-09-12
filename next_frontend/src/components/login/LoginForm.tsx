@@ -9,7 +9,7 @@ import posthog from "posthog-js";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 import Aurora from "@/components/Aurora";
 import { useAppDispatch } from "@/store";
 import { loginUser, fetchProfile } from "@/store/profileSlice";
@@ -54,19 +54,13 @@ export default function LoginForm() {
             .catch(error => console.error("Profile fetch error:", error));
 
           router.replace("/chat/new");
-          showSuccessToast("Welcome back!", "You have successfully signed in.");
+          toast.success("Welcome back! You have successfully signed in.");
         } else {
-          showErrorToast(
-            "Login failed",
-            loginResult.message || "Please check your credentials and try again."
-          );
+          toast.error(loginResult.message || "Login failed. Please check your credentials and try again.");
           posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });
         }
       } catch (err: any) {
-        showErrorToast(
-          "Login failed",
-          err.message || "Please check your credentials and try again."
-        );
+        toast.error(err.message || "Login failed. Please check your credentials and try again.");
         posthog.capture("login_error", { reason: err.message || "Unknown error" });
         console.error(err);
       } finally {

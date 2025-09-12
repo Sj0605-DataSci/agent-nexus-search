@@ -30,6 +30,7 @@ interface SearchScopeSelectorProps {
 export const SearchScopeSelectorComponent = ({ disabled = true }: SearchScopeSelectorProps) => {
   const [open, setOpen] = React.useState(false);
   const [selectedValues, setSelectedValues] = React.useState(new Set<string>());
+  console.log("disabled", disabled);
   return (
     <div
       className={cn(

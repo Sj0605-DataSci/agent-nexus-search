@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { UserProfile, ApiResponse, AuthResponse } from "@/integrations/fastapi/types";
 import { apiClient } from "@/integrations/fastapi/client";
-import { supabaseHandler } from "@/app/supabaseClient";
 import axiosInstance from "@/lib/api/axiosInstance";
 
 // Using the imported UserProfile type from types.ts

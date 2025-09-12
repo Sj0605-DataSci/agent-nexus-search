@@ -4,10 +4,48 @@
 
 import { v4 as uuidv4 } from 'uuid';
 
-// Constants for storage keys
-const DEVICE_ID_KEY = 'discover_minds_device_id';
-const IP_ADDRESS_KEY = 'discover_minds_ip_address';
-const IP_TIMESTAMP_KEY = 'discover_minds_ip_timestamp';
+// Namespace and salt for storage keys
+const STORAGE_NAMESPACE = 'dm_data';
+const STORAGE_SALT = 'discover_minds_2025';
+
+// Storage key types
+enum StorageKeyType {
+  DEVICE_ID = 'device_id',
+  IP_ADDRESS = 'ip_address',
+  IP_TIMESTAMP = 'ip_timestamp'
+}
+
+/**
+ * Simple string hash function that works in browser environments
+ * @param str String to hash
+ * @returns A deterministic hash string
+ */
+const simpleHash = (str: string): string => {
+  let hash = 0;
+  if (str.length === 0) return hash.toString(16);
+  
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  // Convert to hex string and ensure positive value
+  return Math.abs(hash).toString(16).substring(0, 8);
+};
+
+// Generate obfuscated storage keys
+const generateStorageKey = (keyType: StorageKeyType): string => {
+  const baseKey = `${STORAGE_NAMESPACE}_${keyType}`;
+  const hash = simpleHash(`${baseKey}_${STORAGE_SALT}`);
+  
+  return `${STORAGE_NAMESPACE}_${hash}`;
+};
+
+// Hashed storage keys
+const DEVICE_ID_KEY = generateStorageKey(StorageKeyType.DEVICE_ID);
+const IP_ADDRESS_KEY = generateStorageKey(StorageKeyType.IP_ADDRESS);
+const IP_TIMESTAMP_KEY = generateStorageKey(StorageKeyType.IP_TIMESTAMP);
 const IP_CACHE_EXPIRY = 3600000; // 1 hour in milliseconds
 
 /**
