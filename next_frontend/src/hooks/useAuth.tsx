@@ -5,7 +5,7 @@ import { apiClient } from "@/integrations/fastapi/client";
 import posthog from "posthog-js";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { clearProfile } from "@/store/profileSlice";
-import { showErrorToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -68,30 +68,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
 
     const checkAuth = async () => {
-      const token = localStorage.getItem("discover_minds_access_token");
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem("discover_minds_access_token");
 
-      if (token && profile) {
-        setLoading(false);
+        if (token && profile) {
+          setLoading(false);
 
-        if (profile.id) {
-          posthog.identify(profile.id, {
-            email: profile.email,
-            name: profile.full_name,
-          });
+          if (profile.id) {
+            posthog.identify(profile.id, {
+              email: profile.email,
+              name: profile.full_name,
+            });
+          }
+        } else {
+          const { data } = await supabase.auth.getSession();
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+          setLoading(false);
+
+          if (data.session?.user) {
+            posthog.identify(data.session.user.id, {
+              email: data.session.user.email,
+              name: data.session.user.user_metadata?.full_name,
+              signUpDate: data.session.user.created_at,
+            });
+          }
         }
       } else {
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
         setUser(data.session?.user ?? null);
         setLoading(false);
-
-        if (data.session?.user) {
-          posthog.identify(data.session.user.id, {
-            email: data.session.user.email,
-            name: data.session.user.user_metadata?.full_name,
-            signUpDate: data.session.user.created_at,
-          });
-        }
       }
     };
 
@@ -201,7 +208,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
           scopes: "email profile",
           queryParams: {
             access_type: "offline",
@@ -220,7 +227,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         reason: error.message,
         code: error.code,
       });
-      showErrorToast("Google sign-in failed. Please try again.");
+      toast.error("Google sign-in failed. Please try again.");
     }
   };
 

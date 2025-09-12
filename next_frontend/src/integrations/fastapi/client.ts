@@ -2,7 +2,6 @@ import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 import { handleAxiosError } from "@/lib/api/handleAxiosError";
 import { getDeviceInfo } from "@/utils/deviceInfo";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { getStoredToken } from "@/utils/tokenManagement";
 
@@ -194,7 +193,7 @@ export const apiClient = {
     phoneNumber: string
   ): Promise<SignUpResponse> {
     try {
-      const { supabaseHandler } = await import("@/app/supabaseClient");
+      const { supabaseHandler } = await import("@/integrations/supabase/client");
 
       const { data, error } = await supabaseHandler.auth.signUp({
         email,
@@ -301,7 +300,7 @@ export const apiClient = {
 
   async handleLoginWithStorage(email: string, password: string) {
     try {
-      const { supabaseHandler } = await import("@/app/supabaseClient");
+      const { supabaseHandler } = await import("@/integrations/supabase/client");
 
       const { data, error } = await supabaseHandler.auth.signInWithPassword({
         email,
