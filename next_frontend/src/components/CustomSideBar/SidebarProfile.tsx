@@ -12,22 +12,16 @@ interface SidebarProfileProps {
   isMobile: boolean;
   isUserQueryRoute: boolean;
   onLogoutClick: () => void;
-  profileId?: string; 
+  profileId?: string;
 }
 
-const SidebarProfileBase: React.FC<SidebarProfileProps> = (props) => {
-  const {
-    collapsed,
-    isMobile,
-    isUserQueryRoute,
-    onLogoutClick,
-    profileId
-  } = props;
-  
+const SidebarProfileBase: React.FC<SidebarProfileProps> = props => {
+  const { collapsed, isMobile, isUserQueryRoute, onLogoutClick, profileId } = props;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const { profile, loading: profileLoading } = useAppSelector(s => s.profile);
-  
+
   const handleWaitlistClick = async () => {
     const emailValue = emailInputRef.current?.value.trim() || "";
 
@@ -141,9 +135,9 @@ const SidebarProfile = React.memo(SidebarProfileBase, (prevProps, nextProps) => 
   const profileIdMatches = prevProps.profileId === nextProps.profileId;
   const collapsedMatches = prevProps.collapsed === nextProps.collapsed;
   const isMobileMatches = prevProps.isMobile === nextProps.isMobile;
-  
+
   const shouldUpdate = !profileIdMatches || !collapsedMatches || !isMobileMatches;
-  
+
   return !shouldUpdate;
 });
 

@@ -37,7 +37,6 @@ const StatBox: FC<StatBoxProps> = ({ title, value, icon }) => (
   </div>
 );
 
-
 const UsageStatsCard = () => {
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [loading, setLoading] = useState(true);

@@ -37,7 +37,7 @@ const useCasesData = [
 
 const UseCasesSection = () => {
   const router = useRouter();
-  
+
   const handleUseCaseClick = (label: string) => {
     if (label?.trim()) {
       router.push(`/user-query?q=${encodeURIComponent(label?.trim())}`);
@@ -62,7 +62,7 @@ const UseCasesSection = () => {
                 </h3>
                 <p className="text-sm text-gray-700 mb-4 sm:mb-6">"{useCase.description}"</p>
               </div>
-              <button 
+              <button
                 onClick={() => handleUseCaseClick(useCase.description)}
                 className="bg-[#EFFBD7] text-[#0E3D15] px-4 sm:px-6 py-2 rounded-md text-sm sm:text-base font-medium hover:bg-[#D9F9B0] transition-colors"
               >

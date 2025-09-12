@@ -14,7 +14,8 @@ const ChatThreadView = dynamic(() => import("@/components/chats/ChatThreadView")
         </div>
         <div className="flex w-full mt-8  max-w-4xl mx-auto h-full">
           <MessagePlaceholder message={undefined} />
-        </div>``
+        </div>
+        ``
       </div>
     </div>
   ),

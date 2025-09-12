@@ -105,25 +105,25 @@ axiosInstance.interceptors.response.use(
 
     if (error.response?.status === 429) {
       console.error("Rate limit exceeded (429):", error.response.data);
-      
+
       try {
         if (typeof window !== "undefined") {
           let errorMessage = "You've reached the maximum number of free searches.";
-          
+
           const responseData = error.response.data as any;
-          if (responseData && typeof responseData === 'object' && responseData.message) {
+          if (responseData && typeof responseData === "object" && responseData.message) {
             errorMessage = responseData.message;
           }
-          
-          toast.error(errorMessage, { 
+
+          toast.error(errorMessage, {
             id: "rate-limit-error",
-            duration: 5000
+            duration: 5000,
           });
         }
       } catch (toastError) {
         console.error("Error showing toast notification:", toastError);
       }
-      
+
       return Promise.reject(error);
     }
 

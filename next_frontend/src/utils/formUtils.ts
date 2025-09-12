@@ -1,4 +1,4 @@
-import { apiClient } from '@/integrations/fastapi/client';
+import { apiClient } from "@/integrations/fastapi/client";
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -14,15 +14,15 @@ interface WaitlistResponse {
 export const handleWaitlistSignup = async (email: string): Promise<WaitlistResponse> => {
   try {
     const response = await apiClient.joinWaitlistEmail(email);
-    return { 
-      success: true, 
-      message: 'Successfully joined the waitlist!' 
+    return {
+      success: true,
+      message: "Successfully joined the waitlist!",
     };
   } catch (error: any) {
-    console.error('Error joining waitlist:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Failed to join waitlist. Please try again.' 
+    console.error("Error joining waitlist:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Failed to join waitlist. Please try again.",
     };
   }
 };

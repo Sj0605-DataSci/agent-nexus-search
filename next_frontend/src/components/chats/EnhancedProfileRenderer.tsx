@@ -3,8 +3,15 @@ import EnhancedProfileList from "./EnhancedProfileList";
 import EnhancedProfileTable from "./EnhancedProfileTable";
 import StructuredContentRenderer from "./StructuredContentRenderer";
 import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
-import { isEnhancedProfileData, extractEnhancedProfiles, sanitizeEnhancedProfile } from "@/utils/profileDataParser";
-import { extractProfilesFromCurrentFormat, isConvertibleStructuredData } from "@/utils/structuredDataConverter";
+import {
+  isEnhancedProfileData,
+  extractEnhancedProfiles,
+  sanitizeEnhancedProfile,
+} from "@/utils/profileDataParser";
+import {
+  extractProfilesFromCurrentFormat,
+  isConvertibleStructuredData,
+} from "@/utils/structuredDataConverter";
 import { EnhancedProfile } from "@/types/enhancedProfile";
 import { Table, Grid } from "lucide-react";
 
@@ -17,19 +24,18 @@ interface EnhancedProfileRendererProps {
 export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = ({
   content,
   sources,
-  onProfileSelect
+  onProfileSelect,
 }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
-  
-  
+  const [viewMode, setViewMode] = useState<"list" | "table">("list");
+
   try {
     // Check if content contains enhanced profile data
     const hasEnhancedProfiles = isEnhancedProfileData(content);
-    
+
     if (hasEnhancedProfiles) {
       // Extract and render enhanced profiles
       const profiles = extractEnhancedProfiles(content);
-      
+
       if (profiles.length > 0) {
         // Sanitize and validate profiles
         const sanitizedProfiles = profiles
@@ -43,11 +49,11 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
               <div className="mb-4 flex justify-end">
                 <div className="flex bg-gray-100 rounded-lg p-1">
                   <button
-                    onClick={() => setViewMode('list')}
+                    onClick={() => setViewMode("list")}
                     className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                      viewMode === 'list' 
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-600 hover:text-gray-900'
+                      viewMode === "list"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
                     title="Card View"
                   >
@@ -55,11 +61,11 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
                     Cards
                   </button>
                   <button
-                    onClick={() => setViewMode('table')}
+                    onClick={() => setViewMode("table")}
                     className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                      viewMode === 'table' 
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-600 hover:text-gray-900'
+                      viewMode === "table"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
                     title="Table View"
                   >
@@ -70,10 +76,10 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
               </div>
 
               {/* Render based on view mode */}
-              {viewMode === 'list' ? (
+              {viewMode === "list" ? (
                 <EnhancedProfileList
                   profiles={sanitizedProfiles}
-                  title={`Found ${sanitizedProfiles.length} Profile${sanitizedProfiles.length === 1 ? '' : 's'}`}
+                  title={`Found ${sanitizedProfiles.length} Profile${sanitizedProfiles.length === 1 ? "" : "s"}`}
                   onProfileSelect={onProfileSelect}
                 />
               ) : (
@@ -92,7 +98,7 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
     if (isConvertibleStructuredData(content)) {
       console.log("Converting structured data to enhanced profiles");
       const convertedProfiles = extractProfilesFromCurrentFormat(content);
-      
+
       if (convertedProfiles.length > 0) {
         return (
           <div className="enhanced-profile-container">
@@ -100,11 +106,11 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
             <div className="mb-4 flex justify-end">
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode("list")}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                    viewMode === 'list' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
+                    viewMode === "list"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
                   }`}
                   title="Card View"
                 >
@@ -112,11 +118,11 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
                   Cards
                 </button>
                 <button
-                  onClick={() => setViewMode('table')}
+                  onClick={() => setViewMode("table")}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                    viewMode === 'table' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
+                    viewMode === "table"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
                   }`}
                   title="Table View"
                 >
@@ -127,10 +133,10 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
             </div>
 
             {/* Render based on view mode */}
-            {viewMode === 'list' ? (
+            {viewMode === "list" ? (
               <EnhancedProfileList
                 profiles={convertedProfiles}
-                title={`Found ${convertedProfiles.length} Profile${convertedProfiles.length === 1 ? '' : 's'}`}
+                title={`Found ${convertedProfiles.length} Profile${convertedProfiles.length === 1 ? "" : "s"}`}
                 onProfileSelect={onProfileSelect}
               />
             ) : (
@@ -158,11 +164,7 @@ export const EnhancedProfileRenderer: React.FC<EnhancedProfileRendererProps> = (
   }
 
   // Fall back to regular markdown rendering for non-profile content
-  return (
-    <StructuredContentRenderer
-      content={content}
-    />
-  );
+  return <StructuredContentRenderer content={content} />;
 };
 
 export default EnhancedProfileRenderer;

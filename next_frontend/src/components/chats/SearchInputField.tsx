@@ -124,7 +124,7 @@ const SearchInputField = memo(
                         posthog.capture("search_button_clicked", {
                           query_length: query.trim().length,
                           location: defaultSearchButton ? "chat_thread" : "hero_section",
-                          input_method: "button"
+                          input_method: "button",
                         });
                       }
                     }}

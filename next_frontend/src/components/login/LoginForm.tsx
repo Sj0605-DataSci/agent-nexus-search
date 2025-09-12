@@ -56,7 +56,9 @@ export default function LoginForm() {
           router.replace("/chat/new");
           toast.success("Welcome back! You have successfully signed in.");
         } else {
-          toast.error(loginResult.message || "Login failed. Please check your credentials and try again.");
+          toast.error(
+            loginResult.message || "Login failed. Please check your credentials and try again."
+          );
           posthog.capture("login_error", { reason: loginResult.message || "Unknown error" });
         }
       } catch (err: any) {

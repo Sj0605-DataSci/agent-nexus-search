@@ -9,7 +9,7 @@ import { getSupabaseConfig } from "@/config/supabase";
 const { supabaseUrl, supabaseKey } = getSupabaseConfig();
 
 // Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = typeof window !== "undefined";
 
 // Create a safe storage implementation that works in both browser and server environments
 const createSafeStorage = () => {
