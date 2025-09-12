@@ -318,7 +318,7 @@ const PersonCard = ({
   return (
     <div
       onClick={() => onPersonClick?.(person)}
-      className={`rounded-lg p-4 cursor-pointer transition-all duration-200 ${darkMode ? "bg-gray-800 hover:bg-gray-700" : "bg-white hover:bg-gray-50"} shadow-sm hover:shadow-md border-b transition-colors hover:bg-muted/50`}
+      className={`rounded-lg p-4 cursor-pointer  ${darkMode ? "bg-gray-800 hover:bg-gray-700" : "bg-white hover:bg-gray-50"} shadow-sm hover:shadow-md border-b transition-colors hover:bg-muted/50`}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0">
@@ -640,7 +640,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
 
         {/* Desktop view */}
         <div className="hidden md:block w-full">
-          <div className="rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)] transition-all duration-200 hover:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-2px_rgba(0,0,0,0.05)]">
+          <div className="rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-2px_rgba(0,0,0,0.05)]">
             <div className="relative w-full overflow-auto rounded-xl">
               <table className="w-full caption-bottom text-sm border-separate border-spacing-0 [&_tr:not(:last-child)]:after:content-[''] [&_tr:not(:last-child)]:after:block [&_tr:not(:last-child)]:after:h-px [&_tr:not(:last-child)]:after:bg-gradient-to-r [&_tr:not(:last-child)]:after:from-transparent [&_tr:not(:last-child)]:after:via-gray-100 [&_tr:not(:last-child)]:after:to-transparent [&_tr:not(:last-child)]:after:mx-4">
                 <thead className="[&_tr]:border-b-0">

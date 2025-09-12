@@ -12,7 +12,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 import Aurora from "@/components/Aurora";
 import { apiClient } from "@/integrations/fastapi/client";
 import { getBaseUrl } from "@/utils/globalconstant";
@@ -83,7 +83,7 @@ export default function ResetPasswordForm() {
 
       if (result.success) {
         setResendTimer(RESEND_COOLDOWN);
-        showSuccessToast("Password reset email resent successfully!");
+        toast.success("Password reset email resent successfully!");
         posthog.capture("password_reset_resent", { email: submittedEmail });
       } else {
         throw new Error(result.message || "Failed to resend email");
@@ -91,7 +91,7 @@ export default function ResetPasswordForm() {
     } catch (error: any) {
       const errorMessage = error.message || "Failed to resend email. Please try again.";
       setError(errorMessage);
-      showErrorToast(errorMessage);
+      toast.error(errorMessage);
       console.error("Resend email error:", error);
     } finally {
       setIsLoading(false);
@@ -110,7 +110,7 @@ export default function ResetPasswordForm() {
         if (result.success) {
           setResendTimer(RESEND_COOLDOWN);
           setEmailSent(true);
-          showSuccessToast("Password reset email sent! Please check your inbox.");
+          toast.success("Password reset email sent! Please check your inbox.");
           posthog.capture("password_reset_email_sent", { email: data.email });
           reset();
         } else {
@@ -120,7 +120,7 @@ export default function ResetPasswordForm() {
         console.error("Reset password error:", error);
         const errorMessage = error.message || "An error occurred while sending reset email";
         setError(errorMessage);
-        showErrorToast(errorMessage);
+        toast.error(errorMessage);
         posthog.capture("password_reset_error", {
           email: data.email,
           error: error.message,

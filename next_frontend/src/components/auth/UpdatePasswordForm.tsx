@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import posthog from "posthog-js";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 import Aurora from "@/components/Aurora";
 import { apiClient } from "@/integrations/fastapi/client";
 
@@ -49,7 +49,7 @@ export default function UpdatePasswordForm() {
           const errorDescription =
             urlParams.get("error_description") || "Invalid or expired reset link";
           setError(errorDescription);
-          showErrorToast(errorDescription);
+          toast.error(errorDescription);
           setIsValidatingToken(false);
           return;
         }
@@ -62,7 +62,7 @@ export default function UpdatePasswordForm() {
 
           if (error_description) {
             setError(error_description);
-            showErrorToast("Invalid or expired reset link");
+            toast.error("Invalid or expired reset link");
             setIsValidatingToken(false);
             return;
           }
@@ -74,20 +74,20 @@ export default function UpdatePasswordForm() {
             } catch (err) {
               console.error("Token validation error:", err);
               setError("Invalid or expired reset link");
-              showErrorToast("This password reset link has expired. Please request a new one.");
+              toast.error("This password reset link has expired. Please request a new one.");
             }
           } else {
             setError("Missing authentication tokens");
-            showErrorToast("Invalid reset link. Please request a new password reset.");
+            toast.error("Invalid reset link. Please request a new password reset.");
           }
         } else {
           setError("No reset token found");
-          showErrorToast("Invalid reset link. Please check the URL or request a new one.");
+          toast.error("Invalid reset link. Please check the URL or request a new one.");
         }
       } catch (err) {
         console.error("Error processing reset link:", err);
         setError("An error occurred while processing your request");
-        showErrorToast("An error occurred. Please try again.");
+        toast.error("An error occurred. Please try again.");
       } finally {
         setIsValidatingToken(false);
       }
@@ -101,7 +101,7 @@ export default function UpdatePasswordForm() {
       e.preventDefault();
 
       if (!accessToken || !refreshToken) {
-        showErrorToast("Invalid reset link. Please request a new one.");
+        toast.error("Invalid reset link. Please request a new one.");
         return;
       }
 
@@ -125,7 +125,7 @@ export default function UpdatePasswordForm() {
 
         if (result.success) {
           setPasswordUpdated(true);
-          showSuccessToast(
+          toast.success(
             "Password updated successfully! You can now log in with your new password."
           );
           posthog.capture("password_update_success");
@@ -140,7 +140,7 @@ export default function UpdatePasswordForm() {
         console.error("Update password error:", error);
         const errorMessage = error.message || "An error occurred while updating password";
         setPasswordError(errorMessage);
-        showErrorToast(errorMessage);
+        toast.error(errorMessage);
         posthog.capture("password_update_error", { error: errorMessage });
       } finally {
         setLoading(false);

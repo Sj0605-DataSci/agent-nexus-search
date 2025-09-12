@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SearchScopeSelector } from "./SearchScopeSelector";
 import { useTypingEffect } from "@/hooks/useTypingEffect";
 import { useAppSelector } from "@/store";
+import posthog from "posthog-js";
 
 export interface SearchInputFieldProps {
   query: string;
@@ -37,9 +38,9 @@ const SearchInputField = memo(
     const placeholderPhrases = [
       "Tech founders in Bangalore with 5+ years of experience who raised a pre-seed round in the last 2 years.",
       "Startup founders in fintech who pivoted their business model after Series A and have experience in regulatory compliance.",
-      "Angel investors in Mumbai with portfolio companies in climate tech and sustainable energy solutions.",
+      "Angel investors in Mumbai with portfolio companies in edtech tech and sustainable energy solutions.",
       "SaaS founders with B2B experience in healthcare who previously worked at established medical technology companies.",
-      "Product managers with experience in AI products who transitioned from engineering roles at FAANG companies.",
+      "Product managers with experience in AI products.",
       "Marketing directors in e-commerce with expertise in conversion optimization and customer retention strategies.",
     ];
 
@@ -57,7 +58,7 @@ const SearchInputField = memo(
 
     return (
       <div
-        className={`relative flex justify-center w-full px-2 sm:px-0 ${defaultSearchButton ? "max-w-5xl mx-auto" : "max-w-3xl mx-auto"}`}
+        className={`relative flex justify-center w-full px-2 sm:px-0 ${defaultSearchButton ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"}`}
       >
         <div className="w-full">
           <div
@@ -81,7 +82,16 @@ const SearchInputField = memo(
                       : placeholderText
                   }
                   value={query}
-                  onChange={e => setQuery(e.target.value)}
+                  onChange={e => {
+                    setQuery(e.target.value);
+                    // Track when user types in search field
+                    if (e.target.value.length % 10 === 0 && e.target.value.length > 0) {
+                      posthog.capture("search_input_typing", {
+                        query_length: e.target.value.length,
+                        location: defaultSearchButton ? "chat_thread" : "hero_section",
+                      });
+                    }
+                  }}
                   ref={textareaRef}
                   onKeyDown={onKey}
                   rows={1}
@@ -109,6 +119,15 @@ const SearchInputField = memo(
                           ? "bg-[#5D9CEC]/60 hover:bg-[#5D9CEC]/80 hover:scale-105 active:scale-95 shadow-md"
                           : "bg-[#0a2a0f] hover:bg-[#0a2a0f] hover:scale-105 active:scale-95 shadow-md"
                     } `}
+                    onClick={() => {
+                      if (!isButtonDisabled) {
+                        posthog.capture("search_button_clicked", {
+                          query_length: query.trim().length,
+                          location: defaultSearchButton ? "chat_thread" : "hero_section",
+                          input_method: "button"
+                        });
+                      }
+                    }}
                     disabled={isButtonDisabled}
                   >
                     <FiSend

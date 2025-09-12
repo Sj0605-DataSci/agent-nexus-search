@@ -4,8 +4,7 @@ import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { UploadCloud, File, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiClient } from "@/integrations/fastapi/client";
-import { showErrorToast, showSuccessToast } from "@/utils/toastManager";
+import toast from "react-hot-toast";
 
 interface DocumentUploaderProps {
   agentId: string;
@@ -49,10 +48,10 @@ const DocumentUploader = ({ agentId, darkMode = false }: DocumentUploaderProps) 
 
     try {
       // await apiClient.uploadAgentDocuments(agentId, formData);
-      showSuccessToast(`${files.length} file(s) uploaded successfully!`);
+      toast.success(`${files.length} file(s) uploaded successfully!`);
       setFiles([]);
     } catch (error: any) {
-      showErrorToast("Upload failed", error.message || "Could not upload files.");
+      toast.error(error.message || "Upload failed: Could not upload files.");
     } finally {
       setUploading(false);
     }
