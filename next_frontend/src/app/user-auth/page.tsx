@@ -19,7 +19,7 @@ import { useWindowSize } from "@/constant/styles/useWindowSize";
 import { useAuth } from "@/hooks/useAuth";
 import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
 import BrandLogo from "@/components/BrandLogo";
-import { supabaseHandler } from "../supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import { DEFAULT_COUNTRY_CODE } from "@/utils/countryCodes";
 import { saveTokens } from "@/utils/tokenManagement";
 

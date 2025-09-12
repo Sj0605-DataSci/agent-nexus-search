@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabaseHandler } from "../../supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import { apiClient, setAuthToken } from "@/integrations/fastapi/client";
 
 declare global {

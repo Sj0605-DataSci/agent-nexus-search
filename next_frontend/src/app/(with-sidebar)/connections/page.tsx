@@ -6,10 +6,11 @@ import { Clock } from "lucide-react";
 import { useAppSelector } from "@/store";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { handleLinkClickSmartly } from "../friends/page";
+import { getStoredToken } from "@/utils/tokenManagement";
 
 export default function ConnectionsPage() {
-  const profile = useAppSelector(state => state.profile.profile);
-  const isAuthenticated = !!profile?.id;
+  const isAuthenticated = getStoredToken();
+
   const connections = [
     {
       id: "gmail",

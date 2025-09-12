@@ -6,6 +6,7 @@ import CreateGroupModal from "@/components/groups/CreateGroupModal";
 import { useAppSelector } from "@/store";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { handleLinkClickSmartly } from "../friends/page";
+import { getStoredToken } from "@/utils/tokenManagement";
 
 export default function Page() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,8 +15,7 @@ export default function Page() {
     handleLinkClickSmartly();
     // setIsModalOpen(false);
   };
-  const profile = useAppSelector(state => state.profile.profile);
-  const isAuthenticated = !!profile?.id;
+  const isAuthenticated = getStoredToken();
 
   return (
     <>

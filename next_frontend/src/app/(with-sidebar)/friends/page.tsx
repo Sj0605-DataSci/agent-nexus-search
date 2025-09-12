@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiLink, FiLock } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/store";
-import Link from "next/link";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
+import { getStoredToken } from "@/utils/tokenManagement";
 
 export const handleLinkClickSmartly = () => {
   toast.success("Ammm...smart boy yk!, better luck next time");
@@ -16,8 +16,7 @@ export const handleLinkClickSmartly = () => {
 export default function FriendsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState("");
-  const profile = useAppSelector(state => state.profile.profile);
-  const isAuthenticated = !!profile?.id;
+  const isAuthenticated = getStoredToken();
 
   return (
     <div className="relative">

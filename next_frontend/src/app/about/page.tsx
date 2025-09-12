@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import HomeHeader from "@/components/Homepage/Header";
+import Navbar from "@/components/Homepage/Navbar";
 import Footer from "@/components/Footer/Footer";
 import NewFooter from "@/components/Footer/NewFooter";
 
@@ -59,7 +59,7 @@ export const metadata = process.env.NODE_ENV === "production" ? productionMetada
 export default function AboutPage() {
   return (
     <>
-      <HomeHeader />
+      <Navbar />
       <div className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="pt-32 pb-20 px-4">
@@ -68,11 +68,11 @@ export default function AboutPage() {
               DiscoverMinds.ai
             </h1>
             <div className="max-w-3xl mx-auto">
-              <p className="text-xl md:text-2xl text-gray-600 leading-relaxed mb-8">
+              <p className="text-xl md:text-2xl text-gray-600 leading-relaxed mb-6">
                 We're building for a world where finding the right people shouldn't feel like
                 searching for a needle in a haystack.
               </p>
-              <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
+              <p className="text-md md:text-xl text-gray-600 leading-relaxed">
                 What separates great people and companies from average ones is how efficiently they
                 can connect with the right people at the right time.
               </p>

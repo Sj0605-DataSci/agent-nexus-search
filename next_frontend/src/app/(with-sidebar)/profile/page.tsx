@@ -9,12 +9,14 @@ import ProfessionalProfile from "@/components/profile/ProfessionalProfile";
 import UsageStatsCard from "@/components/profile/UsageStatsCard";
 import ImportConnectionsModal from "@/components/profile/ImportConnectionsModal";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
+import { getStoredToken } from "@/utils/tokenManagement";
 
 function ProfilePage() {
   const router = useRouter();
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
 
   const { profile, loading } = useAppSelector(s => s.profile);
+  const isAuthenticated = getStoredToken();
 
   const handleConnectionsClick = () => {
     if (profile && !profile.has_connections) {
@@ -26,9 +28,9 @@ function ProfilePage() {
 
   return (
     <div>
-      {!profile?.id && <ComingSoonOverlay />}
+      {!isAuthenticated && <ComingSoonOverlay />}
       <div
-        className={`container mx-auto px-4 ${!profile?.id ? "opacity-30 pointer-events-none" : ""}`}
+        className={`container mx-auto px-4 ${!isAuthenticated ? "opacity-30 pointer-events-none" : ""}`}
       ></div>
       <div className="container mx-auto px-4 pt-8 pb-16 max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-gray-900">My Profile</h1>

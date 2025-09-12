@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import HomeHeader from "@/components/Homepage/Header";
+import Navbar from "@/components/Homepage/Navbar";
 import Footer from "@/components/Footer/Footer";
 import SearchModes from "@/components/Homepage/SearchModes";
 import UseCases from "@/components/Homepage/UseCases";
@@ -22,7 +22,7 @@ const VideoPlayer = dynamic<VideoPlayerProps>(() => import("@/components/Homepag
 export default function AryaPage() {
   return (
     <>
-      <HomeHeader />
+      <Navbar />
       <ParallaxProvider>
         <div className="min-h-screen bg-white">
           {/* Hero Section */}
