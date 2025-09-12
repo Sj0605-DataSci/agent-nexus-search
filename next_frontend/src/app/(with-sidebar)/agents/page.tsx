@@ -106,36 +106,44 @@ const Agents = () => {
   const saveConfiguration = async () => {
     if (!user || !currentConfig || !selectedAgent) return;
 
-    setSaving(true);
+    // Show toast notification for feature under development
+    toast.success("Agent configuration feature is under development", {
+      duration: 3000,
+      position: "top-center",
+      icon: "🚧",
+    });
 
-    try {
-      const hiredAgent = hiredRaw.find(agent => agent.template_id === selectedAgent);
+    // Commented out implementation for future development
+    // setSaving(true);
 
-      if (!hiredAgent) {
-        throw new Error("Could not find the hired agent to update");
-      }
+    // try {
+    //   const hiredAgent = hiredRaw.find(agent => agent.template_id === selectedAgent);
 
-      await apiClient.updateHiredAgent(hiredAgent.id, {
-        name: currentConfig.name,
-        personality: currentConfig.personality,
-        tone: currentConfig.tone,
-        response_length: currentConfig.response_length,
-        expertise: currentConfig.expertise,
-      });
+    //   if (!hiredAgent) {
+    //     throw new Error("Could not find the hired agent to update");
+    //   }
 
-      dispatch(loadAgents());
+    //   await apiClient.updateHiredAgent(hiredAgent.id, {
+    //     name: currentConfig.name,
+    //     personality: currentConfig.personality,
+    //     tone: currentConfig.tone,
+    //     response_length: currentConfig.response_length,
+    //     expertise: currentConfig.expertise,
+    //   });
 
-      toast.success("Your agent configuration has been updated.");
+    //   dispatch(loadAgents());
 
-      setAgentConfigs(prev => ({
-        ...prev,
-        [selectedAgent]: { ...currentConfig },
-      }));
-    } catch (error: any) {
-      toast.error(error.message || "An unexpected error occurred.");
-    } finally {
-      setSaving(false);
-    }
+    //   toast.success("Your agent configuration has been updated.");
+
+    //   setAgentConfigs(prev => ({
+    //     ...prev,
+    //     [selectedAgent]: { ...currentConfig },
+    //   }));
+    // } catch (error: any) {
+    //   toast.error(error.message || "An unexpected error occurred.");
+    // } finally {
+    //   setSaving(false);
+    // }
   };
 
   return (
@@ -604,7 +612,7 @@ const Agents = () => {
                           </div>
                           <Button
                             onClick={saveConfiguration}
-                            disabled={saving}
+                            disabled={false}
                             className={`w-full sm:w-auto px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold text-white transition-all duration-300 shadow-lg hover:shadow-xl ${
                               saving
                                 ? "opacity-50 cursor-not-allowed"
