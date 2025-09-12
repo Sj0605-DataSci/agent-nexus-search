@@ -17,7 +17,7 @@ import { fetchChatThreads, loadMoreChatThreads } from "@/store/chatThreadsSlice"
 import { clearProfile } from "@/store/profileSlice";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/integrations/fastapi/types";
-import { supabaseHandler } from "@/app/supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import ChatThreadsList from "./ChatThreadsList";
 import UserProfileSection from "./UserProfileSection";
 
@@ -261,7 +261,7 @@ const Sidebar = () => {
         style={{ WebkitOverflowScrolling: "touch" }}
       >
         <div
-          className={`flex ${collapsed && !isMobile ? "flex-col items-center" : "items-center justify-between"} pl-2 py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
+          className={`flex ${collapsed && !isMobile ? "flex-col items-center" : "items-center justify-between"}  py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
         >
           <div className="flex items-center justify-center w-full">
             <Link
@@ -347,7 +347,7 @@ const Sidebar = () => {
             ))}
           </ul>
 
-          {profile?.id && recentThreads && recentThreads.length > 0 && (
+          {recentThreads && recentThreads.length > 0 && (
             <div className="mb-4">
               {(!collapsed || isMobile) && (
                 <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>

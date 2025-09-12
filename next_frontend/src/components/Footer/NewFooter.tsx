@@ -6,10 +6,11 @@ import { FaTwitter, FaLinkedin } from "react-icons/fa";
 import { useState } from "react";
 import { apiClient } from "@/integrations/fastapi/client";
 import toast from "react-hot-toast";
+import Analytics from "@/utils/analytics";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 const footerLinks = {
   product: [
-    // { name: "Meet arya", href: "/arya" },
     { name: "Home", href: "/" },
     { name: "Pricing", href: "/pricing" },
     { name: "Get Started", href: "/user-auth" },
@@ -26,47 +27,89 @@ const footerLinks = {
 };
 
 export default function NewFooter() {
-  // State for loading status
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { capture } = useAnalytics();
 
-  // Function to validate email format
   const isValidEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    const isValid = emailRegex.test(email);
+
+    Analytics.trackFeatureUsage("email_validation", {
+      is_valid: isValid,
+      component: "footer_waitlist",
+    });
+
+    return isValid;
   };
 
-  // Function to handle the waitlist button click
   const handleWaitlistClick = async () => {
     const emailInput = document.getElementById("waitlist-email") as HTMLInputElement;
 
     if (emailInput) {
       const emailValue = emailInput.value.trim();
 
+      Analytics.trackButtonClick("waitlist_submit", {
+        location: "footer",
+        has_email: emailValue !== "",
+      });
+
       if (emailValue === "") {
         emailInput.focus();
+        Analytics.trackError("waitlist_error", "Empty email field", {
+          location: "footer",
+        });
       } else {
         if (isValidEmail(emailValue)) {
           try {
             setIsSubmitting(true);
+
+            capture("waitlist_submission_started", {
+              location: "footer",
+            });
+
             const response = await apiClient.joinWaitlistEmail(emailValue);
 
             if (response.success) {
               toast.success("You've been added to our waitlist!");
               emailInput.value = "";
+
+              Analytics.trackFormSubmission("waitlist_form", {
+                status: "success",
+                location: "footer",
+              });
             } else if (response.status_code === 409) {
               toast.success("You're already on our waitlist.");
+
+              Analytics.trackFormSubmission("waitlist_form", {
+                status: "already_joined",
+                location: "footer",
+              });
             } else {
               toast.error("Failed to join waitlist. Please try again later.");
+
+              Analytics.trackError("waitlist_error", "API error", {
+                status_code: response.status_code,
+                location: "footer",
+              });
             }
           } catch (error) {
             console.error("Error joining waitlist:", error);
             toast.error("Failed to join waitlist. Please try again later.");
+
+            Analytics.trackError("waitlist_error", "Exception", {
+              error_message: error instanceof Error ? error.message : String(error),
+              location: "footer",
+            });
           } finally {
             setIsSubmitting(false);
           }
         } else {
           toast.error("Please enter a valid email address.");
           emailInput.focus();
+
+          Analytics.trackError("waitlist_error", "Invalid email format", {
+            location: "footer",
+          });
         }
       }
     }
@@ -153,7 +196,18 @@ export default function NewFooter() {
             <ul className="space-y-2">
               {footerLinks.product.map(link => (
                 <li key={link.name}>
-                  <Link href={link.href} className="text-white hover:text-gray-300">
+                  <Link
+                    href={link.href}
+                    onClick={() => {
+                      Analytics.trackButtonClick("footer_link", {
+                        link_name: link.name,
+                        link_category: "product",
+                        link_url: link.href,
+                      });
+                    }}
+                    prefetch={true}
+                    className="text-white hover:text-gray-300"
+                  >
                     {link.name}
                   </Link>
                 </li>
@@ -170,6 +224,14 @@ export default function NewFooter() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
+                    onClick={() => {
+                      Analytics.trackButtonClick("footer_link", {
+                        link_name: link.name,
+                        link_category: "company",
+                        link_url: link.href,
+                      });
+                    }}
+                    prefetch={true}
                     className="text-white hover:text-gray-300"
                     target={
                       link.href.startsWith("http") || link.href.startsWith("mailto:")
@@ -192,7 +254,7 @@ export default function NewFooter() {
             <ul className="space-y-2">
               {footerLinks.legal.map(link => (
                 <li key={link.name}>
-                  <Link href={link.href} className="text-white hover:text-gray-300">
+                  <Link href={link.href} prefetch={true} className="text-white hover:text-gray-300">
                     {link.name}
                   </Link>
                 </li>
@@ -209,6 +271,12 @@ export default function NewFooter() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-gray-300"
+              onClick={() => {
+                Analytics.trackButtonClick("social_link", {
+                  platform: "linkedin",
+                  location: "footer",
+                });
+              }}
             >
               <FaLinkedin size={24} />
             </a>
@@ -217,6 +285,12 @@ export default function NewFooter() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-gray-300"
+              onClick={() => {
+                Analytics.trackButtonClick("social_link", {
+                  platform: "twitter",
+                  location: "footer",
+                });
+              }}
             >
               <FaTwitter size={24} />
             </a>
