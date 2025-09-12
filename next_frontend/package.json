@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write ."
@@ -89,8 +89,9 @@
     "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.3",
     "sonner": "^1.5.0",
-    "sql-formatter": "^15.6.8",
+    "sql-formatter": "^15.6.9",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",
@@ -102,8 +103,8 @@
     "@eslint/js": "^8.56.0",
     "@tailwindcss/postcss": "^4",
     "@types/aos": "^3.0.7",
-    "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/node": "^20.19.13",
+    "@types/react": "^18.3.24",
     "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
     "eslint": "^8.56.0",
@@ -114,6 +115,6 @@
     "lovable-tagger": "^1.1.7",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.1",
-    "typescript": "^5"
+    "typescript": "^5.9.2"
   }
 }

@@ -10,7 +10,7 @@ const advancedHeaders = [
   { key: "Service-Worker-Allowed", value: "/" },
 ];
 
-const PRODUCTION_API = "https://discoverminds-ai.up.railway.app";
+const PRODUCTION_API = "https://apis.discoverminds.ai";
 const STAGING_API = "https://staging-apis.discoverminds.ai";
 const LOCAL_API = "http://localhost:8000";
 
@@ -18,11 +18,14 @@ const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
     instrumentationHook: true,
+    workerThreads: false,
+    cpus: 1,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
   images: {
+    unoptimized: false,
     remotePatterns: [
       {
         protocol: "https",
@@ -49,18 +52,17 @@ const nextConfig = {
   },
 
   async rewrites() {
+    const apiDestination =
+      process.env.NODE_ENV === "production"
+        ? `${PRODUCTION_API}/api/:path*`
+        : process.env.NODE_ENV === "development"
+          ? `${STAGING_API}/api/:path*`
+          : `${LOCAL_API}/api/:path*`;
+
     return [
       {
         source: "/api/:path*",
-        destination: `${PRODUCTION_API}/api/:path*`,
-      },
-      {
-        source: "/api/:path*",
-        destination: `${LOCAL_API}/api/:path*`,
-      },
-      {
-        source: "/api/:path*",
-        destination: `${STAGING_API}/api/:path*`,
+        destination: apiDestination,
       },
       {
         source: "/ingest/static/:path*",
@@ -81,10 +83,35 @@ const nextConfig = {
     ];
   },
 
-  // Required to support PostHog trailing slash API requests
+  async redirects() {
+    return [
+      {
+        source: "/",
+        has: [
+          {
+            type: "host",
+            value: "www.discoverminds.ai",
+          },
+        ],
+        destination: "https://discoverminds.ai",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.discoverminds.ai",
+          },
+        ],
+        destination: "https://discoverminds.ai/:path*",
+        permanent: true,
+      },
+    ];
+  },
+
   skipTrailingSlashRedirect: true,
 
-  // Suppress specific build warnings
   typescript: {
     ignoreBuildErrors: true,
   },
