@@ -298,7 +298,7 @@ export default function NewFooter() {
         </div>
       </div>
 
-      <div className="max-w-6xl w-full -mb-1 mx-auto flex justify-center">
+      <div className="max-w-6xl w-full -mb-1 mx-auto flex justify-center bg-gradient-to-t from-[#0d3d15] to-transparent">
         <Image
           src="/logos/DiscoverMinds.ai.svg"
           alt="DiscoverMinds.ai"
