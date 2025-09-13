@@ -232,7 +232,7 @@ const Sidebar = () => {
               className="flex items-center h-8 gap-2 group"
             >
               <Image
-                src="/icon.png"
+                src="/icon.webp"
                 alt="Logo"
                 width={32}
                 height={32}

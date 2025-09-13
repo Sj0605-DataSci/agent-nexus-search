@@ -45,7 +45,7 @@ const HeroHeader = () => {
               {["Adobe", "Cargill", "Google", "Juspay", "Meta", "Salesforce"].map(company => (
                 <div key={company} className="h-8 md:h-10 relative w-auto">
                   <Image
-                    src={`/logos/TrustedPartners/${company}.png`}
+                    src={`/logos/TrustedPartners/${company}.webp`}
                     alt={company}
                     className="h-full w-auto object-contain"
                     width={100}

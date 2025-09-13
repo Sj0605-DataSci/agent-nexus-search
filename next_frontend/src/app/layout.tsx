@@ -2,21 +2,26 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import Script from "next/script";
 import { Providers } from "./Providers";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
-import NoIndexTags from '@/components/seo/NoIndexTags';
-import StructuredData from '@/components/seo/StructuredData';
-import CanonicalUrl from '@/components/seo/CanonicalUrl';
+import NoIndexTags from "@/components/seo/NoIndexTags";
+import StructuredData from "@/components/seo/StructuredData";
+import CanonicalUrl from "@/components/seo/CanonicalUrl";
 import PostHogAnalytics from "@/components/analytics/PostHogAnalytics";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const robotoMono = Roboto_Mono({
   variable: "--font-roboto-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const baseMetadata: Metadata = {
@@ -33,9 +38,9 @@ const baseMetadata: Metadata = {
       index: false,
       follow: false,
       noimageindex: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'none',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "none",
+      "max-snippet": -1,
     } as any, // Type assertion to avoid TypeScript errors with the robots configuration
   } as any, // Type assertion for robots object
 };
@@ -75,11 +80,11 @@ const productionMetadata: Metadata = {
   alternates: {
     canonical: "/",
     languages: {
-      'en-US': 'https://discoverminds.ai',
+      "en-US": "https://discoverminds.ai",
     },
   },
   icons: {
-    icon: "https://discoverminds.ai/Logo.png",
+    icon: "https://discoverminds.ai/Logo.webp",
     shortcut:
       "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
     apple:
@@ -138,7 +143,7 @@ const productionMetadata: Metadata = {
     yandex: "your-yandex-verification-code",
     other: {
       "msvalidate.01": "your-bing-verification-code", // Bing verification
-      "y_key": "your-yahoo-verification-code", // Yahoo verification
+      y_key: "your-yahoo-verification-code", // Yahoo verification
     },
   } as any, // Type assertion for verification object
   manifest: "/site.webmanifest",
@@ -165,20 +170,43 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
-      {process.env.NODE_ENV === "production" ? (
-        <>
-          <GoogleAnalytics />
-          <PostHogAnalytics />
-          <StructuredData type="Organization" />
-          <StructuredData type="WebSite" />
-          <StructuredData type="SoftwareApplication" />
-          <StructuredData type="BreadcrumbList" />
-          <CanonicalUrl />
-        </>
-      ) : (
-        <NoIndexTags />
-      )}
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://apis.discoverminds.ai" />
+        <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
+        <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
+        <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
+        <link rel="dns-prefetch" href="https://us.i.posthog.com" />
+
+        <Script id="load-css" strategy="afterInteractive">
+          {`
+            (function() {
+              var link = document.createElement('link');
+              link.rel = 'stylesheet';
+              link.href = '/globals.css';
+              document.head.appendChild(link);
+              })();
+              `}
+        </Script>
+        <noscript>
+          <link rel="stylesheet" href="/globals.css" />
+        </noscript>
+        {process.env.NODE_ENV === "production" ? (
+          <>
+            <GoogleAnalytics />
+            <PostHogAnalytics />
+            <StructuredData type="Organization" />
+            <StructuredData type="WebSite" />
+            <StructuredData type="SoftwareApplication" />
+            <StructuredData type="BreadcrumbList" />
+            <CanonicalUrl />
+          </>
+        ) : (
+          <NoIndexTags />
+        )}
+      </head>
       <body
         className={`${inter.variable} ${robotoMono.variable} antialiased`}
         suppressHydrationWarning
