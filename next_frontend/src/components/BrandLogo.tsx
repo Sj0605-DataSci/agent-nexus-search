@@ -57,7 +57,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
           className={`${iconContainer} rounded overflow-hidden flex items-center justify-center`}
         >
           <Image
-            src="/icon.png"
+            src="/icon.webp"
             alt="DiscoverMinds Logo"
             width={iconSize}
             priority={true}
