@@ -7,6 +7,7 @@ import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import NoIndexTags from '@/components/seo/NoIndexTags';
 import StructuredData from '@/components/seo/StructuredData';
 import CanonicalUrl from '@/components/seo/CanonicalUrl';
+import PostHogAnalytics from "@/components/analytics/PostHogAnalytics";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -168,6 +169,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {process.env.NODE_ENV === "production" ? (
         <>
           <GoogleAnalytics />
+          <PostHogAnalytics />
           <StructuredData type="Organization" />
           <StructuredData type="WebSite" />
           <StructuredData type="SoftwareApplication" />
