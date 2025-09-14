@@ -16,6 +16,7 @@ from typing import Dict, Any, List, Union, Optional
 # LinkedIn enrichment will be handled by background service
 from app.db.redis_client import redis_client
 from app.db.clients import get_async_supabase_client
+from app.api.routes.auto_enrichment import enqueue_auto_enrichment_task
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -150,8 +151,8 @@ class ConnectionWorker:
             await self._update_file_status(supabase, file_id, "completed")
             logger.info(f"Successfully processed connection file {file_id}")
             
-            # Trigger LinkedIn enrichment as separate background task
-            await self._trigger_enrichment_task(user_id, connections)
+            # Trigger auto enrichment for connections with LinkedIn URLs
+            await self._trigger_auto_enrichment(user_id, connections)
             
         except Exception as e:
             logger.error(f"Error processing connection file {file_id}: {e}")
@@ -173,37 +174,55 @@ class ConnectionWorker:
             except Exception as e:
                 logger.error(f"Error removing connection task from processing: {str(e)}")
     
-    async def _trigger_enrichment_task(self, user_id: str, connections: List[Dict[str, Any]]):
-        """Trigger LinkedIn enrichment as separate background task"""
+    async def _trigger_auto_enrichment(self, user_id: str, connections: List[Dict[str, Any]]):
+        """Trigger automatic LinkedIn profile enrichment for imported connections"""
         try:
-            # Extract LinkedIn URLs from connections
-            linkedin_urls = []
+            # Extract connections with LinkedIn URLs
+            connections_to_enrich = []
             for conn in connections:
                 url = conn.get('url', '').strip()
                 if url and 'linkedin.com/in/' in url:
-                    linkedin_urls.append(url)
+                    connections_to_enrich.append({
+                        "id": conn.get('id'),  # This will be None for new connections
+                        "linkedin_url": url
+                    })
             
-            if not linkedin_urls:
+            if not connections_to_enrich:
                 logger.info("No LinkedIn URLs found in connections")
                 return
             
-            logger.info(f"Enqueueing enrichment task for {len(linkedin_urls)} LinkedIn URLs")
+            # Get connection IDs from database for the newly imported connections
+            supabase = await get_async_supabase_client()
+            for i, conn in enumerate(connections_to_enrich):
+                if not conn.get('id'):
+                    # Look up the connection ID by LinkedIn URL
+                    response = await supabase.table("connections").select("id").eq(
+                        "user_id", user_id
+                    ).eq("linkedin_url", conn["linkedin_url"]).limit(1).execute()
+                    
+                    if response.data:
+                        connections_to_enrich[i]["id"] = response.data[0]["id"]
             
-            # Create enrichment task
-            enrichment_task = {
-                "user_id": user_id,
-                "linkedin_urls": linkedin_urls,
-                "created_at": datetime.now().isoformat(),
-            }
+            # Filter out connections without IDs
+            connections_to_enrich = [conn for conn in connections_to_enrich if conn.get('id')]
             
-            # Add to enrichment queue
-            client = await redis_client.get_client()
-            await client.lpush("enrichment:queue", json.dumps(enrichment_task))
+            if not connections_to_enrich:
+                logger.info("No connection IDs found for LinkedIn URLs")
+                return
             
-            logger.info(f"Enqueued enrichment task for user {user_id} with {len(linkedin_urls)} URLs")
+            logger.info(f"Enqueueing auto enrichment task for {len(connections_to_enrich)} connections")
+            
+            # Enqueue auto enrichment task
+            task_id = await enqueue_auto_enrichment_task(user_id, connections_to_enrich)
+            
+            if task_id:
+                logger.info(f"Enqueued auto enrichment task {task_id} for user {user_id} with {len(connections_to_enrich)} connections")
+            else:
+                logger.warning(f"Failed to enqueue auto enrichment task for user {user_id}")
             
         except Exception as e:
-            logger.error(f"Error triggering enrichment task: {str(e)}")
+            logger.error(f"Error triggering auto enrichment: {str(e)}")
+            logger.error(traceback.format_exc())
             # Don't raise - enrichment is optional
     
     async def _update_enriched_profiles(self, user_id: str, results):
