@@ -5,7 +5,7 @@ import asyncio
 import json
 import traceback
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 import redis.asyncio as redis
 
@@ -15,7 +15,6 @@ from app.core.structured_logger import get_structured_logger
 from app.core.services.simplified_enrichment_service import SimplifiedEnrichmentService
 from app.core.services.apify_extractor import extract_apify_profile_data
 from app.api.routes.auto_enrichment import AUTO_ENRICHMENT_QUEUE, AUTO_ENRICHMENT_PROCESSING
-from app.core.embedding_worker import EMBEDDING_QUEUE
 
 logger = get_structured_logger(__name__)
 
@@ -26,6 +25,7 @@ class AutoEnrichmentWorker:
         self.worker_id = str(uuid.uuid4())
         self.running = False
         self.current_task = None
+        self.batch_size = 50  # Process 50 connections at a time (Apify limit)
     
     async def start(self):
         """Start the auto enrichment worker"""
@@ -88,8 +88,7 @@ class AutoEnrichmentWorker:
     
     async def _process_auto_enrichment_task(self, task: Dict[str, Any]):
         """
-        Process auto enrichment task using Apify - only handles profile data extraction
-        and sends tasks to the embedding worker for embedding generation
+        Process auto enrichment task using Apify
         
         Args:
             task: Task data containing user_id and connections
@@ -114,127 +113,70 @@ class AutoEnrichmentWorker:
             # Initialize simplified enrichment service
             enrichment_service = SimplifiedEnrichmentService(supabase_client=supabase)
             
-            # Get Redis client for embedding queue
-            redis_client_instance = await redis_client.get_client()
-            
-            # Use the optimized bulk processing in SimplifiedEnrichmentService with batch yielding
-            # This will allow us to process embedding tasks as soon as each batch is enriched
+            # Process connections in batches (Apify has a limit of ~10 URLs per request)
+            total_processed = 0
             total_successful = 0
-            total_failed = 0
-            total_skipped = 0
-            total_reused = 0
             
-            # Calculate optimal batch size for embedding queue (same as Apify outer batch size)
-            # This is the number of profiles we want to accumulate before sending to embedding queue
-            optimal_embedding_batch_size = enrichment_service.scraping_batch_size * enrichment_service.max_parallel_apify_calls  # 50 × 32 = 1600
-            logger.info(f"Will accumulate {optimal_embedding_batch_size} profiles before sending to embedding queue")
+            # Group connections into batches
+            batches = [connections[i:i + self.batch_size] for i in range(0, len(connections), self.batch_size)]
             
-            # Accumulate enriched connections until we have a full batch
-            accumulated_connections = []
-            accumulated_batch_count = 0
-            
-            # Process enrichment in batches and accumulate results
-            async for batch_result in enrichment_service.enrich_connections(user_id, connections, yield_batches=True):
-                # Check if this is an embedding-only batch
-                if batch_result.get("embedding_only") and batch_result.get("task_type") == "embedding":
-                    # This batch contains connections that already have enrichment data but need embeddings
-                    embedding_only_connections = batch_result.get("connections", [])
-                    
-                    if embedding_only_connections:
-                        logger.info(f"Received {len(embedding_only_connections)} connections that only need embedding generation")
-                        
-                        # Create embedding task with these connections
-                        embedding_task = {
-                            "user_id": user_id,
-                            "task_id": task_id,
-                            "connections": embedding_only_connections
-                        }
-                        
-                        # Send directly to embedding queue
-                        await redis_client_instance.lpush(EMBEDDING_QUEUE, json.dumps(embedding_task))
-                        
-                        # Update status
-                        await self._update_task_status(
-                            task_id,
-                            "processing",
-                            f"🔍 Queued {len(embedding_only_connections)} connections for embedding (already enriched)"
-                        )
-                    
-                    # Continue to next batch
-                    continue
+            for batch_index, batch in enumerate(batches):
+                # Extract LinkedIn URLs from batch
+                linkedin_urls = [conn["linkedin_url"] for conn in batch]
+                connection_ids = [conn["id"] for conn in batch]
                 
-                # Regular enrichment batch - extract results
-                batch_idx = batch_result.get("batch_idx", 0)
-                total_batches = batch_result.get("total_batches", 0)
-                batch_successful = batch_result.get("successful", 0)
-                batch_failed = batch_result.get("failed", 0)
-                batch_skipped = batch_result.get("skipped", 0)
-                batch_reused = batch_result.get("reused", 0)
-                batch_enriched_connections = batch_result.get("enriched_connections", [])
-                
-                # Update counters
-                total_successful += batch_successful
-                total_failed += batch_failed
-                total_skipped += batch_skipped
-                total_reused += batch_reused
-                
-                # Update status for this batch
-                status_message = f"✅ Batch {batch_idx}/{total_batches} completed: {batch_successful} profiles enriched, {batch_failed} failed"
-                
-                # Include skipped/reused counts in the first batch message
-                if batch_idx == 1 and (batch_skipped > 0 or batch_reused > 0):
-                    status_message += f", {batch_skipped} skipped, {batch_reused} reused"
-                    
+                # Update status: Processing batch
                 await self._update_task_status(
                     task_id, 
                     "processing", 
-                    status_message
+                    f"🔍 Processing batch {batch_index + 1}/{len(batches)} ({len(batch)} connections)"
                 )
                 
-                # Add enriched connections to our accumulation
-                if batch_enriched_connections:
-                    accumulated_connections.extend(batch_enriched_connections)
-                    accumulated_batch_count += 1
-                    
-                    # Log accumulation progress
-                    logger.info(f"Accumulated {len(accumulated_connections)} profiles so far ({accumulated_batch_count} batches)")
+                # Prepare connections data for enrichment
+                connections_data = []
+                for i, url in enumerate(linkedin_urls):
+                    connections_data.append({
+                        "id": connection_ids[i],
+                        "linkedin_url": url
+                    })
                 
-                # If we've accumulated enough connections or this is the last batch, send them to embedding queue
-                if len(accumulated_connections) >= optimal_embedding_batch_size or batch_idx == total_batches:
-                    if accumulated_connections:
-                        # Create embedding task with accumulated connections
-                        accumulated_task = {
-                            "user_id": user_id,
-                            "task_id": task_id,
-                            "connections": [{
-                                "id": conn["id"],
-                                "profile_data": conn["profile_data"]
-                            } for conn in accumulated_connections]
-                        }
-                        
-                        # Send accumulated batch to embedding queue
-                        await redis_client_instance.lpush(EMBEDDING_QUEUE, json.dumps(accumulated_task))
-                        logger.info(f"Sent accumulated batch of {len(accumulated_connections)} connections to embedding queue")
-                        
-                        # Update status for embedding queue
-                        await self._update_task_status(
-                            task_id, 
-                            "processing", 
-                            f"🔍 Queued {len(accumulated_connections)} connections for embedding (accumulated from {accumulated_batch_count} batches)"
-                        )
-                        
-                        # Reset accumulation
-                        accumulated_connections = []
-                        accumulated_batch_count = 0
-                        
-                        # Add a small delay to avoid overwhelming Redis
-                        await asyncio.sleep(0.1)
+                # Enrich and embed connections using simplified service
+                enrichment_results = await enrichment_service.enrich_and_embed_connections(
+                    user_id,
+                    connections_data
+                )
+                
+                # Get successful updates count
+                successful_updates = enrichment_results.get("successful", 0)
+                
+                total_processed += len(batch)
+                total_successful += successful_updates
+                
+                # Update status: Batch completed
+                await self._update_task_status(
+                    task_id, 
+                    "processing", 
+                    f"✅ Batch {batch_index + 1}/{len(batches)} completed: {successful_updates}/{len(batch)} successful"
+                )
+                
+                # Embeddings are already generated in the enrich_and_embed_connections method
+                await self._update_task_status(
+                    task_id, 
+                    "processing", 
+                    f"✅ Embeddings generated for batch {batch_index + 1}/{len(batches)}"
+                )
+                
+                # Add delay between batches to avoid rate limiting
+                if batch_index < len(batches) - 1:
+                    await asyncio.sleep(2)
+            
+            logger.info(f"Auto enrichment task completed for user {user_id}: {total_successful}/{total_processed} successful")
             
             # Update status: Enrichment completed
             await self._update_task_status(
                 task_id, 
                 "completed", 
-                f"✅ Enrichment completed: {total_successful} profiles enriched, {total_failed} failed, {total_skipped} skipped, {total_reused} reused"
+                f"✅ Enrichment completed: {total_successful}/{total_processed} profiles enriched successfully"
             )
             
         except Exception as e:
