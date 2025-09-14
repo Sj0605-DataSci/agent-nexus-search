@@ -13,6 +13,7 @@ import time
 from app.core.worker import ChatWorker
 from app.core.connection_worker import ConnectionWorker
 from app.core.enrichment_worker import EnrichmentWorker
+from app.core.auto_enrichment_worker import AutoEnrichmentWorker
 from app.core.config import settings
 from app.core.structured_logger import get_structured_logger
 
@@ -32,6 +33,7 @@ class WorkerManager:
             cls._instance.chat_workers = []
             cls._instance.connection_workers = []
             cls._instance.enrichment_workers = []
+            cls._instance.auto_enrichment_workers = []
             cls._instance._initialized = False
             cls._instance.start_time = time.time()
             cls._instance.worker_memory_threshold = 800  # MB per worker before restart
@@ -55,18 +57,21 @@ class WorkerManager:
             self.num_chat_workers = min(cpu_count // 2, 4)  # Use half the cores, max 4
             self.num_connection_workers = 1  # Only need 1 connection worker
             self.num_enrichment_workers = 1  # Only need 1 enrichment worker
+            self.num_auto_enrichment_workers = 1  # Only need 1 auto enrichment worker
             logger.info("Running as dedicated worker process")
         else:
             # Running alongside web process - use minimal resources
             self.num_chat_workers = 1  # Minimal for web process
             self.num_connection_workers = 1
             self.num_enrichment_workers = 1
+            self.num_auto_enrichment_workers = 1
             logger.info("Running alongside web process")
         
         logger.info("Initializing worker manager",
                    num_chat_workers=self.num_chat_workers,
                    num_connection_workers=self.num_connection_workers,
                    num_enrichment_workers=self.num_enrichment_workers,
+                   num_auto_enrichment_workers=self.num_auto_enrichment_workers,
                    cpu_count=cpu_count,
                    process_type=process_type)
         
@@ -82,6 +87,10 @@ class WorkerManager:
         for _ in range(self.num_enrichment_workers):
             await self._start_enrichment_worker()
             
+        # Create and start auto enrichment workers
+        for _ in range(self.num_auto_enrichment_workers):
+            await self._start_auto_enrichment_worker()
+            
         # Start worker monitoring task
         self._monitor_task = asyncio.create_task(self._monitor_workers())
             
@@ -89,7 +98,8 @@ class WorkerManager:
         logger.info("Worker manager initialized successfully",
                    chat_workers_started=len(self.chat_workers),
                    connection_workers_started=len(self.connection_workers),
-                   enrichment_workers_started=len(self.enrichment_workers))
+                   enrichment_workers_started=len(self.enrichment_workers),
+                   auto_enrichment_workers_started=len(self.auto_enrichment_workers))
     
     async def _start_chat_worker(self):
         """Start a new chat worker"""
@@ -110,6 +120,13 @@ class WorkerManager:
         worker = EnrichmentWorker()
         task = asyncio.create_task(worker.start())
         self.enrichment_workers.append({"worker": worker, "task": task, "type": "enrichment"})
+        return worker, task
+        
+    async def _start_auto_enrichment_worker(self):
+        """Start a new auto enrichment worker"""
+        worker = AutoEnrichmentWorker()
+        task = asyncio.create_task(worker.start())
+        self.auto_enrichment_workers.append({"worker": worker, "task": task, "type": "auto_enrichment"})
         return worker, task
         
     async def _stop_chat_worker(self, worker_index):
@@ -180,6 +197,29 @@ class WorkerManager:
                 
         # Remove from workers list
         self.enrichment_workers.pop(worker_index)
+        
+    async def _stop_auto_enrichment_worker(self, worker_index):
+        """Stop a specific auto enrichment worker by index"""
+        if worker_index >= len(self.auto_enrichment_workers):
+            return
+            
+        worker_info = self.auto_enrichment_workers[worker_index]
+        worker = worker_info["worker"]
+        task = worker_info["task"]
+        
+        # Stop the worker
+        await worker.stop()
+        
+        # Cancel the task if it's still running
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+                
+        # Remove from workers list
+        self.auto_enrichment_workers.pop(worker_index)
     
     async def _monitor_workers(self):
         """Monitor workers and restart if needed"""
@@ -210,6 +250,12 @@ class WorkerManager:
                                   current_count=len(self.enrichment_workers),
                                   target_count=self.num_enrichment_workers)
                     await self._start_enrichment_worker()
+                    
+                if len(self.auto_enrichment_workers) < self.num_auto_enrichment_workers:
+                    logger.warning("Auto enrichment worker count below target, starting new worker",
+                                  current_count=len(self.auto_enrichment_workers),
+                                  target_count=self.num_auto_enrichment_workers)
+                    await self._start_auto_enrichment_worker()
                 
                 # Check for dead workers and restart them
                 await self._check_dead_workers()
@@ -230,7 +276,8 @@ class WorkerManager:
                        total_memory_mb=round(memory_mb, 2),
                        chat_workers=len(self.chat_workers),
                        connection_workers=len(self.connection_workers),
-                       enrichment_workers=len(self.enrichment_workers))
+                       enrichment_workers=len(self.enrichment_workers),
+                       auto_enrichment_workers=len(self.auto_enrichment_workers))
             
             # If total memory is high, restart workers to free memory
             if memory_mb > self.worker_memory_threshold:
@@ -273,6 +320,13 @@ class WorkerManager:
                 await asyncio.sleep(2)
                 await self._start_enrichment_worker()
                 
+            # Restart auto enrichment workers if needed
+            if len(self.auto_enrichment_workers) > 0:
+                logger.info("Restarting auto enrichment worker for memory cleanup")
+                await self._stop_auto_enrichment_worker(0)
+                await asyncio.sleep(2)
+                await self._start_auto_enrichment_worker()
+                
         except Exception as e:
             logger.error("Error restarting workers for memory", error=str(e))
 
@@ -313,6 +367,18 @@ class WorkerManager:
         for i in reversed(dead_enrichment_workers):
             logger.warning("Found dead enrichment worker, removing", worker_index=i)
             await self._stop_enrichment_worker(i)
+            
+        # Check auto enrichment workers
+        dead_auto_enrichment_workers = []
+        for i, worker_info in enumerate(self.auto_enrichment_workers):
+            task = worker_info["task"]
+            if task.done():
+                dead_auto_enrichment_workers.append(i)
+        
+        # Remove dead workers (in reverse order to maintain indices)
+        for i in reversed(dead_auto_enrichment_workers):
+            logger.warning("Found dead auto enrichment worker, removing", worker_index=i)
+            await self._stop_auto_enrichment_worker(i)
 
     async def shutdown(self):
         """Shutdown all workers"""
@@ -338,15 +404,25 @@ class WorkerManager:
         # Stop all connection workers
         for i in range(len(self.connection_workers) - 1, -1, -1):
             await self._stop_connection_worker(i)
+            
+        # Stop all enrichment workers
+        for i in range(len(self.enrichment_workers) - 1, -1, -1):
+            await self._stop_enrichment_worker(i)
+            
+        # Stop all auto enrichment workers
+        for i in range(len(self.auto_enrichment_workers) - 1, -1, -1):
+            await self._stop_auto_enrichment_worker(i)
         
         self.chat_workers = []
         self.connection_workers = []
         self.enrichment_workers = []
+        self.auto_enrichment_workers = []
         self._initialized = False
         logger.info("Worker manager shutdown complete",
                    final_chat_workers_count=len(self.chat_workers),
                    final_connection_workers_count=len(self.connection_workers),
-                   final_enrichment_workers_count=len(self.enrichment_workers))
+                   final_enrichment_workers_count=len(self.enrichment_workers),
+                   final_auto_enrichment_workers_count=len(self.auto_enrichment_workers))
     
     def get_status(self) -> Dict[str, Any]:
         """Get status information about workers"""
@@ -355,6 +431,7 @@ class WorkerManager:
             "chat_worker_count": len(self.chat_workers),
             "connection_worker_count": len(self.connection_workers),
             "enrichment_worker_count": len(self.enrichment_workers),
+            "auto_enrichment_worker_count": len(self.auto_enrichment_workers),
             "chat_workers": [
                 {
                     "id": w["worker"].worker_id,
@@ -378,6 +455,14 @@ class WorkerManager:
                     "current_task": w["worker"].current_task["file_id"] if w["worker"].current_task else None
                 }
                 for w in self.enrichment_workers
+            ],
+            "auto_enrichment_workers": [
+                {
+                    "id": w["worker"].worker_id,
+                    "running": w["worker"].running,
+                    "current_task": w["worker"].current_task["task_id"] if w["worker"].current_task else None
+                }
+                for w in self.auto_enrichment_workers
             ]
         }
 
