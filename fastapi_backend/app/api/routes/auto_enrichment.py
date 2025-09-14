@@ -60,52 +60,18 @@ async def trigger_auto_enrichment(
         # Get Supabase client
         supabase = await get_async_supabase_client()
         
-        # Implement pagination to handle more than 1000 connections
-        all_connections = []
-        page_size = 1000
-        start = 0
-        
-        # Build base query
+        # Determine which connections to enrich
         if request.connection_ids:
             # Specific connections requested
-            base_query = supabase.table("connections").select("id, linkedin_url, enriched_at, embedding_generated_at").eq("user_id", request.user_id).in_("id", request.connection_ids)
+            query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id).in_("id", request.connection_ids)
         else:
             # All unenriched connections
-            base_query = supabase.table("connections").select(
-                "id, linkedin_url, enriched_at, embedding_generated_at, headline, about_section, company, position, location, first_name, last_name, experience_json, education_json, skills, profile_photo_url"
-            ).eq("user_id", request.user_id).is_("embedding_generated_at", None).not_.is_("enriched_at", None) 
+            query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id)
+            if not request.force_refresh:
+                query = query.is_("enriched_at", None)
         
-        # Fetch all pages
-        while True:
-            # Add pagination to the query
-            query = base_query.range(start, start + page_size - 1)
-            
-            # Execute query for current page
-            response = await query.execute()
-            
-            # Check if we got any data
-            if response.data and len(response.data) > 0:
-                all_connections.extend(response.data)
-                logger.info(f"Fetched {len(response.data)} connections, total so far: {len(all_connections)}")
-                
-                # If we got fewer results than page_size, we've reached the end
-                if len(response.data) < page_size:
-                    break
-                    
-                # Move to next page
-                start += page_size
-            else:
-                # No more results
-                break
-        
-        # Replace response.data with all_connections
-        response.data = all_connections
-        logger.info(f"Total connections fetched: {len(all_connections)}")
-        
-        # For debugging
-        if len(all_connections) > 1000:
-            logger.info(f"Successfully fetched more than 1000 connections: {len(all_connections)}")
-        
+        # Execute query
+        response = await query.execute()
         
         if not response.data:
             return AutoEnrichmentResponse(
@@ -121,25 +87,10 @@ async def trigger_auto_enrichment(
         for conn in response.data:
             linkedin_url = conn.get("linkedin_url", "")
             if linkedin_url and "linkedin.com/in/" in linkedin_url:
-                connection_data = {
+                connections_to_enrich.append({
                     "id": conn["id"],
-                    "linkedin_url": linkedin_url,
-                    "enriched_at": conn.get("enriched_at", None),
-                    "embedding_generated_at": conn.get("embedding_generated_at", None),
-                    # Include all profile data needed for embedding generation
-                    "first_name": conn.get("first_name", ""),
-                    "last_name": conn.get("last_name", ""),
-                    "headline": conn.get("headline", ""),
-                    "about_section": conn.get("about_section", ""),
-                    "company": conn.get("company", ""),
-                    "position": conn.get("position", ""),
-                    "location": conn.get("location", ""),
-                    "experience_json": conn.get("experience_json", []),
-                    "education_json": conn.get("education_json", []),
-                    "skills": conn.get("skills", []),
-                    "profile_photo_url": conn.get("profile_photo_url", "")
-                }
-                connections_to_enrich.append(connection_data)
+                    "linkedin_url": linkedin_url
+                })
         
         if not connections_to_enrich:
             return AutoEnrichmentResponse(
@@ -319,25 +270,10 @@ async def direct_enrich_user_connections(
         for conn in response.data:
             linkedin_url = conn.get("linkedin_url", "")
             if linkedin_url and "linkedin.com/in/" in linkedin_url:
-                connection_data = {
+                connections_to_enrich.append({
                     "id": conn["id"],
-                    "linkedin_url": linkedin_url,
-                    "enriched_at": conn.get("enriched_at", None),
-                    "embedding_generated_at": conn.get("embedding_generated_at", None),
-                    # Include all profile data needed for embedding generation
-                    "first_name": conn.get("first_name", ""),
-                    "last_name": conn.get("last_name", ""),
-                    "headline": conn.get("headline", ""),
-                    "about_section": conn.get("about_section", ""),
-                    "company": conn.get("company", ""),
-                    "position": conn.get("position", ""),
-                    "location": conn.get("location", ""),
-                    "experience_json": conn.get("experience_json", []),
-                    "education_json": conn.get("education_json", []),
-                    "skills": conn.get("skills", []),
-                    "profile_photo_url": conn.get("profile_photo_url", "")
-                }
-                connections_to_enrich.append(connection_data)
+                    "linkedin_url": linkedin_url
+                })
         
         if not connections_to_enrich:
             return {
@@ -346,30 +282,35 @@ async def direct_enrich_user_connections(
                 "profiles_count": 0
             }
         
-        # Get Redis client
-        redis_client_instance = await redis_client.get_client()
+        # Initialize the simplified enrichment service
+        enrichment_service = SimplifiedEnrichmentService(supabase_client=supabase)
         
-        # Create a task ID
-        task_id = str(uuid.uuid4())
-        
-        # Create task data
-        task_data = {
-            "user_id": user_id,
-            "connections": connections_to_enrich,
-            "task_id": task_id
-        }
-        
-        # Queue the task for auto enrichment worker
-        await redis_client_instance.lpush(AUTO_ENRICHMENT_QUEUE, json.dumps(task_data))
-        
-        logger.info(f"Queued auto enrichment task {task_id} for user {user_id} with {len(connections_to_enrich)} connections")
-        
-        return {
-            "status": "success",
-            "message": f"Queued enrichment for {len(connections_to_enrich)} connections",
-            "profiles_count": len(connections_to_enrich),
-            "task_id": task_id
-        }
+        # If background tasks is provided, run in background
+        if background_tasks:
+            # Add the enrichment task to background tasks
+            background_tasks.add_task(
+                enrichment_service.enrich_and_embed_connections,
+                user_id,
+                connections_to_enrich
+            )
+            
+            return {
+                "status": "success",
+                "message": f"Started direct enrichment for {len(connections_to_enrich)} connections in background",
+                "profiles_count": len(connections_to_enrich),
+                "background": True
+            }
+        else:
+            # Run enrichment directly (will block until complete)
+            result = await enrichment_service.enrich_and_embed_connections(user_id, connections_to_enrich)
+            
+            return {
+                "status": "success",
+                "message": f"Completed direct enrichment for {len(connections_to_enrich)} connections",
+                "profiles_count": len(connections_to_enrich),
+                "result": result,
+                "background": False
+            }
             
     except Exception as e:
         logger.error(f"Error in direct enrichment: {str(e)}")
