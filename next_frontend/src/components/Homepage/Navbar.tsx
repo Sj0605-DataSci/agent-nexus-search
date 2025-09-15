@@ -4,6 +4,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import BrandLogo from "../BrandLogo";
 import { motion, AnimatePresence } from "framer-motion";
+import Analytics from "@/utils/analytics";
+import { usePathname } from "next/navigation";
 
 interface MobileMenuIconProps {
   isOpen: boolean;
@@ -36,13 +38,33 @@ const MobileMenuIcon = ({ isOpen, onClick }: MobileMenuIconProps) => (
   </button>
 );
 
-const NAV_LINKS = [{ name: "Pricing", href: "/pricing" }];
+const NAV_LINKS = [
+  { name: "Why DiscoverMinds", href: "/#why-discoverminds" },
+  { name: "Pricing", href: "/pricing" },
+];
 
 const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const pathname = usePathname();
+  const handleSectionLinkClick = (e: React.MouseEvent, sectionId: string) => {
+    e.preventDefault();
 
+    const section = document.getElementById(sectionId);
+
+    Analytics.trackButtonClick(`${sectionId}_scroll`, {
+      location: "navbar",
+      source: "nav_link",
+    });
+
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (pathname !== "/") {
+      // If we're not on the homepage, navigate to homepage first
+      window.location.href = `/${sectionId}`;
+    }
+  };
   // Handle scroll visibility
   useEffect(() => {
     const handleScroll = () => {
@@ -112,7 +134,7 @@ const Navbar: React.FC = () => {
                       key={link.name}
                       prefetch={true}
                       href={link.href}
-                      className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 relative group px-2 py-1 rounded focus:outline-none "
+                      className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 relative group px-2 py-1 rounded focus:outline-none cursor-pointer"
                     >
                       {link.name}
                       <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-[#EFFBD7] transition-all duration-300 group-hover:w-[calc(100%-1rem)]" />

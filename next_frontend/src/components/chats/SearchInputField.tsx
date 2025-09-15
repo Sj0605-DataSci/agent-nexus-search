@@ -2,6 +2,7 @@
 
 import React, { memo } from "react";
 import { FiSend } from "react-icons/fi";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchScopeSelector } from "./SearchScopeSelector";
 import { useTypingEffect } from "@/hooks/useTypingEffect";
@@ -18,6 +19,7 @@ export interface SearchInputFieldProps {
   hideGroupOption: boolean;
   defaultSearchButton: boolean;
   previousQuery?: string;
+  loading: boolean;
 }
 
 const SearchInputField = memo(
@@ -31,6 +33,7 @@ const SearchInputField = memo(
     isStreaming,
     previousQuery = "",
     defaultSearchButton = true,
+    loading,
   }: SearchInputFieldProps) => {
     const profile = useAppSelector(state => state.profile.profile);
     const isAuthenticated = !!profile?.id;
@@ -111,7 +114,7 @@ const SearchInputField = memo(
                   <button
                     type="submit"
                     className={`rounded-md h-9 w-9 flex justify-center items-center transition-all ${
-                      isButtonDisabled
+                      isButtonDisabled || loading
                         ? defaultSearchButton
                           ? "bg-[#5D9CEC]/30 cursor-not-allowed"
                           : "bg-[#0E3D15]/30 cursor-not-allowed"
@@ -120,7 +123,7 @@ const SearchInputField = memo(
                           : "bg-[#0a2a0f] hover:bg-[#0a2a0f] hover:scale-105 active:scale-95 shadow-md"
                     } `}
                     onClick={() => {
-                      if (!isButtonDisabled) {
+                      if (!isButtonDisabled && !loading) {
                         posthog.capture("search_button_clicked", {
                           query_length: query.trim().length,
                           location: defaultSearchButton ? "chat_thread" : "hero_section",
@@ -128,17 +131,21 @@ const SearchInputField = memo(
                         });
                       }
                     }}
-                    disabled={isButtonDisabled}
+                    disabled={isButtonDisabled || loading}
                   >
-                    <FiSend
-                      className={`h-4 w-4 -ml-1 transform rotate-45 ${
-                        isStreaming ||
-                        !query.trim() ||
-                        query.trim().toLowerCase() === previousQuery.trim().toLowerCase()
-                          ? "text-gray-400"
-                          : "text-white"
-                      }`}
-                    />
+                    {loading ? (
+                      <AiOutlineLoading3Quarters className="h-4 w-4 text-white animate-spin" />
+                    ) : (
+                      <FiSend
+                        className={`h-4 w-4 -ml-1 transform rotate-45 ${
+                          isStreaming ||
+                          !query.trim() ||
+                          query.trim().toLowerCase() === previousQuery.trim().toLowerCase()
+                            ? "text-gray-400"
+                            : "text-white"
+                        }`}
+                      />
+                    )}
                   </button>
                 </div>
               </div>

@@ -1,8 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { WaitlistButton } from "./ClientComponents";
 import Image from "next/image";
-import Analytics from "@/utils/analytics";
 
 const HeroHeader = () => {
   return (
@@ -19,7 +17,13 @@ const HeroHeader = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-              <WaitlistButton />
+              <Link
+                href="/#waitlist-email"
+                className="px-8 py-3 text-lg font-medium rounded-xl text-white bg-[#0E3D15] hover:bg-[#1F3A21] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-102 hover:-translate-y-0.5 active:translate-y-0"
+                aria-label="Join waitlist"
+              >
+                Join waitlist
+              </Link>
               <Link
                 href="https://calendly.com/founders-discoverminds/30min"
                 target="_blank"

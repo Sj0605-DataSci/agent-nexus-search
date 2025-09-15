@@ -1,21 +1,32 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import SearchInputField from "../chats/SearchInputField";
 import { useRouter } from "next/navigation";
 import Analytics from "@/utils/analytics";
 import useAnalytics from "@/hooks/useAnalytics";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { FaBriefcase, FaCode, FaBullhorn, FaUserTie } from "react-icons/fa";
+import { FiSearch } from "react-icons/fi";
+import { motion } from "framer-motion";
+import Link from "next/link";
 
 const quickSearchesData = [
-  { label: "Operations manager with 4 years of experience", category: "Operations" },
-  { label: "CTO with experience in AI", category: "CTO" },
+  {
+    label: "Operations manager with 4 years of experience",
+    category: "Operations",
+    icon: FaBriefcase,
+  },
+  { label: "CTO with experience in AI", category: "CTO", icon: FaUserTie },
   {
     label: "Software Developer in bangalore with 4 years of experience",
     category: "Software Developer",
+    icon: FaCode,
   },
   {
     label: "Marketing manager with 2 years of experience in digital marketing",
     category: "Marketing",
+    icon: FaBullhorn,
   },
 ];
 
@@ -24,6 +35,8 @@ const SearchSection = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { capture } = useAnalytics();
+  const [loading, setLoading] = useState(false);
+  const [loadingButtonIndex, setLoadingButtonIndex] = useState<number | null>(null);
 
   const handleSearch = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -51,7 +64,9 @@ const SearchSection = () => {
     }
   };
 
-  const handleQuickSearch = (label: string) => {
+  const handleQuickSearch = (label: string, index: number) => {
+    setLoading(true);
+    setLoadingButtonIndex(index);
     Analytics.trackSearch(label.trim(), 0, {
       source: "hero_search",
       search_type: "quick_search",
@@ -63,9 +78,10 @@ const SearchSection = () => {
       location: "hero_section",
     });
     setSearchQuery(label);
-    if (label?.trim()) {
-      router.push(`/user-query?q=${encodeURIComponent(label?.trim())}`);
-    }
+    setTimeout(() => {
+      setLoading(false);
+      setLoadingButtonIndex(null);
+    }, 3000);
   };
 
   return (
@@ -78,11 +94,11 @@ const SearchSection = () => {
           <header className="text-center">
             <h2
               id="search-section-title"
-              className="text-2xl sm:text-3xl font-medium text-white mb-3"
+              className="text-2xl sm:text-3xl md:text-4xl font-medium text-white mb-3"
             >
               Find the right person
             </h2>
-            <p className="text-base sm:text-lg text-white/80 mb-6">
+            <p className="text-base sm:text-lg text-white/80 mb-6 max-w-2xl mx-auto">
               We'll show you real results from our own networks.
             </p>
             <div className="inline-block rounded-full bg-white/10 backdrop-blur-sm px-5 py-1 mb-8">
@@ -104,6 +120,7 @@ const SearchSection = () => {
               isStreaming={false}
               previousQuery=""
               hideGroupOption={true}
+              loading={loading}
               defaultSearchButton={false}
             />
           </div>
@@ -111,28 +128,60 @@ const SearchSection = () => {
           <nav className="flex flex-col items-center w-full mt-6" aria-label="Quick search options">
             <div className="flex items-center justify-center w-full flex-wrap gap-3">
               {quickSearchesData.map((search, index) => (
-                <button
+                <motion.div
                   key={`${search.label}-${index}`}
-                  className="group relative px-5 py-1.5 text-sm font-medium text-gray-700 bg-white/90 hover:bg-white border border-white/20 hover:border-white/40 rounded-full transition-all duration-200 hover:shadow-md transform hover:-translate-y-0.5"
-                  title={search.label}
-                  aria-label={`Search for ${search.category}`}
-                  onClick={e => {
-                    Analytics.trackButtonClick("quick_search_option", {
-                      category: search.category,
-                      query: search.label,
-                      position: index,
-                      location: "hero_section",
-                    });
-                    handleQuickSearch(search.label);
-                  }}
-                  data-analytics-event="quick_search_click"
-                  data-analytics-properties={`{\"category\":\"${search.category}\",\"position\":${index},\"location\":\"hero_section\"}`}
+                  whileHover={{ y: -4, boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)" }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                  {search.category}
-                </button>
+                  <Link
+                    href={`/user-query?q=${encodeURIComponent(search.label.trim())}`}
+                    className={`group relative px-5 py-1 text-sm font-medium text-gray-700 bg-white/90 hover:bg-white border border-white/20 hover:border-white/40 rounded-full transition-all duration-200 flex items-center justify-center ${
+                      loading && loadingButtonIndex === index ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                    prefetch={true}
+                    title={search.label}
+                    aria-label={`Search for ${search.category}`}
+                    onClick={e => {
+                      if (loading) {
+                        e.preventDefault();
+                        return;
+                      }
+
+                      Analytics.trackButtonClick("quick_search_option", {
+                        category: search.category,
+                        query: search.label,
+                        position: index,
+                        location: "hero_section",
+                      });
+
+                      capture("search_initiated", {
+                        query: search.label,
+                        location: "hero_section",
+                      });
+                      handleQuickSearch(search.label, index);
+                    }}
+                    data-analytics-event="quick_search_click"
+                    data-analytics-properties={`{"category":"${search.category}","position":${index},"location":"hero_section"}`}
+                  >
+                    {search.icon && (
+                      <search.icon
+                        className={`mr-2 h-4 w-4 ${loading && loadingButtonIndex === index ? "opacity-20" : ""}`}
+                      />
+                    )}
+                    <span className={loading && loadingButtonIndex === index ? "opacity-20" : ""}>
+                      {search.category}
+                    </span>
+                    {loading && loadingButtonIndex === index && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <AiOutlineLoading3Quarters className="h-4 w-4 animate-spin text-gray-800" />
+                      </div>
+                    )}
+                  </Link>
+                </motion.div>
               ))}
             </div>
-            <p className="mt-8 text-sm text-white/60">
+            <p className="mt-8 text-sm text-white/70 font-light">
               Try searching for roles, skills, or companies
             </p>
           </nav>

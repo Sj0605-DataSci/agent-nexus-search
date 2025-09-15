@@ -7,6 +7,7 @@ import NewHeroSection from "@/components/Homepage/NewHeroSection";
 import FaqSection from "@/components/Pricing/FaqSection";
 import NewFooter from "@/components/Footer/NewFooter";
 import React, { Suspense } from "react";
+import WhyDiscoverMinds from "@/components/Homepage/WhyDiscoverMinds";
 
 export const dynamic = "force-static";
 
@@ -98,7 +99,7 @@ export default function Home() {
             </div>
           }
         >
-          <PricingPlans />
+          <WhyDiscoverMinds />
           <FaqSection />
         </Suspense>
         <NewFooter />

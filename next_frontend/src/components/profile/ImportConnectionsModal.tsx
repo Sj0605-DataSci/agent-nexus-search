@@ -8,6 +8,8 @@ import { getSupabaseConfig } from "@/config/supabase";
 import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
 import Image from "next/image";
+import { useAppDispatch } from "@/store";
+import { fetchProfile } from "@/store/profileSlice";
 
 interface ImportConnectionsModalProps {
   open: boolean;
@@ -19,6 +21,8 @@ export default function ImportConnectionsModal({
   onOpenChange,
 }: ImportConnectionsModalProps) {
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
+
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -123,7 +127,7 @@ export default function ImportConnectionsModal({
 
       await apiClient.processConnectionFile(fileId);
       setUploadStatus("success");
-
+      dispatch(fetchProfile());
       // Close modal after successful upload
       setTimeout(() => {
         onOpenChange(false);

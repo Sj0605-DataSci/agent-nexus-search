@@ -46,6 +46,52 @@ function ProductionPostHogProvider({ children }: PostHogProviderProps) {
         posthog.init(apiKey, {
           api_host: apiHost,
           capture_pageview: true,
+          persistence: 'localStorage',
+          autocapture: true,
+          capture_pageleave: true,
+          session_recording: {
+            maskAllInputs: false,
+            recordCrossOriginIframes: true
+          },
+          property_blacklist: ['$current_url', '$host'],
+          loaded: (ph) => {
+            // Set default properties for all users including guests
+            const userAgent = navigator.userAgent;
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            const browser = ph.get_session_id();
+            const deviceId = ph.get_distinct_id();
+            
+            // Set default properties for all users (including guests)
+            ph.register({
+              is_guest: true,
+              device_type: isMobile ? 'mobile' : 'desktop',
+              browser: browser,
+              device_id: deviceId,
+              locale: navigator.language,
+              screen_width: window.screen.width,
+              screen_height: window.screen.height,
+              referrer: document.referrer,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            });
+            
+            // Attempt to get location data (will be limited by browser permissions)
+            try {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    ph.register({
+                      latitude: position.coords.latitude,
+                      longitude: position.coords.longitude
+                    });
+                  },
+                  () => {}, // Silent error
+                  { timeout: 10000, enableHighAccuracy: false }
+                );
+              }
+            } catch (e) {
+              console.log('Geolocation not available or permitted');
+            }
+          }
         });
       } else {
         console.warn("PostHog API key not found. Analytics will not be tracked.");

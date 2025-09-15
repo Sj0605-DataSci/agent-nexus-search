@@ -44,19 +44,16 @@ const Sidebar = () => {
     hasMore: hasMoreThreads,
   } = useAppSelector(state => state.chatThreads);
   const [loadingMoreThreads, setLoadingMoreThreads] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const threadsFetchedRef = useRef(false);
   const isUserQueryRoute = pathname?.includes("user-query");
+  const isInitialLoading = loadingThreads && recentThreads.length === 0;
 
   const fetchThreads = () => {
     if (!profile?.id) return;
 
-    setInitialLoading(true);
-    dispatch(fetchChatThreads()).finally(() => {
-      setInitialLoading(false);
-    });
+    dispatch(fetchChatThreads());
   };
 
   const loadMoreThreads = useCallback(() => {
@@ -316,12 +313,12 @@ const Sidebar = () => {
               )}
               <div className="rounded-md mb-1">
                 <ChatThreadsList
-                  threads={recentThreads || []}
-                  initialLoading={initialLoading}
+                  threads={recentThreads}
+                  initialLoading={isInitialLoading}
                   loadingMoreThreads={loadingMoreThreads}
                   loadingThreads={loadingThreads}
                   hasMoreThreads={hasMoreThreads}
-                  collapsed={collapsed}
+                  collapsed={collapsed && !isMobile}
                   isMobile={isMobile}
                   loadMoreThreads={loadMoreThreads}
                   getThreadPreview={getThreadPreview}

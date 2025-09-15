@@ -13,6 +13,7 @@ body {
   padding: 0;
   overscroll-behavior: none;
   overflow-x: hidden;
+  scroll-behavior: smooth;
 }
 
 @layer base {
@@ -21,6 +22,19 @@ body {
     box-shadow: none !important;
     border-color: transparent;
   }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 6s linear infinite;
 }
 
 /* @layer base {

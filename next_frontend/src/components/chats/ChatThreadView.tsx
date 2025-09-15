@@ -665,6 +665,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
             onSubmit={handleSubmit}
             isStreaming={isStreaming}
             hideGroupOption={false}
+            loading={false}
             defaultSearchButton={true}
           />
           {threadId === "new" && !(messages.length > 0) && (

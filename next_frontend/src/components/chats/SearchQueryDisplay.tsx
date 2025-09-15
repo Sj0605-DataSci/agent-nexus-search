@@ -489,6 +489,17 @@ const SearchQueryDisplay = ({ streamingSearchQueries, isStreaming }: SearchQuery
 
   return (
     <div className="mb-4 transition-all duration-300 w-full ease-in-out">
+      {/* <p className="text-md h-22 font-medium max-w-3xl">
+        <span
+          className="bg-gradient-to-r from-gray-500 via-gray-700 to-gray-500 bg-clip-text text-transparent 
+    animate-shimmer bg-[length:200%_100%]"
+        >
+          Certainly! I'm searching across founder's 18075+ 1st degree connections
+        </span>
+      </p> */}
+      <p className="md:text-md text-sm text-gray-600 max-w-3xl -mt-2 mb-2 ">
+        Certainly! I'm searching across founder's 18075+ 1st degree connections
+      </p>
       <div
         className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-200"
         onClick={() => setIsCollapsed(!isCollapsed)}
