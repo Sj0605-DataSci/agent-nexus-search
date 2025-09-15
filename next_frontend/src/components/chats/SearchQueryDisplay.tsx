@@ -497,7 +497,7 @@ const SearchQueryDisplay = ({ streamingSearchQueries, isStreaming }: SearchQuery
           Certainly! I'm searching across founder's 18075+ 1st degree connections
         </span>
       </p> */}
-      <p className="md:text-md text-sm text-gray-600 max-w-3xl -mt-2 mb-2 ">
+      <p className="md:text-md text-sm text-gray-600 max-w-3xl mb-2 ">
         Certainly! I'm searching across founder's 18075+ 1st degree connections
       </p>
       <div
