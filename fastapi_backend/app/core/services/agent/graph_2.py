@@ -98,16 +98,13 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             await supabase_client.table("chat_messages").update({
-                "sub_queries": cached_result.get("query_analysis").get("keyphrases").get("keyphrases", []),
+                "sub_queries": cached_result.get("query_analysis").get("keyphrases"),
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
-            # Ensure we use the current message ID, not the cached one
-            cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
-            cached_result_dict["current_message_id"] = current_message_id
 
-            return OverallState(**cached_result_dict)
+            return OverallState(**cached_result)
       
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
@@ -414,7 +411,7 @@ LIMIT 20;
             except Exception as fallback_e:
                 raise fallback_e
         
-        print("Node 2: SQL Search Completed")
+        print("Node 3: SQL Search Completed")
         current_message_id = state["current_message_id"]
         chat_thread_id = state["chat_thread_id"]
 
