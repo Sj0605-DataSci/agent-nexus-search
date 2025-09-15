@@ -282,7 +282,7 @@ const Sidebar = () => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 hide-scrollbar">
-          <ul className="space-y-[2px] pb-3">
+          <ul className="space-y-[2px] mt-2 pb-3">
             {navItems.map(({ href, label, icon }) => (
               <li key={href}>
                 <Link
