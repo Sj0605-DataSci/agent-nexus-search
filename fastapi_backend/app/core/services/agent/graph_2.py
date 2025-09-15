@@ -98,21 +98,17 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             await supabase_client.table("chat_messages").update({
-                "sub_queries": cached_result.get("query_analysis").get("keyphrases").get("keyphrases", []),
+                "sub_queries": cached_result.get("query_analysis").get("keyphrases"),
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
+<<<<<<< HEAD
             
             # Ensure we use the current message ID, not the cached one
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
-            cached_result_dict["current_message_id"] = current_message_id
-
-            return OverallState(**cached_result_dict)
-      
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
-Extract exactly 5 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
 
 Given a user's search query, you need to:
 1. Paraphrase the query in a clear, professional manner
@@ -417,7 +413,11 @@ LIMIT 20;
             except Exception as fallback_e:
                 raise fallback_e
         
+<<<<<<< HEAD
         print("Node 2: SQL Search Completed")
+=======
+        print("Node 3: SQL Search Completed")
+>>>>>>> 1669ca2 (now cache answers too will get recorded in supabase)
         current_message_id = state["current_message_id"]
         chat_thread_id = state["chat_thread_id"]
 
@@ -853,6 +853,23 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
     
     query_analysis = state.get("query_analysis", {})
+<<<<<<< HEAD
+=======
+    user_query = get_research_topic(state["messages"])
+    
+    cache_key = f"graph2:finalize_sql_answer:{user_id}:{user_query}"
+    
+    cached_result = await redis_client.get(cache_key)
+    if cached_result is not None:
+        await supabase_client.table("chat_messages").update({
+            "message": cached_result.messages,
+            "sources_gathered": cached_result.sources_gathered
+        }).eq("user_id", user_id).eq("id", current_message_id).execute()
+        
+        invalidate_chat_messages_cache(chat_thread_id)
+        
+        return OverallState(**cached_result)
+>>>>>>> 1669ca2 (now cache answers too will get recorded in supabase)
     
     if not final_profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
