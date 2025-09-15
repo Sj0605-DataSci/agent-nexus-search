@@ -97,7 +97,14 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         # Try to get from cache
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
-            return cached_result
+            await supabase_client.table("chat_messages").update({
+                "sub_queries": cached_result.get("query_analysis").get("keyphrases"),
+                "weave_url": state["weave_url"],
+            }).eq("id", current_message_id).execute()
+            
+            invalidate_chat_messages_cache(chat_thread_id)
+
+            return OverallState(**cached_result)
       
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
@@ -350,6 +357,8 @@ Always have about_section NOT NULL, and Experience json not null + embedding_gen
                 raise fallback_e
         
         print("Node 3: SQL Search Completed")
+        current_message_id = state["current_message_id"]
+        chat_thread_id = state["chat_thread_id"]
 
         result = {
             "messages":state["messages"],
@@ -375,6 +384,12 @@ Always have about_section NOT NULL, and Experience json not null + embedding_gen
         }
 
         await redis_client.set(cache_key, result, expire=3600)
+        await supabase_client.table("chat_messages").update({
+            "generated_sql": clean_query
+        }).eq("user_id", user_id).eq("id", current_message_id).execute()
+        
+        invalidate_chat_messages_cache(chat_thread_id)
+        
         return OverallState(**result)
         
     except Exception as e:
@@ -778,6 +793,13 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     
     cached_result = await redis_client.get(cache_key)
     if cached_result is not None:
+        await supabase_client.table("chat_messages").update({
+            "message": cached_result.messages,
+            "sources_gathered": cached_result.sources_gathered
+        }).eq("user_id", user_id).eq("id", current_message_id).execute()
+        
+        invalidate_chat_messages_cache(chat_thread_id)
+        
         return OverallState(**cached_result)
     
     if not final_profiles:
@@ -827,9 +849,9 @@ IMPORTANT:
 
 Return answer like this 
 
+Give answer in correct json format
 Example format:
 
-Give this in json format
 '''json
 {
 "profile_id": "uuid-2",
