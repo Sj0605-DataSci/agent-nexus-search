@@ -98,7 +98,7 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             await supabase_client.table("chat_messages").update({
-                "sub_queries": cached_result.get("query_analysis").get("keyphrases"),
+                "sub_queries": cached_result.get("query_analysis").get("keyphrases").get("keyphrases", []),
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
@@ -233,10 +233,15 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
+<<<<<<< HEAD
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
             cached_result_dict["current_message_id"] = current_message_id
 
             return OverallState(**cached_result_dict)
+=======
+            
+            return OverallState(**cached_result)
+>>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
         
         
         # Extract traits and filters for keyword generation
@@ -464,7 +469,10 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
         user_query = state["messages"][-1].get("content", "")
+<<<<<<< HEAD
         current_message_id = state.get("current_message_id", "")
+=======
+>>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
         cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
         # Try to get from cache
@@ -808,10 +816,15 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         }).eq("user_id", user_id).eq("id", current_message_id).execute()
         
         invalidate_chat_messages_cache(chat_thread_id)
+<<<<<<< HEAD
         cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
         cached_result_dict["current_message_id"] = current_message_id
         
         return OverallState(**cached_result_dict)
+=======
+        
+        return OverallState(**cached_result)
+>>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
     
     # Combine results from both sources
     combined_profiles = []
@@ -847,20 +860,6 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
     
     query_analysis = state.get("query_analysis", {})
-    user_query = get_research_topic(state["messages"])
-    
-    cache_key = f"graph2:finalize_sql_answer:{user_id}:{user_query}"
-    
-    cached_result = await redis_client.get(cache_key)
-    if cached_result is not None:
-        await supabase_client.table("chat_messages").update({
-            "message": cached_result.messages,
-            "sources_gathered": cached_result.sources_gathered
-        }).eq("user_id", user_id).eq("id", current_message_id).execute()
-        
-        invalidate_chat_messages_cache(chat_thread_id)
-        
-        return OverallState(**cached_result)
     
     if not final_profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
