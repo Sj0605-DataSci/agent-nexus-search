@@ -90,7 +90,7 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
         
-        user_query = get_research_topic(state["messages"]) 
+        user_query = state["messages"][-1].get("content", "")
 
         cache_key = f"graph2:query_analysis:{user_id}:{user_query}"
         
@@ -98,7 +98,7 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
             await supabase_client.table("chat_messages").update({
-                "sub_queries": cached_result.get("query_analysis").get("keyphrases"),
+                "sub_queries": cached_result.get("query_analysis").get("keyphrases").get("keyphrases", []),
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
@@ -221,15 +221,23 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         query_analysis = state.get("query_analysis", {})
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
-        user_query = state.get("user_query", "")
+        user_query = state["messages"][-1].get("content", "")
+        current_message_id = state.get("current_message_id", "")
+        chat_thread_id = state.get("chat_thread_id", "")
+        supabase_client = await get_async_supabase_client()
 
         cache_key = f"graph2:sql_search:{user_id}:{user_query}"
         
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
+            await supabase_client.table("chat_messages").update({
+                "generated_sql": cached_result.get("sql_queries"),
+            }).eq("id", current_message_id).execute()
+            
+            invalidate_chat_messages_cache(chat_thread_id)
+            
             return OverallState(**cached_result)
         
-        supabase_client = await get_async_supabase_client()
         
         # Extract traits and filters for keyword generation
         filters = query_analysis.get("filters", {})
@@ -408,7 +416,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         keyphrases = query_analysis.get("keyphrases", {}).get("keyphrases", [])
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
-        user_query = state["user_query"]
+        user_query = state["messages"][-1].get("content", "")
         cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
         # Try to get from cache
@@ -740,6 +748,22 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     
     # Get keyword search results
     keyword_results = state.get("web_research_result", [])
+
+    user_query = state["messages"][-1].get("content", "")
+    
+    cache_key = f"graph2:finalize_sql_answer:{user_id}:{user_query}"
+    
+    cached_result = await redis_client.get(cache_key)
+    if cached_result is not None:
+        final_message_content = cached_result.get("messages", [{}])[0].get("content", "")
+        await supabase_client.table("chat_messages").update({
+            "message": final_message_content,
+            "sources_gathered": cached_result.get("sources_gathered")
+        }).eq("user_id", user_id).eq("id", current_message_id).execute()
+        
+        invalidate_chat_messages_cache(chat_thread_id)
+        
+        return OverallState(**cached_result)
     
     # Combine results from both sources
     combined_profiles = []
@@ -787,20 +811,6 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
     
     query_analysis = state.get("query_analysis", {})
-    user_query = get_research_topic(state["messages"])
-    
-    cache_key = f"graph2:finalize_sql_answer:{user_id}:{user_query}"
-    
-    cached_result = await redis_client.get(cache_key)
-    if cached_result is not None:
-        await supabase_client.table("chat_messages").update({
-            "message": cached_result.messages,
-            "sources_gathered": cached_result.sources_gathered
-        }).eq("user_id", user_id).eq("id", current_message_id).execute()
-        
-        invalidate_chat_messages_cache(chat_thread_id)
-        
-        return OverallState(**cached_result)
     
     if not final_profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
@@ -1029,7 +1039,7 @@ Profiles to Score:
     try:
         # Update message in database
         await supabase_client.table("chat_messages").update({
-            "message": message_content,
+            "message": final_message.content,
             "sources_gathered": state.get("sources_gathered", [])
         }).eq("user_id", user_id).eq("agent_id", agent_id).eq("chat_thread_id", chat_thread_id).eq("id", current_message_id).execute()
         
