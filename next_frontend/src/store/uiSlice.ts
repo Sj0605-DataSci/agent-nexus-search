@@ -6,7 +6,7 @@ interface UIState {
 }
 
 const initialState: UIState = {
-  sidebarCollapsed: false,
+  sidebarCollapsed: true,
 };
 
 export const uiSlice = createSlice({

@@ -17,6 +17,7 @@ declare module "react" {
 interface SearchQueryDisplayProps {
   streamingSearchQueries: string[];
   isStreaming: boolean;
+  showDefaultOpenDropdown?: boolean;
 }
 
 interface QueryTypeInfo {
@@ -27,8 +28,12 @@ interface QueryTypeInfo {
   isQueryAnalysis: boolean;
 }
 
-const SearchQueryDisplay = ({ streamingSearchQueries, isStreaming }: SearchQueryDisplayProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(() => true);
+const SearchQueryDisplay = ({
+  streamingSearchQueries,
+  isStreaming,
+  showDefaultOpenDropdown,
+}: SearchQueryDisplayProps) => {
+  const [isCollapsed, setIsCollapsed] = useState(() => showDefaultOpenDropdown ? false : true);
   const [currentStage, setCurrentStage] = useState<string>(() => "initializing");
   const [progress, setProgress] = useState(() => 0);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => ({}));
