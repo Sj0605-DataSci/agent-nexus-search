@@ -282,35 +282,30 @@ async def direct_enrich_user_connections(
                 "profiles_count": 0
             }
         
-        # Initialize the simplified enrichment service
-        enrichment_service = SimplifiedEnrichmentService(supabase_client=supabase)
+        # Get Redis client
+        redis_client_instance = await redis_client.get_client()
         
-        # If background tasks is provided, run in background
-        if background_tasks:
-            # Add the enrichment task to background tasks
-            background_tasks.add_task(
-                enrichment_service.enrich_and_embed_connections,
-                user_id,
-                connections_to_enrich
-            )
-            
-            return {
-                "status": "success",
-                "message": f"Started direct enrichment for {len(connections_to_enrich)} connections in background",
-                "profiles_count": len(connections_to_enrich),
-                "background": True
-            }
-        else:
-            # Run enrichment directly (will block until complete)
-            result = await enrichment_service.enrich_and_embed_connections(user_id, connections_to_enrich)
-            
-            return {
-                "status": "success",
-                "message": f"Completed direct enrichment for {len(connections_to_enrich)} connections",
-                "profiles_count": len(connections_to_enrich),
-                "result": result,
-                "background": False
-            }
+        # Create a task ID
+        task_id = str(uuid.uuid4())
+        
+        # Create task data
+        task_data = {
+            "user_id": user_id,
+            "connections": connections_to_enrich,
+            "task_id": task_id
+        }
+        
+        # Queue the task for auto enrichment worker
+        await redis_client_instance.lpush(AUTO_ENRICHMENT_QUEUE, json.dumps(task_data))
+        
+        logger.info(f"Queued auto enrichment task {task_id} for user {user_id} with {len(connections_to_enrich)} connections")
+        
+        return {
+            "status": "success",
+            "message": f"Queued enrichment for {len(connections_to_enrich)} connections",
+            "profiles_count": len(connections_to_enrich),
+            "task_id": task_id
+        }
             
     except Exception as e:
         logger.error(f"Error in direct enrichment: {str(e)}")
