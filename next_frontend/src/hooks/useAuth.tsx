@@ -6,6 +6,7 @@ import posthog from "posthog-js";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { clearProfile } from "@/store/profileSlice";
 import toast from "react-hot-toast";
+import { identifyPostHogUser, setPostHogGuest } from "@/utils/posthog-helpers";
 
 interface AuthContextType {
   user: User | null;
@@ -56,14 +57,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(false);
 
       if (session?.user) {
-        posthog.identify(session.user.id, {
-          email: session.user.email,
-          name: session.user.user_metadata?.full_name,
-          signUpDate: session.user.created_at,
-        });
+        identifyPostHogUser(session.user, profile);
         posthog.capture("user_signed_in");
       } else if (!profile) {
-        posthog.reset();
+        setPostHogGuest();
       }
     });
 
@@ -75,10 +72,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setLoading(false);
 
           if (profile.id) {
-            posthog.identify(profile.id, {
-              email: profile.email,
-              name: profile.full_name,
-            });
+            identifyPostHogUser(null, profile);
           }
         } else {
           const { data } = await supabase.auth.getSession();
@@ -87,11 +81,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setLoading(false);
 
           if (data.session?.user) {
-            posthog.identify(data.session.user.id, {
-              email: data.session.user.email,
-              name: data.session.user.user_metadata?.full_name,
-              signUpDate: data.session.user.created_at,
-            });
+            identifyPostHogUser(data.session.user, null);
           }
         }
       } else {
@@ -243,7 +233,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       await supabase.auth.signOut();
 
-      posthog.reset();
+      setPostHogGuest();
     } catch (error: any) {
       console.error("SignOut Error:", error.message);
       posthog.capture("logout_error", { message: error.message });

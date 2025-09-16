@@ -78,7 +78,7 @@
       "autocapture": true,
       "session_recording": {
         "maskAllTextInputs": true,
-        "maskAllInputs": true
+        "maskAllInputs": false
       },
       "persistence": "localStorage+cookie"
     }

@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { updatePostHogUserProperties } from "@/utils/posthog-helpers";
 
 /**
  * Utility functions for tracking analytics events
@@ -99,7 +100,7 @@ export const Analytics = {
    * Set user properties that will persist
    */
   setUserProperties: (properties: Record<string, any>) => {
-    posthog.people.set(properties);
+    updatePostHogUserProperties(properties);
   },
 
   /**

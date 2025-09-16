@@ -24,6 +24,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { saveTokens, clearTokens, getStoredToken } from "@/utils/tokenManagement";
 import { ErrorFallback } from "@/components/ErrorHandling/ErrorFallback";
 import { logError } from "@/utils/errorLogging";
+import { identifyPostHogUser, setPostHogGuest } from "@/utils/posthog-helpers";
 // import { ClerkProvider } from "@clerk/nextjs";
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
@@ -104,7 +105,10 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
     const token = getStoredToken() || session?.access_token || "";
 
-    if (token && !profile) {
+    // Handle guest user tracking if no token or profile is available
+    if (!token && !profile) {
+      setPostHogGuest();
+    } else if (token && !profile) {
       try {
         posthog.capture("profile_fetch_attempted", {
           source: "ProfileDataFetcher",
@@ -117,10 +121,8 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
         if (profileResult.success && profileResult.status_code === 200) {
           const profileData = profileResult.data;
 
-          posthog.identify(profileData.id, {
-            email: profileData.email,
-            name: profileData.full_name,
-          });
+          // Properly identify user and set person properties
+          identifyPostHogUser(null, profileData);
 
           posthog.capture("login_successful", {
             userId: profileData.id,
