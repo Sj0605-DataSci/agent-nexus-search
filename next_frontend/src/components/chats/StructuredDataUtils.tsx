@@ -849,7 +849,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-full blur opacity-70 group-hover:opacity-100 transition duration-200"></div>
                                 <div className="relative flex items-center justify-center h-8 w-8 rounded-full bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 group-hover:border-cyan-100 group-hover:scale-105">
                                   <span className="text-xs font-medium text-cyan-600">
-                                    {person.MutualConnection.substring(0, 1).toUpperCase()}
+                                    {/* {person.MutualConnection.substring(0, 1).toUpperCase()} */}A
                                   </span>
                                 </div>
                                 <span className="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-200">
