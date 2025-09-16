@@ -40,12 +40,8 @@ class SimplifiedEnrichmentService:
         # Freshness configuration
         self.freshness_days = 30  # Consider data fresh if enriched within this many days
         
-        # Parallel processing configuration
+        # Batch size for Apify API calls
         self.scraping_batch_size = 50  # Process 50 URLs at a time for scraping
-        self.embedding_batch_size = 10  # Process 10 profiles at a time for embedding generation
-        self.embedding_queue = asyncio.Queue()  # Queue for profiles ready for embedding
-        self.embedding_results = {}  # Store embedding results
-        self.embedding_semaphore = asyncio.Semaphore(5)  # Limit concurrent embedding API calls
         
     # Removed initialize_vecs method as we're not using vecs anymore
     
@@ -193,6 +189,64 @@ class SimplifiedEnrichmentService:
             logger.error(f"Error generating embedding after all retries: {e}")
             return None
     
+    async def _generate_batch_embeddings_impl(self, texts: List[str]) -> Optional[List[List[float]]]:
+        """
+        Implementation of batch embedding generation using Jina API (for retry wrapper)
+        
+        Args:
+            texts: List of texts to generate embeddings for
+            
+        Returns:
+            List of embedding vectors or None if failed
+        """
+        if not texts or all(not text or not text.strip() for text in texts):
+            return None
+        
+        # Filter out empty texts
+        valid_texts = [text for text in texts if text and text.strip()]
+        if not valid_texts:
+            return None
+            
+        url = "https://api.jina.ai/v1/embeddings"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.jina_api_key}",
+        }
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "text-matching",
+            "input": valid_texts,
+        }
+        
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        embeddings = [item["embedding"] for item in result["data"]]
+        
+        return embeddings
+    
+    async def generate_batch_embeddings(self, texts: List[str]) -> Optional[List[List[float]]]:
+        """
+        Generate embeddings for multiple texts using Jina API with retry mechanism
+        
+        Args:
+            texts: List of texts to generate embeddings for
+            
+        Returns:
+            List of embedding vectors or None if failed
+        """
+        if not texts:
+            return None
+            
+        try:
+            # Use retry mechanism
+            result = await self.retry_async(self._generate_batch_embeddings_impl, texts)
+            return result
+        except Exception as e:
+            logger.error(f"Error generating batch embeddings after all retries: {e}")
+            return None
+    
     def create_basic_info_text(self, profile: Dict) -> str:
         """Create text for basic profile information"""
         parts = []
@@ -253,47 +307,209 @@ class SimplifiedEnrichmentService:
         
         return "\n".join(parts)
     
-    async def generate_embeddings(self, extracted_data: Dict[str, Any]) -> Dict[str, List[float]]:
+    async def enrich_connections(self, user_id: str, connections: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Generate embeddings for extracted profile data
+        Enrich connections with Apify data only (no embedding generation)
         
         Args:
-            extracted_data: Dictionary with extracted profile data
+            user_id: User ID
+            connections: List of connections with linkedin_url and id
             
         Returns:
-            Dictionary with generated embeddings
+            Dictionary with results
         """
-        # Check if we have enough data to generate meaningful embeddings
-        has_name = extracted_data.get('first_name') or extracted_data.get('last_name')
-        has_headline = bool(extracted_data.get('headline'))
-        has_about = bool(extracted_data.get('about_section'))
-        has_experience = bool(extracted_data.get('experience_json'))
+        try:
+            # Extract LinkedIn URLs
+            linkedin_urls = [conn["linkedin_url"] for conn in connections if conn.get("linkedin_url")]
+            
+            if not linkedin_urls:
+                logger.warning("No LinkedIn URLs provided")
+                return {
+                    "success": False,
+                    "message": "No LinkedIn URLs provided",
+                    "total": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "skipped": 0,
+                    "reused": 0
+                }
+            
+            # Create mapping from LinkedIn URL to connection ID
+            url_to_id = {conn["linkedin_url"]: conn["id"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
+            
+            # Check which connections already have embeddings and enrichment data
+            connections_to_process = []
+            skipped_count = 0
+            reused_count = 0
+            
+            for url, connection_id in url_to_id.items():
+                # Check if this connection already has embeddings or if data exists for this LinkedIn URL from other users
+                existing_data, exists_for_this_user, exists_for_other_user = await self.check_existing_embeddings(connection_id, url)
+                
+                if exists_for_this_user:
+                    # Skip this connection as it already has embeddings and enrichment data
+                    logger.info(f"Skipping connection {connection_id} as it already has enrichment data")
+                    skipped_count += 1
+                elif exists_for_other_user:
+                    # Reuse data from another user's connection
+                    logger.info(f"Reusing data for connection {connection_id} from another user with same LinkedIn URL {url}")
+                    # Copy the enrichment data to this connection
+                    await self._copy_enrichment_data(existing_data, connection_id)
+                    reused_count += 1
+                else:
+                    # Connection is missing data - process it
+                    connections_to_process.append({"linkedin_url": url, "id": connection_id})
+            
+            if not connections_to_process:
+                logger.info("All connections already have enrichment data")
+                return {
+                    "success": True,
+                    "message": "All connections already have enrichment data",
+                    "total": len(linkedin_urls),
+                    "successful": 0,
+                    "failed": 0,
+                    "skipped": skipped_count,
+                    "reused": 0
+                }
+            
+            # Get URLs for connections that need processing
+            urls_to_process = [conn["linkedin_url"] for conn in connections_to_process]
+            
+            # Initialize counters
+            successful_count = 0
+            failed_count = 0
+            
+            # Process connections in batches for scraping (Apify limit)
+            batches = [urls_to_process[i:i + self.scraping_batch_size] 
+                      for i in range(0, len(urls_to_process), self.scraping_batch_size)]
+            
+            logger.info(f"Processing {len(urls_to_process)} connections in {len(batches)} batches")
+            
+            # Process each batch of URLs
+            for batch_idx, batch_urls in enumerate(batches):
+                logger.info(f"Processing batch {batch_idx + 1}/{len(batches)} with {len(batch_urls)} URLs")
+                
+                # Fetch profiles from Apify
+                enriched_profiles = await self.fetch_profiles_from_apify(batch_urls)
+                
+                if not enriched_profiles:
+                    logger.warning(f"No profiles enriched from Apify in batch {batch_idx + 1}")
+                    failed_count += len(batch_urls)
+                    continue
+                
+                # Process each profile and save to database
+                for url, profile_data in enriched_profiles.items():
+                    if not profile_data:
+                        logger.warning(f"No data for {url}")
+                        failed_count += 1
+                        continue
+                    
+                    connection_id = url_to_id.get(url)
+                    if not connection_id:
+                        logger.warning(f"No connection ID for {url}")
+                        failed_count += 1
+                        continue
+                    
+                    # Extract profile data
+                    extracted_data = extract_apify_profile_data(profile_data)
+                    
+                    # Save the extracted data to Supabase
+                    update_data = {
+                        'enriched_at': datetime.now(timezone.utc).isoformat(),
+                        'enrichment_source': 'apify'
+                    }
+                    
+                    # Add extracted fields
+                    for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
+                                 'location', 'company', 'position', 'profile_photo_url']:
+                        if field in extracted_data and extracted_data[field]:
+                            update_data[field] = extracted_data[field]
+                    
+                    # Update connection with enrichment data
+                    try:
+                        response = await self.supabase_client.table("connections").update(update_data).eq(
+                            "id", connection_id
+                        ).execute()
+                        
+                        if response.data:
+                            logger.info(f"Successfully saved profile data for connection {connection_id}")
+                            successful_count += 1
+                        else:
+                            logger.warning(f"Failed to save profile data for connection {connection_id}")
+                            failed_count += 1
+                    except Exception as e:
+                        logger.error(f"Error saving profile data for connection {connection_id}: {str(e)}")
+                        failed_count += 1
+            
+            return {
+                "success": successful_count > 0 or skipped_count > 0 or reused_count > 0,
+                "message": f"Processed {successful_count} profiles successfully, {failed_count} failed, {skipped_count} skipped (existing data), {reused_count} reused from other users",
+                "total": len(linkedin_urls),
+                "successful": successful_count,
+                "failed": failed_count,
+                "skipped": skipped_count,
+                "reused": reused_count
+            }
+            
+        except Exception as e:
+            logger.error(f"Error enriching connections: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "total": len(connections),
+                "successful": 0,
+                "failed": len(connections),
+                "skipped": 0,
+                "reused": 0
+            }
+    
+    async def generate_and_save_embeddings(self, connection_id: str, profile_data: Dict[str, Any], url: str = None) -> bool:
+        """
+        Generate embeddings for a profile and save them to the database
         
-        if not (has_name or has_headline or has_about or has_experience):
-            logger.warning(f"Insufficient data to generate embeddings for LinkedIn URL: {extracted_data.get('linkedin_url', 'unknown')}")
-            return None
-        
-        logger.info(f"Generating embeddings for profile: {extracted_data.get('first_name', '')} {extracted_data.get('last_name', '')}")
-        
-        # Generate text for each section
-        basic_info_text = self.create_basic_info_text(extracted_data)
-        experience_text = self.create_experience_text(extracted_data.get("experience_json", []))
-        
-        # If we don't have enough text, use the LinkedIn URL as a fallback
-        if not basic_info_text and not experience_text:
-            if extracted_data.get('linkedin_url'):
-                basic_info_text = f"LinkedIn Profile: {extracted_data.get('linkedin_url')}"
+        Args:
+            connection_id: Connection ID to update
+            profile_data: Profile data to generate embeddings for
+            url: LinkedIn URL (for logging purposes)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Generate text for each section
+            basic_info_text = self.create_basic_info_text(profile_data)
+            experience_text = self.create_experience_text(profile_data.get("experience_json", []))
+            
+            # Generate embeddings for each section
+            basic_info_embedding = await self.generate_embedding(basic_info_text)
+            experience_embedding = await self.generate_embedding(experience_text)
+            
+            if not basic_info_embedding or not experience_embedding:
+                logger.warning(f"Failed to generate embeddings for connection {connection_id}")
+                return False
+            
+            # Update connection with embeddings
+            embeddings = {
+                "basic_info_embedding": basic_info_embedding,
+                "experience_embedding": experience_embedding,
+                "embedding_generated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Update connection with embeddings
+            response = await self.supabase_client.table("connections").update(embeddings).eq(
+                "id", connection_id
+            ).execute()
+            
+            if response.data:
+                logger.info(f"Successfully updated embeddings for connection {connection_id}")
+                return True
             else:
-                return None
-        
-        # Generate embeddings for each section
-        basic_info_embedding = await self.generate_embedding(basic_info_text)
-        experience_embedding = await self.generate_embedding(experience_text)
-        
-        return {
-            "basic_info_embedding": basic_info_embedding,
-            "experience_embedding": experience_embedding
-        }
+                logger.warning(f"Failed to update embeddings for connection {connection_id}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error generating embeddings for connection {connection_id}: {str(e)}")
+            return False
     
     async def process_connection(self, connection: Dict) -> Dict[str, List[float]]:
         """
@@ -505,280 +721,3 @@ class SimplifiedEnrichmentService:
         except Exception as e:
             logger.error(f"Error checking existing embeddings: {str(e)}")
             return None, False, False
-    
-    async def enrich_and_embed_connections(self, user_id: str, connections: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Enrich connections with Apify data and generate embeddings in parallel
-        
-        Args:
-            user_id: User ID
-            connections: List of connections with linkedin_url and id
-            
-        Returns:
-            Dictionary with results
-        """
-        try:
-            # Extract LinkedIn URLs
-            linkedin_urls = [conn["linkedin_url"] for conn in connections if conn.get("linkedin_url")]
-            
-            if not linkedin_urls:
-                logger.warning("No LinkedIn URLs provided")
-                return {
-                    "success": False,
-                    "message": "No LinkedIn URLs provided",
-                    "total": 0,
-                    "successful": 0,
-                    "failed": 0,
-                    "skipped": 0,
-                    "stale": 0,
-                    "reused": 0
-                }
-            
-            # Create mapping from LinkedIn URL to connection ID
-            url_to_id = {conn["linkedin_url"]: conn["id"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
-            
-            # Check which connections already have embeddings and enrichment data
-            connections_to_process = []
-            skipped_count = 0
-            reused_count = 0
-            
-            for url, connection_id in url_to_id.items():
-                # Check if this connection already has embeddings or if data exists for this LinkedIn URL from other users
-                existing_data, exists_for_this_user, exists_for_other_user = await self.check_existing_embeddings(connection_id, url)
-                
-                if exists_for_this_user:
-                    # Skip this connection as it already has embeddings and enrichment data
-                    logger.info(f"Skipping connection {connection_id} as it already has enrichment data")
-                    skipped_count += 1
-                elif exists_for_other_user:
-                    # Reuse data from another user's connection
-                    logger.info(f"Reusing data for connection {connection_id} from another user with same LinkedIn URL {url}")
-                    # Copy the enrichment data to this connection
-                    await self._copy_enrichment_data(existing_data, connection_id)
-                    reused_count += 1
-                else:
-                    # Connection is missing data - process it
-                    connections_to_process.append({"linkedin_url": url, "id": connection_id})
-            
-            if not connections_to_process:
-                logger.info("All connections already have enrichment data")
-                return {
-                    "success": True,
-                    "message": "All connections already have enrichment data",
-                    "total": len(linkedin_urls),
-                    "successful": 0,
-                    "failed": 0,
-                    "skipped": skipped_count,
-                    "stale": 0,
-                    "reused": reused_count
-                }
-            
-            # Get URLs for connections that need processing
-            urls_to_process = [conn["linkedin_url"] for conn in connections_to_process]
-            
-            # Initialize counters and tracking
-            successful_count = 0
-            failed_count = 0
-            self.embedding_results = {}
-            
-            # Initialize embedding queue
-            self.embedding_queue = asyncio.Queue()
-            
-            # Start embedding worker tasks
-            embedding_workers = [
-                asyncio.create_task(self._embedding_worker(user_id))
-                for _ in range(3)  # Create 3 embedding worker tasks
-            ]
-            
-            # Process connections in batches for scraping
-            batches = [urls_to_process[i:i + self.scraping_batch_size] 
-                      for i in range(0, len(urls_to_process), self.scraping_batch_size)]
-            
-            logger.info(f"Processing {len(urls_to_process)} connections in {len(batches)} batches")
-            
-            # Process each batch of URLs
-            for batch_idx, batch_urls in enumerate(batches):
-                logger.info(f"Processing batch {batch_idx + 1}/{len(batches)} with {len(batch_urls)} URLs")
-                
-                # Fetch profiles from Apify
-                enriched_profiles = await self.fetch_profiles_from_apify(batch_urls)
-                
-                if not enriched_profiles:
-                    logger.warning(f"No profiles enriched from Apify in batch {batch_idx + 1}")
-                    failed_count += len(batch_urls)
-                    continue
-                
-                # Queue profiles for embedding generation
-                for url, profile_data in enriched_profiles.items():
-                    if not profile_data:
-                        logger.warning(f"No data for {url}")
-                        failed_count += 1
-                        continue
-                    
-                    connection_id = url_to_id.get(url)
-                    if not connection_id:
-                        logger.warning(f"No connection ID for {url}")
-                        failed_count += 1
-                        continue
-                    
-                    # Extract profile data
-                    extracted_data = extract_apify_profile_data(profile_data)
-                    
-                    # Queue for embedding generation
-                    await self.embedding_queue.put({
-                        "connection_id": connection_id,
-                        "url": url,
-                        "data": extracted_data
-                    })
-            
-            # Signal embedding workers that no more data is coming
-            for _ in range(len(embedding_workers)):
-                await self.embedding_queue.put(None)
-            
-            # Wait for all embedding workers to complete
-            await asyncio.gather(*embedding_workers)
-            
-            # Count successful and failed connections
-            for connection_id, result in self.embedding_results.items():
-                if result.get("success"):
-                    successful_count += 1
-                else:
-                    failed_count += 1
-            
-            return {
-                "success": successful_count > 0 or skipped_count > 0 or reused_count > 0,
-                "message": f"Processed {successful_count} profiles successfully, {failed_count} failed, {skipped_count} skipped (existing data), {reused_count} reused from other users",
-                "total": len(linkedin_urls),
-                "successful": successful_count,
-                "failed": failed_count,
-                "skipped": skipped_count,
-                "stale": 0,
-                "reused": reused_count
-            }
-            
-        except Exception as e:
-            logger.error(f"Error enriching and embedding connections: {str(e)}")
-            return {
-                "success": False,
-                "message": f"Error: {str(e)}",
-                "total": len(connections),
-                "successful": 0,
-                "failed": len(connections),
-                "skipped": 0,
-                "stale": 0,
-                "reused": 0
-            }
-    
-    async def _embedding_worker(self, user_id: str):
-        """
-        Worker to process profiles from the queue and generate embeddings
-        
-        Args:
-            user_id: User ID for the connections
-        """
-        while True:
-            # Get a batch of profiles to process
-            batch = []
-            item = await self.embedding_queue.get()
-            
-            # None signals end of queue
-            if item is None:
-                self.embedding_queue.task_done()
-                break
-            
-            # Add first item to batch
-            batch.append(item)
-            
-            # Try to get more items up to batch size
-            try:
-                for _ in range(self.embedding_batch_size - 1):
-                    # Non-blocking get with timeout
-                    item = await asyncio.wait_for(self.embedding_queue.get(), 0.1)
-                    if item is None:
-                        self.embedding_queue.task_done()
-                        break
-                    batch.append(item)
-            except asyncio.TimeoutError:
-                # No more items available right now, continue with what we have
-                pass
-            
-            # Process the batch
-            await self._process_embedding_batch(batch, user_id)
-            
-            # Mark tasks as done
-            for _ in range(len(batch)):
-                self.embedding_queue.task_done()
-    
-    async def _process_embedding_batch(self, batch: List[Dict], user_id: str):
-        """
-        Process a batch of profiles for embedding generation
-        
-        Args:
-            batch: List of profiles to process
-            user_id: User ID for the connections
-        """
-        # Process each profile in the batch
-        embedding_tasks = []
-        for item in batch:
-            task = asyncio.create_task(self._process_single_embedding(item, user_id))
-            embedding_tasks.append(task)
-            
-        # Wait for all embedding tasks to complete
-        await asyncio.gather(*embedding_tasks)
-    
-    async def _process_single_embedding(self, item: Dict, user_id: str):
-        """
-        Process a single profile for embedding generation
-        
-        Args:
-            item: Profile data dictionary
-            user_id: User ID for the connection
-        """
-        connection_id = item["connection_id"]
-        url = item["url"]
-        extracted_data = item["data"]
-        
-        try:
-            # Generate embeddings
-            async with self.embedding_semaphore:
-                embeddings = await self.generate_embeddings(extracted_data)
-            
-            if not embeddings or not embeddings.get("basic_info_embedding") or not embeddings.get("experience_embedding"):
-                logger.warning(f"Failed to generate embeddings for {url}")
-                self.embedding_results[connection_id] = {"success": False}
-                return
-            
-            # Update connection with enrichment data and embeddings
-            update_data = {
-                'enriched_at': datetime.now(timezone.utc).isoformat(),
-                'enrichment_source': 'apify'
-            }
-            
-            # Add extracted fields
-            for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
-                         'location', 'company', 'position', 'profile_photo_url']:
-                if field in extracted_data and extracted_data[field]:
-                    update_data[field] = extracted_data[field]
-            
-            # Update connection with embeddings
-            success = await self.update_connection_embeddings(connection_id, embeddings)
-            
-            if success:
-                # Update connection with enrichment data
-                response = await self.supabase_client.table("connections").update(update_data).eq(
-                    "id", connection_id
-                ).execute()
-                
-                if response.data:
-                    logger.info(f"Successfully updated connection {connection_id}")
-                    self.embedding_results[connection_id] = {"success": True}
-                else:
-                    logger.warning(f"Failed to update connection {connection_id}")
-                    self.embedding_results[connection_id] = {"success": False}
-            else:
-                logger.warning(f"Failed to update embeddings for connection {connection_id}")
-                self.embedding_results[connection_id] = {"success": False}
-                
-        except Exception as e:
-            logger.error(f"Error updating connection {connection_id}: {str(e)}")
-            self.embedding_results[connection_id] = {"success": False}
