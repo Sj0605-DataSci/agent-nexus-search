@@ -4,12 +4,17 @@ Uses Apify for profile data extraction and Jina for embedding generation
 """
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from typing import Dict, List, Optional, Any, Callable, Tuple, AsyncGenerator
 import json
+import logging
+import os
+import re
+import traceback
 import requests
 import time
 from functools import wraps
 from collections import deque
+from typing import AsyncGenerator, Union
 
 from apify_client import ApifyClient
 from apify_client.errors import ApifyApiError
@@ -307,54 +312,117 @@ class SimplifiedEnrichmentService:
         
         return "\n".join(parts)
     
-    async def enrich_connections(self, user_id: str, connections: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def enrich_connections(self, user_id: str, connections: List[Dict[str, Any]], yield_batches: bool = False) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
         """
         Enrich connections with Apify data only (no embedding generation)
         
         Args:
             user_id: User ID
             connections: List of connections with linkedin_url and id
+            yield_batches: If True, yield results after each batch for parallel processing
             
         Returns:
-            Dictionary with results
+            If yield_batches is False: Dictionary with results
+            If yield_batches is True: AsyncGenerator yielding batch results
         """
         try:
             # Extract LinkedIn URLs
             linkedin_urls = [conn["linkedin_url"] for conn in connections if conn.get("linkedin_url")]
+            connection_ids = [conn["id"] for conn in connections if conn.get("id")]
             
             if not linkedin_urls:
                 logger.warning("No LinkedIn URLs provided")
-                return {
-                    "success": False,
-                    "message": "No LinkedIn URLs provided",
-                    "total": 0,
-                    "successful": 0,
-                    "failed": 0,
-                    "skipped": 0,
-                    "reused": 0
-                }
+                if yield_batches:
+                    # For async generator, we need to yield instead of return
+                    yield {
+                        "success": False,
+                        "message": "No LinkedIn URLs provided",
+                        "total": 0,
+                        "successful": 0,
+                        "failed": 0,
+                        "skipped": 0,
+                        "reused": 0,
+                        "batch_idx": 0,
+                        "total_batches": 0,
+                        "enriched_connections": []
+                    }
+                else:
+                    yield {
+                        "success": False,
+                        "message": "No LinkedIn URLs provided",
+                        "total": 0,
+                        "successful": 0,
+                        "failed": 0,
+                        "skipped": 0,
+                        "reused": 0
+                    }
             
             # Create mapping from LinkedIn URL to connection ID
             url_to_id = {conn["linkedin_url"]: conn["id"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
+            id_to_url = {conn["id"]: conn["linkedin_url"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
             
-            # Check which connections already have embeddings and enrichment data
+            # Use the connections data directly from the input parameter
+            logger.info(f"Processing {len(connections)} connections")
+            
+            # Create mapping for quick lookups - we only need to check if enriched_at and embedding_generated_at exist
+            # We'll use the data that's already in the connections parameter
+            connection_data_by_id = {}
+            for conn in connections:
+                if conn.get("id"):
+                    # Get enrichment status from the connection if available
+                    has_enrichment = conn.get("enriched_at") is not None
+                    has_embeddings = conn.get("embedding_generated_at") is not None
+                    
+                    # Store this information for quick lookup
+                    connection_data_by_id[conn["id"]] = {
+                        "id": conn["id"],
+                        "linkedin_url": conn.get("linkedin_url"),
+                        "enriched_at": conn.get("enriched_at"),
+                        "embedding_generated_at": conn.get("embedding_generated_at"),
+                        "has_enrichment": has_enrichment,
+                        "has_embeddings": has_embeddings
+                    }
+            
+            # BULK FETCH 2: Find existing data from other users by LinkedIn URL
+            all_linkedin_urls = list(url_to_id.keys())
+            other_users_data = []
+            page_size = 100  # Define page_size for batch processing
+            
+            for i in range(0, len(all_linkedin_urls), page_size):
+                batch_urls = all_linkedin_urls[i:i+page_size]
+                response = await self.supabase_client.table("connections").select(
+                    "id, linkedin_url, embedding_generated_at, basic_info_embedding, experience_embedding, enriched_at, "
+                    "experience_json, education_json, skills, headline, about_section, location, company, position, profile_photo_url"
+                ).in_("linkedin_url", batch_urls).neq("user_id", user_id).execute()
+                
+                if response.data:
+                    other_users_data.extend(response.data)
+            
+            # Create mapping of LinkedIn URL to other users' connection data
+            url_to_other_data = {}
+            for conn in other_users_data:
+                if conn.get("linkedin_url") and self._is_enriched_and_embedded(conn):
+                    url_to_other_data[conn["linkedin_url"]] = conn
+            
+            # Process connections based on the bulk data
             connections_to_process = []
             skipped_count = 0
             reused_count = 0
             
             for url, connection_id in url_to_id.items():
-                # Check if this connection already has embeddings or if data exists for this LinkedIn URL from other users
-                existing_data, exists_for_this_user, exists_for_other_user = await self.check_existing_embeddings(connection_id, url)
+                # Check if this user's connection already has data
+                conn_data = connection_data_by_id.get(connection_id)
+                exists_for_this_user = conn_data and conn_data.get("has_enrichment") and conn_data.get("has_embeddings")
                 
                 if exists_for_this_user:
                     # Skip this connection as it already has embeddings and enrichment data
                     logger.info(f"Skipping connection {connection_id} as it already has enrichment data")
                     skipped_count += 1
-                elif exists_for_other_user:
+                elif url in url_to_other_data:
                     # Reuse data from another user's connection
                     logger.info(f"Reusing data for connection {connection_id} from another user with same LinkedIn URL {url}")
                     # Copy the enrichment data to this connection
-                    await self._copy_enrichment_data(existing_data, connection_id)
+                    await self._copy_enrichment_data(url_to_other_data[url], connection_id)
                     reused_count += 1
                 else:
                     # Connection is missing data - process it
@@ -362,7 +430,7 @@ class SimplifiedEnrichmentService:
             
             if not connections_to_process:
                 logger.info("All connections already have enrichment data")
-                return {
+                yield {
                     "success": True,
                     "message": "All connections already have enrichment data",
                     "total": len(linkedin_urls),
@@ -385,6 +453,9 @@ class SimplifiedEnrichmentService:
             
             logger.info(f"Processing {len(urls_to_process)} connections in {len(batches)} batches")
             
+            # For tracking overall results if not yielding batches
+            all_enriched_connections = []
+            
             # Process each batch of URLs
             for batch_idx, batch_urls in enumerate(batches):
                 logger.info(f"Processing batch {batch_idx + 1}/{len(batches)} with {len(batch_urls)} URLs")
@@ -397,21 +468,26 @@ class SimplifiedEnrichmentService:
                     failed_count += len(batch_urls)
                     continue
                 
+                # Track batch results
+                batch_successful = 0
+                batch_failed = 0
+                batch_enriched_connections = []
+                
                 # Process each profile and save to database
                 for url, profile_data in enriched_profiles.items():
                     if not profile_data:
                         logger.warning(f"No data for {url}")
                         failed_count += 1
+                        batch_failed += 1
                         continue
                     
                     connection_id = url_to_id.get(url)
                     if not connection_id:
                         logger.warning(f"No connection ID for {url}")
                         failed_count += 1
+                        batch_failed += 1
                         continue
-                    
-                    # Extract profile data
-                    extracted_data = extract_apify_profile_data(profile_data)
+                
                     
                     # Save the extracted data to Supabase
                     update_data = {
@@ -422,8 +498,8 @@ class SimplifiedEnrichmentService:
                     # Add extracted fields
                     for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
                                  'location', 'company', 'position', 'profile_photo_url']:
-                        if field in extracted_data and extracted_data[field]:
-                            update_data[field] = extracted_data[field]
+                        if field in profile_data and profile_data[field]:
+                            update_data[field] = profile_data[field]
                     
                     # Update connection with enrichment data
                     try:
@@ -434,34 +510,94 @@ class SimplifiedEnrichmentService:
                         if response.data:
                             logger.info(f"Successfully saved profile data for connection {connection_id}")
                             successful_count += 1
+                            batch_successful += 1
+                            
+                            # Add to batch results with profile data for embedding
+                            enriched_connection = {
+                                "id": connection_id,
+                                "linkedin_url": url,
+                                "profile_data": update_data
+                            }
+                            batch_enriched_connections.append(enriched_connection)
+                            all_enriched_connections.append(enriched_connection)
                         else:
                             logger.warning(f"Failed to save profile data for connection {connection_id}")
                             failed_count += 1
+                            batch_failed += 1
                     except Exception as e:
                         logger.error(f"Error saving profile data for connection {connection_id}: {str(e)}")
                         failed_count += 1
+                        batch_failed += 1
+                
+                # If yielding batches, yield this batch result
+                if yield_batches:
+                    # For the first batch, include skipped/reused counts
+                    if batch_idx == 0:
+                        batch_result = {
+                            "success": batch_successful > 0 or skipped_count > 0 or reused_count > 0,
+                            "message": f"Batch {batch_idx + 1}/{len(batches)}: {batch_successful} profiles enriched, {batch_failed} failed, {skipped_count} skipped, {reused_count} reused",
+                            "batch_idx": batch_idx + 1,
+                            "total_batches": len(batches),
+                            "successful": batch_successful,
+                            "failed": batch_failed,
+                            "skipped": skipped_count,
+                            "reused": reused_count,
+                            "enriched_connections": batch_enriched_connections
+                        }
+                    else:
+                        batch_result = {
+                            "success": batch_successful > 0,
+                            "message": f"Batch {batch_idx + 1}/{len(batches)}: {batch_successful} profiles enriched, {batch_failed} failed",
+                            "batch_idx": batch_idx + 1,
+                            "total_batches": len(batches),
+                            "successful": batch_successful,
+                            "failed": batch_failed,
+                            "skipped": 0,  # Only count skipped in first batch
+                            "reused": 0,    # Only count reused in first batch
+                            "enriched_connections": batch_enriched_connections
+                        }
+                    yield batch_result
             
-            return {
-                "success": successful_count > 0 or skipped_count > 0 or reused_count > 0,
-                "message": f"Processed {successful_count} profiles successfully, {failed_count} failed, {skipped_count} skipped (existing data), {reused_count} reused from other users",
-                "total": len(linkedin_urls),
-                "successful": successful_count,
-                "failed": failed_count,
-                "skipped": skipped_count,
-                "reused": reused_count
-            }
+            # If we're yielding batches, we've already yielded all results
+            if not yield_batches:
+                yield {
+                    "success": successful_count > 0 or skipped_count > 0 or reused_count > 0,
+                    "message": f"Processed {successful_count} profiles successfully, {failed_count} failed, {skipped_count} skipped (existing data), {reused_count} reused from other users",
+                    "total": len(linkedin_urls),
+                    "successful": successful_count,
+                    "failed": failed_count,
+                    "skipped": skipped_count,
+                    "reused": reused_count,
+                    "enriched_connections": all_enriched_connections
+                }
+            # For async generator, we need to end without a return value
             
         except Exception as e:
             logger.error(f"Error enriching connections: {str(e)}")
-            return {
-                "success": False,
-                "message": f"Error: {str(e)}",
-                "total": len(connections),
-                "successful": 0,
-                "failed": len(connections),
-                "skipped": 0,
-                "reused": 0
-            }
+            if yield_batches:
+                # For async generator, yield error result
+                yield {
+                    "success": False,
+                    "message": f"Error: {str(e)}",
+                    "total": len(connections),
+                    "successful": 0,
+                    "failed": len(connections),
+                    "skipped": 0,
+                    "reused": 0,
+                    "batch_idx": 0,
+                    "total_batches": 0,
+                    "enriched_connections": []
+                }
+            else:
+                yield {
+                    "success": False,
+                    "message": f"Error: {str(e)}",
+                    "total": len(connections),
+                    "successful": 0,
+                    "failed": len(connections),
+                    "skipped": 0,
+                    "reused": 0
+                }
     
     async def generate_and_save_embeddings(self, connection_id: str, profile_data: Dict[str, Any], url: str = None) -> bool:
         """
@@ -664,6 +800,27 @@ class SimplifiedEnrichmentService:
             logger.error(f"Error checking existing embeddings by URL: {str(e)}")
             return None, False
 
+    def _is_enriched_and_embedded(self, connection: Dict[str, Any]) -> bool:
+        """
+        Check if a connection has both enrichment data and embeddings
+        
+        Args:
+            connection: Connection data dictionary
+            
+        Returns:
+            True if connection has both enrichment data and embeddings
+        """
+        # Check if embeddings exist
+        has_embeddings = (
+            connection.get("embedding_generated_at") is not None
+        )
+        
+        # Check if profile is enriched
+        is_enriched = connection.get("enriched_at") is not None
+        
+        # Check if data is complete (has both embeddings and enrichment)
+        return has_embeddings and is_enriched
+    
     async def check_existing_embeddings(self, connection_id: str, linkedin_url: str = None) -> Tuple[Dict[str, Any], bool, bool]:
         """
         Check if embeddings already exist for a connection (by ID or URL)
@@ -688,19 +845,7 @@ class SimplifiedEnrichmentService:
             exists_for_this_user = False
             if response.data and len(response.data) > 0:
                 connection = response.data[0]
-                
-                # Check if embeddings exist
-                has_embeddings = (
-                    connection.get("basic_info_embedding") is not None and 
-                    connection.get("experience_embedding") is not None and
-                    connection.get("embedding_generated_at") is not None
-                )
-                
-                # Check if profile is enriched
-                is_enriched = connection.get("enriched_at") is not None
-                
-                # Check if data is complete (has both embeddings and enrichment)
-                exists_for_this_user = has_embeddings and is_enriched
+                exists_for_this_user = self._is_enriched_and_embedded(connection)
                 
                 if exists_for_this_user:
                     logger.info(f"Connection {connection_id} already has enrichment data")

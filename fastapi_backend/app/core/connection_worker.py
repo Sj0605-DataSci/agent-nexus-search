@@ -246,8 +246,6 @@ class ConnectionWorker:
                     'experience_json': profile.experience,
                     'education_json': profile.education,
                     'skills': profile.skills,
-                    'connections_count': profile.connections_count,
-                    'followers_count': profile.followers_count,
                     'enriched_at': datetime.now().isoformat(),
                     'updated_at': datetime.now().isoformat()
                 }
@@ -345,6 +343,7 @@ class ConnectionWorker:
                     'linkedin_url': conn.get('url', ''),
                     'connected_on': conn.get('connected_on', ''),
                     'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
                 })
             
             if not data_to_insert:

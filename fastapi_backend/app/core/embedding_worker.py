@@ -90,22 +90,16 @@ class EmbeddingWorker:
     
     async def _process_embedding_task(self, task: Dict[str, Any]):
         """
-        Process embedding task
+        Process embedding task - handles both individual and batch tasks
         
         Args:
-            task: Task data containing user_id, connection_id, and profile data
+            task: Task data containing user_id and either connection_id + profile_data (individual)
+                 or connections list (batch)
         """
         try:
             user_id = task.get("user_id")
-            connection_id = task.get("connection_id")
-            profile_data = task.get("profile_data")
             task_id = task.get("task_id", "unknown")
-            
-            if not user_id or not connection_id or not profile_data:
-                logger.warning(f"Invalid embedding task: missing required fields")
-                return
-            
-            logger.info(f"Processing embedding task for connection {connection_id}")
+            connections = task.get("connections")
             
             # Get Supabase client
             supabase = await get_async_supabase_client()
@@ -113,33 +107,89 @@ class EmbeddingWorker:
             # Initialize simplified enrichment service
             enrichment_service = SimplifiedEnrichmentService(supabase_client=supabase)
             
-            # Generate and save embeddings using the utility method
-            success = await enrichment_service.generate_and_save_embeddings(
-                connection_id=connection_id,
-                profile_data=profile_data
-            )
-            
-            if not success:
-                logger.warning(f"Failed to generate embeddings for connection {connection_id}")
+            # Check if this is a batch task or individual task
+            if connections:
+                # Batch task
+                logger.info(f"Processing batch embedding task with {len(connections)} connections")
                 
                 # Stream status update
                 await self._update_task_status(
                     task_id,
                     user_id,
-                    "error",
-                    f"❌ Failed to generate embeddings for connection {connection_id}"
+                    "processing",
+                    f"🔍 Processing embeddings for {len(connections)} connections"
                 )
-                return
-            
-            logger.info(f"Successfully updated embeddings for connection {connection_id}")
-            
-            # Stream status update
-            await self._update_task_status(
-                task_id,
-                user_id,
-                "completed",
-                f"✅ Successfully generated embeddings for connection {connection_id}"
-            )
+                
+                # Process each connection in the batch
+                successful = 0
+                failed = 0
+                
+                for conn in connections:
+                    connection_id = conn.get("id")
+                    profile_data = conn.get("profile_data")
+                    
+                    if not connection_id or not profile_data:
+                        logger.warning(f"Invalid connection in batch: missing id or profile_data")
+                        failed += 1
+                        continue
+                    
+                    # Generate and save embeddings
+                    success = await enrichment_service.generate_and_save_embeddings(
+                        connection_id=connection_id,
+                        profile_data=profile_data
+                    )
+                    
+                    if success:
+                        successful += 1
+                    else:
+                        failed += 1
+                
+                # Stream final status update
+                await self._update_task_status(
+                    task_id,
+                    user_id,
+                    "completed",
+                    f"✅ Completed embeddings: {successful} successful, {failed} failed"
+                )
+                
+            else:
+                # Individual task (legacy format)
+                connection_id = task.get("connection_id")
+                profile_data = task.get("profile_data")
+                
+                if not user_id or not connection_id or not profile_data:
+                    logger.warning(f"Invalid embedding task: missing required fields")
+                    return
+                
+                logger.info(f"Processing embedding task for connection {connection_id}")
+                
+                # Generate and save embeddings using the utility method
+                success = await enrichment_service.generate_and_save_embeddings(
+                    connection_id=connection_id,
+                    profile_data=profile_data
+                )
+                
+                if not success:
+                    logger.warning(f"Failed to generate embeddings for connection {connection_id}")
+                    
+                    # Stream status update
+                    await self._update_task_status(
+                        task_id,
+                        user_id,
+                        "error",
+                        f"❌ Failed to generate embeddings for connection {connection_id}"
+                    )
+                    return
+                
+                logger.info(f"Successfully updated embeddings for connection {connection_id}")
+                
+                # Stream status update
+                await self._update_task_status(
+                    task_id,
+                    user_id,
+                    "completed",
+                    f"✅ Successfully generated embeddings for connection {connection_id}"
+                )
                 
         except Exception as e:
             logger.error(f"Error processing embedding task: {str(e)}")
