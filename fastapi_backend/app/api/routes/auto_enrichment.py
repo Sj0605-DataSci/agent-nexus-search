@@ -60,18 +60,52 @@ async def trigger_auto_enrichment(
         # Get Supabase client
         supabase = await get_async_supabase_client()
         
-        # Determine which connections to enrich
+        # Implement pagination to handle more than 1000 connections
+        all_connections = []
+        page_size = 1000
+        start = 0
+        
+        # Build base query
         if request.connection_ids:
             # Specific connections requested
-            query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id).in_("id", request.connection_ids)
+            base_query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id).in_("id", request.connection_ids)
         else:
             # All unenriched connections
-            query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id)
+            base_query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id)
             if not request.force_refresh:
-                query = query.is_("enriched_at", None)
+                base_query = base_query.is_("enriched_at", None)
         
-        # Execute query
-        response = await query.execute()
+        # Fetch all pages
+        while True:
+            # Add pagination to the query
+            query = base_query.range(start, start + page_size - 1)
+            
+            # Execute query for current page
+            response = await query.execute()
+            
+            # Check if we got any data
+            if response.data and len(response.data) > 0:
+                all_connections.extend(response.data)
+                logger.info(f"Fetched {len(response.data)} connections, total so far: {len(all_connections)}")
+                
+                # If we got fewer results than page_size, we've reached the end
+                if len(response.data) < page_size:
+                    break
+                    
+                # Move to next page
+                start += page_size
+            else:
+                # No more results
+                break
+        
+        # Replace response.data with all_connections
+        response.data = all_connections
+        logger.info(f"Total connections fetched: {len(all_connections)}")
+        
+        # For debugging
+        if len(all_connections) > 1000:
+            logger.info(f"Successfully fetched more than 1000 connections: {len(all_connections)}")
+        
         
         if not response.data:
             return AutoEnrichmentResponse(
