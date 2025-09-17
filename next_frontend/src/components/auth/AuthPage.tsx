@@ -750,64 +750,18 @@ interface SocialSignInProps {
 const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // const handleSocialAuth = async (provider: "google" | "linkedin") => {
-  //   if (typeof window === "undefined") return;
 
-  //   try {
-  //     setIsLoading(true);
-  //     localStorage.setItem("oauth_loading", "true");
-  //     localStorage.setItem("oauth_provider", provider);
-
-  //     if (window.posthog) {
-  //       window.posthog.capture(`${mode}_attempt`, { provider });
-  //     }
-
-  //     const state = Math.random().toString(36).substring(2, 15);
-  //     localStorage.setItem("oauth_state", state);
-
-  //     const options = {
-  //       redirectTo: `${window.location.origin}/auth/callback`,
-  //       queryParams: {
-  //         access_type: "offline",
-  //         prompt: "consent",
-  //         state: state,
-  //       },
-  //       scopes: ["email", "profile", "https://www.googleapis.com/auth/user.phonenumbers.read"].join(
-  //         " "
-  //       ),
-  //     };
-
-  // const { error } = await supabaseHandler.auth.signInWithOAuth({
-  //   provider,
-  //   options,
-  // });
-
-  //     if (error) {
-  //       throw new Error(`OAuth sign-in failed: ${error.message}`);
-  //     }
-  // } catch (error) {
-  //   console.error(`Error during ${mode} with ${provider}:`, error);
-  //   localStorage.removeItem("oauth_loading");
-  //   localStorage.removeItem("oauth_state");
-  //   onError?.(error as Error);
-
-  //   if (window.posthog) {
-  //     window.posthog.capture(`${mode}_error`, {
-  //       provider,
-  //       error: error instanceof Error ? error.message : "Unknown error",
-  //     });
-  //   }
-  // } finally {
-  //   if (typeof window !== "undefined") {
-  //     setIsLoading(false);
-  //   }
-  // }
-  // };
   const handleSocialAuth = async () => {
-    // Track login attempt with PostHog if available
     try {
-      if (typeof window !== "undefined" && posthog) {
-        posthog.capture("login_attempt", { provider: "google" });
+      setIsLoading(true);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("oauth_loading", "true");
+        localStorage.setItem("oauth_provider", "google");
+
+        if (posthog) {
+          posthog.capture(`${mode}_attempt`, { provider: "google" });
+        }
       }
 
       const { data, error } = await supabaseHandler.auth.signInWithOAuth({
@@ -819,23 +773,40 @@ const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError })
             prompt: "consent",
           },
           scopes: [
+            "openid",
             "email",
             "profile",
-            "https://www.googleapis.com/auth/user.phonenumbers.read",
+            // "https://www.googleapis.com/auth/user.phonenumbers.read",
           ].join(" "),
         },
       });
 
       if (error) {
         console.error("Error signing in with Google:", error);
+
+        if (error.message?.includes("access_denied") || error.message?.includes("verification")) {
+          toast.error(
+            "Google login failed: This app is in testing mode and your email may not be on the approved testers list. Please contact the administrator."
+          );
+        } else {
+          toast.error("Failed to sign in with Google. Please try again later.");
+        }
         throw error;
       }
     } catch (error) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("oauth_loading");
         localStorage.removeItem("oauth_state");
+        localStorage.removeItem("oauth_provider");
       }
       onError?.(error as Error);
+
+      if (typeof window !== "undefined" && posthog) {
+        posthog.capture(`${mode}_error`, {
+          provider: "google",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     } finally {
       if (typeof window !== "undefined") {
         setIsLoading(false);

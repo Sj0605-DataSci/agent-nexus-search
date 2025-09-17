@@ -54,10 +54,25 @@ export default function UpdatePasswordForm() {
           return;
         }
 
+        const token = urlParams.get("token");
+        const type = urlParams.get("type");
+
+        if (token && type === "recovery") {
+          try {
+            setAccessToken(token);
+            setRefreshToken(token);
+            setIsValidatingToken(false);
+            return;
+          } catch (err) {
+            setError("Invalid or expired reset link");
+            toast.error("This password reset link has expired. Please request a new one.");
+          }
+        }
+
         if (hash) {
           const params = new URLSearchParams(hash.substring(1));
           const access_token = params.get("access_token");
-          const refresh_token = params.get("refresh_token");
+          const refresh_token = params.get("refresh_token") || access_token; // Use access_token as refresh_token if not provided
           const error_description = params.get("error_description");
 
           if (error_description) {
@@ -67,10 +82,12 @@ export default function UpdatePasswordForm() {
             return;
           }
 
-          if (access_token && refresh_token) {
+          if (access_token) {
             try {
-              setAccessToken(access_token);
-              setRefreshToken(refresh_token);
+              setAccessToken(access_token || "");
+              setRefreshToken(refresh_token || "");
+              setIsValidatingToken(false);
+              return;
             } catch (err) {
               console.error("Token validation error:", err);
               setError("Invalid or expired reset link");
@@ -100,7 +117,7 @@ export default function UpdatePasswordForm() {
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      if (!accessToken || !refreshToken) {
+      if (!accessToken) {
         toast.error("Invalid reset link. Please request a new one.");
         return;
       }
@@ -131,7 +148,7 @@ export default function UpdatePasswordForm() {
           posthog.capture("password_update_success");
 
           setTimeout(() => {
-            router.push("/login");
+            router.push("/user-auth");
           }, 3000);
         } else {
           throw new Error(result.message || "Failed to update password");
@@ -170,7 +187,7 @@ export default function UpdatePasswordForm() {
             </p>
 
             <Link
-              href="/reset-password"
+              href="/user-auth"
               className="inline-block bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 hover:from-blue-600 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
             >
               Request New Reset Link
@@ -178,7 +195,7 @@ export default function UpdatePasswordForm() {
 
             <div className="mt-8 pt-6 border-t border-gray-100">
               <button
-                onClick={() => router.push("/login")}
+                onClick={() => router.push("/user-auth")}
                 className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
               >
                 <FaArrowLeft className="mr-2" />
@@ -215,10 +232,10 @@ export default function UpdatePasswordForm() {
             </p>
 
             <Link
-              href="/login"
+              href="/chat/new"
               className="inline-block bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-400 hover:from-blue-600 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
             >
-              Go to Login
+              Continue
             </Link>
           </div>
         </div>
@@ -364,11 +381,11 @@ export default function UpdatePasswordForm() {
 
         <div className="mt-6 pt-6 border-t border-gray-100 text-center">
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/chat/new")}
             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
           >
             <FaArrowLeft className="mr-2" />
-            Back to login
+            Continue
           </button>
         </div>
       </div>
