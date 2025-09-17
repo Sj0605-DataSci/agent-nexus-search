@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseHandler } from "@/integrations/supabase/client";
 import { apiClient, setAuthToken } from "@/integrations/fastapi/client";
@@ -16,13 +16,26 @@ function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const error = searchParams?.get("error");
   const code = searchParams?.get("code");
-
+  const hasProcessed = useRef(false);
   useEffect(() => {
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+
     const handleAuth = async () => {
       try {
-        // Check for OAuth error first
         if (error) {
-          throw new Error(`OAuth error: ${error}`);
+          const errorDescription = searchParams?.get("error_description");
+          const errorCode = searchParams?.get("error_code");
+
+          if (errorCode === "bad_oauth_state") {
+            console.error("OAuth state mismatch. Attempting to recover...");
+            router.replace("/user-auth");
+            return;
+          }
+
+          throw new Error(
+            `OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ""}`
+          );
         }
 
         // Handle OAuth code flow (for server-side auth)
@@ -41,12 +54,18 @@ function AuthCallbackContent() {
             localStorage.setItem("discover_minds_refresh_token", session.refresh_token);
             setAuthToken(session.access_token);
 
-            // Clear the URL parameters
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const {
+              data: { session: verifiedSession },
+            } = await supabaseHandler.auth.getSession();
+            if (!verifiedSession) {
+              throw new Error("Session verification failed");
+            }
             const cleanUrl = window.location.origin + window.location.pathname;
             window.history.replaceState({}, "", cleanUrl);
 
-            // Redirect to chat
-            router.push("/chat/new");
+            router.replace("/chat/new");
             return;
           } catch (err) {
             console.error("Error exchanging code for session:", err);
@@ -60,14 +79,14 @@ function AuthCallbackContent() {
           const params = new URLSearchParams(hash);
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
-          const error = params.get("error");
+          const hashError = params.get("error");
 
-          if (error) {
-            throw new Error(`OAuth error: ${error}`);
+          if (hashError) {
+            throw new Error(`OAuth error: ${hashError}`);
           }
 
           if (accessToken && refreshToken) {
-            // Store tokens in localStorage
+
             localStorage.setItem("discover_minds_access_token", accessToken);
             localStorage.setItem("discover_minds_refresh_token", refreshToken);
             setAuthToken(accessToken);
@@ -80,24 +99,34 @@ function AuthCallbackContent() {
               });
 
               if (sessionError) {
-                console.warn("Supabase session error, but continuing:", sessionError);
+                console.error("Supabase session error:", sessionError);
+                throw sessionError;
               }
+
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+              const {
+                data: { session: verifiedSession },
+              } = await supabaseHandler.auth.getSession();
+              if (!verifiedSession) {
+                throw new Error("Session verification failed");
+              }
+
+              console.log("Hash-based session verified, redirecting...");
 
               // Clear the URL hash
               const cleanUrl = window.location.origin + window.location.pathname;
               window.history.replaceState({}, "", cleanUrl);
 
-              // Redirect to chat
-              router.push("/chat/new");
+              router.replace("/chat/new");
               return;
             } catch (error) {
-              console.error("Error during OAuth callback:", error);
+              console.error("Error during hash-based OAuth callback:", error);
               throw error;
             }
           }
         }
 
-        // If we get here with no code or hash, check for existing session
         const {
           data: { session },
           error: sessionError,
@@ -108,34 +137,44 @@ function AuthCallbackContent() {
         }
 
         if (session) {
-          // If we have a session, redirect to chat
-          router.push("/chat/new");
+          if (session.access_token) {
+            localStorage.setItem("discover_minds_access_token", session.access_token);
+            localStorage.setItem("discover_minds_refresh_token", session.refresh_token);
+            setAuthToken(session.access_token);
+          }
+
+          router.replace("/chat/new");
           return;
         }
 
-        // No session or tokens found
         throw new Error("No authentication data found");
       } catch (error) {
         console.error("Authentication error:", error);
-        // Clear any partial auth state
+
         localStorage.removeItem("discover_minds_access_token");
         localStorage.removeItem("discover_minds_refresh_token");
+        setAuthToken(null);
 
-        // Redirect to error page with error details
+        await supabaseHandler.auth.signOut();
+
+        // Redirect to error page
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         const errorHash = window.location.hash
           ? `&hash=${encodeURIComponent(window.location.hash)}`
           : "";
-        router.push(`/auth/error?error=${encodeURIComponent(errorMessage)}${errorHash}`);
+        router.replace(`/auth/error?error=${encodeURIComponent(errorMessage)}${errorHash}`);
       }
     };
 
     handleAuth();
-  }, [router, code, error]);
+  }, []);
 
   return (
     <div className="min-h-screen grid place-items-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">Completing authentication...</p>
+      </div>
     </div>
   );
 }
@@ -145,7 +184,10 @@ export default function AuthCallback() {
     <Suspense
       fallback={
         <div className="min-h-screen grid place-items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
         </div>
       }
     >

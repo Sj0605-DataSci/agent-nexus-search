@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { apiClient } from "@/integrations/fastapi/client";
+import { supabase, supabaseHandler } from "@/integrations/supabase/client";
+import { apiClient, setAuthToken } from "@/integrations/fastapi/client";
 import posthog from "posthog-js";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { clearProfile } from "@/store/profileSlice";
 import toast from "react-hot-toast";
 import { identifyPostHogUser, setPostHogGuest } from "@/utils/posthog-helpers";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
   user: User | null;
@@ -41,12 +42,34 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+export function useAuthInitializer() {
+  const router = useRouter();
+
+  useEffect(() => {
+    
+    const { data: { subscription } } = supabaseHandler.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          setAuthToken(session.access_token);
+        } else if (event === 'SIGNED_OUT') {
+          setAuthToken(null);
+          router.push("/user-auth");
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+}
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const profile = useAppSelector(state => state.profile.profile);
   const dispatch = useAppDispatch();
+
+  useAuthInitializer();
 
   useEffect(() => {
     const {
@@ -55,6 +78,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      if (session?.access_token) {
+        setAuthToken(session.access_token);
+      }
 
       if (session?.user) {
         identifyPostHogUser(session.user, profile);
@@ -80,6 +107,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUser(data.session?.user ?? null);
           setLoading(false);
 
+          // Set auth token for API client
+          if (data.session?.access_token) {
+            setAuthToken(data.session.access_token);
+          }
+
           if (data.session?.user) {
             identifyPostHogUser(data.session.user, null);
           }
@@ -89,6 +121,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession(data.session);
         setUser(data.session?.user ?? null);
         setLoading(false);
+
+        // Set auth token for API client
+        if (data.session?.access_token) {
+          setAuthToken(data.session.access_token);
+        }
       }
     };
 
@@ -228,6 +265,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       localStorage.removeItem("discover_minds_access_token");
       localStorage.removeItem("discover_minds_refresh_token");
+      setAuthToken(null);
 
       dispatch(clearProfile());
 

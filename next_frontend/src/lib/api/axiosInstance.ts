@@ -146,6 +146,7 @@ axiosInstance.interceptors.response.use(
       "/",
       "/join-waitlist",
       "/privacy-policy",
+      "/update-password",
       "/terms",
       "/reset-password",
     ];

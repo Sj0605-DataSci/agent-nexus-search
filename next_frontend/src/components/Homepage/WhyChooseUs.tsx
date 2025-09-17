@@ -216,7 +216,7 @@ const WhyChooseUs = () => {
               <tr>
                 <td className="p-4 px-2"></td>
                 <td className="p-4 px-2 text-center bg-[#F8FAFF]">
-                  <Link href="/signup?plan=professional">
+                  <Link href="/user-auth?plan=professional">
                     <button className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] text-white hover:opacity-90 transition-colors duration-200 text-sm font-medium">
                       ⚔️ Unleash Arya
                     </button>

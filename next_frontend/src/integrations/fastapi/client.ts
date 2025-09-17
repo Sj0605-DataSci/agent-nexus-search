@@ -24,7 +24,7 @@ import {
 } from "./types";
 
 // Add setAuthToken to axios instance
-export const setAuthToken = (token: string) => {
+export const setAuthToken = (token: string | null) => {
   if (token) {
     axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
@@ -157,15 +157,6 @@ export const apiClient = {
     }
   },
 
-  async fetchProfileFromAPI(): Promise<UserProfile> {
-    try {
-      const res = await axiosInstance.get("/profiles");
-      return res.data;
-    } catch (error) {
-      throw new Error(handleAxiosError(error as any));
-    }
-  },
-
   async updateProfile(data: ProfileUpdate): Promise<UserProfile> {
     try {
       const res = await axiosInstance.put("/profiles", data);
@@ -277,7 +268,7 @@ export const apiClient = {
     try {
       const res = await axiosInstance.post("/auth/reset-password", {
         email,
-        redirect_url: redirectUrl + "/update-password",
+        redirect_url: redirectUrl ? `${redirectUrl}/update-password` : undefined,
       });
       return res.data;
     } catch (error) {
