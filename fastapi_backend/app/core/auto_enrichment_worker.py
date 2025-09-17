@@ -117,139 +117,74 @@ class AutoEnrichmentWorker:
             # Get Redis client for embedding queue
             redis_client_instance = await redis_client.get_client()
             
-            # Process connections in batches for scraping (Apify limit)
-            urls_to_process = [conn["linkedin_url"] for conn in connections if conn.get("linkedin_url")]
-            url_to_id = {conn["linkedin_url"]: conn["id"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
+            # Use the optimized bulk processing in SimplifiedEnrichmentService with batch yielding
+            # This will allow us to process embedding tasks as soon as each batch is enriched
+            total_successful = 0
+            total_failed = 0
+            total_skipped = 0
+            total_reused = 0
             
-            # Check which connections already have enrichment data
-            connections_to_process = []
-            skipped_count = 0
-            reused_count = 0
-            
-            for url, connection_id in url_to_id.items():
-                # Check if this connection already has enrichment data
-                existing_data, exists_for_this_user, exists_for_other_user = await enrichment_service.check_existing_embeddings(connection_id, url)
+            # Process enrichment in batches and immediately queue embedding tasks
+            async for batch_result in enrichment_service.enrich_connections(user_id, connections, yield_batches=True):
+                # Extract batch results
+                batch_idx = batch_result.get("batch_idx", 0)
+                total_batches = batch_result.get("total_batches", 0)
+                batch_successful = batch_result.get("successful", 0)
+                batch_failed = batch_result.get("failed", 0)
+                batch_skipped = batch_result.get("skipped", 0)
+                batch_reused = batch_result.get("reused", 0)
+                batch_enriched_connections = batch_result.get("enriched_connections", [])
                 
-                if exists_for_this_user:
-                    # Skip this connection as it already has enrichment data
-                    logger.info(f"Skipping connection {connection_id} as it already has enrichment data")
-                    skipped_count += 1
-                elif exists_for_other_user:
-                    # Reuse data from another user's connection
-                    logger.info(f"Reusing data for connection {connection_id} from another user with same LinkedIn URL {url}")
-                    # Copy the enrichment data to this connection
-                    await enrichment_service._copy_enrichment_data(existing_data, connection_id)
-                    reused_count += 1
-                else:
-                    # Connection is missing data - process it
-                    connections_to_process.append({"linkedin_url": url, "id": connection_id})
-            
-            if not connections_to_process:
-                logger.info("All connections already have enrichment data")
-                await self._update_task_status(
-                    task_id, 
-                    "completed", 
-                    f"✅ All connections already have enrichment data: {skipped_count} skipped, {reused_count} reused"
-                )
-                return
-            
-            # Get URLs for connections that need processing
-            urls_to_process = [conn["linkedin_url"] for conn in connections_to_process]
-            
-            # Initialize counters
-            successful_count = 0
-            failed_count = 0
-            
-            # Process connections in batches for scraping (Apify limit)
-            batches = [urls_to_process[i:i + 50] for i in range(0, len(urls_to_process), 50)]
-            
-            logger.info(f"Processing {len(urls_to_process)} connections in {len(batches)} batches")
-            
-            # Process each batch of URLs
-            for batch_idx, batch_urls in enumerate(batches):
-                # Update status: Processing batch
+                # Update counters
+                total_successful += batch_successful
+                total_failed += batch_failed
+                total_skipped += batch_skipped
+                total_reused += batch_reused
+                
+                # Update status for this batch
+                status_message = f"✅ Batch {batch_idx}/{total_batches} completed: {batch_successful} profiles enriched, {batch_failed} failed"
+                
+                # Include skipped/reused counts in the first batch message
+                if batch_idx == 1 and (batch_skipped > 0 or batch_reused > 0):
+                    status_message += f", {batch_skipped} skipped, {batch_reused} reused"
+                    
                 await self._update_task_status(
                     task_id, 
                     "processing", 
-                    f"🔍 Processing batch {batch_idx + 1}/{len(batches)} with {len(batch_urls)} URLs"
+                    status_message
                 )
                 
-                # Fetch profiles from Apify
-                enriched_profiles = await enrichment_service.fetch_profiles_from_apify(batch_urls)
-                
-                if not enriched_profiles:
-                    logger.warning(f"No profiles enriched from Apify in batch {batch_idx + 1}")
-                    failed_count += len(batch_urls)
-                    continue
-                
-                # Process each profile and save to database
-                for url, profile_data in enriched_profiles.items():
-                    if not profile_data:
-                        logger.warning(f"No data for {url}")
-                        failed_count += 1
-                        continue
-                    
-                    connection_id = url_to_id.get(url)
-                    if not connection_id:
-                        logger.warning(f"No connection ID for {url}")
-                        failed_count += 1
-                        continue
-                    
-                    # Extract profile data
-                    extracted_data = extract_apify_profile_data(profile_data)
-                    
-                    # Save the extracted data to Supabase
-                    update_data = {
-                        'enriched_at': datetime.now(timezone.utc).isoformat(),
-                        'enrichment_source': 'apify'
+                # If we have enriched connections in this batch, queue them for embedding immediately
+                if batch_enriched_connections:
+                    # Create batch embedding task
+                    batch_task = {
+                        "user_id": user_id,
+                        "task_id": task_id,
+                        "connections": [{
+                            "id": conn["id"],
+                            "profile_data": conn["profile_data"]
+                        } for conn in batch_enriched_connections]
                     }
                     
-                    # Add extracted fields
-                    for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
-                                 'location', 'company', 'position', 'profile_photo_url']:
-                        if field in extracted_data and extracted_data[field]:
-                            update_data[field] = extracted_data[field]
+                    # Send batch to embedding queue
+                    await redis_client_instance.lpush(EMBEDDING_QUEUE, json.dumps(batch_task))
+                    logger.info(f"Sent batch of {len(batch_enriched_connections)} connections to embedding queue (batch {batch_idx}/{total_batches})")
                     
-                    # Update connection with enrichment data
-                    try:
-                        response = await supabase.table("connections").update(update_data).eq(
-                            "id", connection_id
-                        ).execute()
-                        
-                        if response.data:
-                            logger.info(f"Successfully saved profile data for connection {connection_id}")
-                            successful_count += 1
-                            
-                            # Create embedding task
-                            embedding_task = {
-                                "user_id": user_id,
-                                "connection_id": connection_id,
-                                "profile_data": extracted_data,
-                                "task_id": task_id
-                            }
-                            
-                            # Send to embedding queue
-                            await redis_client_instance.lpush(EMBEDDING_QUEUE, json.dumps(embedding_task))
-                            logger.info(f"Sent embedding task for connection {connection_id} to embedding queue")
-                        else:
-                            logger.warning(f"Failed to save profile data for connection {connection_id}")
-                            failed_count += 1
-                    except Exception as e:
-                        logger.error(f"Error saving profile data for connection {connection_id}: {str(e)}")
-                        failed_count += 1
-                
-                # Update status: Batch completed
-                await self._update_task_status(
-                    task_id, 
-                    "processing", 
-                    f"✅ Batch {batch_idx + 1}/{len(batches)} completed: {successful_count} profiles enriched"
-                )
+                    # Update status for embedding queue
+                    await self._update_task_status(
+                        task_id, 
+                        "processing", 
+                        f"🔍 Queued {len(batch_enriched_connections)} connections for embedding (batch {batch_idx}/{total_batches})"
+                    )
+                    
+                    # Add a small delay to avoid overwhelming Redis
+                    await asyncio.sleep(0.1)
             
             # Update status: Enrichment completed
             await self._update_task_status(
                 task_id, 
                 "completed", 
-                f"✅ Enrichment completed: {successful_count}/{len(urls_to_process)} profiles enriched, {failed_count} failed, {skipped_count} skipped, {reused_count} reused"
+                f"✅ Enrichment completed: {total_successful} profiles enriched, {total_failed} failed, {total_skipped} skipped, {total_reused} reused"
             )
             
         except Exception as e:
