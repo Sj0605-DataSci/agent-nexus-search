@@ -59,15 +59,15 @@ class WorkerManager:
             self.num_chat_workers = min(cpu_count // 2, 4)  # Use half the cores, max 4
             self.num_connection_workers = 1  # Only need 1 connection worker
             self.num_enrichment_workers = 1  # Only need 1 enrichment worker
-            self.num_auto_enrichment_workers = 1  # Only need 1 auto enrichment worker
-            self.num_embedding_workers = 3  # Use 3 embedding workers for parallel processing
+            self.num_auto_enrichment_workers = 4  # Only need 1 auto enrichment worker
+            self.num_embedding_workers = 4  # Use 3 embedding workers for parallel processing
             logger.info("Running as dedicated worker process")
         else:
             # Running alongside web process - use minimal resources
             self.num_chat_workers = 1  # Minimal for web process
             self.num_connection_workers = 1
-            self.num_enrichment_workers = 1
-            self.num_auto_enrichment_workers = 1
+            self.num_enrichment_workers = 2
+            self.num_auto_enrichment_workers = 2
             self.num_embedding_workers = 2  # Use 2 embedding workers for web process
             logger.info("Running alongside web process")
         
