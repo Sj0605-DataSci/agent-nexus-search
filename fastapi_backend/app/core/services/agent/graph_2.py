@@ -106,6 +106,10 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
             
             # Ensure we use the current message ID, not the cached one
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+            cached_result_dict["current_message_id"] = current_message_id
+
+            return OverallState(**cached_result_dict)
+      
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
 Given a user's search query, you need to:
@@ -234,14 +238,20 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             
             invalidate_chat_messages_cache(chat_thread_id)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> cd531df (in redis updates message_id prop)
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
             cached_result_dict["current_message_id"] = current_message_id
 
             return OverallState(**cached_result_dict)
+<<<<<<< HEAD
 =======
             
             return OverallState(**cached_result)
 >>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
+=======
+>>>>>>> cd531df (in redis updates message_id prop)
         
         
         # Extract traits and filters for keyword generation
@@ -470,9 +480,13 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         user_id = agent_config["user_id"]
         user_query = state["messages"][-1].get("content", "")
 <<<<<<< HEAD
+<<<<<<< HEAD
         current_message_id = state.get("current_message_id", "")
 =======
 >>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
+=======
+        current_message_id = state.get("current_message_id", "")
+>>>>>>> cd531df (in redis updates message_id prop)
         cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
         # Try to get from cache
@@ -817,6 +831,7 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         
         invalidate_chat_messages_cache(chat_thread_id)
 <<<<<<< HEAD
+<<<<<<< HEAD
         cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
         cached_result_dict["current_message_id"] = current_message_id
         
@@ -825,6 +840,12 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         
         return OverallState(**cached_result)
 >>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
+=======
+        cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+        cached_result_dict["current_message_id"] = current_message_id
+        
+        return OverallState(**cached_result_dict)
+>>>>>>> cd531df (in redis updates message_id prop)
     
     # Combine results from both sources
     combined_profiles = []
