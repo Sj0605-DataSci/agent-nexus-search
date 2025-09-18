@@ -103,10 +103,12 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
-<<<<<<< HEAD
-            
             # Ensure we use the current message ID, not the cached one
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+            cached_result_dict["current_message_id"] = current_message_id
+
+            return OverallState(**cached_result_dict)
+      
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
 
@@ -235,15 +237,9 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
-<<<<<<< HEAD
-            cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
-            cached_result_dict["current_message_id"] = current_message_id
-
-            return OverallState(**cached_result_dict)
-=======
             
             return OverallState(**cached_result)
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
+
         
         
         # Extract traits and filters for keyword generation
@@ -417,12 +413,7 @@ LIMIT 20;
                             keyword_results.append(row)
             except Exception as fallback_e:
                 raise fallback_e
-        
-<<<<<<< HEAD
-        print("Node 2: SQL Search Completed")
-=======
         print("Node 3: SQL Search Completed")
->>>>>>> 1669ca2 (now cache answers too will get recorded in supabase)
         current_message_id = state["current_message_id"]
         chat_thread_id = state["chat_thread_id"]
 
@@ -475,10 +466,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
         user_query = state["messages"][-1].get("content", "")
-<<<<<<< HEAD
         current_message_id = state.get("current_message_id", "")
-=======
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
         cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
         # Try to get from cache
@@ -822,15 +810,16 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         }).eq("user_id", user_id).eq("id", current_message_id).execute()
         
         invalidate_chat_messages_cache(chat_thread_id)
-<<<<<<< HEAD
         cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
         cached_result_dict["current_message_id"] = current_message_id
         
         return OverallState(**cached_result_dict)
-=======
         
         return OverallState(**cached_result)
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
+        cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+        cached_result_dict["current_message_id"] = current_message_id
+        
+        return OverallState(**cached_result_dict)
     
     # Combine results from both sources
     combined_profiles = []
@@ -866,9 +855,6 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
     
     query_analysis = state.get("query_analysis", {})
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
     user_query = get_research_topic(state["messages"])
     
     cache_key = f"graph2:finalize_sql_answer:{user_id}:{user_query}"
@@ -883,9 +869,6 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         invalidate_chat_messages_cache(chat_thread_id)
         
         return OverallState(**cached_result)
->>>>>>> 1669ca2 (now cache answers too will get recorded in supabase)
-=======
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
     
     if not final_profiles:
         final_message = AIMessage(content="No matching connections found for your query.")
