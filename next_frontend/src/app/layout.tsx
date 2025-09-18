@@ -24,25 +24,36 @@ const robotoMono = Roboto_Mono({
   preload: true,
 });
 
+const isStaging = process.env.NODE_ENV != "production";
+
 const baseMetadata: Metadata = {
   title: {
     default: "DiscoverMinds.ai - Unlock Your Network's Potential",
     template: "%s | DiscoverMinds.ai",
   },
   description: "",
-  robots: {
-    index: false,
-    follow: false,
-    nocache: true,
-    googleBot: {
-      index: false,
-      follow: false,
-      noimageindex: true,
-      "max-video-preview": -1,
-      "max-image-preview": "none",
-      "max-snippet": -1,
-    } as any,
-  } as any,
+  robots: isStaging
+    ? {
+        index: false,
+        follow: false,
+        nocache: true,
+        googleBot: {
+          index: false,
+          follow: false,
+          noimageindex: true,
+          "max-video-preview": -1,
+          "max-image-preview": "none",
+          "max-snippet": -1,
+        },
+      }
+    : {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+        },
+      },
 };
 
 const productionMetadata: Metadata = {
