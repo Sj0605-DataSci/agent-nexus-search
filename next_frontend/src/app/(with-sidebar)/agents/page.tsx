@@ -230,6 +230,7 @@ const Agents = () => {
                             src={currentAgent.agentImageUrl}
                             alt={`${currentAgent.name} avatar`}
                             fill
+                            priority
                             className="object-cover"
                           />
                         </div>
@@ -320,7 +321,7 @@ const Agents = () => {
                         : "bg-gradient-to-br from-white/80 via-white/60 to-white/80 border-gray-200/50"
                     }`}
                   >
-                    <div className="flex items-center mb-8">
+                    <div className="flex items-start mb-8">
                       <div
                         className={`p-3 rounded-full mr-4 ${
                           darkMode ? "bg-purple-600/20" : "bg-purple-100"

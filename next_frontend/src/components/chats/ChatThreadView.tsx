@@ -734,7 +734,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                     <SearchQueryDisplay
                       streamingSearchQueries={streamingSearchQueries}
                       isStreaming={isStreaming}
-                      showDefaultOpenDropdown={Boolean(initialQuery && query?.trim() && !isStreaming)}
+                      showDefaultOpenDropdown={Boolean(initialQuery?.trim() )}
                     />
                   )}
 

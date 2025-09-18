@@ -93,6 +93,7 @@ export default function ConnectionsPage() {
                           alt={connection.alt}
                           width={64}
                           height={64}
+                          priority
                           className="size-10 object-contain"
                         />
                       </div>

@@ -41,17 +41,17 @@ const baseMetadata: Metadata = {
       "max-video-preview": -1,
       "max-image-preview": "none",
       "max-snippet": -1,
-    } as any, // Type assertion to avoid TypeScript errors with the robots configuration
-  } as any, // Type assertion for robots object
+    } as any,
+  } as any,
 };
 
 const productionMetadata: Metadata = {
   title: {
-    default: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform", // Enhanced title with keywords
-    template: "%s | DiscoverMinds.ai - Network Intelligence Platform", // Enhanced template with keywords
+    default: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
+    template: "%s | DiscoverMinds.ai - Network Intelligence Platform",
   },
   description:
-    "DiscoverMinds.ai helps you unlock the hidden job market and find opportunities through warm introductions. Leverage your extended professional network with our AI-powered people search engine.", // Improved description with keywords at the beginning
+    "DiscoverMinds.ai helps you unlock the hidden job market and find opportunities through warm introductions. Leverage your extended professional network with our AI-powered people search engine.",
   keywords: [
     "professional network",
     "warm introductions",
@@ -62,11 +62,11 @@ const productionMetadata: Metadata = {
     "expert finder",
     "referral network",
     "career opportunities",
-    "people search engine", // Added relevant keyword
-    "AI networking tool", // Added relevant keyword
-    "professional connections", // Added relevant keyword
-    "network mapping", // Added relevant keyword
-    "LinkedIn network tool", // Added relevant keyword
+    "people search engine",
+    "AI networking tool",
+    "professional connections",
+    "network mapping",
+    "LinkedIn network tool",
   ],
   authors: [
     {
@@ -95,15 +95,15 @@ const productionMetadata: Metadata = {
     locale: "en_US",
     url: "https://discoverminds.ai",
     siteName: "DiscoverMinds.ai",
-    title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform", // Enhanced title
+    title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
     description:
-      "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.", // Enhanced description
+      "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.",
     images: [
       {
         url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform", // Enhanced alt text
+        alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform",
         type: "image/png",
         secureUrl: "https://discoverminds.ai/Images/og-image.png",
       },
@@ -111,28 +111,28 @@ const productionMetadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform", // Enhanced title
+    title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
     description:
-      "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.", // Enhanced description
+      "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.",
     images: [
       {
         url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform", // Enhanced alt text
+        alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform",
       },
     ],
     creator: "@discovermindsai",
-    site: "@discovermindsai", // Added site parameter
+    site: "@discovermindsai",
   },
   robots: {
     index: true,
     follow: true,
-    nocache: false, // Don't prevent caching
+    nocache: false,
     googleBot: {
       index: true,
       follow: true,
-      noimageindex: false, // Allow image indexing
+      noimageindex: false,
       "max-video-preview": -1,
       "max-image-preview": "large",
       "max-snippet": -1,
@@ -140,13 +140,13 @@ const productionMetadata: Metadata = {
   },
   verification: {
     google: "your-google-verification-code",
-    yandex: "your-yandex-verification-code",
+    yandex: "1be636ef641bd072",
     other: {
-      "msvalidate.01": "your-bing-verification-code", // Bing verification
-      y_key: "your-yahoo-verification-code", // Yahoo verification
+      "msvalidate.01": "your-bing-verification-code",
+      y_key: "your-yahoo-verification-code",
     },
-  } as any, // Type assertion for verification object
-  manifest: "/site.webmanifest",
+  } as any,
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -155,7 +155,7 @@ const productionMetadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  category: "technology", // Added category metadata
+  category: "technology",
 };
 
 export const metadata: Metadata =
