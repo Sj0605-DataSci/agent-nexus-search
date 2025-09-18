@@ -11,17 +11,19 @@ import os
 import re
 import traceback
 import requests
+import aiohttp
 import time
 from functools import wraps
 from collections import deque
 from typing import AsyncGenerator, Union
 
-from apify_client import ApifyClient
+from apify_client import ApifyClient, ApifyClientAsync
 from apify_client.errors import ApifyApiError
 
 from app.core.config import settings
 from app.core.structured_logger import get_structured_logger
 from app.core.services.apify_extractor import extract_apify_profile_data, extract_batch_apify_profiles
+from app.core.utils.rate_limiter import jina_rate_limiter
 
 logger = get_structured_logger(__name__)
 
@@ -47,6 +49,10 @@ class SimplifiedEnrichmentService:
         
         # Batch size for Apify API calls
         self.scraping_batch_size = 50  # Process 50 URLs at a time for scraping
+        
+        # Parallel processing configuration
+        self.max_parallel_apify_calls = 32  # Maximum number of parallel Apify API calls (Apify's limit)
+        self.max_parallel_embedding_calls = 3  # Maximum number of parallel embedding API calls (reduced to avoid rate limits)
         
     # Removed initialize_vecs method as we're not using vecs anymore
     
@@ -91,6 +97,7 @@ class SimplifiedEnrichmentService:
     async def _fetch_profiles_from_apify_impl(self, linkedin_urls: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         Implementation of fetching LinkedIn profile data from Apify (for retry wrapper)
+        Uses async Apify client for true parallelism
         """
         logger.info(f"Fetching {len(linkedin_urls)} profiles from Apify")
         
@@ -99,8 +106,8 @@ class SimplifiedEnrichmentService:
             logger.error("APIFY_API_KEY not configured")
             return {}
         
-        # Initialize Apify client
-        apify_client = ApifyClient(self.apify_api_key)
+        # Initialize Apify async client
+        apify_client = ApifyClientAsync(self.apify_api_key)
         
         # Prepare Apify actor input
         run_input = {
@@ -110,7 +117,7 @@ class SimplifiedEnrichmentService:
         
         # Run the Apify actor and wait for completion
         logger.info(f"Calling Apify actor with {len(linkedin_urls)} URLs")
-        run = apify_client.actor("LpVuK3Zozwuipa5bp").call(run_input=run_input)
+        run = await apify_client.actor("LpVuK3Zozwuipa5bp").call(run_input=run_input)
         
         if not run or "defaultDatasetId" not in run:
             logger.error("Invalid response from Apify actor")
@@ -118,7 +125,8 @@ class SimplifiedEnrichmentService:
         
         # Fetch results from the dataset
         apify_results = []
-        for item in apify_client.dataset(run["defaultDatasetId"]).iterate_items():
+        dataset_client = apify_client.dataset(run["defaultDatasetId"])
+        async for item in dataset_client.iterate_items():
             apify_results.append(item)
         
         logger.info(f"Apify returned {len(apify_results)} results")
@@ -128,9 +136,68 @@ class SimplifiedEnrichmentService:
         
         return extracted_data
     
+    async def _fetch_profiles_from_apify_parallel(self, linkedin_urls: List[str], max_parallel_calls: int = 32) -> Dict[str, Dict[str, Any]]:
+        """
+        Implementation of fetching LinkedIn profile data from Apify in parallel batches using direct concurrency
+        
+        Args:
+            linkedin_urls: List of LinkedIn profile URLs
+            max_parallel_calls: Maximum number of parallel Apify API calls (default: 32, Apify's limit)
+            
+        Returns:
+            Dictionary mapping LinkedIn URLs to their extracted profile data
+        """
+        logger.info(f"Fetching {len(linkedin_urls)} profiles from Apify using direct concurrency")
+        
+        # Validate API key
+        if not self.apify_api_key:
+            logger.error("APIFY_API_KEY not configured")
+            return {}
+        
+        # Use fixed optimal batch size for Apify (50 URLs per call is optimal based on benchmarks)
+        total_urls = len(linkedin_urls)
+        optimal_batch_size = self.scraping_batch_size  # 50 URLs per batch
+        
+        # Split URLs into batches of 50 URLs each
+        url_batches = [linkedin_urls[i:i+optimal_batch_size] for i in range(0, total_urls, optimal_batch_size)]
+        logger.info(f"Split {total_urls} URLs into {len(url_batches)} batches of {optimal_batch_size} URLs each")
+        
+        # Define a function to process a batch of URLs
+        async def process_batch(batch_urls):
+            """Process a single batch of URLs"""
+            logger.info(f"Processing batch with {len(batch_urls)} URLs")
+            return await self.retry_async(self._fetch_profiles_from_apify_impl, batch_urls)
+        
+        # Process batches in chunks of max_parallel_calls to avoid overwhelming Apify
+        combined_results = {}
+        for i in range(0, len(url_batches), max_parallel_calls):
+            # Get the next chunk of batches (up to max_parallel_calls)
+            current_batches = url_batches[i:i+max_parallel_calls]
+            logger.info(f"Processing chunk {i//max_parallel_calls + 1} with {len(current_batches)} batches (each batch has {optimal_batch_size} URLs)")
+            
+            # Create tasks for the current chunk of batches
+            tasks = [process_batch(batch) for batch in current_batches]
+            
+            # Execute all tasks in this chunk concurrently
+            chunk_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results from this chunk
+            for result in chunk_results:
+                if isinstance(result, Exception):
+                    logger.error(f"Error in batch processing: {str(result)}")
+                    continue
+                    
+                if result:
+                    combined_results.update(result)
+            
+            logger.info(f"Completed chunk {i//max_parallel_calls + 1}, got {len(combined_results)} profiles so far")
+        
+        logger.info(f"Direct concurrent processing complete. Got data for {len(combined_results)} URLs")
+        return combined_results
+    
     async def fetch_profiles_from_apify(self, linkedin_urls: List[str]) -> Dict[str, Dict[str, Any]]:
         """
-        Fetch LinkedIn profile data from Apify with retry mechanism
+        Fetch LinkedIn profile data from Apify with retry mechanism and parallel processing
         
         Args:
             linkedin_urls: List of LinkedIn profile URLs
@@ -139,10 +206,7 @@ class SimplifiedEnrichmentService:
             Dictionary mapping LinkedIn URLs to their extracted profile data
         """
         try:
-            # Use retry mechanism
-            result = await self.retry_async(self._fetch_profiles_from_apify_impl, linkedin_urls)
-            return result if result else {}
-                
+            return await self._fetch_profiles_from_apify_parallel(linkedin_urls, max_parallel_calls=self.max_parallel_apify_calls)
         except Exception as e:
             logger.error(f"Error fetching profiles from Apify: {str(e)}")
             return {}
@@ -190,67 +254,183 @@ class SimplifiedEnrichmentService:
             # Use retry mechanism
             result = await self.retry_async(self._generate_embedding_impl, text)
             return result
+                
         except Exception as e:
-            logger.error(f"Error generating embedding after all retries: {e}")
+            logger.error(f"Error generating embedding: {str(e)}")
             return None
     
-    async def _generate_batch_embeddings_impl(self, texts: List[str]) -> Optional[List[List[float]]]:
+    async def _generate_batch_embeddings_parallel(self, texts: List[str], max_parallel_calls: int = 8, batch_size: int = 20) -> List[Optional[List[float]]]:
         """
-        Implementation of batch embedding generation using Jina API (for retry wrapper)
+        Generate embeddings for a batch of texts in parallel
         
         Args:
             texts: List of texts to generate embeddings for
+            max_parallel_calls: Maximum number of parallel API calls
+            batch_size: Size of each batch for API calls
             
         Returns:
-            List of embedding vectors or None if failed
+            List of embeddings, one for each text
         """
-        if not texts or all(not text or not text.strip() for text in texts):
-            return None
+        # Filter out empty texts
+        valid_texts = [text for text in texts if text and text.strip()]
+        if not valid_texts:
+            return [None] * len(texts)
+        
+        # Create mapping from original texts to valid texts
+        text_mapping = {}
+        valid_idx = 0
+        for i, text in enumerate(texts):
+            if text and text.strip():
+                text_mapping[i] = valid_idx
+                valid_idx += 1
+        
+        # Split texts into batches
+        batches = [valid_texts[i:i+batch_size] for i in range(0, len(valid_texts), batch_size)]
+        logger.info(f"Split {len(valid_texts)} texts into {len(batches)} batches for embedding generation")
+        
+        async def process_batch(batch):
+            """Process a single batch of texts with rate limiting"""
+            # Define the API call function to be rate limited
+            async def api_call(texts_batch):
+                url = "https://api.jina.ai/v1/embeddings"
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.jina_api_key}",
+                }
+                data = {
+                    "model": "jina-embeddings-v3",
+                    "task": "text-matching",
+                    "input": texts_batch,
+                }
+                
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(url, headers=headers, json=data) as response:
+                            response_text = await response.text()
+                            
+                            if response.status != 200:
+                                # Check specifically for token rate limit error
+                                if "token rate limit exceeded" in response_text.lower() or "token rate limit" in response_text.lower():
+                                    logger.warning(f"Jina token rate limit exceeded. Response: {response_text}")
+                                    # Raise specific exception to trigger rate limiter's special handling
+                                    raise Exception(f"Token rate limit exceeded: {response_text}")
+                                else:
+                                    logger.error(f"Error generating embeddings: {response_text}")
+                                    return None
+                            
+                            # Parse response
+                            try:
+                                result = json.loads(response_text)
+                                
+                                if "data" not in result:
+                                    logger.error(f"Invalid response from Jina API: {result}")
+                                    return None
+                                
+                                # Extract embeddings
+                                return [item["embedding"] for item in result["data"]]
+                            except json.JSONDecodeError:
+                                logger.error(f"Invalid JSON response from Jina API: {response_text}")
+                                return None
+                except aiohttp.ClientError as e:
+                    # Handle network-related errors
+                    logger.error(f"Network error calling Jina API: {str(e)}")
+                    raise Exception(f"Network error: {str(e)}")
+                except Exception as e:
+                    # Let other exceptions propagate to the rate limiter's error handler
+                    raise
+            
+            try:
+                # Use rate limiter to execute the API call
+                result = await jina_rate_limiter.execute_with_rate_limit(api_call, batch)
+                return result if result else [None] * len(batch)
+            except Exception as e:
+                logger.error(f"Error in batch embedding generation after rate limiting: {str(e)}")
+                # If we hit rate limits repeatedly, add longer backoff
+                if "token rate limit exceeded" in str(e).lower():
+                    logger.warning(f"Backing off due to token rate limit: {str(e)}")
+                    await asyncio.sleep(5)  # Additional backoff beyond what rate limiter does
+                return [None] * len(batch)
+        
+        try:
+            # Create tasks for all batches with very limited concurrency
+            # Reduce max_parallel_calls to avoid hitting rate limits
+            actual_max_calls = min(max_parallel_calls, 3)  # Cap at 3 concurrent calls maximum
+            semaphore = asyncio.Semaphore(actual_max_calls)
+            
+            logger.info(f"Processing {len(batches)} batches with max {actual_max_calls} concurrent calls")
+            
+            async def process_with_semaphore(batch_idx, batch):
+                async with semaphore:
+                    # Add small delay between batches to avoid rate limits
+                    await asyncio.sleep(0.2 * batch_idx % 3)  # Stagger requests with 0.2-0.6s delays
+                    logger.debug(f"Processing batch {batch_idx+1}/{len(batches)} with {len(batch)} texts")
+                    try:
+                        result = await process_batch(batch)
+                        return result
+                    except Exception as e:
+                        if "rate limit" in str(e).lower():
+                            # Add extra delay on rate limit errors
+                            logger.warning(f"Rate limit hit in batch {batch_idx+1}, adding extra delay")
+                            await asyncio.sleep(2)  # Add extra delay on rate limit
+                        raise
+            
+            tasks = [process_with_semaphore(i, batch) for i, batch in enumerate(batches)]
+            
+            # Wait for all batches to complete
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Combine results from all batches
+            all_embeddings = []
+            for i, result in enumerate(batch_results):
+                if isinstance(result, Exception):
+                    logger.error(f"Error in batch processing: {str(result)}")
+                    # Add None values for this batch
+                    all_embeddings.extend([None] * len(batches[i]))
+                else:
+                    all_embeddings.extend(result)
+            
+            # Map back to original texts (including empty ones)
+            result_embeddings = [None] * len(texts)
+            for orig_idx, valid_idx in text_mapping.items():
+                if valid_idx < len(all_embeddings):
+                    result_embeddings[orig_idx] = all_embeddings[valid_idx]
+            
+            return result_embeddings
+        
+        except Exception as e:
+            logger.error(f"Error generating batch embeddings in parallel: {str(e)}")
+            return [None] * len(texts)
+    
+    async def generate_batch_embeddings(self, texts: List[str], batch_size: int = 20) -> List[Optional[List[float]]]:
+        """
+        Generate embeddings for a batch of texts
+        
+        Args:
+            texts: List of texts to generate embeddings for
+            batch_size: Size of each batch for API calls (smaller batches help with rate limits)
+            
+        Returns:
+            List of embeddings, one for each text
+        """
+        if not texts:
+            return []
         
         # Filter out empty texts
         valid_texts = [text for text in texts if text and text.strip()]
         if not valid_texts:
-            return None
-            
-        url = "https://api.jina.ai/v1/embeddings"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.jina_api_key}",
-        }
-        data = {
-            "model": "jina-embeddings-v3",
-            "task": "text-matching",
-            "input": valid_texts,
-        }
+            return [None] * len(texts)
         
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
+        # Log token count for monitoring
+        from app.core.utils.rate_limiter import jina_rate_limiter
+        token_count = jina_rate_limiter.count_tokens(valid_texts)
+        logger.debug(f"Generating embeddings for {len(valid_texts)} texts with approximately {token_count} tokens")
         
-        result = response.json()
-        embeddings = [item["embedding"] for item in result["data"]]
-        
-        return embeddings
-    
-    async def generate_batch_embeddings(self, texts: List[str]) -> Optional[List[List[float]]]:
-        """
-        Generate embeddings for multiple texts using Jina API with retry mechanism
-        
-        Args:
-            texts: List of texts to generate embeddings for
-            
-        Returns:
-            List of embedding vectors or None if failed
-        """
-        if not texts:
-            return None
-            
-        try:
-            # Use retry mechanism
-            result = await self.retry_async(self._generate_batch_embeddings_impl, texts)
-            return result
-        except Exception as e:
-            logger.error(f"Error generating batch embeddings after all retries: {e}")
-            return None
+        # Always use parallel processing for optimal performance
+        return await self._generate_batch_embeddings_parallel(
+            texts, 
+            max_parallel_calls=self.max_parallel_embedding_calls,
+            batch_size=batch_size
+        )
     
     def create_basic_info_text(self, profile: Dict) -> str:
         """Create text for basic profile information"""
@@ -393,7 +573,7 @@ class SimplifiedEnrichmentService:
                 response = await self.supabase_client.table("connections").select(
                     "id, linkedin_url, embedding_generated_at, basic_info_embedding, experience_embedding, enriched_at, "
                     "experience_json, education_json, skills, headline, about_section, location, company, position, profile_photo_url"
-                ).in_("linkedin_url", batch_urls).neq("user_id", user_id).execute()
+                ).in_("linkedin_url", batch_urls).neq("user_id", user_id).not_.is_("enriched_at", None).not_.is_("embedding_generated_at", None).execute()
                 
                 if response.data:
                     other_users_data.extend(response.data)
@@ -406,18 +586,57 @@ class SimplifiedEnrichmentService:
             
             # Process connections based on the bulk data
             connections_to_process = []
+            connections_for_embedding_only = []
             skipped_count = 0
             reused_count = 0
+            embedding_only_count = 0
             
             for url, connection_id in url_to_id.items():
                 # Check if this user's connection already has data
                 conn_data = connection_data_by_id.get(connection_id)
-                exists_for_this_user = conn_data and conn_data.get("has_enrichment") and conn_data.get("has_embeddings")
+                has_enrichment = conn_data and conn_data.get("has_enrichment")
+                has_embeddings = conn_data and conn_data.get("has_embeddings")
                 
-                if exists_for_this_user:
-                    # Skip this connection as it already has embeddings and enrichment data
-                    logger.info(f"Skipping connection {connection_id} as it already has enrichment data")
+                if has_enrichment and has_embeddings:
+                    # Skip this connection as it already has both enrichment data and embeddings
+                    logger.info(f"Skipping connection {connection_id} as it already has enrichment data and embeddings")
                     skipped_count += 1
+                elif has_enrichment and not has_embeddings:
+                    # Connection has enrichment data but no embeddings
+                    logger.info(f"Connection {connection_id} has enrichment data but no embeddings - adding to embedding-only list")
+                    
+                    # Check if we already have the profile data in the connection object
+                    conn_obj = next((c for c in connections if c.get("id") == connection_id), None)
+                    
+                    # Check if we have enough data to generate meaningful embeddings
+                    # We need at least some basic profile info or experience data
+                    has_basic_info = conn_obj and any([
+                        conn_obj.get("first_name") and conn_obj.get("last_name"),
+                        conn_obj.get("headline"),
+                        conn_obj.get("about_section"),
+                        conn_obj.get("company") and conn_obj.get("position")
+                    ])
+                    
+                    has_experience = conn_obj and conn_obj.get("experience_json") and len(conn_obj.get("experience_json", [])) > 0
+                    
+                    if conn_obj and (has_basic_info or has_experience):
+                        # Use the pre-fetched profile data
+                        logger.info(f"Using pre-fetched profile data for connection {connection_id}")
+                        connections_for_embedding_only.append(conn_obj)
+                        embedding_only_count += 1
+                    else:
+                        # Fallback: Get the full profile data for embedding generation
+                        logger.info(f"Fetching profile data for connection {connection_id}")
+                        profile_response = await self.supabase_client.table("connections").select(
+                            "id, linkedin_url, headline, about_section, company, position, location, first_name, last_name, experience_json, education_json, skills, profile_photo_url"
+                        ).eq("id", connection_id).execute()
+                        
+                        if profile_response.data:
+                            connections_for_embedding_only.append(profile_response.data[0])
+                            embedding_only_count += 1
+                        else:
+                            logger.warning(f"Could not fetch profile data for connection {connection_id}")
+                            connections_to_process.append({"linkedin_url": url, "id": connection_id})
                 elif url in url_to_other_data:
                     # Reuse data from another user's connection
                     logger.info(f"Reusing data for connection {connection_id} from another user with same LinkedIn URL {url}")
@@ -428,17 +647,34 @@ class SimplifiedEnrichmentService:
                     # Connection is missing data - process it
                     connections_to_process.append({"linkedin_url": url, "id": connection_id})
             
-            if not connections_to_process:
-                logger.info("All connections already have enrichment data")
+            # Check if we have connections that only need embedding (already enriched)
+            if connections_for_embedding_only:
+                logger.info(f"Found {len(connections_for_embedding_only)} connections that only need embedding generation")
+                # Yield these connections directly for embedding worker to process
                 yield {
                     "success": True,
-                    "message": "All connections already have enrichment data",
+                    "message": "Connections ready for embedding generation",
+                    "total": len(connections_for_embedding_only),
+                    "connections": connections_for_embedding_only,
+                    "embedding_only": True,
+                    "task_type": "embedding"
+                }
+            
+            # If there are no connections that need full enrichment, we're done
+            if not connections_to_process:
+                logger.info("No connections need full enrichment processing")
+                yield {
+                    "success": True,
+                    "message": "No connections need full enrichment processing",
                     "total": len(linkedin_urls),
                     "successful": 0,
                     "failed": 0,
                     "skipped": skipped_count,
-                    "reused": 0
+                    "reused": reused_count,
+                    "enriched_connections": []
                 }
+                # Return early to avoid unnecessary processing
+                return
             
             # Get URLs for connections that need processing
             urls_to_process = [conn["linkedin_url"] for conn in connections_to_process]
@@ -447,118 +683,207 @@ class SimplifiedEnrichmentService:
             successful_count = 0
             failed_count = 0
             
-            # Process connections in batches for scraping (Apify limit)
-            batches = [urls_to_process[i:i + self.scraping_batch_size] 
-                      for i in range(0, len(urls_to_process), self.scraping_batch_size)]
-            
-            logger.info(f"Processing {len(urls_to_process)} connections in {len(batches)} batches")
+            # Process connections in batches for scraping
+            # Process URLs in chunks of 32 parallel calls with 50 URLs each (1600 URLs per chunk)
+            logger.info(f"Processing {len(urls_to_process)} connections with direct concurrent Apify calls")
             
             # For tracking overall results if not yielding batches
             all_enriched_connections = []
             
-            # Process each batch of URLs
-            for batch_idx, batch_urls in enumerate(batches):
-                logger.info(f"Processing batch {batch_idx + 1}/{len(batches)} with {len(batch_urls)} URLs")
+            # Calculate optimal chunk size for maximum parallelism
+            # Each chunk will have max_parallel_apify_calls (32) batches of scraping_batch_size (50) URLs
+            # This gives us chunks of 1600 URLs that will be processed in parallel
+            chunk_size = self.scraping_batch_size * self.max_parallel_apify_calls  # 50 URLs × 32 parallel calls = 1600 URLs
+            
+            # Split URLs into chunks for processing
+            url_chunks = [urls_to_process[i:i + chunk_size] 
+                         for i in range(0, len(urls_to_process), chunk_size)]
+            
+            # Calculate and log expected time savings
+            num_batches = len(urls_to_process) / self.scraping_batch_size
+            sequential_time = (num_batches * 25) / 60  # 25 seconds per batch of 50 URLs
+            parallel_time = (num_batches / self.max_parallel_apify_calls * 25) / 60  # Time with parallelism
+            time_saved = sequential_time - parallel_time
+            
+            logger.info(f"Split {len(urls_to_process)} connections into {len(url_chunks)} chunks of ~{chunk_size} URLs each")
+            logger.info(f"Each chunk will use {self.max_parallel_apify_calls} parallel Apify calls with {self.scraping_batch_size} URLs per call")
+            logger.info(f"Using maximum parallelism: Processing would take ~{sequential_time:.1f} minutes sequentially vs ~{parallel_time:.1f} minutes with parallelism (saving ~{time_saved:.1f} minutes)")
+            
+            # Process each chunk
+            for chunk_idx, chunk_urls in enumerate(url_chunks):
+                logger.info(f"Processing chunk {chunk_idx + 1}/{len(url_chunks)} with {len(chunk_urls)} URLs")
                 
-                # Fetch profiles from Apify
-                enriched_profiles = await self.fetch_profiles_from_apify(batch_urls)
+                # Fetch profiles from Apify using direct concurrency
+                enriched_profiles = await self.fetch_profiles_from_apify(chunk_urls)
                 
+                # Process the enriched profiles from this chunk
                 if not enriched_profiles:
-                    logger.warning(f"No profiles enriched from Apify in batch {batch_idx + 1}")
-                    failed_count += len(batch_urls)
+                    logger.warning(f"No profiles enriched from Apify in chunk {chunk_idx + 1}")
+                    failed_count += len(chunk_urls)
                     continue
                 
-                # Track batch results
-                batch_successful = 0
-                batch_failed = 0
-                batch_enriched_connections = []
-                
-                # Process each profile and save to database
-                for url, profile_data in enriched_profiles.items():
-                    if not profile_data:
-                        logger.warning(f"No data for {url}")
-                        failed_count += 1
-                        batch_failed += 1
-                        continue
-                    
-                    connection_id = url_to_id.get(url)
-                    if not connection_id:
-                        logger.warning(f"No connection ID for {url}")
-                        failed_count += 1
-                        batch_failed += 1
-                        continue
-                
-                    
-                    # Save the extracted data to Supabase
-                    update_data = {
-                        'enriched_at': datetime.now(timezone.utc).isoformat(),
-                        'enrichment_source': 'apify'
-                    }
-                    
-                    # Add extracted fields
-                    for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
-                                 'location', 'company', 'position', 'profile_photo_url']:
-                        if field in profile_data and profile_data[field]:
-                            update_data[field] = profile_data[field]
-                    
-                    # Update connection with enrichment data
-                    try:
-                        response = await self.supabase_client.table("connections").update(update_data).eq(
-                            "id", connection_id
-                        ).execute()
-                        
-                        if response.data:
-                            logger.info(f"Successfully saved profile data for connection {connection_id}")
-                            successful_count += 1
-                            batch_successful += 1
-                            
-                            # Add to batch results with profile data for embedding
-                            enriched_connection = {
-                                "id": connection_id,
-                                "linkedin_url": url,
-                                "profile_data": update_data
-                            }
-                            batch_enriched_connections.append(enriched_connection)
-                            all_enriched_connections.append(enriched_connection)
-                        else:
-                            logger.warning(f"Failed to save profile data for connection {connection_id}")
-                            failed_count += 1
-                            batch_failed += 1
-                    except Exception as e:
-                        logger.error(f"Error saving profile data for connection {connection_id}: {str(e)}")
-                        failed_count += 1
-                        batch_failed += 1
-                
-                # If yielding batches, yield this batch result
+                # Process the entire chunk at once for yielding results if needed
                 if yield_batches:
-                    # For the first batch, include skipped/reused counts
-                    if batch_idx == 0:
-                        batch_result = {
-                            "success": batch_successful > 0 or skipped_count > 0 or reused_count > 0,
-                            "message": f"Batch {batch_idx + 1}/{len(batches)}: {batch_successful} profiles enriched, {batch_failed} failed, {skipped_count} skipped, {reused_count} reused",
-                            "batch_idx": batch_idx + 1,
-                            "total_batches": len(batches),
-                            "successful": batch_successful,
-                            "failed": batch_failed,
+                    # We're processing the entire chunk (1600 URLs) as a single batch for embedding
+                    logger.info(f"Processing chunk {chunk_idx + 1}/{len(url_chunks)} with {len(chunk_urls)} URLs as a single batch for embedding")
+                    
+                    # Filter enriched profiles for this chunk
+                    chunk_enriched_profiles = {url: enriched_profiles.get(url) for url in chunk_urls if url in enriched_profiles}
+                    
+                    # Track chunk results
+                    chunk_successful = 0
+                    chunk_failed = 0
+                    chunk_enriched_connections = []
+                    
+                    # Process each profile in this chunk
+                    for url in chunk_urls:
+                        profile_data = chunk_enriched_profiles.get(url)
+                        connection_id = url_to_id.get(url)
+                        
+                        if not profile_data:
+                            logger.warning(f"No data for {url}")
+                            failed_count += 1
+                            chunk_failed += 1
+                            continue
+                            
+                        if not connection_id:
+                            logger.warning(f"No connection ID for {url}")
+                            failed_count += 1
+                            chunk_failed += 1
+                            continue
+                            
+                        # Save the extracted data to Supabase
+                        update_data = {
+                            'enriched_at': datetime.now(timezone.utc).isoformat(),
+                            'enrichment_source': 'apify'
+                        }
+                        
+                        # Add extracted fields
+                        for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
+                                    'location', 'company', 'position', 'profile_photo_url']:
+                            if field in profile_data and profile_data[field]:
+                                update_data[field] = profile_data[field]
+                            
+                        # Update connection with enrichment data
+                        try:
+                            response = await self.supabase_client.table("connections").update(update_data).eq(
+                                "id", connection_id
+                            ).execute()
+                            
+                            if response.data:
+                                logger.info(f"Successfully saved profile data for connection {connection_id}")
+                                successful_count += 1
+                                chunk_successful += 1
+                                
+                                # Add to chunk results with profile data for embedding
+                                enriched_connection = {
+                                    "id": connection_id,
+                                    "linkedin_url": url,
+                                    "profile_data": update_data
+                                }
+                                chunk_enriched_connections.append(enriched_connection)
+                                all_enriched_connections.append(enriched_connection)
+                            else:
+                                logger.warning(f"Failed to save profile data for connection {connection_id}")
+                                failed_count += 1
+                                chunk_failed += 1
+                        except Exception as e:
+                            logger.error(f"Error saving profile data for connection {connection_id}: {str(e)}")
+                            failed_count += 1
+                            chunk_failed += 1
+                        
+                    # After processing all profiles in the chunk, yield the chunk result
+                    if chunk_idx == 0:
+                        # For the first chunk, include skipped/reused counts
+                        chunk_result = {
+                            "success": chunk_successful > 0 or skipped_count > 0 or reused_count > 0,
+                            "message": f"Chunk {chunk_idx + 1}/{len(url_chunks)}: {chunk_successful} profiles enriched, {chunk_failed} failed, {skipped_count} skipped, {reused_count} reused",
+                            "batch_idx": chunk_idx + 1,  # Keep batch_idx for backward compatibility
+                            "total_batches": len(url_chunks),
+                            "successful": chunk_successful,
+                            "failed": chunk_failed,
                             "skipped": skipped_count,
                             "reused": reused_count,
-                            "enriched_connections": batch_enriched_connections
+                            "enriched_connections": chunk_enriched_connections
                         }
                     else:
-                        batch_result = {
-                            "success": batch_successful > 0,
-                            "message": f"Batch {batch_idx + 1}/{len(batches)}: {batch_successful} profiles enriched, {batch_failed} failed",
-                            "batch_idx": batch_idx + 1,
-                            "total_batches": len(batches),
-                            "successful": batch_successful,
-                            "failed": batch_failed,
-                            "skipped": 0,  # Only count skipped in first batch
-                            "reused": 0,    # Only count reused in first batch
-                            "enriched_connections": batch_enriched_connections
+                        chunk_result = {
+                            "success": chunk_successful > 0,
+                            "message": f"Chunk {chunk_idx + 1}/{len(url_chunks)}: {chunk_successful} profiles enriched, {chunk_failed} failed",
+                            "batch_idx": chunk_idx + 1,
+                            "total_batches": len(url_chunks),
+                            "successful": chunk_successful,
+                            "failed": chunk_failed,
+                            "skipped": 0,  # Only count skipped in first chunk
+                            "reused": 0,    # Only count reused in first chunk
+                            "enriched_connections": chunk_enriched_connections
                         }
-                    yield batch_result
-            
+                    
+                    logger.info(f"Yielding chunk {chunk_idx + 1}/{len(url_chunks)} with {len(chunk_enriched_connections)} enriched connections for embedding")
+                    yield chunk_result
+                else:
+                    # If not yielding chunks, process all profiles in this chunk
+                    chunk_successful = 0
+                    chunk_failed = 0
+                    chunk_enriched_connections = []
+                    
+                    # Process each profile and save to database
+                    for url, profile_data in enriched_profiles.items():
+                        if not profile_data:
+                            logger.warning(f"No data for {url}")
+                            failed_count += 1
+                            chunk_failed += 1
+                            continue
+                        
+                        connection_id = url_to_id.get(url)
+                        if not connection_id:
+                            logger.warning(f"No connection ID for {url}")
+                            failed_count += 1
+                            chunk_failed += 1
+                            continue
+                    
+                        # Save the extracted data to Supabase
+                        update_data = {
+                            'enriched_at': datetime.now(timezone.utc).isoformat(),
+                            'enrichment_source': 'apify'
+                        }
+                    
+                        # Add extracted fields
+                        for field in ['headline', 'about_section', 'experience_json', 'education_json', 'skills',
+                                    'location', 'company', 'position', 'profile_photo_url']:
+                            if field in profile_data and profile_data[field]:
+                                update_data[field] = profile_data[field]
+                        
+                        # Update connection with enrichment data
+                        try:
+                            response = await self.supabase_client.table("connections").update(update_data).eq(
+                                "id", connection_id
+                            ).execute()
+                            
+                            if response.data:
+                                logger.info(f"Successfully saved profile data for connection {connection_id}")
+                                successful_count += 1
+                                chunk_successful += 1
+                                
+                                # Add to chunk results with profile data for embedding
+                                enriched_connection = {
+                                    "id": connection_id,
+                                    "linkedin_url": url,
+                                    "profile_data": update_data
+                                }
+                                chunk_enriched_connections.append(enriched_connection)
+                                all_enriched_connections.append(enriched_connection)
+                            else:
+                                logger.warning(f"Failed to save profile data for connection {connection_id}")
+                                failed_count += 1
+                                chunk_failed += 1
+                        except Exception as e:
+                            logger.error(f"Error saving profile data for connection {connection_id}: {str(e)}")
+                            failed_count += 1
+                            chunk_failed += 1
+                
             # If we're yielding batches, we've already yielded all results
+            # If not yielding batches, yield final summary
             if not yield_batches:
                 yield {
                     "success": successful_count > 0 or skipped_count > 0 or reused_count > 0,
