@@ -68,12 +68,12 @@ async def trigger_auto_enrichment(
         # Build base query
         if request.connection_ids:
             # Specific connections requested
-            base_query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id).in_("id", request.connection_ids)
+            base_query = supabase.table("connections").select("id, linkedin_url, enriched_at, embedding_generated_at").eq("user_id", request.user_id).in_("id", request.connection_ids)
         else:
             # All unenriched connections
-            base_query = supabase.table("connections").select("id, linkedin_url").eq("user_id", request.user_id)
-            if not request.force_refresh:
-                base_query = base_query.is_("enriched_at", None)
+            base_query = supabase.table("connections").select(
+                "id, linkedin_url, enriched_at, embedding_generated_at, headline, about_section, company, position, location, first_name, last_name, experience_json, education_json, skills, profile_photo_url"
+            ).eq("user_id", request.user_id).is_("embedding_generated_at", None).not_.is_("enriched_at", None) 
         
         # Fetch all pages
         while True:
@@ -121,10 +121,25 @@ async def trigger_auto_enrichment(
         for conn in response.data:
             linkedin_url = conn.get("linkedin_url", "")
             if linkedin_url and "linkedin.com/in/" in linkedin_url:
-                connections_to_enrich.append({
+                connection_data = {
                     "id": conn["id"],
-                    "linkedin_url": linkedin_url
-                })
+                    "linkedin_url": linkedin_url,
+                    "enriched_at": conn.get("enriched_at", None),
+                    "embedding_generated_at": conn.get("embedding_generated_at", None),
+                    # Include all profile data needed for embedding generation
+                    "first_name": conn.get("first_name", ""),
+                    "last_name": conn.get("last_name", ""),
+                    "headline": conn.get("headline", ""),
+                    "about_section": conn.get("about_section", ""),
+                    "company": conn.get("company", ""),
+                    "position": conn.get("position", ""),
+                    "location": conn.get("location", ""),
+                    "experience_json": conn.get("experience_json", []),
+                    "education_json": conn.get("education_json", []),
+                    "skills": conn.get("skills", []),
+                    "profile_photo_url": conn.get("profile_photo_url", "")
+                }
+                connections_to_enrich.append(connection_data)
         
         if not connections_to_enrich:
             return AutoEnrichmentResponse(
@@ -304,10 +319,25 @@ async def direct_enrich_user_connections(
         for conn in response.data:
             linkedin_url = conn.get("linkedin_url", "")
             if linkedin_url and "linkedin.com/in/" in linkedin_url:
-                connections_to_enrich.append({
+                connection_data = {
                     "id": conn["id"],
-                    "linkedin_url": linkedin_url
-                })
+                    "linkedin_url": linkedin_url,
+                    "enriched_at": conn.get("enriched_at", None),
+                    "embedding_generated_at": conn.get("embedding_generated_at", None),
+                    # Include all profile data needed for embedding generation
+                    "first_name": conn.get("first_name", ""),
+                    "last_name": conn.get("last_name", ""),
+                    "headline": conn.get("headline", ""),
+                    "about_section": conn.get("about_section", ""),
+                    "company": conn.get("company", ""),
+                    "position": conn.get("position", ""),
+                    "location": conn.get("location", ""),
+                    "experience_json": conn.get("experience_json", []),
+                    "education_json": conn.get("education_json", []),
+                    "skills": conn.get("skills", []),
+                    "profile_photo_url": conn.get("profile_photo_url", "")
+                }
+                connections_to_enrich.append(connection_data)
         
         if not connections_to_enrich:
             return {
