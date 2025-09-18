@@ -316,28 +316,18 @@ User ID: {user_ids}
 Search Context: {json.dumps(search_context, indent=2)}
 
 Requirements:
-
-SELECT  
-    id, user_id, first_name, last_name, headline, about_section,
-    experience_json, education_json, skills, linkedin_url,
-    company, position, location, profile_photo_url, embedding_generated_at,
-    ts_rank_cd(
-      search_tsv,
-      (plainto_tsquery('english', 'Designer')
-       && plainto_tsquery('english', 'Delhi'))
-    ) AS rank
-FROM connections
-WHERE user_id IN ({user_ids})
-  AND about_section IS NOT NULL
-  AND experience_json IS NOT NULL
-  AND embedding_generated_at IS NOT NULL
-  AND search_tsv @@ (
-        plainto_tsquery('english', 'Designer')
-    &&  plainto_tsquery('english', 'Delhi')
-  )
-ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20;
 =======
+- Always filter by user_id = '{user_ids}'
+- Search across headline, about_section, experience_json, company, position, location
+- Use ILIKE for case-insensitive text matching
+- Use OR logic for broader matching (avoid overly restrictive AND conditions)
+- Limit to 20 results
+- DO NOT use row_to_json() wrapper - return direct SELECT results
+- Always give id as well in sql query
+
+Example format:
+Query: find me Designers in Delhi with 6 years of experience
+
 WITH ranked AS (
     SELECT  
         id,  
