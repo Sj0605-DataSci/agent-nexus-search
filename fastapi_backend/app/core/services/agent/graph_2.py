@@ -320,36 +320,68 @@ User ID: {user_ids}
 Search Context: {json.dumps(search_context, indent=2)}
 
 Requirements:
-- Always filter by `user_id IN ({user_ids})`
-- Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`
-- Search using full-text search: `search_tsv @@ plainto_tsquery('english', 'your terms here')`
-- Return at most 20 rows, ordered by `embedding_generated_at DESC`
-- Always include `id` in the query
-- Do NOT use row_to_json or wrappers, return raw SELECT results
+- Always filter by user_id = '{user_ids}'
+- Search across headline, about_section, experience_json, company, position, location
+- Use ILIKE for case-insensitive text matching
+- Use OR logic for broader matching (avoid overly restrictive AND conditions)
+- Limit to 20 results
+- DO NOT use row_to_json() wrapper - return direct SELECT results
+- Always give id as well in sql query
 
 Example format:
 Query: find me Designers in Delhi with 6 years of experience
 
-SELECT  
-    id, user_id, first_name, last_name, headline, about_section,
-    experience_json, education_json, skills, linkedin_url,
-    company, position, location, profile_photo_url, embedding_generated_at,
-    ts_rank_cd(
-      search_tsv,
-      (plainto_tsquery('english', 'Designer')
-       && plainto_tsquery('english', 'Delhi'))
-    ) AS rank
-FROM connections
-WHERE user_id IN ({user_ids})
-  AND about_section IS NOT NULL
-  AND experience_json IS NOT NULL
-  AND embedding_generated_at IS NOT NULL
-  AND search_tsv @@ (
-        plainto_tsquery('english', 'Designer')
-    &&  plainto_tsquery('english', 'Delhi')
-  )
-ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20;
+WITH ranked AS (
+    SELECT  
+        id,  
+        user_id,
+        first_name,  
+        last_name,  
+        headline,  
+        about_section,  
+        experience_json,  
+        education_json,  
+        skills,  
+        linkedin_url,  
+        company,  
+        position,  
+        location,  
+        profile_photo_url,  
+        embedding_generated_at,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY embedding_generated_at DESC) AS rn
+    FROM connections
+    WHERE user_id = ANY(ARRAY[
+       {user_ids}
+    ]::uuid[])
+      AND embedding_generated_at IS NOT NULL 
+      AND about_section IS NOT NULL 
+      AND experience_json IS NOT NULL 
+      AND (
+          headline ILIKE '%CTO%'  
+          OR headline ILIKE '%AI experience%'  
+          OR headline ILIKE '%AI%'  
+          OR about_section ILIKE '%CTO%'  
+          OR about_section ILIKE '%AI experience%'  
+          OR about_section ILIKE '%AI%'  
+          OR experience_json::text ILIKE '%CTO%'  
+          OR experience_json::text ILIKE '%AI experience%'  
+          OR experience_json::text ILIKE '%AI%'  
+          OR company ILIKE '%CTO%'  
+          OR position ILIKE '%CTO%'  
+          OR skills::text ILIKE '%AI%'  
+          OR location ILIKE '%CTO%'  
+          OR location ILIKE '%AI experience%' 
+      )
+)
+SELECT *
+FROM ranked
+WHERE rn <= 10 
+ORDER BY user_id, rn;
+
+
+Return only the SQL query, no explanation.
+Always gives id as well in sql query
+Always have about_section NOT NULL, and Experience json not null + embedding_generated_at NOT NULL
 """
 
         keyword_results = []
