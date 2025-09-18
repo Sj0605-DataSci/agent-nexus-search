@@ -103,8 +103,12 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
+            
+            # Ensure we use the current message ID, not the cached one
+            cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+            cached_result_dict["current_message_id"] = current_message_id
 
-            return OverallState(**cached_result)
+            return OverallState(**cached_result_dict)
       
         system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
 
@@ -233,9 +237,10 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
-            
-            return OverallState(**cached_result)
+            cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+            cached_result_dict["current_message_id"] = current_message_id
 
+            return OverallState(**cached_result_dict)
         
         
         # Extract traits and filters for keyword generation
@@ -463,6 +468,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
         user_query = state["messages"][-1].get("content", "")
+        current_message_id = state.get("current_message_id", "")
         cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
         # Try to get from cache
@@ -806,8 +812,10 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         }).eq("user_id", user_id).eq("id", current_message_id).execute()
         
         invalidate_chat_messages_cache(chat_thread_id)
+        cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
+        cached_result_dict["current_message_id"] = current_message_id
         
-        return OverallState(**cached_result)
+        return OverallState(**cached_result_dict)
     
     # Combine results from both sources
     combined_profiles = []
