@@ -38,7 +38,7 @@ class WorkerManager:
             cls._instance.embedding_workers = []
             cls._instance._initialized = False
             cls._instance.start_time = time.time()
-            cls._instance.worker_memory_threshold = 800  # MB per worker before restart
+            cls._instance.worker_memory_threshold = 600  # MB per worker before restart
             cls._instance.last_memory_check = 0
             cls._instance.memory_check_interval = 60  # Check every 60 seconds
         return cls._instance
@@ -267,10 +267,10 @@ class WorkerManager:
             try:
                 current_time = time.time()
                 
-                # Check memory usage periodically
-                if current_time - self.last_memory_check > self.memory_check_interval:
-                    await self._check_worker_memory()
-                    self.last_memory_check = current_time
+                # Check memory usage periodically (DISABLED)
+                # if current_time - self.last_memory_check > self.memory_check_interval:
+                #     await self._check_worker_memory()
+                #     self.last_memory_check = current_time
                 
                 # Check if we need to start more workers
                 if len(self.chat_workers) < self.num_chat_workers:

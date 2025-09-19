@@ -13,6 +13,7 @@ from app.db.redis_client import redis_client
 from app.db.clients import get_async_supabase_client
 from app.core.structured_logger import get_structured_logger
 from app.core.services.simplified_enrichment_service import SimplifiedEnrichmentService
+from app.core.services.email_service import email_service
 
 logger = get_structured_logger(__name__)
 
@@ -112,194 +113,206 @@ class EmbeddingWorker:
                 # Batch task
                 logger.info(f"Processing batch embedding task with {len(connections)} connections")
                 
-                # Stream status update
-                await self._update_task_status(
-                    task_id,
-                    user_id,
-                    "processing",
-                    f"🔍 Processing embeddings for {len(connections)} connections in parallel"
-                )
-                
-                # Prepare data for batch processing
-                valid_connections = []
-                basic_info_texts = []
-                experience_texts = []
-                connection_map = {}  # Map to track index -> connection_id
-                
                 # Maximum number of connections to process at once to avoid rate limits
                 max_connections = 50
+                connection_chunks = [connections[i:i + max_connections] for i in range(0, len(connections), max_connections)]
+                total_chunks = len(connection_chunks)
                 
-                # Check if we have too many connections
-                if len(connections) > max_connections:
-                    logger.warning(f"Large batch detected: {len(connections)} connections. Limiting to {max_connections} to avoid rate limits.")
-                    connections = connections[:max_connections]
-                    
-                    # Stream status update about limiting batch size
+                total_successful = 0
+                total_failed = 0
+
+                for i, connection_chunk in enumerate(connection_chunks):
+                    chunk_num = i + 1
+                    logger.info(f"Processing chunk {chunk_num}/{total_chunks} with {len(connection_chunk)} connections")
+
+                    # Stream status update
                     await self._update_task_status(
                         task_id,
                         user_id,
                         "processing",
-                        f"⚠️ Large batch detected. Processing first {max_connections} connections to avoid rate limits."
+                        f"🔍 Processing batch {chunk_num}/{total_chunks} ({len(connection_chunk)} connections)"
                     )
-                
-                # Collect all texts that need embeddings
-                for idx, conn in enumerate(connections):
-                    connection_id = conn.get("id")
-                    
-                    # Check if profile_data is nested or at top level
-                    profile_data = conn.get("profile_data")
-                    
-                    # If profile_data is missing, check if fields are at the top level
-                    if not profile_data:
-                        # Check if we have enough fields at the top level to create a profile_data object
-                        has_basic_fields = any([
-                            conn.get("first_name") and conn.get("last_name"),
-                            conn.get("headline"),
-                            conn.get("about_section"),
-                            conn.get("company") and conn.get("position")
-                        ])
+
+                    # Prepare data for this chunk
+                    valid_connections = []
+                    basic_info_texts = []
+                    experience_texts = []
+
+                    # Collect all texts that need embeddings for this chunk
+                    for conn in connection_chunk:
+                        connection_id = conn.get("id")
                         
-                        has_experience = conn.get("experience_json") and len(conn.get("experience_json", [])) > 0
+                        # Check if profile_data is nested or at top level
+                        profile_data = conn.get("profile_data")
                         
-                        if has_basic_fields or has_experience:
-                            # Create profile_data from top-level fields
-                            logger.info(f"Creating profile_data from top-level fields for connection {connection_id}")
-                            profile_data = {
-                                "first_name": conn.get("first_name", ""),
-                                "last_name": conn.get("last_name", ""),
-                                "headline": conn.get("headline", ""),
-                                "about_section": conn.get("about_section", ""),
-                                "company": conn.get("company", ""),
-                                "position": conn.get("position", ""),
-                                "location": conn.get("location", ""),
-                                "experience_json": conn.get("experience_json", []),
-                                "education_json": conn.get("education_json", []),
-                                "skills": conn.get("skills", []),
-                                "profile_photo_url": conn.get("profile_photo_url", "")
-                            }
-                    
-                    if not connection_id or not profile_data:
-                        logger.warning(f"Invalid connection in batch: missing id or profile_data")
+                        # If profile_data is missing, check if fields are at the top level
+                        if not profile_data:
+                            has_basic_fields = any([
+                                conn.get("first_name") and conn.get("last_name"),
+                                conn.get("headline"),
+                                conn.get("about_section"),
+                                conn.get("company") and conn.get("position")
+                            ])
+                            has_experience = conn.get("experience_json") and len(conn.get("experience_json", [])) > 0
+                            
+                            # Only proceed if we have data for BOTH basic fields and experience
+                            if has_basic_fields and has_experience:
+                                logger.info(f"Creating profile_data from top-level fields for connection {connection_id}")
+                                profile_data = {
+                                    "first_name": conn.get("first_name", ""),
+                                    "last_name": conn.get("last_name", ""),
+                                    "headline": conn.get("headline", ""),
+                                    "about_section": conn.get("about_section", ""),
+                                    "company": conn.get("company", ""),
+                                    "position": conn.get("position", ""),
+                                    "location": conn.get("location", ""),
+                                    "experience_json": conn.get("experience_json", []),
+                                    "education_json": conn.get("education_json", []),
+                                    "skills": conn.get("skills", []),
+                                    "profile_photo_url": conn.get("profile_photo_url", "")
+                                }
+                        
+                        if not connection_id or not profile_data:
+                            logger.warning(f"Invalid connection in batch (missing id or profile_data): {connection_id}")
+                            total_failed += 1
+                            continue
+                        
+                        # Generate text for each section
+                        basic_info_text = enrichment_service.create_basic_info_text(profile_data)
+                        experience_text = enrichment_service.create_experience_text(profile_data.get("experience_json", []))
+                        
+                        # Final check: only proceed if both texts are non-empty
+                        if not basic_info_text or not experience_text:
+                            logger.warning(f"Skipping connection {connection_id} due to missing basic or experience text.")
+                            total_failed += 1
+                            continue
+
+                        # Add to batch lists
+                        valid_connections.append({"id": connection_id, "profile_data": profile_data})
+                        basic_info_texts.append(basic_info_text)
+                        experience_texts.append(experience_text)
+
+                    if not valid_connections:
+                        logger.warning(f"No valid connections found in chunk {chunk_num}")
                         continue
+
+                    # Generate embeddings in parallel batches
+                    logger.info(f"Generating embeddings for {len(valid_connections)} connections in chunk {chunk_num}")
                     
-                    # Generate text for each section
-                    basic_info_text = enrichment_service.create_basic_info_text(profile_data)
-                    experience_text = enrichment_service.create_experience_text(profile_data.get("experience_json", []))
+                    from app.core.utils.rate_limiter import jina_rate_limiter
+                    basic_info_tokens = jina_rate_limiter.count_tokens(basic_info_texts)
+                    experience_tokens = jina_rate_limiter.count_tokens(experience_texts)
+                    total_tokens = basic_info_tokens + experience_tokens
+                    logger.info(f"Chunk {chunk_num} Estimated token usage - Basic: {basic_info_tokens}, Exp: {experience_tokens}, Total: {total_tokens}")
                     
-                    # Add to batch lists
-                    valid_connections.append({
-                        "id": connection_id,
-                        "profile_data": profile_data
-                    })
-                    basic_info_texts.append(basic_info_text)
-                    experience_texts.append(experience_text)
-                    connection_map[idx] = connection_id
-                    
-                    # Add small delay every 10 connections to avoid overwhelming the system
-                    if idx > 0 and idx % 10 == 0:
-                        await asyncio.sleep(0.1)
-                
-                # Generate embeddings in parallel batches with smaller batch size for rate limiting
-                logger.info(f"Generating embeddings for {len(valid_connections)} connections in parallel batches")
-                
-                # Calculate approximate token count for logging
-                from app.core.utils.rate_limiter import jina_rate_limiter
-                basic_info_tokens = jina_rate_limiter.count_tokens(basic_info_texts)
-                experience_tokens = jina_rate_limiter.count_tokens(experience_texts)
-                total_tokens = basic_info_tokens + experience_tokens
-                logger.info(f"Estimated token usage - Basic info: {basic_info_tokens}, Experience: {experience_tokens}, Total: {total_tokens}")
-                
-                # Use very small batch size for better rate limit management
-                batch_size = 5  # Reduced from 10 to 5
-                
-                # Determine if we should process sequentially or in parallel based on token count
-                # For very large token counts, process sequentially to avoid rate limits
-                process_sequentially = total_tokens > 500000  # If total tokens > 500K, process sequentially
-                
-                try:
-                    if process_sequentially:
-                        # Process sequentially to avoid hitting rate limits
-                        logger.info(f"Processing embeddings sequentially due to high token count ({total_tokens})")
-                        basic_info_embeddings = await enrichment_service.generate_batch_embeddings(basic_info_texts, batch_size=batch_size)
-                        logger.info(f"Successfully generated basic info embeddings, now processing experience embeddings")
-                        experience_embeddings = await enrichment_service.generate_batch_embeddings(experience_texts, batch_size=batch_size)
-                        logger.info(f"Successfully generated experience embeddings")
-                    else:
-                        # Process both embedding types in parallel using asyncio.gather
-                        logger.info(f"Processing embeddings in parallel with batch size {batch_size}")
-                        basic_info_task = enrichment_service.generate_batch_embeddings(basic_info_texts, batch_size=batch_size)
-                        experience_task = enrichment_service.generate_batch_embeddings(experience_texts, batch_size=batch_size)
-                        basic_info_embeddings, experience_embeddings = await asyncio.gather(basic_info_task, experience_task)
-                        logger.info(f"Successfully generated embeddings for both basic info and experience texts")
-                except Exception as e:
-                    error_str = str(e).lower()
-                    if "token rate limit exceeded" in error_str or "rate limit" in error_str:
-                        logger.error(f"Rate limit exceeded during embedding generation: {str(e)}")
-                        # Stream status update
-                        await self._update_task_status(
-                            task_id,
-                            user_id,
-                            "error",
-                            f"⚠️ API rate limit exceeded. Please try again in 5-10 minutes."
-                        )
-                        return
-                    else:
-                        logger.error(f"Error during embedding generation: {str(e)}")
-                        # Stream status update
-                        await self._update_task_status(
-                            task_id,
-                            user_id,
-                            "error",
-                            f"❌ Error generating embeddings: {str(e)}"
-                        )
-                        return
-                
-                # Update connections with embeddings
-                successful = 0
-                failed = 0
-                
-                # Process results and update database
-                for idx, connection in enumerate(valid_connections):
-                    connection_id = connection["id"]
-                    basic_info_embedding = basic_info_embeddings[idx]
-                    experience_embedding = experience_embeddings[idx]
-                    
-                    if not basic_info_embedding or not experience_embedding:
-                        logger.warning(f"Failed to generate embeddings for connection {connection_id}")
-                        failed += 1
-                        continue
-                    
-                    # Update connection with embeddings
-                    embeddings = {
-                        "basic_info_embedding": basic_info_embedding,
-                        "experience_embedding": experience_embedding,
-                        "embedding_generated_at": datetime.now(timezone.utc).isoformat()
-                    }
-                    
-                    # Update connection with embeddings
+                    batch_size = 10
+                    process_sequentially = total_tokens > 500000
+
                     try:
-                        response = await supabase.table("connections").update(embeddings).eq(
-                            "id", connection_id
-                        ).execute()
-                        
-                        if response.data:
-                            logger.info(f"Successfully updated embeddings for connection {connection_id}")
-                            successful += 1
+                        if process_sequentially:
+                            logger.info(f"Processing chunk {chunk_num} sequentially due to high token count ({total_tokens})")
+                            basic_info_embeddings = await enrichment_service.generate_batch_embeddings(basic_info_texts, batch_size=batch_size)
+                            experience_embeddings = await enrichment_service.generate_batch_embeddings(experience_texts, batch_size=batch_size)
                         else:
-                            logger.warning(f"Failed to update embeddings for connection {connection_id}")
-                            failed += 1
+                            logger.info(f"Processing chunk {chunk_num} in parallel with batch size {batch_size}")
+                            basic_info_task = enrichment_service.generate_batch_embeddings(basic_info_texts, batch_size=batch_size)
+                            experience_task = enrichment_service.generate_batch_embeddings(experience_texts, batch_size=batch_size)
+                            basic_info_embeddings, experience_embeddings = await asyncio.gather(basic_info_task, experience_task)
+                        logger.info(f"Successfully generated embeddings for chunk {chunk_num}")
                     except Exception as e:
-                        logger.error(f"Error updating embeddings for connection {connection_id}: {str(e)}")
-                        failed += 1
-                
+                        logger.error(f"Error during embedding generation for chunk {chunk_num}: {str(e)}")
+                        error_str = str(e).lower()
+                        if "token rate limit exceeded" in error_str or "rate limit" in error_str:
+                            message = f"⚠️ API rate limit exceeded. Please try again in 5-10 minutes."
+                        else:
+                            message = f"❌ Error generating embeddings for batch {chunk_num}"
+                        await self._update_task_status(task_id, user_id, "error", message)
+                        total_failed += len(valid_connections)
+                        continue # Move to the next chunk
+
+                    # Prepare data for a single batch upsert
+                    updates_to_db = []
+                    successful_in_chunk = 0
+                    failed_in_chunk = 0
+
+                    for idx, connection in enumerate(valid_connections):
+                        connection_id = connection["id"]
+                        basic_info_embedding = basic_info_embeddings[idx] if idx < len(basic_info_embeddings) else None
+                        experience_embedding = experience_embeddings[idx] if idx < len(experience_embeddings) else None
+
+                        update_payload = {"id": connection_id}
+                        has_embedding = False
+                        if basic_info_embedding:
+                            update_payload["basic_info_embedding"] = basic_info_embedding
+                            has_embedding = True
+                        if experience_embedding:
+                            update_payload["experience_embedding"] = experience_embedding
+                            has_embedding = True
+
+                        if not has_embedding:
+                            logger.warning(f"Failed to generate any embeddings for connection {connection_id} in chunk {chunk_num}")
+                            failed_in_chunk += 1
+                            continue
+
+                        update_payload["embedding_generated_at"] = datetime.now(timezone.utc).isoformat()
+                        updates_to_db.append(update_payload)
+
+                    # Perform a single batch upsert operation if there's anything to update
+                    if updates_to_db:
+                        try:
+                            response = await supabase.table("connections").upsert(updates_to_db).execute()
+                            if response.data:
+                                successful_in_chunk = len(response.data)
+                                logger.info(f"Successfully upserted {successful_in_chunk} embeddings for chunk {chunk_num}")
+                            else:
+                                # PostgREST can return 0 data on success, so we check error
+                                if response.error:
+                                     logger.error(f"Error upserting embeddings for chunk {chunk_num}: {response.error}")
+                                     failed_in_chunk = len(updates_to_db)
+                                else:
+                                     successful_in_chunk = len(updates_to_db)
+                                     logger.info(f"Upsert for chunk {chunk_num} completed with no data returned, assuming success.")
+
+                        except Exception as e:
+                            logger.error(f"Exception during batch upsert for chunk {chunk_num}: {str(e)}")
+                            failed_in_chunk = len(updates_to_db)
+                    
+                    logger.info(f"Chunk {chunk_num} results: {successful_in_chunk} successful, {failed_in_chunk} failed")
+                    total_successful += successful_in_chunk
+                    total_failed += failed_in_chunk
+
                 # Stream final status update
                 await self._update_task_status(
                     task_id,
                     user_id,
                     "completed",
-                    f"✅ Completed embeddings: {successful} successful, {failed} failed"
+                    f"✅ Completed all batches: {total_successful} successful, {total_failed} failed"
                 )
                 
+                # Send completion email
+                try:
+                    # Fetch user email directly from the auth.users table
+                    user_profile_response = await supabase.table("profiles").select("email").eq("id", user_id).single().execute()
+                    if user_profile_response.data and user_profile_response.data.get("email"):
+                        user_email = user_profile_response.data["email"]
+                        subject = "Your Connections Are Ready!"
+                        body = f"""
+                        <html>
+                        <body>
+                            <p>Hi,</p>
+                            <p>We've finished processing your connections. All profiles have been successfully enriched and are now available for you to search.</p>
+                            <p>You can start searching your connections right away.</p>
+                            <p>Best regards,<br>Sanyam Ashish</p>
+                        </body>
+                        </html>
+                        """
+                        await email_service.send_email(to_email=user_email, subject=subject, body=body)
+                        logger.info(f"Sent completion email to {user_email} for task {task_id}")
+                    else:
+                        logger.warning(f"Could not find email for user {user_id} to send completion notification.")
+                except Exception as e:
+                    logger.error(f"Failed to send completion email for task {task_id}: {str(e)}")
+
             else:
                 # Individual task (legacy format)
                 connection_id = task.get("connection_id")
@@ -340,7 +353,7 @@ class EmbeddingWorker:
                     basic_info_embedding = basic_info_embeddings[0] if basic_info_embeddings else None
                     experience_embedding = experience_embeddings[0] if experience_embeddings else None
                     
-                    if not basic_info_embedding or not experience_embedding:
+                    if not basic_info_embedding and not experience_embedding:
                         logger.warning(f"Failed to generate embeddings for connection {connection_id}")
                         
                         # Stream status update
@@ -351,6 +364,54 @@ class EmbeddingWorker:
                             f"❌ Failed to generate embeddings for connection {connection_id}"
                         )
                         return
+                    
+                    embeddings_to_update = {}
+                    if basic_info_embedding:
+                        embeddings_to_update["basic_info_embedding"] = basic_info_embedding
+                    if experience_embedding:
+                        embeddings_to_update["experience_embedding"] = experience_embedding
+
+                    # Add timestamp if we are updating at least one embedding
+                    embeddings_to_update["embedding_generated_at"] = datetime.now(timezone.utc).isoformat()
+
+                    # Update connection with available embeddings
+                    try:
+                        response = await supabase.table("connections").update(embeddings_to_update).eq(
+                            "id", connection_id
+                        ).execute()
+                        
+                        if not response.data:
+                            logger.warning(f"Failed to update embeddings for connection {connection_id}")
+                            
+                            # Stream status update
+                            await self._update_task_status(
+                                task_id,
+                                user_id,
+                                "error",
+                                f"❌ Failed to save embeddings for connection {connection_id}"
+                            )
+                            return
+                        
+                        logger.info(f"Successfully updated embeddings for connection {connection_id}")
+                        
+                        # Stream status update
+                        await self._update_task_status(
+                            task_id,
+                            user_id,
+                            "completed",
+                            f"✅ Successfully generated embeddings for connection {connection_id}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Error updating embeddings for connection {connection_id}: {str(e)}")
+                        
+                        # Stream status update
+                        await self._update_task_status(
+                            task_id,
+                            user_id,
+                            "error",
+                            f"❌ Error saving embeddings for connection {connection_id}: {str(e)}"
+                        )
+                
                 except Exception as e:
                     error_str = str(e).lower()
                     if "token rate limit exceeded" in error_str or "rate limit" in error_str:
@@ -373,51 +434,6 @@ class EmbeddingWorker:
                             f"❌ Error generating embeddings: {str(e)}"
                         )
                         return
-                
-                # Update connection with embeddings
-                embeddings = {
-                    "basic_info_embedding": basic_info_embedding,
-                    "experience_embedding": experience_embedding,
-                    "embedding_generated_at": datetime.now(timezone.utc).isoformat()
-                }
-                
-                try:
-                    # Update connection with embeddings
-                    response = await supabase.table("connections").update(embeddings).eq(
-                        "id", connection_id
-                    ).execute()
-                    
-                    if not response.data:
-                        logger.warning(f"Failed to update embeddings for connection {connection_id}")
-                        
-                        # Stream status update
-                        await self._update_task_status(
-                            task_id,
-                            user_id,
-                            "error",
-                            f"❌ Failed to save embeddings for connection {connection_id}"
-                        )
-                        return
-                    
-                    logger.info(f"Successfully updated embeddings for connection {connection_id}")
-                    
-                    # Stream status update
-                    await self._update_task_status(
-                        task_id,
-                        user_id,
-                        "completed",
-                        f"✅ Successfully generated embeddings for connection {connection_id}"
-                    )
-                except Exception as e:
-                    logger.error(f"Error updating embeddings for connection {connection_id}: {str(e)}")
-                    
-                    # Stream status update
-                    await self._update_task_status(
-                        task_id,
-                        user_id,
-                        "error",
-                        f"❌ Error saving embeddings for connection {connection_id}: {str(e)}"
-                    )
                 
         except Exception as e:
             logger.error(f"Error processing embedding task: {str(e)}")
