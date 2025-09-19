@@ -237,21 +237,11 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             }).eq("id", current_message_id).execute()
             
             invalidate_chat_messages_cache(chat_thread_id)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> cd531df (in redis updates message_id prop)
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
             cached_result_dict["current_message_id"] = current_message_id
 
             return OverallState(**cached_result_dict)
-<<<<<<< HEAD
-=======
-            
-            return OverallState(**cached_result)
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
-=======
->>>>>>> cd531df (in redis updates message_id prop)
+
         
         
         # Extract traits and filters for keyword generation
@@ -292,37 +282,11 @@ IMPORTANT: Use ONLY these exact column names from the connections table:
 Rules:
 - Always filter by `user_id = '{user_id}'` (or `IN (...)` if multiple).
 - Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`.
-- Use multiple `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
+- Use `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
 - Return direct `SELECT` results (no `row_to_json` or wrappers).
 - Always include `id` in the query.
 - Always `ORDER BY embedding_generated_at DESC`.
-- Also use rank ts_rank_cd to rank the results.
 - Always `LIMIT 20`.
-
-Template of SQL to be followed:
-SELECT  
-    id, user_id, first_name, last_name, headline, about_section,
-    experience_json, education_json, skills, linkedin_url,
-    company, position, location, profile_photo_url, embedding_generated_at,
-    ts_rank_cd(
-      search_tsv,
-      (plainto_tsquery('english', 'keyword')
-       && plainto_tsquery('english', 'keyword'))
-    ) AS rank
-FROM connections
-WHERE user_id IN ({user_ids})
-  AND about_section IS NOT NULL
-  AND experience_json IS NOT NULL
-  AND embedding_generated_at IS NOT NULL
-  AND search_tsv @@ (
-        plainto_tsquery('english', 'keyword')
-    &&  plainto_tsquery('english', 'keyword')
-  )
-ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20;
-
-
-FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
 """
 
         sql_user_prompt = f"""Generate a SQL query to find connections matching these criteria:
@@ -331,27 +295,7 @@ User ID: {user_ids}
 Search Context: {json.dumps(search_context, indent=2)}
 
 Requirements:
-<<<<<<< HEAD
-- Always filter by `user_id IN ({user_ids})`
-- Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`
-- Search using full-text search: `search_tsv @@ plainto_tsquery('english', 'your terms here')`
-- Return at most 20 rows, ordered by `embedding_generated_at DESC`
-- Always include `id` in the query
-- Do NOT use row_to_json or wrappers, return raw SELECT results
-=======
-- Always filter by user_id = '{user_ids}'
-- Search across headline, about_section, experience_json, company, position, location
-- Use ILIKE for case-insensitive text matching
-- Use OR logic for broader matching (avoid overly restrictive AND conditions)
-- Limit to 20 results
-- DO NOT use row_to_json() wrapper - return direct SELECT results
-- Always give id as well in sql query
->>>>>>> 4cf312a (major changes for apify and embeddings worker)
 
-Example format:
-Query: find me Designers in Delhi with 6 years of experience
-
-<<<<<<< HEAD
 SELECT  
     id, user_id, first_name, last_name, headline, about_section,
     experience_json, education_json, skills, linkedin_url,
@@ -424,7 +368,33 @@ ORDER BY user_id, rn;
 Return only the SQL query, no explanation.
 Always gives id as well in sql query
 Always have about_section NOT NULL, and Experience json not null + embedding_generated_at NOT NULL
->>>>>>> 4cf312a (major changes for apify and embeddings worker)
+
+SELECT  
+    id,  
+    user_id,
+    first_name,  
+    last_name,  
+    headline,  
+    about_section,  
+    experience_json,  
+    education_json,  
+    skills,  
+    linkedin_url,  
+    company,  
+    position,  
+    location,  
+    profile_photo_url,  
+    embedding_generated_at
+FROM connections
+WHERE user_id IN (
+   {user_ids}
+)
+  AND about_section IS NOT NULL 
+  AND experience_json IS NOT NULL 
+  AND embedding_generated_at IS NOT NULL 
+  AND search_tsv @@ plainto_tsquery('english', 'Designer & Delhi & "6 years"')
+ORDER BY embedding_generated_at DESC
+LIMIT 20;
 """
 
         keyword_results = []
@@ -490,7 +460,7 @@ Always have about_section NOT NULL, and Experience json not null + embedding_gen
             except Exception as fallback_e:
                 raise fallback_e
         
-        print("Node 3: SQL Search Completed")
+        print("Node 2: SQL Search Completed")
         current_message_id = state["current_message_id"]
         chat_thread_id = state["chat_thread_id"]
 
@@ -543,14 +513,8 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
         user_query = state["messages"][-1].get("content", "")
-<<<<<<< HEAD
-<<<<<<< HEAD
         current_message_id = state.get("current_message_id", "")
-=======
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
-=======
-        current_message_id = state.get("current_message_id", "")
->>>>>>> cd531df (in redis updates message_id prop)
+
         cache_key = f"graph2:vector_search_hybrid:{user_id}:{user_query}"
         
         # Try to get from cache
@@ -894,22 +858,11 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         }).eq("user_id", user_id).eq("id", current_message_id).execute()
         
         invalidate_chat_messages_cache(chat_thread_id)
-<<<<<<< HEAD
-<<<<<<< HEAD
         cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
         cached_result_dict["current_message_id"] = current_message_id
         
         return OverallState(**cached_result_dict)
-=======
-        
-        return OverallState(**cached_result)
->>>>>>> b3c8499 (now cache answers too will get recorded in supabase)
-=======
-        cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
-        cached_result_dict["current_message_id"] = current_message_id
-        
-        return OverallState(**cached_result_dict)
->>>>>>> cd531df (in redis updates message_id prop)
+
     
     # Combine results from both sources
     combined_profiles = []
