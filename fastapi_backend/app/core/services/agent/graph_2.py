@@ -278,8 +278,17 @@ IMPORTANT: Use ONLY these exact column names from the connections table:
 - user_id (uuid)
 - created_at (timestamp)
 - embedding_generated_at (timestamp)
+- search_tsv (tsvector)
 
-Generate PostgreSQL-compatible queries that search across relevant fields for the given criteria."""
+Rules:
+- Always filter by `user_id = '{user_id}'` (or `IN (...)` if multiple).
+- Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`.
+- Use `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
+- Return direct `SELECT` results (no `row_to_json` or wrappers).
+- Always include `id` in the query.
+- Always `ORDER BY embedding_generated_at DESC`.
+- Always `LIMIT 20`.
+"""
 
         sql_user_prompt = f"""Generate a SQL query to find connections matching these criteria:
 
@@ -287,68 +296,42 @@ User ID: {user_ids}
 Search Context: {json.dumps(search_context, indent=2)}
 
 Requirements:
-- Always filter by user_id = '{user_ids}'
-- Search across headline, about_section, experience_json, company, position, location
-- Use ILIKE for case-insensitive text matching
-- Use OR logic for broader matching (avoid overly restrictive AND conditions)
-- Limit to 20 results
-- DO NOT use row_to_json() wrapper - return direct SELECT results
-- Always give id as well in sql query
+- Always filter by `user_id IN ({user_ids})`
+- Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`
+- Search using full-text search: `search_tsv @@ plainto_tsquery('english', 'your terms here')`
+- Return at most 20 rows, ordered by `embedding_generated_at DESC`
+- Always include `id` in the query
+- Do NOT use row_to_json or wrappers, return raw SELECT results
 
 Example format:
 Query: find me Designers in Delhi with 6 years of experience
 
-WITH ranked AS (
-    SELECT  
-        id,  
-        user_id,
-        first_name,  
-        last_name,  
-        headline,  
-        about_section,  
-        experience_json,  
-        education_json,  
-        skills,  
-        linkedin_url,  
-        company,  
-        position,  
-        location,  
-        profile_photo_url,  
-        embedding_generated_at,
-        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY embedding_generated_at DESC) AS rn
-    FROM connections
-    WHERE user_id = ANY(ARRAY[
-       {user_ids}
-    ]::uuid[])
-      AND embedding_generated_at IS NOT NULL 
-      AND about_section IS NOT NULL 
-      AND experience_json IS NOT NULL 
-      AND (
-          headline ILIKE '%CTO%'  
-          OR headline ILIKE '%AI experience%'  
-          OR headline ILIKE '%AI%'  
-          OR about_section ILIKE '%CTO%'  
-          OR about_section ILIKE '%AI experience%'  
-          OR about_section ILIKE '%AI%'  
-          OR experience_json::text ILIKE '%CTO%'  
-          OR experience_json::text ILIKE '%AI experience%'  
-          OR experience_json::text ILIKE '%AI%'  
-          OR company ILIKE '%CTO%'  
-          OR position ILIKE '%CTO%'  
-          OR skills::text ILIKE '%AI%'  
-          OR location ILIKE '%CTO%'  
-          OR location ILIKE '%AI experience%' 
-      )
+SELECT  
+    id,  
+    user_id,
+    first_name,  
+    last_name,  
+    headline,  
+    about_section,  
+    experience_json,  
+    education_json,  
+    skills,  
+    linkedin_url,  
+    company,  
+    position,  
+    location,  
+    profile_photo_url,  
+    embedding_generated_at
+FROM connections
+WHERE user_id IN (
+   {user_ids}
 )
-SELECT *
-FROM ranked
-WHERE rn <= 10 
-ORDER BY user_id, rn;
-
-
-Return only the SQL query, no explanation.
-Always gives id as well in sql query
-Always have about_section NOT NULL, and Experience json not null + embedding_generated_at NOT NULL
+  AND about_section IS NOT NULL 
+  AND experience_json IS NOT NULL 
+  AND embedding_generated_at IS NOT NULL 
+  AND search_tsv @@ plainto_tsquery('english', 'Designer & Delhi & "6 years"')
+ORDER BY embedding_generated_at DESC
+LIMIT 20;
 """
 
         keyword_results = []
@@ -385,15 +368,36 @@ Always have about_section NOT NULL, and Experience json not null + embedding_gen
         except Exception as e:
             # Fallback: get basic results without complex filtering
             try:
-                result = await supabase_client.table("connections").select(
-                    "id, first_name, last_name, headline, about_section, "
-                    "experience_json, education_json, skills, linkedin_url, "
-                    "company, position, location, profile_photo_url, embedding_generated_at"
-                ).eq("user_id", user_id).order("embedding_generated_at", desc=True).limit(20).execute()
+                llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=sql_system_instruction)
+                sql_response = await llm.ainvoke(sql_user_prompt)
+            
+                generated_sql = sql_response.content.strip()
+                # Clean up the SQL (remove markdown formatting if present)
+                if "```sql" in generated_sql:
+                    generated_sql = generated_sql.split("```sql")[1].split("```")[0].strip()
+                elif "```" in generated_sql:
+                    generated_sql = generated_sql.split("```")[1].strip()
+            
+                # Clean the SQL query by removing trailing semicolon
+                clean_query = generated_sql.strip().rstrip(';')
+            
+                # Execute the SQL query using JSON wrapper to avoid type mismatch
+                json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
+            
+                keyword_result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
+            
+                # Parse JSONB results
+                keyword_results = []
+                if keyword_result.data:
+                    for row in keyword_result.data:
+                        if isinstance(row, dict) and 'to_jsonb' in row:
+                            keyword_results.append(row['to_jsonb'])
+                        else:
+                            keyword_results.append(row)
             except Exception as fallback_e:
                 raise fallback_e
         
-        print("Node 3: SQL Search Completed")
+        print("Node 2: SQL Search Completed")
         current_message_id = state["current_message_id"]
         chat_thread_id = state["chat_thread_id"]
 
@@ -530,7 +534,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                     vector_result = await supabase_client.rpc(
                         'vector_search_profiles',
                         {
-                            'p_user_id': user_id,
                             'p_profile_ids': keyword_profile_ids,
                             'p_embedding': embedding_list,
                             'p_limit': 10
@@ -541,7 +544,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                     # Create a fallback RPC function if it doesn't exist
                     create_rpc_query = f"""
                     CREATE OR REPLACE FUNCTION vector_search_profiles(
-                        p_user_id UUID,
                         p_profile_ids UUID[],
                         p_embedding FLOAT[],
                         p_limit INT DEFAULT 10
@@ -569,8 +571,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                             FROM 
                                 connections
                             WHERE 
-                                user_id = p_user_id
-                                AND id = ANY(p_profile_ids)
+                                id = ANY(p_profile_ids)
                                 AND (basic_info_embedding IS NOT NULL OR experience_embedding IS NOT NULL)
                         )
                         SELECT jsonb_agg(t) INTO result
@@ -613,7 +614,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                         vector_result = await supabase_client.rpc(
                             'vector_search_profiles',
                             {
-                                'p_user_id': user_id,
                                 'p_profile_ids': keyword_profile_ids,
                                 'p_embedding': embedding_list,
                                 'p_limit': 50
@@ -823,18 +823,6 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
                 profile_data["search_source"] = "vector"
                 
                 combined_profiles.append(profile_data)
-    
-    # Add any remaining keyword results that weren't in vector results
-    if keyword_results:
-        print(f"Node 5: Processing keyword results")
-        for result in keyword_results:
-            if isinstance(result, dict):
-                profile_id = result.get("result", {}).get("id")
-                # Check if this profile is already in combined_profiles
-                if not any(p.get("id") == profile_id for p in combined_profiles):
-                    result["search_source"] = "keyword"
-                    result["similarity_score"] = 0
-                    combined_profiles.append(result)
     
     # Sort combined profiles by similarity score (if available) or default order
     combined_profiles.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
