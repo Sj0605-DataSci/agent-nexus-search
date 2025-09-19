@@ -259,178 +259,85 @@ class SimplifiedEnrichmentService:
             logger.error(f"Error generating embedding: {str(e)}")
             return None
     
-    async def _generate_batch_embeddings_parallel(self, texts: List[str], max_parallel_calls: int = 8, batch_size: int = 20) -> List[Optional[List[float]]]:
+    async def generate_batch_embeddings(self, texts: List[str], batch_size: int = 50) -> List[Optional[List[float]]]:
         """
-        Generate embeddings for a batch of texts in parallel
+        Generate embeddings for a batch of texts using a single, rate-limited API call.
         
         Args:
-            texts: List of texts to generate embeddings for
-            max_parallel_calls: Maximum number of parallel API calls
-            batch_size: Size of each batch for API calls
+            texts: List of texts to generate embeddings for.
+            batch_size: (No longer used, kept for compatibility) Size of each batch for API calls.
             
         Returns:
-            List of embeddings, one for each text
-        """
-        # Filter out empty texts
-        valid_texts = [text for text in texts if text and text.strip()]
-        if not valid_texts:
-            return [None] * len(texts)
-        
-        # Create mapping from original texts to valid texts
-        text_mapping = {}
-        valid_idx = 0
-        for i, text in enumerate(texts):
-            if text and text.strip():
-                text_mapping[i] = valid_idx
-                valid_idx += 1
-        
-        # Split texts into batches
-        batches = [valid_texts[i:i+batch_size] for i in range(0, len(valid_texts), batch_size)]
-        logger.info(f"Split {len(valid_texts)} texts into {len(batches)} batches for embedding generation")
-        
-        async def process_batch(batch):
-            """Process a single batch of texts with rate limiting"""
-            # Define the API call function to be rate limited
-            async def api_call(texts_batch):
-                url = "https://api.jina.ai/v1/embeddings"
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.jina_api_key}",
-                }
-                data = {
-                    "model": "jina-embeddings-v3",
-                    "task": "text-matching",
-                    "input": texts_batch,
-                }
-                
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.post(url, headers=headers, json=data) as response:
-                            response_text = await response.text()
-                            
-                            if response.status != 200:
-                                # Check specifically for token rate limit error
-                                if "token rate limit exceeded" in response_text.lower() or "token rate limit" in response_text.lower():
-                                    logger.warning(f"Jina token rate limit exceeded. Response: {response_text}")
-                                    # Raise specific exception to trigger rate limiter's special handling
-                                    raise Exception(f"Token rate limit exceeded: {response_text}")
-                                else:
-                                    logger.error(f"Error generating embeddings: {response_text}")
-                                    return None
-                            
-                            # Parse response
-                            try:
-                                result = json.loads(response_text)
-                                
-                                if "data" not in result:
-                                    logger.error(f"Invalid response from Jina API: {result}")
-                                    return None
-                                
-                                # Extract embeddings
-                                return [item["embedding"] for item in result["data"]]
-                            except json.JSONDecodeError:
-                                logger.error(f"Invalid JSON response from Jina API: {response_text}")
-                                return None
-                except aiohttp.ClientError as e:
-                    # Handle network-related errors
-                    logger.error(f"Network error calling Jina API: {str(e)}")
-                    raise Exception(f"Network error: {str(e)}")
-                except Exception as e:
-                    # Let other exceptions propagate to the rate limiter's error handler
-                    raise
-            
-            try:
-                # Use rate limiter to execute the API call
-                result = await jina_rate_limiter.execute_with_rate_limit(api_call, batch)
-                return result if result else [None] * len(batch)
-            except Exception as e:
-                logger.error(f"Error in batch embedding generation after rate limiting: {str(e)}")
-                # If we hit rate limits repeatedly, add longer backoff
-                if "token rate limit exceeded" in str(e).lower():
-                    logger.warning(f"Backing off due to token rate limit: {str(e)}")
-                    await asyncio.sleep(5)  # Additional backoff beyond what rate limiter does
-                return [None] * len(batch)
-        
-        try:
-            # Create tasks for all batches with very limited concurrency
-            # Reduce max_parallel_calls to avoid hitting rate limits
-            actual_max_calls = min(max_parallel_calls, 3)  # Cap at 3 concurrent calls maximum
-            semaphore = asyncio.Semaphore(actual_max_calls)
-            
-            logger.info(f"Processing {len(batches)} batches with max {actual_max_calls} concurrent calls")
-            
-            async def process_with_semaphore(batch_idx, batch):
-                async with semaphore:
-                    # Add small delay between batches to avoid rate limits
-                    await asyncio.sleep(0.2 * batch_idx % 3)  # Stagger requests with 0.2-0.6s delays
-                    logger.debug(f"Processing batch {batch_idx+1}/{len(batches)} with {len(batch)} texts")
-                    try:
-                        result = await process_batch(batch)
-                        return result
-                    except Exception as e:
-                        if "rate limit" in str(e).lower():
-                            # Add extra delay on rate limit errors
-                            logger.warning(f"Rate limit hit in batch {batch_idx+1}, adding extra delay")
-                            await asyncio.sleep(2)  # Add extra delay on rate limit
-                        raise
-            
-            tasks = [process_with_semaphore(i, batch) for i, batch in enumerate(batches)]
-            
-            # Wait for all batches to complete
-            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            # Combine results from all batches
-            all_embeddings = []
-            for i, result in enumerate(batch_results):
-                if isinstance(result, Exception):
-                    logger.error(f"Error in batch processing: {str(result)}")
-                    # Add None values for this batch
-                    all_embeddings.extend([None] * len(batches[i]))
-                else:
-                    all_embeddings.extend(result)
-            
-            # Map back to original texts (including empty ones)
-            result_embeddings = [None] * len(texts)
-            for orig_idx, valid_idx in text_mapping.items():
-                if valid_idx < len(all_embeddings):
-                    result_embeddings[orig_idx] = all_embeddings[valid_idx]
-            
-            return result_embeddings
-        
-        except Exception as e:
-            logger.error(f"Error generating batch embeddings in parallel: {str(e)}")
-            return [None] * len(texts)
-    
-    async def generate_batch_embeddings(self, texts: List[str], batch_size: int = 20) -> List[Optional[List[float]]]:
-        """
-        Generate embeddings for a batch of texts
-        
-        Args:
-            texts: List of texts to generate embeddings for
-            batch_size: Size of each batch for API calls (smaller batches help with rate limits)
-            
-        Returns:
-            List of embeddings, one for each text
+            List of embeddings, one for each text.
         """
         if not texts:
             return []
-        
-        # Filter out empty texts
-        valid_texts = [text for text in texts if text and text.strip()]
+
+        # Create a mapping to handle empty/None texts, preserving original list order
+        valid_texts = []
+        original_indices = []
+        for i, text in enumerate(texts):
+            if text and text.strip():
+                valid_texts.append(text)
+                original_indices.append(i)
+
         if not valid_texts:
             return [None] * len(texts)
-        
-        # Log token count for monitoring
-        from app.core.utils.rate_limiter import jina_rate_limiter
-        token_count = jina_rate_limiter.count_tokens(valid_texts)
-        logger.debug(f"Generating embeddings for {len(valid_texts)} texts with approximately {token_count} tokens")
-        
-        # Always use parallel processing for optimal performance
-        return await self._generate_batch_embeddings_parallel(
-            texts, 
-            max_parallel_calls=self.max_parallel_embedding_calls,
-            batch_size=batch_size
-        )
+
+        # This function will be called by the rate limiter
+        async def api_call(texts_to_embed: List[str]):
+            url = "https://api.jina.ai/v1/embeddings"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.jina_api_key}",
+            }
+            data = {
+                "model": "jina-embeddings-v3",
+                "task": "text-matching",
+                "input": texts_to_embed,
+            }
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, headers=headers, json=data) as response:
+                        response_text = await response.text()
+                        if response.status != 200:
+                            if "token rate limit exceeded" in response_text.lower():
+                                raise Exception(f"Token rate limit exceeded: {response_text}")
+                            else:
+                                logger.error(f"Error generating embeddings: {response_text}")
+                                return None
+                        
+                        result = json.loads(response_text)
+                        if "data" not in result:
+                            logger.error(f"Invalid response from Jina API: {result}")
+                            return None
+                        return [item["embedding"] for item in result["data"]]
+            except aiohttp.ClientError as e:
+                logger.error(f"Network error calling Jina API: {str(e)}")
+                raise Exception(f"Network error: {str(e)}")
+            except Exception as e:
+                logger.error(f"An unexpected error occurred during API call: {str(e)}")
+                raise
+
+        # Execute the single API call for all valid texts via the rate limiter
+        try:
+            logger.info(f"Sending {len(valid_texts)} texts to Jina API in a single batch.")
+            embeddings = await jina_rate_limiter.execute_with_rate_limit(api_call, valid_texts)
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings after rate limiting: {str(e)}")
+            embeddings = None
+
+        # Map the results back to the original list structure
+        final_embeddings = [None] * len(texts)
+        if embeddings and len(embeddings) == len(original_indices):
+            for i, embedding in enumerate(embeddings):
+                original_idx = original_indices[i]
+                final_embeddings[original_idx] = embedding
+        else:
+            logger.warning("Mismatch in returned embeddings count or API call failed.")
+
+        return final_embeddings
     
     def create_basic_info_text(self, profile: Dict) -> str:
         """Create text for basic profile information"""
