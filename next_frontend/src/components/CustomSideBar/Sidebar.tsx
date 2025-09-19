@@ -18,6 +18,8 @@ import React, {
 import "@/styles/scrollbar-hide.css";
 import posthog from "posthog-js";
 import { apiClient } from "@/integrations/fastapi/client";
+import { resetChatThreads } from "@/store/chatThreadsSlice";
+import { resetAgents } from "@/store/agentsSlice";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
 import { fetchChatThreads, loadMoreChatThreads } from "@/store/chatThreadsSlice";
@@ -233,6 +235,8 @@ const Sidebar = () => {
       await supabase.auth.signOut();
       localStorage.clear();
       dispatch(clearProfile());
+      dispatch(resetChatThreads());
+      dispatch(resetAgents());
       posthog.reset();
     } catch (error) {
       console.error("Logout error:", error);

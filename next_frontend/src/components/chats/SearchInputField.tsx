@@ -61,7 +61,7 @@ const SearchInputField = memo(
 
     return (
       <div
-        className={`relative flex justify-center w-full px-2 sm:px-0 ${defaultSearchButton ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"}`}
+        className={`relative flex justify-center w-full px-2 sm:px-0 max-h-[200px] ${defaultSearchButton ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"}`}
       >
         <div className="w-full">
           <div
