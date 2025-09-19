@@ -464,8 +464,8 @@ class SimplifiedEnrichmentService:
                     connection_data_by_id[conn["id"]] = {
                         "id": conn["id"],
                         "linkedin_url": conn.get("linkedin_url"),
-                        "enriched_at": conn.get("enriched_at"),
-                        "embedding_generated_at": conn.get("embedding_generated_at"),
+                        "enriched_at": conn.get("enriched_at", None),
+                        "embedding_generated_at": conn.get("embedding_generated_at", None),
                         "has_enrichment": has_enrichment,
                         "has_embeddings": has_embeddings
                     }
