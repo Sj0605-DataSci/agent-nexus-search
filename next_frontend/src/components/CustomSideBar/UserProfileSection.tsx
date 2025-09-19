@@ -4,16 +4,18 @@ import Link from "next/link";
 import { FiLogOut } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/store";
+import { memo, useMemo } from "react";
+import { UserProfile } from "@/integrations/fastapi/types";
 
 interface UserProfileSectionProps {
-  profile: any;
+  profile: UserProfile | null;
   collapsed: boolean;
   isMobile: boolean;
-  isUserQueryRoute: boolean;
+  isUserQueryRoute?: boolean;
   onLogoutClick: () => void;
 }
 
-const UserProfileSection: React.FC<UserProfileSectionProps> = ({
+const UserProfileSection: React.FC<UserProfileSectionProps> = memo(({
   profile,
   collapsed,
   isMobile,
@@ -83,6 +85,8 @@ const UserProfileSection: React.FC<UserProfileSectionProps> = ({
       </Button>
     </div>
   );
-};
+});
+
+UserProfileSection.displayName = "UserProfileSection";
 
 export default UserProfileSection;

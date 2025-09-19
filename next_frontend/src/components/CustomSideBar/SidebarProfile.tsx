@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect, memo } from "react";
 import { FiMail } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { EMAIL_REGEX, handleWaitlistSignup } from "@/utils/formUtils";
@@ -10,12 +10,12 @@ import UserProfileSection from "./UserProfileSection";
 interface SidebarProfileProps {
   collapsed: boolean;
   isMobile: boolean;
-  isUserQueryRoute: boolean;
+  isUserQueryRoute?: boolean;
   onLogoutClick: () => void;
   profileId?: string;
 }
 
-const SidebarProfileBase: React.FC<SidebarProfileProps> = props => {
+const SidebarProfileBase = memo<SidebarProfileProps>(props => {
   const { collapsed, isMobile, isUserQueryRoute, onLogoutClick, profileId } = props;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,7 +129,7 @@ const SidebarProfileBase: React.FC<SidebarProfileProps> = props => {
       )}
     </div>
   );
-};
+});
 
 const SidebarProfile = React.memo(SidebarProfileBase, (prevProps, nextProps) => {
   const profileIdMatches = prevProps.profileId === nextProps.profileId;

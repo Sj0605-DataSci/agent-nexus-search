@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { FiClock } from "react-icons/fi";
 import posthog from "posthog-js";
 import dynamic from "next/dynamic";
+import { playNotificationSound } from "@/utils/audioUtils";
 import SearchInputField from "./SearchInputField";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { addChatThread } from "@/store/chatThreadsSlice";
@@ -488,6 +489,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
               search_queries_count: searchQueries.length,
               has_answer: true,
             });
+            try {
+              playNotificationSound();
+            } catch (error) {
+              console.warn("Couldn't play notification sound:", error);
+            }
             break;
 
           case "connected":
@@ -734,7 +740,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                     <SearchQueryDisplay
                       streamingSearchQueries={streamingSearchQueries}
                       isStreaming={isStreaming}
-                      showDefaultOpenDropdown={Boolean(initialQuery && query?.trim() && !isStreaming)}
+                      showDefaultOpenDropdown={Boolean(initialQuery?.trim() )}
                     />
                   )}
 

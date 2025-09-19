@@ -152,6 +152,7 @@ export default function GroupsPage() {
                     alt="Slack"
                     width={32}
                     height={32}
+                    priority
                     className="h-8 w-8 object-contain"
                   />
                 </div>
@@ -170,6 +171,7 @@ export default function GroupsPage() {
                     alt="Discord"
                     width={32}
                     height={32}
+                    priority
                     className="h-8 w-8 object-contain"
                   />
                 </div>

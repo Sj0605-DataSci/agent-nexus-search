@@ -322,12 +322,12 @@ const PricingPlans = () => {
                   Advanced CSV export (custom fields, enrichment data)
                 </span>
               </div>
-              <div className="flex items-center ">
+              {/* <div className="flex items-center ">
                 <FiCheckCircle className="h-4 w-4 mr-2 flex-shrink-0 text-white transition-all duration-300 group-hover:scale-105" />
                 <span className="text-white transition-all text-[16px] duration-300">
                   Slack and Discord integrations
                 </span>
-              </div>
+              </div> */}
               <div className="flex items-center ">
                 <FiCheckCircle className="h-4 w-4 mr-2 flex-shrink-0 text-white transition-all duration-300 group-hover:scale-105" />
                 <span className="text-white transition-all text-[16px] duration-300">
@@ -400,7 +400,8 @@ const PricingPlans = () => {
               <div className="flex items-center ">
                 <FiCheckCircle className="h-4 w-4 mr-2 flex-shrink-0 text-[#0E3D15] transition-all duration-300 group-hover:scale-105" />
                 <span className="text-[#0E3D15] transition-all text-[16px] duration-300">
-                  Advanced analytics dashboard
+                  {/* Advanced analytics dashboard */}
+                  Slack and Discord integrations
                 </span>
               </div>
               <div className="flex items-center ">

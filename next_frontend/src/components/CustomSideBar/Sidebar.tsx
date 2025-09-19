@@ -5,7 +5,16 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { FiUsers, FiSmile, FiZap, FiMenu, FiX, FiGlobe, FiSearch } from "react-icons/fi";
 import { PiSidebarSimple } from "react-icons/pi";
-import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  Suspense,
+  lazy,
+  useMemo,
+  memo,
+} from "react";
 import "@/styles/scrollbar-hide.css";
 import posthog from "posthog-js";
 import { apiClient } from "@/integrations/fastapi/client";
@@ -15,7 +24,7 @@ import { fetchChatThreads, loadMoreChatThreads } from "@/store/chatThreadsSlice"
 import { clearProfile } from "@/store/profileSlice";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/integrations/fastapi/types";
-import { supabaseHandler } from "@/integrations/supabase/client";
+import { supabase, supabaseHandler } from "@/integrations/supabase/client";
 import ChatThreadsList from "./ChatThreadsList";
 import SidebarProfile from "./SidebarProfile";
 
@@ -25,11 +34,110 @@ const LogoutConfirmation = lazy(() =>
   }))
 );
 
+const NavigationItems = memo(
+  ({
+    navItems,
+    pathname,
+    collapsed,
+    isMobile,
+  }: {
+    navItems: Array<{ href: string; label: string; icon: React.ReactNode }>;
+    pathname: string | null;
+    collapsed: boolean;
+    isMobile: boolean;
+  }) => (
+    <ul className="space-y-[2px] mt-2 pb-3">
+      {navItems.map(({ href, label, icon }) => (
+        <li key={href}>
+          <Link
+            prefetch={true}
+            href={href}
+            className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
+          ${collapsed && !isMobile ? "justify-center" : "gap-3 pl-2 pr-4"}
+          ${
+            pathname && pathname.startsWith(href)
+              ? "bg-indigo-100 text-indigo-700"
+              : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+          }
+        `}
+          >
+            <span className="relative group">
+              <span className="text-lg">{icon}</span>
+            </span>
+            {(!collapsed || isMobile) && <span>{label}</span>}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+);
+
+NavigationItems.displayName = "NavigationItems";
+
+const ThreadsSection = memo(
+  ({
+    recentThreads,
+    isInitialLoading,
+    loadingMoreThreads,
+    loadingThreads,
+    hasMoreThreads,
+    collapsed,
+    isMobile,
+    loadMoreThreads,
+    getThreadPreview,
+  }: {
+    recentThreads: ChatThread[];
+    isInitialLoading: boolean;
+    loadingMoreThreads: boolean;
+    loadingThreads: boolean;
+    hasMoreThreads: boolean;
+    collapsed: boolean;
+    isMobile: boolean;
+    loadMoreThreads: () => void;
+    getThreadPreview: (thread: ChatThread) => string;
+  }) => {
+    if (!recentThreads || recentThreads.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mb-4">
+        {(!collapsed || isMobile) && (
+          <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
+        )}
+        <div className="rounded-md mb-1">
+          <ChatThreadsList
+            threads={recentThreads}
+            initialLoading={isInitialLoading}
+            loadingMoreThreads={loadingMoreThreads}
+            loadingThreads={loadingThreads}
+            hasMoreThreads={hasMoreThreads}
+            collapsed={collapsed}
+            isMobile={isMobile}
+            loadMoreThreads={loadMoreThreads}
+            getThreadPreview={getThreadPreview}
+          />
+        </div>
+      </div>
+    );
+  }
+);
+
+ThreadsSection.displayName = "ThreadsSection";
+
 const Sidebar = () => {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const dispatch = useAppDispatch();
 
-  const profile = useAppSelector(state => state.profile.profile);
+  const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
+  
+  const [cachedProfile, setCachedProfile] = useState(profile);
+  
+  useEffect(() => {
+    if (profile) {
+      setCachedProfile(profile);
+    }
+  }, [profile]);
   const router = useRouter();
   const pathname = usePathname();
   const [touchStartX, setTouchStartX] = useState(0);
@@ -50,27 +158,49 @@ const Sidebar = () => {
   const isUserQueryRoute = pathname?.includes("user-query");
   const isInitialLoading = loadingThreads && recentThreads.length === 0;
 
-  const fetchThreads = () => {
-    if (!profile?.id) return;
+  const navItems = useMemo(() => {
+    const items = [
+      { href: "/connections", label: "Connections", icon: <FiGlobe /> },
+      { href: "/friends", label: "Friends", icon: <FiSmile /> },
+      { href: "/groups", label: "Groups", icon: <FiUsers /> },
+    ];
 
+    const effectiveProfile = cachedProfile || profile;
+    if (effectiveProfile?.id) {
+      items.unshift({ href: "/agents", label: "Agents", icon: <FiZap /> });
+    }
+
+    return items;
+  }, [profile?.id, cachedProfile]);
+
+  const getThreadPreview = useCallback((thread: ChatThread) => {
+    if (thread.title) return thread.title;
+    return `Chat ${thread.id.substring(0, 8)}`;
+  }, []);
+
+  const fetchThreads = useCallback(() => {
+    const effectiveProfile = cachedProfile || profile;
+    if (!effectiveProfile?.id) return;
     dispatch(fetchChatThreads());
-  };
+  }, [dispatch, profile?.id, cachedProfile]);
 
   const loadMoreThreads = useCallback(() => {
-    if (!profile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+    const effectiveProfile = cachedProfile || profile;
+    if (!effectiveProfile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
 
     setLoadingMoreThreads(true);
     dispatch(loadMoreChatThreads()).finally(() => {
       setLoadingMoreThreads(false);
     });
-  }, [hasMoreThreads, loadingMoreThreads, dispatch]);
+  }, [hasMoreThreads, loadingMoreThreads, dispatch, profile?.id, cachedProfile, loadingThreads]);
 
   useEffect(() => {
-    if (profile?.id && !threadsFetchedRef.current) {
+    const effectiveProfile = cachedProfile || profile;
+    if (effectiveProfile?.id && !threadsFetchedRef.current) {
       fetchThreads();
       threadsFetchedRef.current = true;
     }
-  }, [profile?.id]);
+  }, [profile?.id, cachedProfile, fetchThreads]);
 
   useEffect(() => {
     setIsMobileSidebarOpen(false);
@@ -96,49 +226,23 @@ const Sidebar = () => {
     };
   }, [isMobileSidebarOpen]);
 
-  const getThreadPreview = (thread: ChatThread) => {
-    if (thread.title) return thread.title;
-    return `Chat ${thread.id.substring(0, 8)}`;
-  };
-
-  const getNavItems = () => {
-    const items = [
-      { href: "/connections", label: "Connections", icon: <FiGlobe /> },
-      { href: "/friends", label: "Friends", icon: <FiSmile /> },
-      { href: "/groups", label: "Groups", icon: <FiUsers /> },
-    ];
-
-    if (profile?.id) {
-      items.unshift({ href: "/agents", label: "Agents", icon: <FiZap /> });
-    }
-
-    return items;
-  };
-
-  const navItems = getNavItems();
-
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     setIsLoggingOut(true);
     try {
-      setTimeout(() => {
-        router.replace("/");
-      }, 1500);
       await apiClient.logout();
-      await supabaseHandler.auth.signOut();
+      await supabase.auth.signOut();
       localStorage.clear();
       dispatch(clearProfile());
       posthog.reset();
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      router.replace("/user-auth");
       localStorage.clear();
-      setTimeout(() => {
-        router.replace("/");
-      }, 1500);
       setIsLoggingOut(false);
       setShowLogoutConfirm(false);
     }
-  };
+  }, [dispatch, router]);
 
   const toggleMobileSidebar = useCallback(() => {
     if (isMobileSidebarOpen) {
@@ -154,29 +258,32 @@ const Sidebar = () => {
     }
   }, [isMobileSidebarOpen]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     setTouchStartX(e.targetTouches[0].clientX);
-  };
+  }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     setTouchEndX(e.targetTouches[0].clientX);
-  };
+  }, []);
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
     if (touchStartX - touchEndX > 50 && isMobileSidebarOpen) {
       toggleMobileSidebar();
     } else if (touchEndX - touchStartX > 50 && !isMobileSidebarOpen) {
       toggleMobileSidebar();
     }
-  };
+  }, [touchStartX, touchEndX, isMobileSidebarOpen, toggleMobileSidebar]);
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      toggleMobileSidebar();
-    }
-  };
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        toggleMobileSidebar();
+      }
+    },
+    [toggleMobileSidebar]
+  );
 
-  const MobileHeader = () => (
+  const MobileHeader = memo(() => (
     <header
       className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-sm border-b border-gray-200/80 shadow-sm"
       onTouchStart={handleTouchStart}
@@ -207,13 +314,15 @@ const Sidebar = () => {
         )}
       </div>
     </header>
-  );
+  ));
+
+  MobileHeader.displayName = "MobileHeader";
 
   interface SidebarContentProps {
     isMobile?: boolean;
   }
 
-  const SidebarContent: React.FC<SidebarContentProps> = ({ isMobile = false }) => {
+  const SidebarContent: React.FC<SidebarContentProps> = memo(({ isMobile = false }) => {
     return (
       <div
         className="flex flex-col h-full overflow-y-auto overscroll-contain"
@@ -282,50 +391,24 @@ const Sidebar = () => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 hide-scrollbar">
-          <ul className="space-y-[2px] mt-2 pb-3">
-            {navItems.map(({ href, label, icon }) => (
-              <li key={href}>
-                <Link
-                  prefetch={true}
-                  href={href}
-                  className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
-                  ${collapsed && !isMobile ? "justify-center" : "gap-3 pl-2 pr-4"}
-                  ${
-                    pathname.startsWith(href)
-                      ? "bg-indigo-100 text-indigo-700"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }
-                `}
-                >
-                  <span className="relative group">
-                    <span className="text-lg">{icon}</span>
-                  </span>
-                  {(!collapsed || isMobile) && <span>{label}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <NavigationItems
+            navItems={navItems}
+            pathname={pathname}
+            collapsed={collapsed}
+            isMobile={isMobile}
+          />
 
-          {recentThreads && recentThreads.length > 0 && (
-            <div className="mb-4">
-              {(!collapsed || isMobile) && (
-                <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
-              )}
-              <div className="rounded-md mb-1">
-                <ChatThreadsList
-                  threads={recentThreads}
-                  initialLoading={isInitialLoading}
-                  loadingMoreThreads={loadingMoreThreads}
-                  loadingThreads={loadingThreads}
-                  hasMoreThreads={hasMoreThreads}
-                  collapsed={collapsed && !isMobile}
-                  isMobile={isMobile}
-                  loadMoreThreads={loadMoreThreads}
-                  getThreadPreview={getThreadPreview}
-                />
-              </div>
-            </div>
-          )}
+          <ThreadsSection
+            recentThreads={recentThreads}
+            isInitialLoading={isInitialLoading}
+            loadingMoreThreads={loadingMoreThreads}
+            loadingThreads={loadingThreads}
+            hasMoreThreads={hasMoreThreads}
+            collapsed={collapsed}
+            isMobile={isMobile}
+            loadMoreThreads={loadMoreThreads}
+            getThreadPreview={getThreadPreview}
+          />
         </nav>
 
         <SidebarProfile
@@ -333,11 +416,13 @@ const Sidebar = () => {
           isMobile={isMobile}
           isUserQueryRoute={isUserQueryRoute}
           onLogoutClick={() => setShowLogoutConfirm(true)}
-          profileId={profile?.id}
+          profileId={(cachedProfile || profile)?.id}
         />
       </div>
     );
-  };
+  });
+
+  SidebarContent.displayName = "SidebarContent";
 
   return (
     <>
@@ -399,4 +484,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default memo(Sidebar);

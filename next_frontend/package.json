@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/setup-robots-txt && next build",
     "start": "next start",
     "lint": "next lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "setup-robots": "node scripts/setup-robots-txt"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.31.6",
