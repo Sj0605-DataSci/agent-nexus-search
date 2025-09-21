@@ -277,11 +277,37 @@ IMPORTANT: Use ONLY these exact column names from the connections table:
 Rules:
 - Always filter by `user_id = '{user_id}'` (or `IN (...)` if multiple).
 - Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`.
-- Use `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
+- Use multiple `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
 - Return direct `SELECT` results (no `row_to_json` or wrappers).
 - Always include `id` in the query.
 - Always `ORDER BY embedding_generated_at DESC`.
+- Also use rank ts_rank_cd to rank the results.
 - Always `LIMIT 20`.
+
+Template of SQL to be followed:
+SELECT  
+    id, user_id, first_name, last_name, headline, about_section,
+    experience_json, education_json, skills, linkedin_url,
+    company, position, location, profile_photo_url, embedding_generated_at,
+    ts_rank_cd(
+      search_tsv,
+      (plainto_tsquery('english', 'keyword')
+       && plainto_tsquery('english', 'keyword'))
+    ) AS rank
+FROM connections
+WHERE user_id IN ({user_ids})
+  AND about_section IS NOT NULL
+  AND experience_json IS NOT NULL
+  AND embedding_generated_at IS NOT NULL
+  AND search_tsv @@ (
+        plainto_tsquery('english', 'keyword')
+    &&  plainto_tsquery('english', 'keyword')
+  )
+ORDER BY rank DESC, embedding_generated_at DESC
+LIMIT 20;
+
+
+FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
 """
 
         sql_user_prompt = f"""Generate a SQL query to find connections matching these criteria:
@@ -309,30 +335,24 @@ Example format:
 Query: find me Designers in Delhi with 6 years of experience
 
 SELECT  
-    id,  
-    user_id,
-    first_name,  
-    last_name,  
-    headline,  
-    about_section,  
-    experience_json,  
-    education_json,  
-    skills,  
-    linkedin_url,  
-    company,  
-    position,  
-    location,  
-    profile_photo_url,  
-    embedding_generated_at
+    id, user_id, first_name, last_name, headline, about_section,
+    experience_json, education_json, skills, linkedin_url,
+    company, position, location, profile_photo_url, embedding_generated_at,
+    ts_rank_cd(
+      search_tsv,
+      (plainto_tsquery('english', 'Designer')
+       && plainto_tsquery('english', 'Delhi'))
+    ) AS rank
 FROM connections
-WHERE user_id IN (
-   {user_ids}
-)
-  AND about_section IS NOT NULL 
-  AND experience_json IS NOT NULL 
-  AND embedding_generated_at IS NOT NULL 
-  AND search_tsv @@ plainto_tsquery('english', 'Designer & Delhi & "6 years"')
-ORDER BY embedding_generated_at DESC
+WHERE user_id IN ({user_ids})
+  AND about_section IS NOT NULL
+  AND experience_json IS NOT NULL
+  AND embedding_generated_at IS NOT NULL
+  AND search_tsv @@ (
+        plainto_tsquery('english', 'Designer')
+    &&  plainto_tsquery('english', 'Delhi')
+  )
+ORDER BY rank DESC, embedding_generated_at DESC
 LIMIT 20;
 """
 
