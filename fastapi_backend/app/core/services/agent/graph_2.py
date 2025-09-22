@@ -249,7 +249,10 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         filters = query_analysis.get("filters", {})
         traits = query_analysis.get("traits", {}).get("traits", [])
         friends_user_id="06f7e3ea-162c-46a4-a494-4459dd4bea10" #sanyam profile id
-        user_ids = [user_id]
+        if user_id == settings.ASHISH_USERID:
+            user_ids = [user_id, friends_user_id]
+        else:
+            user_ids = [user_id]
         
         # Prepare search context for LLM
         search_context = {
