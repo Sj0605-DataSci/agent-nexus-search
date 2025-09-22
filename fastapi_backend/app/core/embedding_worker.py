@@ -230,23 +230,24 @@ class EmbeddingWorker:
                         total_failed += len(valid_connections)
                         continue # Move to the next chunk
 
-                    # Prepare data for a single batch upsert
-                    updates_to_db = []
+                    # Initialize counters for this chunk
                     successful_in_chunk = 0
                     failed_in_chunk = 0
-
+                    
                     for idx, connection in enumerate(valid_connections):
                         connection_id = connection["id"]
                         basic_info_embedding = basic_info_embeddings[idx] if idx < len(basic_info_embeddings) else None
                         experience_embedding = experience_embeddings[idx] if idx < len(experience_embeddings) else None
 
-                        update_payload = {"id": connection_id}
+                        # Check if we have any embeddings to update
                         has_embedding = False
+                        update_data = {}
+                        
                         if basic_info_embedding:
-                            update_payload["basic_info_embedding"] = basic_info_embedding
+                            update_data["basic_info_embedding"] = basic_info_embedding
                             has_embedding = True
                         if experience_embedding:
-                            update_payload["experience_embedding"] = experience_embedding
+                            update_data["experience_embedding"] = experience_embedding
                             has_embedding = True
 
                         if not has_embedding:
@@ -254,30 +255,40 @@ class EmbeddingWorker:
                             failed_in_chunk += 1
                             continue
 
-                        update_payload["embedding_generated_at"] = datetime.now(timezone.utc).isoformat()
-                        updates_to_db.append(update_payload)
-
-                    # Perform a single batch upsert operation if there's anything to update
-                    if updates_to_db:
+                        # Add timestamp for when embedding was generated
+                        update_data["embedding_generated_at"] = datetime.now(timezone.utc).isoformat()
+                        
+                        # Update this connection record immediately
                         try:
-                            response = await supabase.table("connections").upsert(updates_to_db).execute()
+                            logger.info(f"Updating connection {idx+1}/{len(valid_connections)} with ID {connection_id} in chunk {chunk_num}")
+                            
+                            # Use update with eq filter for a single record
+                            response = await supabase.table("connections") \
+                                .update(update_data) \
+                                .eq("id", connection_id) \
+                                .execute()
+                            
                             if response.data:
-                                successful_in_chunk = len(response.data)
-                                logger.info(f"Successfully upserted {successful_in_chunk} embeddings for chunk {chunk_num}")
+                                successful_in_chunk += 1
+                                logger.info(f"Successfully updated embedding for connection {connection_id} in chunk {chunk_num}")
                             else:
                                 # PostgREST can return 0 data on success, so we check error
                                 if response.error:
-                                     logger.error(f"Error upserting embeddings for chunk {chunk_num}: {response.error}")
-                                     failed_in_chunk = len(updates_to_db)
+                                    logger.error(f"Error updating embedding for connection {connection_id} in chunk {chunk_num}: {response.error}")
+                                    failed_in_chunk += 1
                                 else:
-                                     successful_in_chunk = len(updates_to_db)
-                                     logger.info(f"Upsert for chunk {chunk_num} completed with no data returned, assuming success.")
-
+                                    successful_in_chunk += 1
+                                    logger.info(f"Update for connection {connection_id} in chunk {chunk_num} completed with no data returned, assuming success.")
+                            
+                            # Add a small delay between updates to reduce database load
+                            await asyncio.sleep(0.1)
+                            
                         except Exception as e:
-                            logger.error(f"Exception during batch upsert for chunk {chunk_num}: {str(e)}")
-                            failed_in_chunk = len(updates_to_db)
-                    
-                    logger.info(f"Chunk {chunk_num} results: {successful_in_chunk} successful, {failed_in_chunk} failed")
+                            logger.error(f"Exception during update for connection {connection_id} in chunk {chunk_num}: {str(e)}")
+                            failed_in_chunk += 1
+                            # Continue with the next connection even if this one failed
+
+                    logger.info(f"Completed all connections for chunk {chunk_num}: {successful_in_chunk} successful, {failed_in_chunk} failed")
                     total_successful += successful_in_chunk
                     total_failed += failed_in_chunk
 
@@ -291,18 +302,59 @@ class EmbeddingWorker:
                 
                 # Send completion email
                 try:
-                    # Fetch user email directly from the auth.users table
-                    user_profile_response = await supabase.table("profiles").select("email").eq("id", user_id).single().execute()
+                    # Fetch user email and full name from profiles table
+                    user_profile_response = await supabase.table("profiles").select("email,full_name").eq("id", user_id).single().execute()
                     if user_profile_response.data and user_profile_response.data.get("email"):
                         user_email = user_profile_response.data["email"]
-                        subject = "Your Connections Are Ready!"
+                        # Get user name if available
+                        user_name = user_profile_response.data.get("full_name", "").split(" ")[0] if user_profile_response.data.get("full_name") else ""
+                        
+                        # Create subject line with user name if available
+                        subject = f"{user_name + ', your' if user_name else 'Your'} Connections Are Ready!"
+                        
+                        # Get frontend URL from config based on environment
+                        from app.core.config import settings
+                        import urllib.parse
+                        
+                        # URL encode the username for tracking
+                        encoded_name = urllib.parse.quote(user_name) if user_name else "user"
+                        
+                        # Create tracking URL with UTM parameters
+                        base_url = settings.FRONTEND_URL or "https://www.discoverminds.ai"
+                        tracking_url = f"{base_url}/?utm_source=email&utm_medium=notification&utm_campaign=connections_ready&utm_content=embedding_complete&username={encoded_name}"
+                        
                         body = f"""
                         <html>
-                        <body>
-                            <p>Hi,</p>
-                            <p>We've finished processing your connections. All profiles have been successfully enriched and are now available for you to search.</p>
-                            <p>You can start searching your connections right away.</p>
-                            <p>Best regards,<br>Sanyam Ashish</p>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                                <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+                                    Connections Processing Complete
+                                </h2>
+                                
+                                <p>Hi {user_name or 'there'},</p>
+                                
+                                <p>Great news! We've finished processing your connections. All profiles have been successfully enriched and are now available for you to search.</p>
+                                
+                                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                    <p>You can start searching your connections right away by clicking the button below:</p>
+                                    
+                                    <div style="text-align: center; margin: 20px 0;">
+                                        <a href="{tracking_url}" style="background-color: #3498db; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Search My Connections</a>
+                                    </div>
+                                </div>
+                                
+                                <p style="margin-top: 30px;">
+                                    Best regards,<br>
+                                    <strong>Sanyam Ashish</strong><br>
+                                    Team DiscoverMinds
+                                </p>
+                                
+                                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                                <p style="font-size: 12px; color: #666; text-align: center;">
+                                    This email was automatically sent by DiscoverMinds.
+                                    If you have any questions, please contact our support team.
+                                </p>
+                            </div>
                         </body>
                         </html>
                         """
