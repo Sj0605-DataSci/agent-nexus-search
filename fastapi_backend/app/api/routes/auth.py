@@ -255,28 +255,18 @@ def signup_direct(signup_request: SignupRequest):
     WARNING: This endpoint should only be used in development or trusted environments
     as it bypasses the email verification security step.
     """
-    if settings.ENVIRONMENT == "PRODUCTION":
-        return StandardJSONResponse(
-            StandardResponse(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Direct signup not available - not in production environment",
-                data=None
-            ),
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
-    else:
-        try:
-            logger.info("Direct signup request received", email=signup_request.email)
+
+    try:
+        logger.info("Direct signup request received", email=signup_request.email)
             
-            # Use service key client for admin operations (bypasses email confirmation)
-            from supabase import create_client
-            from datetime import datetime
+        # Use service key client for admin operations (bypasses email confirmation)
+        from supabase import create_client
+        from datetime import datetime
         
-            # Validate anon key is configured
-            if not settings.SUPABASE_SERVICE_ROLE_KEY:
-                logger.error("Supabase service role key not configured")
-                return StandardJSONResponse(StandardResponse(
+        # Validate anon key is configured
+        if not settings.SUPABASE_SERVICE_ROLE_KEY:
+            logger.error("Supabase service role key not configured")
+            return StandardJSONResponse(StandardResponse(
                 success=False,
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message="Direct signup not available - service role key not configured",
@@ -284,13 +274,13 @@ def signup_direct(signup_request: SignupRequest):
             ), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Create admin client with anon key
-            admin_client = create_client(
-                settings.SUPABASE_URL,
-                settings.SUPABASE_SERVICE_ROLE_KEY
-            )
+        admin_client = create_client(
+            settings.SUPABASE_URL,
+            settings.SUPABASE_SERVICE_ROLE_KEY
+        )
         
         # Create user directly with admin privileges - no email sent
-            auth_response = admin_client.auth.admin.create_user({
+        auth_response = admin_client.auth.admin.create_user({
                 "email": signup_request.email,
                 "password": signup_request.password,
                 "email_confirm": True,  # Directly confirm email
@@ -301,50 +291,50 @@ def signup_direct(signup_request: SignupRequest):
                 }
             })
         
-            if not auth_response.user:
-                logger.error("Direct signup failed - no user created", 
-                            email=signup_request.email,
-                            error=str(auth_response))
-                return StandardJSONResponse(StandardResponse(
-                    success=False,
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    message="Failed to create user account",
-                    data=None
-                ), status_code=status.HTTP_400_BAD_REQUEST)
+        if not auth_response.user:
+            logger.error("Direct signup failed - no user created", 
+                        email=signup_request.email,
+                        error=str(auth_response))
+            return StandardJSONResponse(StandardResponse(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Failed to create user account",
+                data=None
+            ), status_code=status.HTTP_400_BAD_REQUEST)
         
-            logger.info("User created successfully with confirmed email", 
+        logger.info("User created successfully with confirmed email", 
                    user_id=auth_response.user.id,
                    email=signup_request.email,
                    email_confirmed_at=auth_response.user.email_confirmed_at)
         
-            logger.info("Direct signup successful", 
+        logger.info("Direct signup successful", 
                    user_id=auth_response.user.id,
                    email=signup_request.email)
         
-            return StandardJSONResponse(StandardResponse(
-                success=True,
-                status_code=status.HTTP_201_CREATED,
-                message="Account created successfully. Profile will be created automatically.",
-                data={
-                "user_id": auth_response.user.id,
+        return StandardJSONResponse(StandardResponse(
+            success=True,
+            status_code=status.HTTP_201_CREATED,
+            message="Account created successfully. Profile will be created automatically.",
+            data={
+            "user_id": auth_response.user.id,
                 "email": auth_response.user.email,
                 "email_confirmed": True,
                 "profile_creation": "automatic"
             }
             ))
         
-        except Exception as e:
-            logger.exception("Direct signup error",
+    except Exception as e:
+        logger.exception("Direct signup error",
                             exception_type=type(e).__name__,
                             error_message=str(e),
                             email=signup_request.email)
         
-            return StandardJSONResponse(
-                StandardResponse(
-                    success=False,
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=f"Direct signup failed: {str(e)}",
-                    data=None
+        return StandardJSONResponse(
+            StandardResponse(
+                success=False,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=f"Direct signup failed: {str(e)}",
+                data=None
                 ),
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
