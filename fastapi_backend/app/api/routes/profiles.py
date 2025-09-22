@@ -204,7 +204,7 @@ async def update_my_profile(
                 "email": updated_profile.data.get("email"),
                 "created_at": updated_profile.data.get("created_at"),
                 "updated_at": updated_profile.data.get("updated_at"),
-                "has_connections": updated_profile.data.get("has_connections", "no_data"),
+                "has_connections": updated_profile.data.get("has_connections", "no data"),
                 "user_subscriptions_id": updated_profile.data.get("user_subscriptions_id"),
                 "linkedin_url": updated_profile.data.get("linkedin_url"),
                 "email_subscription": updated_profile.data.get("email_subscription", False),
