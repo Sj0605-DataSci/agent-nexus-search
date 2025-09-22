@@ -21,7 +21,7 @@ from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monit
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.profiling import Timer, record_request_time
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections
 from app.api.routes import emergency
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
@@ -348,6 +348,7 @@ app.include_router(hired_agents.router, prefix="/api", tags=["hired_agents"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(worker_status.router, prefix="/api", tags=["worker"])
 app.include_router(connections_processing.router, prefix="/api", tags=["connections_processing"])
+app.include_router(connections.router, prefix="/api/connections", tags=["connections"])
 app.include_router(linkedin_enrichment.router, prefix="/api", tags=["linkedin_enrichment"])
 app.include_router(auto_enrichment.router, prefix="/api", tags=["auto_enrichment"])
 app.include_router(profiling.router, prefix="/api", tags=["profiling"])

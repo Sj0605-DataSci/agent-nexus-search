@@ -153,6 +153,7 @@ class ConnectionWorker:
             
             # Trigger auto enrichment for connections with LinkedIn URLs
             await self._trigger_auto_enrichment(user_id, connections)
+            logger.info(f"Triggered auto enrichment for connections with LinkedIn URLs in file {file_id}")
             
         except Exception as e:
             logger.error(f"Error processing connection file {file_id}: {e}")

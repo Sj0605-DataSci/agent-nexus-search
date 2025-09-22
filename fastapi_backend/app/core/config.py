@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         return os.getenv("STAGING_SUPABASE_URL", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_URL", "")
 
     @property
+    def FRONTEND_URL(self) -> str:
+        return os.getenv("STAGING_FRONTEND_URL", "") if ENVIRONMENT == "STAGING" else os.getenv("FRONTEND_URL", "")    
+
+    @property
     def RESET_PASSWORD_FRONTEND_URL(self) -> str:
         return os.getenv("STAGING_RESET_PASSWORD_FRONTEND_URL", "") if ENVIRONMENT == "STAGING" else os.getenv("RESET_PASSWORD_FRONTEND_URL", "")    
     
@@ -42,6 +46,8 @@ class Settings(BaseSettings):
     @property
     def SUPABASE_SERVICE_ROLE_KEY(self) -> str:
         return os.getenv("STAGING_SUPABASE_SERVICE_ROLE_KEY", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+
+
     
     # OpenRouter settings
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
