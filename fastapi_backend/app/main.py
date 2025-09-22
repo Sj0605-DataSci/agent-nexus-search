@@ -21,11 +21,7 @@ from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monit
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.profiling import Timer, record_request_time
 
-<<<<<<< HEAD
 from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections
-=======
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment
->>>>>>> af6ef32 (added extractor and embedder code for linkedin csv upload)
 from app.api.routes import emergency
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
