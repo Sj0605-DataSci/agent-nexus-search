@@ -54,6 +54,6 @@ coverage/
 fastapi_backend/docker-compose.yml
 fastapi_backend/neo4j_import.py
 fastapi_backend/neo4j_visualize.py
-fastapi_backend/migration_script.py
 fastapi_backend/generate_embeddings_new.py
 supabase/config.toml
+fastapi_backend/benchmark_enrichment.py
