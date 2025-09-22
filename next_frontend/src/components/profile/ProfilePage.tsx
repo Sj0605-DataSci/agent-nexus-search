@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store";
@@ -8,7 +7,6 @@ import ProfessionalProfile from "@/components/profile/ProfessionalProfile";
 import UsageStatsCard from "@/components/profile/UsageStatsCard";
 import ImportConnectionsModal from "@/components/profile/ImportConnectionsModal";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
-import { getStoredToken } from "@/utils/tokenManagement";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -17,7 +15,7 @@ export default function ProfilePage() {
   const { profile, loading } = useAppSelector(s => s.profile);
 
   const handleConnectionsClick = () => {
-    if (profile && !profile.has_connections) {
+    if (profile && profile.has_connections === "no_data") {
       setShowConnectionsModal(true);
     } else {
       router.push("/chat/new");

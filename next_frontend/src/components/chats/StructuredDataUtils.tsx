@@ -12,6 +12,8 @@ import CustomAvatar from "@/components/ui/CustomAvatar";
 import { SocialLinks } from "../ui/SocialLinks";
 import { ScoreCell } from "./ScoreCell";
 import Image from "next/image";
+// import { Person } from "@/types/person";
+import { getInitials } from "@/utils/stringUtils";
 
 // Define types for the scoring data
 export interface ScoringItem {
@@ -299,14 +301,16 @@ const TraitBadge = ({ trait, type }: { trait: string; type: "yes" | "maybe" | "n
   );
 };
 
-const PersonCard = ({
+const ConnectionMobileViewCard = ({
   person,
   darkMode,
+  userName,
   onPersonClick,
 }: {
   person: Person;
   columns: string[];
   darkMode: boolean;
+  userName?: string;
   index: number;
   onPersonClick?: (person: Person) => void;
 }) => {
@@ -410,8 +414,8 @@ const PersonCard = ({
 
         {person.MutualConnection && (
           <div className="flex items-center mt-2">
-            <div className="flex items-center text-xs justify-center text-sm h-6 w-6 rounded-full bg-blue-100 text-blue-800 font-medium mr-1">
-              AG
+            <div className="flex items-center text-xs justify-center text-sm h-7 w-7 rounded-full bg-blue-100 text-blue-800 font-medium mr-1">
+              {userName ? getInitials(userName).charAt(0) : "A"}
             </div>
           </div>
         )}
@@ -428,6 +432,7 @@ interface SortConfig {
 interface StructuredDataTableProps {
   people: Person[];
   columns: string[];
+  userName?: string;
   darkMode: boolean;
   onDownload: () => void;
 }
@@ -435,6 +440,7 @@ interface StructuredDataTableProps {
 const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
   people,
   columns,
+  userName,
   darkMode,
   onDownload,
 }) => {
@@ -550,6 +556,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
       <PersonDetailModal
         person={selectedPerson}
         isOpen={!!selectedPerson}
+        userName={userName}
         onClose={() => {
           setSelectedPerson(null);
           setSelectedPersonIndex(null);
@@ -626,11 +633,12 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
               </div>
             </div>
             {processedPeople.map((person, i) => (
-              <PersonCard
+              <ConnectionMobileViewCard
                 key={i}
                 person={person}
                 columns={columns}
                 darkMode={darkMode}
+                userName={userName}
                 index={i}
                 onPersonClick={person => handlePersonClick(person, i)}
               />
@@ -849,7 +857,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
                                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-full blur opacity-70 group-hover:opacity-100 transition duration-200"></div>
                                 <div className="relative flex items-center justify-center h-8 w-8 rounded-full bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 group-hover:border-cyan-100 group-hover:scale-105">
                                   <span className="text-xs font-medium text-cyan-600">
-                                    {/* {person.MutualConnection.substring(0, 1).toUpperCase()} */}A
+                                    {userName ? getInitials(userName).charAt(0) : "A"}
                                   </span>
                                 </div>
                                 <span className="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-200">
@@ -874,7 +882,7 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({
   );
 };
 
-export const renderAsTable = (content: string) => {
+export const renderAsTable = (content: string, userName?: string) => {
   const { people, columns, isStructured } = parseStructuredData(content);
 
   const processedPeople: Person[] = people.map(person => {
@@ -958,6 +966,7 @@ export const renderAsTable = (content: string) => {
         people={processedPeople}
         columns={columns}
         darkMode={false}
+        userName={userName}
         onDownload={() => downloadAsCSV(people, columns)}
       />
     </div>

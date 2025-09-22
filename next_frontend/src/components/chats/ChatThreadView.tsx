@@ -22,7 +22,7 @@ import StyledMarkdown from "../common/StyledMarkdown";
 import MessagePlaceholder from "./MessagePlaceholder";
 import FeedbackModule from "./FeedbackModule";
 
-const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
+const LinkedInUrlModal = dynamic(() => import("../Connections/LinkedInUrlModal"), { ssr: false });
 const SearchQueryDisplay = dynamic(() => import("@/components/chats/SearchQueryDisplay"), {
   ssr: false,
 });
@@ -31,6 +31,7 @@ import { ChatSource, MessageType } from "@/types/chat";
 import { WorkerMessage } from "@/types/api";
 import { ChatPair, CachedThread, ChatThreadViewProps } from "@/types/chatThreadView";
 import { getStoredToken } from "@/utils/tokenManagement";
+import { boolean } from "yup";
 
 const isEmptyOrErrorMessage = (content: string | null | undefined): boolean => {
   if (!content) return true;
@@ -281,20 +282,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
       isMounted = false;
     };
   }, [currentMessageIndex, chatPairs]);
-
-  const handleTagClick = (tag: string) => {
-    if (!isStreaming) {
-      setQuery(tag);
-
-      // Track tag click with analytics
-      posthog.capture("tag_clicked", {
-        tag: tag,
-        location: "chat_thread",
-        thread_id: threadId,
-        is_new_thread: threadId === "new",
-      });
-    }
-  };
 
   const handleSearch = async (incoming?: string) => {
     if (isStreaming) return;
@@ -574,6 +561,21 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
     }
   };
 
+  const handleTagClick = (tag: string) => {
+    if (!isStreaming) {
+      setQuery(tag);
+
+      // Track tag click with analytics
+      posthog.capture("tag_clicked", {
+        tag: tag,
+        location: "chat_thread",
+        thread_id: threadId,
+        is_new_thread: threadId === "new",
+      });
+      handleSearch(tag);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -738,9 +740,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                 >
                   {isStreaming && (
                     <SearchQueryDisplay
+                      isUserLoggedIn={Boolean(profile?.id)}
                       streamingSearchQueries={streamingSearchQueries}
                       isStreaming={isStreaming}
-                      showDefaultOpenDropdown={Boolean(initialQuery?.trim() )}
+                      showDefaultOpenDropdown={Boolean(initialQuery?.trim())}
                     />
                   )}
 
@@ -784,7 +787,12 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                       ) : /(first_name|last_name)/i.test(m.content) ||
                         (typeof m.content === "string" &&
                           (m.content.startsWith("[{") || m.content.startsWith("{"))) ? (
-                        <div className="flex w-full">{renderAsTable(m.content)}</div>
+                        <div className="flex w-full">
+                          {renderAsTable(
+                            m.content,
+                            profile?.full_name ? profile.full_name : 'Ashish Gupta'
+                          )}
+                        </div>
                       ) : (
                         <StyledMarkdown
                           content={m.content}

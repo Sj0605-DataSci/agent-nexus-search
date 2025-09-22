@@ -61,7 +61,7 @@ const SearchInputField = memo(
 
     return (
       <div
-        className={`relative flex justify-center w-full px-2 sm:px-0 ${defaultSearchButton ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"}`}
+        className={`relative flex justify-center w-full px-2 sm:px-0 max-h-[200px] ${defaultSearchButton ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"}`}
       >
         <div className="w-full">
           <div
@@ -75,42 +75,57 @@ const SearchInputField = memo(
               minHeight: defaultSearchButton ? "120px" : "auto",
             }}
           >
-            {!hideGroupOption && <SearchScopeSelector disabled={!isAuthenticated || isStreaming} />}
+            {!hideGroupOption && (
+              <SearchScopeSelector
+                disabled={true}
+                //  disabled={!isAuthenticated || isStreaming}
+              />
+            )}
             <form onSubmit={onSubmit}>
-              <div className="relative">
-                <Textarea
-                  placeholder={
-                    defaultSearchButton
-                      ? "Give me the list of software developers in Bangalore"
-                      : placeholderText
-                  }
-                  value={query}
-                  onChange={e => {
-                    setQuery(e.target.value);
-                    // Track when user types in search field
-                    if (e.target.value.length % 10 === 0 && e.target.value.length > 0) {
-                      posthog.capture("search_input_typing", {
-                        query_length: e.target.value.length,
-                        location: defaultSearchButton ? "chat_thread" : "hero_section",
-                      });
+              <div className="relative flex items-end gap-2">
+                <div className="flex-1">
+                  <Textarea
+                    placeholder={
+                      defaultSearchButton
+                        ? "Give me the list of software developers in Bangalore"
+                        : placeholderText
                     }
-                  }}
-                  ref={textareaRef}
-                  onKeyDown={onKey}
-                  rows={1}
-                  disabled={isStreaming}
-                  data-gramm="false"
-                  data-gramm_editor="false"
-                  data-enable-grammarly="false"
-                  className={`
-              flex bg-transparent text-lg resize-none
-              border-none focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0 shadow-none
-              ${!defaultSearchButton ? "min-h-[100px]" : "min-h-[80px]"} w-full p-1
-              placeholder:text-gray-500
-              ${isStreaming ? "opacity-60 cursor-not-allowed" : ""}
-            `}
-                />
-                <div className="absolute bottom-0 right-0 flex h-9 w-9 justify-center items-center">
+                    value={query}
+                    onChange={e => {
+                      setQuery(e.target.value);
+                      // Track when user types in search field
+                      if (e.target.value.length % 10 === 0 && e.target.value.length > 0) {
+                        posthog.capture("search_input_typing", {
+                          query_length: e.target.value.length,
+                          location: defaultSearchButton ? "chat_thread" : "hero_section",
+                        });
+                      }
+                    }}
+                    ref={textareaRef}
+                    onKeyDown={onKey}
+                    rows={1}
+                    disabled={isStreaming}
+                    data-gramm="false"
+                    data-gramm_editor="false"
+                    data-enable-grammarly="false"
+                    className={`
+  flex bg-transparent text-base md:text-lg resize-none
+  border-none focus:border-0 outline-none ring-0 focus:ring-0 focus-visible:ring-0 shadow-none
+  ${!defaultSearchButton ? "min-h-[100px]" : "min-h-[80px]"} w-full p-1
+  placeholder:text-gray-500
+  ${isStreaming ? "opacity-60 cursor-not-allowed" : ""}
+  pr-2
+  [&::-webkit-scrollbar]:hidden
+  [-ms-overflow-style:none]
+  [scrollbar-width:none]
+`}
+                    style={{
+                      maxHeight: defaultSearchButton ? "120px" : "150px",
+                      overflowY: "auto",
+                    }}
+                  />
+                </div>
+                <div className="flex-shrink-0 pb-1">
                   <button
                     type="submit"
                     className={`rounded-md h-9 w-9 flex justify-center items-center transition-all ${

@@ -83,7 +83,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
-  has_connections: boolean;
+  has_connections: "synced" | "syncing" | "no_data";
   hired_agents?: string[];
   linkedin_url?: string;
   email_subscription?: boolean;

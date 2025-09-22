@@ -7,24 +7,21 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/store";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
-
-export const handleLinkClickSmartly = () => {
-  toast.success("Ammm...smart boy yk!, better luck next time");
-};
+import { showDevFeatureToast } from "@/utils/toast";
 
 export default function FriendsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState("");
 
-  const profile = useAppSelector(state => state.profile.profile);
+  const { profile, loading } = useAppSelector(state => state.profile);
   const isAuthenticated = !!profile?.id;
 
   return (
     <div className="relative">
-      {!isAuthenticated && <ComingSoonOverlay />}
+      {!isAuthenticated && !loading && <ComingSoonOverlay />}
 
       <div
-        className={`container mx-auto px-4 ${!isAuthenticated ? "opacity-30 pointer-events-none" : ""}`}
+        className={`container mx-auto px-4 ${!isAuthenticated && !loading ? "opacity-30 pointer-events-none" : ""}`}
       >
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Friends</h1>
@@ -61,7 +58,7 @@ export default function FriendsPage() {
                       <button
                         className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-[#5D9CEC] hover:opacity-70 duration-0 h-auto gap-1.5 p-0"
                         type="button"
-                        onClick={handleLinkClickSmartly}
+                        onClick={() => showDevFeatureToast()}
                       >
                         <FiLink className="h-4 w-4" />
                         Invite link
@@ -85,7 +82,7 @@ export default function FriendsPage() {
                 </div>
                 <div className="flex justify-end">
                   <Button
-                    onClick={handleLinkClickSmartly}
+                    onClick={() => showDevFeatureToast()}
                     className="bg-[#5D9CEC] hover:bg-green-700 text-white h-9 px-4 py-2 gap-2"
                     type="button"
                   >

@@ -101,6 +101,8 @@ const Offerings = () => {
             title="DiscoverMinds Quick Demo"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
+            frameBorder="0"
+            referrerPolicy="no-referrer"
           ></iframe>
         </div>
       </div>

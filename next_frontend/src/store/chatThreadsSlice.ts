@@ -62,13 +62,8 @@ const chatThreadsSlice = createSlice({
   name: "chatThreads",
   initialState,
   reducers: {
-    resetChatThreads: state => {
-      state.threads = [];
-      state.currentPage = 1;
-      state.hasMore = true;
-      state.totalThreads = 0;
-      state.totalPages = 0;
-      state.loading = false;
+    resetChatThreads: () => {
+      return { ...initialState };
     },
     setPageSize: (state, action: PayloadAction<number>) => {
       state.pageSize = action.payload;
@@ -138,7 +133,6 @@ const chatThreadsSlice = createSlice({
       });
   },
 });
-
-export const { resetChatThreads, setPageSize, setLoading, addChatThread } =
+export const { setPageSize, setLoading, addChatThread, resetChatThreads } =
   chatThreadsSlice.actions;
 export default chatThreadsSlice.reducer;

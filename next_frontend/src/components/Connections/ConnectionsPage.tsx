@@ -1,33 +1,52 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Clock } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { useAppSelector } from "@/store";
-
-const handleLinkClickSmartly = () => {
-  toast.success("Ammm...smart boy yk!, better luck next time");
-};
+import { showDevFeatureToast } from "@/utils/toast";
+import LinkedInUrlModal from "./LinkedInUrlModal";
+import ImportConnectionsModal from "../profile/ImportConnectionsModal";
+import ProfessionalProfile from "../profile/ProfessionalProfile";
+import { LinkedInSection } from "../profile/LinkedInSection";
 
 export default function ConnectionsPage() {
-  const profile = useAppSelector(state => state.profile.profile);
+  const router = useRouter();
+  const { profile, loading } = useAppSelector(state => state.profile);
   const isAuthenticated = !!profile?.id;
+  // const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
+  // const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+
+  const handleConnectionClick = (connection?: { id: string; name: string; enabled: boolean }) => {
+    if (connection?.enabled) {
+      // setLinkedinModalOpen(true);
+      router.push("/profile#linkedin-section");
+      // profile && !profile.has_connections && setShowConnectionsModal(true);
+    } else {
+      showDevFeatureToast(`${connection?.name} integration is under development`);
+    }
+  };
 
   const connections = [
-    {
-      id: "gmail",
-      name: "Gmail",
-      description: "Add your Gmail contacts.",
-      logo: "/logos/gmail.webp",
-      alt: "Gmail",
-    },
     {
       id: "linkedin",
       name: "LinkedIn",
       description: "Add your LinkedIn connections.",
       logo: "/logos/linkedin.webp",
       alt: "LinkedIn",
+      enabled: true,
+    },
+    {
+      id: "gmail",
+      name: "Gmail",
+      description: "Add your Gmail contacts.",
+      logo: "/logos/gmail.webp",
+      alt: "Gmail",
+      enabled: false,
+      comingSoon: true,
     },
     {
       id: "twitter",
@@ -35,6 +54,8 @@ export default function ConnectionsPage() {
       description: "Add your Twitter followers.",
       logo: "/logos/twitter.webp",
       alt: "Twitter",
+      enabled: false,
+      comingSoon: true,
     },
     {
       id: "outlook",
@@ -42,15 +63,16 @@ export default function ConnectionsPage() {
       description: "Add your Outlook contacts.",
       logo: "/logos/outlook.webp",
       alt: "Outlook",
+      enabled: false,
+      comingSoon: true,
     },
   ];
 
   return (
     <div className="relative">
-      {!isAuthenticated && <ComingSoonOverlay />}
-
+      {!isAuthenticated && !loading && <ComingSoonOverlay />}
       <div
-        className={`container mx-auto px-4 ${!isAuthenticated ? "opacity-30 pointer-events-none" : ""}`}
+        className={`container mx-auto px-4 ${!isAuthenticated && !loading ? "opacity-30 pointer-events-none" : ""}`}
       ></div>
       {/* // <div className="relative w-full flex-1"> */}
       <div className="absolute inset-0 flex flex-col">
@@ -81,65 +103,116 @@ export default function ConnectionsPage() {
 
             <div className="grid grid-cols-1 gap-3">
               {connections.map(connection => (
-                <div
-                  key={connection.id}
-                  className="group relative cursor-pointer rounded-lg border border-dashed border-gray-300/50 bg-card text-card-foreground hover:border-solid hover:bg-muted/50"
-                >
-                  <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:gap-0 md:p-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <Image
-                          src={connection.logo}
-                          alt={connection.alt}
-                          width={64}
-                          height={64}
-                          priority
-                          className="size-10 object-contain"
-                        />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex h-6 items-center justify-between gap-2 md:justify-start">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold leading-none tracking-tight">
-                              {connection.name}
-                            </h3>
-                          </div>
+                <div key={connection.id}>
+                  <div
+                    className={`group relative ${connection.enabled ? "cursor-pointer" : "cursor-not-allowed"} rounded-lg border border-dashed ${connection.enabled ? "border-gray-300/50" : "border-gray-200/50"} bg-card text-card-foreground ${connection.enabled ? "hover:border-solid hover:bg-muted/50" : "opacity-70"}`}
+                  >
+                    <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:gap-0 md:p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          <Image
+                            src={connection.logo}
+                            alt={connection.alt}
+                            width={64}
+                            height={64}
+                            priority
+                            className="size-10 object-contain"
+                          />
                         </div>
-                        <p className="text-sm text-muted-foreground">{connection.description}</p>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex h-6 items-center justify-between gap-2 md:justify-start">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-semibold leading-none tracking-tight">
+                                {connection.name}
+                              </h3>
+                              {connection.comingSoon && (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                  Coming Soon
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{connection.description}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center">
-                      <button
-                        onClick={handleLinkClickSmartly}
-                        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 "
-                      >
-                        <span className="flex items-center gap-1.5">
-                          Connect
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="ml-0.5"
-                          >
-                            <path d="M5 12h14"></path>
-                            <path d="m12 5 7 7-7 7"></path>
-                          </svg>
-                        </span>
-                      </button>
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => handleConnectionClick(connection)}
+                          className={`inline-flex h-10 items-center justify-center rounded-md ${
+                            connection.id === "linkedin" && profile?.has_connections === "synced"
+                              ? "bg-green-600 hover:bg-green-700"
+                              : connection.id === "linkedin" &&
+                                  profile?.has_connections === "syncing"
+                                ? "bg-blue-600 hover:bg-blue-700"
+                                : connection.enabled
+                                  ? "bg-primary hover:bg-indigo-700"
+                                  : "bg-gray-300"
+                          } px-5 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200`}
+                          disabled={
+                            !connection.enabled ||
+                            !profile?.email ||
+                            (connection.id === "linkedin" && profile?.has_connections === "syncing")
+                          }
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {connection.id === "linkedin" &&
+                              profile?.has_connections === "synced" && <>Connected</>}
+                            {connection.id === "linkedin" &&
+                              profile?.has_connections === "syncing" && (
+                                <>
+                                  <div className="animate-spin h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full" />
+                                  Syncing
+                                </>
+                              )}
+                            {(connection.id !== "linkedin" ||
+                              profile?.has_connections === "no_data" ||
+                              !profile?.has_connections) && <>Connect</>}
+                            {(connection.id !== "linkedin" ||
+                              profile?.has_connections === "no_data" ||
+                              !profile?.has_connections) && (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="ml-0.5"
+                              >
+                                <path d="M5 12h14"></path>
+                                <path d="m12 5 7 7-7 7"></path>
+                              </svg>
+                            )}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
+                  {/* {connection.name === "linkedin" && profile?.has_connections && (
+                    <>
+                      <LinkedInSection
+                        linkedinUrl={profile?.linkedin_url}
+                        hasConnections={profile?.has_connections || false}
+                        onEditClick={() => setLinkedinModalOpen(true)}
+                        onConnectionsClick={handleConnectionClick}
+                      />
+                      <LinkedInUrlModal
+                        open={linkedinModalOpen}
+                        onOpenChange={setLinkedinModalOpen}
+                      />
+                    </>
+                  )} */}
                 </div>
               ))}
             </div>
           </div>
         </main>
       </div>
+      {/* <LinkedInUrlModal open={linkedinModalOpen} onOpenChange={setLinkedinModalOpen} /> */}
+      {/* <ImportConnectionsModal open={showConnectionsModal} onOpenChange={setShowConnectionsModal} /> */}
     </div>
   );
 }

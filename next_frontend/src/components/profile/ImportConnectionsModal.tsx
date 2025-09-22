@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { getSupabaseConfig } from "@/config/supabase";
 import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
-import Image from "next/image";
 import { useAppDispatch } from "@/store";
 import { fetchProfile } from "@/store/profileSlice";
 
@@ -40,8 +39,26 @@ export default function ImportConnectionsModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+
+      // Check if it's a zip file
+      if (selectedFile.type === "application/zip" || selectedFile.name.endsWith(".zip")) {
+        setErrorMessage(
+          "Please unzip the file first! You need to extract and upload only the connections.csv file from the zip archive."
+        );
+        setFile(null);
+        return;
+      }
+
+      // Check if it's not a CSV file
       if (selectedFile.type !== "text/csv" && !selectedFile.name.endsWith(".csv")) {
         setErrorMessage("Please select a CSV file");
+        setFile(null);
+        return;
+      }
+
+      // Check if the file name is exactly connections.csv (case insensitive)
+      if (selectedFile.name.toLowerCase() !== "connections.csv") {
+        setErrorMessage("Please upload the connections.csv file from your LinkedIn data export");
         setFile(null);
         return;
       }
@@ -127,17 +144,19 @@ export default function ImportConnectionsModal({
 
       await apiClient.processConnectionFile(fileId);
       setUploadStatus("success");
+      setUploading(false);
+
       dispatch(fetchProfile());
-      // Close modal after successful upload
+
       setTimeout(() => {
         onOpenChange(false);
-        // Reset state after modal closes
+
         setTimeout(() => {
           setFile(null);
           setUploading(false);
           setUploadStatus("idle");
         }, 300);
-      }, 1500);
+      }, 2000); // Show success message for 4 seconds
     } catch (error) {
       console.error("Upload error:", error);
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred");
@@ -239,7 +258,9 @@ export default function ImportConnectionsModal({
                             <path d="M7 17 17 7"></path>
                           </svg>
                         </p>
-                        <p className="text-sm text-gray-500">Download your data from LinkedIn.</p>
+                        <p className="text-sm text-gray-500">
+                          Download your data from LinkedIn(Download larger data archive).
+                        </p>
                       </a>
                     </div>
                   </div>
@@ -270,11 +291,13 @@ export default function ImportConnectionsModal({
                     <div>
                       <p className="text-sm font-medium">Locate the file</p>
                       <p className="flex flex-wrap items-center gap-1 text-sm text-gray-500">
-                        In your downloaded zip file, find{" "}
+                        In your downloaded zip file, find and extract{" "}
                         <code className="rounded-md bg-gray-100 px-2 py-0.5 text-[13px] font-medium text-gray-700">
                           Connections.csv
                         </code>
-                        .
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1 font-medium text-blue-600">
+                        Important: You must unzip the file and upload only the connections.csv file
                       </p>
                     </div>
                   </div>
@@ -305,15 +328,20 @@ export default function ImportConnectionsModal({
                         <p className="font-medium text-gray-700">
                           Click to select or drag and drop
                         </p>
-                        <p className="text-sm text-gray-500">CSV files only (max 5MB)</p>
+                        <p className="text-sm text-gray-500">connections.csv file only (max 5MB)</p>
                       </>
                     )}
                   </div>
 
                   {errorMessage && (
-                    <div className="p-3 rounded-lg flex items-center gap-2 bg-red-50 text-red-600 border border-red-100">
-                      <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                      <span>{errorMessage}</span>
+                    <div className="p-4 rounded-lg flex items-center gap-3 bg-red-50 text-red-600 border border-red-200 shadow-sm">
+                      <AlertCircle className="h-6 w-6 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">
+                          {errorMessage.includes("zip") ? "ZIP file detected!" : "Error"}
+                        </p>
+                        <p className="text-sm">{errorMessage}</p>
+                      </div>
                     </div>
                   )}
 
