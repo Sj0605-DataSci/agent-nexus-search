@@ -414,8 +414,8 @@ class SimplifiedEnrichmentService:
         """
         try:
             # Extract LinkedIn URLs
-            linkedin_urls = [conn["linkedin_url"] for conn in connections if conn.get("linkedin_url")]
-            connection_ids = [conn["id"] for conn in connections if conn.get("id")]
+            linkedin_urls = [conn["linkedin_url"] for conn in connections if conn and conn.get("linkedin_url")]
+            connection_ids = [conn["id"] for conn in connections if conn and conn.get("id")]
             
             if not linkedin_urls:
                 logger.warning("No LinkedIn URLs provided")
@@ -445,8 +445,8 @@ class SimplifiedEnrichmentService:
                     }
             
             # Create mapping from LinkedIn URL to connection ID
-            url_to_id = {conn["linkedin_url"]: conn["id"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
-            id_to_url = {conn["id"]: conn["linkedin_url"] for conn in connections if conn.get("linkedin_url") and conn.get("id")}
+            url_to_id = {conn["linkedin_url"]: conn["id"] for conn in connections if conn and conn.get("linkedin_url") and conn.get("id")}
+            id_to_url = {conn["id"]: conn["linkedin_url"] for conn in connections if conn and conn.get("linkedin_url") and conn.get("id")}
             
             # Use the connections data directly from the input parameter
             logger.info(f"Processing {len(connections)} connections")
@@ -455,7 +455,7 @@ class SimplifiedEnrichmentService:
             # We'll use the data that's already in the connections parameter
             connection_data_by_id = {}
             for conn in connections:
-                if conn.get("id"):
+                if conn and conn.get("id"):
                     # Get enrichment status from the connection if available
                     has_enrichment = conn.get("enriched_at") is not None
                     has_embeddings = conn.get("embedding_generated_at") is not None
