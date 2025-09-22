@@ -302,9 +302,9 @@ const Sidebar = () => {
           aria-label={isMobileSidebarOpen ? "Close menu" : "Open menu"}
         >
           {isMobileSidebarOpen ? (
-            <FiX size={24} />
+            <FiX size={28} />
           ) : (
-            <PiSidebarSimple size={24} className="rotate-180" />
+            <PiSidebarSimple size={32} className="rotate-180 h-8 w-8" />
           )}
         </Button>
         {profile?.id && (
@@ -334,7 +334,7 @@ const Sidebar = () => {
         <div
           className={`flex ${collapsed && !isMobile ? "flex-col items-center" : "items-center justify-between"}  py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
         >
-          <div className="flex items-center justify-center w-full">
+          <div className="flex items-center justify-center ml-1 md:ml-0 w-full">
             <Link
               prefetch={true}
               href={profile?.id ? "/chat/new" : "/"}
@@ -360,7 +360,7 @@ const Sidebar = () => {
                 size="icon"
                 className="h-8 w-8 text-gray-500 hover:text-gray-700 ml-auto"
               >
-                <PiSidebarSimple size={24} />
+                <PiSidebarSimple size={28} />
               </Button>
             )}
           </div>

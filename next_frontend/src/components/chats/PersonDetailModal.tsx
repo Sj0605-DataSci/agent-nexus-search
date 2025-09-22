@@ -12,11 +12,13 @@ import {
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { showDevFeatureToast } from "@/utils/toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import PaginationControls from "./PaginationControls";
 import CustomAvatar from "../ui/CustomAvatar";
 import { SocialLinks } from "../ui/SocialLinks";
 import Image from "next/image";
+import { getInitials } from "@/utils/stringUtils";
 
 interface ScoreData {
   confidence: number;
@@ -54,6 +56,7 @@ interface PersonDetailModalProps {
   currentIndex?: number;
   totalCount?: number;
   onNext?: () => void;
+  userName?: string;
   onPrevious?: () => void;
 }
 
@@ -80,6 +83,7 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   currentIndex,
   totalCount,
   onNext,
+  userName,
   onPrevious,
 }) => {
   if (!person) return null;
@@ -109,25 +113,13 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() =>
-                toast.success("Share feature is under development", {
-                  duration: 3000,
-                  position: "top-center",
-                  icon: "🚧",
-                })
-              }
+              onClick={() => showDevFeatureToast("Share feature is under development")}
               className="h-9 px-4 py-2 text-sm font-medium bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-1.5"
             >
               <Share className="size-4" />
             </button>
             <button
-              onClick={() =>
-                toast.success("Get an intro feature is under development", {
-                  duration: 3000,
-                  position: "top-center",
-                  icon: "🚧",
-                })
-              }
+              onClick={() => showDevFeatureToast("Get an intro feature is under development")}
               className="h-9 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1.5"
             >
               Get an intro
@@ -252,10 +244,14 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
                   <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
                     <div className="flex-shrink-0 mr-3">
                       <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-100 border border-green-200">
-                        <span className="text-xs font-medium text-green-700">A</span>
+                        <span className="text-xs font-medium text-green-700">
+                          {userName ? getInitials(userName).charAt(0) : "A"}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-gray-800">Ashish Gupta</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {userName ? userName : "Ashish Gupta"}
+                    </span>
                   </div>
                 </div>
               )}

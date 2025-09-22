@@ -5,14 +5,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { Mail } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
 import { updateUserProfile } from "@/store/profileSlice";
-import { useToast } from "@/components/ui/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
 import { FiLinkedin } from "react-icons/fi";
 import { ExternalLink, Edit2, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/integrations/fastapi/types";
-import LinkedInUrlModal from "@/components/profile/LinkedInUrlModal";
+import LinkedInUrlModal from "../Connections/LinkedInUrlModal";
 import toast from "react-hot-toast";
 import { LinkedInSection } from "./LinkedInSection";
 
@@ -156,11 +155,10 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
         </div>
       </div>
 
-      <h2 className="text-xl font-semibold text-gray-900">Professional Profile</h2>
 
       <LinkedInSection
         linkedinUrl={profile?.linkedin_url}
-        hasConnections={profile?.has_connections || false}
+        hasConnections={profile?.has_connections}
         onEditClick={() => setLinkedinModalOpen(true)}
         onConnectionsClick={onConnectionsClick}
       />

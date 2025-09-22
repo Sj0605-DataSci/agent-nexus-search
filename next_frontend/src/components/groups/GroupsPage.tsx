@@ -6,28 +6,25 @@ import CreateGroupModal from "@/components/groups/CreateGroupModal";
 import { useAppSelector } from "@/store";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import toast from "react-hot-toast";
-
-const handleLinkClickSmartly = () => {
-  toast.success("Ammm...smart boy yk!, better luck next time");
-};
+import { showDevFeatureToast } from "@/utils/toast";
 
 export default function GroupsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleCreateGroup = (groupName: string) => {
-    handleLinkClickSmartly();
+    showDevFeatureToast();
     // setIsModalOpen(false);
   };
 
-  const profile = useAppSelector(state => state.profile.profile);
+  const { profile, loading } = useAppSelector(state => state.profile);
   const isAuthenticated = !!profile?.id;
 
   return (
     <>
       <main className="relative">
-        {!isAuthenticated && <ComingSoonOverlay />}
+        {!isAuthenticated && !loading && <ComingSoonOverlay />}
         <div
-          className={`container mx-auto  max-w-screen-xl p-4 ${!isAuthenticated ? "opacity-30 pointer-events-none" : ""}`}
+          className={`container mx-auto  max-w-screen-xl p-4 ${!isAuthenticated && !loading ? "opacity-30 pointer-events-none" : ""}`}
         >
           <div className="mb-6">
             <h1 className="text-2xl font-bold md:text-3xl">Groups</h1>
@@ -42,7 +39,7 @@ export default function GroupsPage() {
               aria-haspopup="dialog"
               aria-expanded={isModalOpen}
               //   onClick={() => setIsModalOpen(true)}
-              onClick={handleLinkClickSmartly}
+              onClick={() => showDevFeatureToast()}
             >
               <div className="flex items-center space-x-5">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f3f3ee]/60">
@@ -144,7 +141,7 @@ export default function GroupsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div
                 className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-300/50 bg-card p-6 text-card-foreground hover:border-solid hover:bg-muted/50"
-                onClick={handleLinkClickSmartly}
+                onClick={() => showDevFeatureToast()}
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-white">
                   <Image
@@ -163,7 +160,7 @@ export default function GroupsPage() {
               </div>
               <div
                 className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-300/50 bg-card p-6 text-card-foreground hover:border-solid hover:bg-muted/50"
-                onClick={handleLinkClickSmartly}
+                onClick={() => showDevFeatureToast()}
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[#5865F2]/10">
                   <Image
@@ -182,7 +179,7 @@ export default function GroupsPage() {
               </div>
               {/* <div
                 className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-300/50 bg-card p-6 text-card-foreground hover:border-solid hover:bg-muted/50"
-                onClick={handleLinkClickSmartly}
+                onClick={showDevFeatureToast}
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[#5D9CEC]/10">
                   <svg

@@ -17,6 +17,7 @@ declare module "react" {
 interface SearchQueryDisplayProps {
   streamingSearchQueries: string[];
   isStreaming: boolean;
+  isUserLoggedIn: boolean;
   showDefaultOpenDropdown?: boolean;
 }
 
@@ -31,15 +32,13 @@ interface QueryTypeInfo {
 const SearchQueryDisplay = ({
   streamingSearchQueries,
   isStreaming,
+  isUserLoggedIn,
   showDefaultOpenDropdown,
 }: SearchQueryDisplayProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(() => showDefaultOpenDropdown ? false : true);
+  const [isCollapsed, setIsCollapsed] = useState(() => (showDefaultOpenDropdown ? false : true));
   const [currentStage, setCurrentStage] = useState<string>(() => "initializing");
   const [progress, setProgress] = useState(() => 0);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => ({}));
-
-  const parsedQueriesCache = useMemo(() => new Map<string, any>(), []);
-  const queryTypeCache = useMemo(() => new Map<string, any>(), []);
 
   const toggleSection = (sectionId: string) => {
     setCollapsedSections(prev => ({
@@ -502,9 +501,11 @@ const SearchQueryDisplay = ({
           Certainly! I'm searching across founder's 18075+ 1st degree connections
         </span>
       </p> */}
-      <p className="md:text-md text-sm text-gray-600 max-w-3xl mb-2 ">
-        Certainly! I'm searching across founder's 18075+ 1st degree connections
-      </p>
+      {!isUserLoggedIn && (
+        <p className="md:text-md text-sm text-gray-600 max-w-3xl mb-2 ">
+          Certainly! I'm searching across founder's 18075+ 1st degree connections
+        </p>
+      )}
       <div
         className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-200"
         onClick={() => setIsCollapsed(!isCollapsed)}

@@ -14,6 +14,7 @@ import { Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/integrations/fastapi/client";
 import toast from "react-hot-toast";
+import { showDevFeatureToast } from "@/utils/toast";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import Image from "next/image";
@@ -107,11 +108,7 @@ const Agents = () => {
     if (!user || !currentConfig || !selectedAgent) return;
 
     // Show toast notification for feature under development
-    toast.success("Agent configuration feature is under development", {
-      duration: 3000,
-      position: "top-center",
-      icon: "🚧",
-    });
+    showDevFeatureToast("Agent configuration feature is under development");
 
     // Commented out implementation for future development
     // setSaving(true);

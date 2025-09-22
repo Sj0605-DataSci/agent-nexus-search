@@ -1,17 +1,6 @@
 "use client";
-import posthog from "posthog-js";
 import * as Sentry from "@sentry/nextjs";
 
-// Initialize PostHog
-posthog.init(process.env.NEXT_PUBLIC_POSTHOG_API_KEY!, {
-  api_host: "/ingest",
-  ui_host: "https://us.posthog.com",
-  defaults: "2025-05-24",
-  capture_pageleave: true,
-  capture_pageview: "history_change",
-  capture_exceptions: true,
-  debug: process.env.NODE_ENV === "development",
-});
 
 // Initialize Sentry
 // Disable Sentry in development mode or on localhost
@@ -41,4 +30,12 @@ Sentry.init({
 
   // Session replay is enabled by default in the Sentry NextJS SDK
   // No need to explicitly add the Replay integration
+  
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration({
+      maskAllText: false,
+      blockAllMedia: false,
+    }),
+  ],
 });
