@@ -200,7 +200,7 @@ class ProfileUpdate(BaseModel):
 
 class ProfileResponse(ProfileBase):
     id: UUID
-    has_connections: Optional[bool] = False
+    has_connections: Optional[str] = "no_data"
     user_subscriptions_id: Optional[UUID] = None
     linkedin_url: Optional[str] = None
     email_subscription: Optional[bool] = True

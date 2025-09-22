@@ -53,7 +53,7 @@ class Profile(Base):
     full_name = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now)
     updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
-    has_connections = Column(Boolean, default=False)
+    has_connections = Column(Text, nullable=True, default="no_data")
     user_subscriptions_id = Column(UUID(as_uuid=True), ForeignKey("user_subscriptions.id"), nullable=True)
     email_subscription = Column(Boolean, default=False)
     phone_number = Column(Text, nullable=True)

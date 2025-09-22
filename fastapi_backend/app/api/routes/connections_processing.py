@@ -45,7 +45,7 @@ async def process_connection_file(
         response = await supabase.table("connection_files").select("*").eq("id", request.file_id).eq("user_id", user_id).execute()
         logger.info(f"Connection file response: {response}")
         
-        response_connections = await supabase.table("profiles").update({"has_connections": True}).eq("id", user_id).execute()
+        response_connections = await supabase.table("profiles").update({"has_connections": "syncing"}).eq("id", user_id).execute()
         logger.info(f"Connection update response: {response_connections}")
         
         if not response.data:
