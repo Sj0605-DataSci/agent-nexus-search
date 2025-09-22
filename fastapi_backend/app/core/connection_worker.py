@@ -180,7 +180,9 @@ class ConnectionWorker:
             # Extract connections with LinkedIn URLs
             connections_to_enrich = []
             for conn in connections:
-                url = conn.get('url', '').strip()
+                if not conn:
+                    continue
+                url = (conn.get('url') or '').strip()
                 if url and 'linkedin.com/in/' in url:
                     connections_to_enrich.append({
                         "id": conn.get('id'),  # This will be None for new connections
