@@ -269,33 +269,8 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         # Extract traits and filters for keyword generation
         filters = query_analysis.get("filters", {})
         traits = query_analysis.get("traits", {}).get("traits", [])
-        
-        # Get all friends of the current user (where status is accepted)
-        friend_ids = []
-        try:
-            # Query 1: Get friends where user is requester
-            requester_friends = await supabase_client.table("friendships").select("addressee_id")\
-                .eq("requester_id", str(user_id))\
-                .eq("status", "accepted")\
-                .execute()
-            
-            # Query 2: Get friends where user is addressee
-            addressee_friends = await supabase_client.table("friendships").select("requester_id")\
-                .eq("addressee_id", str(user_id))\
-                .eq("status", "accepted")\
-                .execute()
-            
-            # Extract friend IDs from both queries
-            if requester_friends.data:
-                friend_ids.extend([item["addressee_id"] for item in requester_friends.data])
-            
-            if addressee_friends.data:
-                friend_ids.extend([item["requester_id"] for item in addressee_friends.data])
-            
-            # Include the user's own ID
-            user_ids = [user_id] + friend_ids
-        except Exception:
-            user_ids = [user_id]  # Fallback to just the user's ID
+        friends_user_id="06f7e3ea-162c-46a4-a494-4459dd4bea10" #sanyam profile id
+        user_ids = [user_id]
         
         # Prepare search context for LLM
         search_context = {
