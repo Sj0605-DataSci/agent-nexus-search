@@ -27,7 +27,8 @@ import { ChatThread } from "@/integrations/fastapi/types";
 import { supabase, supabaseHandler } from "@/integrations/supabase/client";
 import ChatThreadsList from "./ChatThreadsList";
 import SidebarProfile from "./SidebarProfile";
-
+import { resetChatThreads } from "@/store/chatThreadsSlice";
+import { resetAgents } from "@/store/agentsSlice";
 const LogoutConfirmation = lazy(() =>
   import("@/components/ui/LogoutConfirmation").then(module => ({
     default: module.LogoutConfirmation,
@@ -130,9 +131,9 @@ const Sidebar = () => {
   const dispatch = useAppDispatch();
 
   const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
-  
+
   const [cachedProfile, setCachedProfile] = useState(profile);
-  
+
   useEffect(() => {
     if (profile) {
       setCachedProfile(profile);
@@ -232,6 +233,8 @@ const Sidebar = () => {
       await apiClient.logout();
       await supabase.auth.signOut();
       localStorage.clear();
+      dispatch(resetChatThreads());
+      dispatch(resetAgents());
       dispatch(clearProfile());
       posthog.reset();
     } catch (error) {

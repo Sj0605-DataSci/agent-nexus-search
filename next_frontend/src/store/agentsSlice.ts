@@ -53,7 +53,11 @@ export const fetchHiredAgents = createAsyncThunk(
 const agentsSlice = createSlice({
   name: "agents",
   initialState,
-  reducers: {},
+  reducers: {
+    resetAgents: () => {
+      return { ...initialState };
+    },
+  },
   extraReducers: builder => {
     builder
       .addCase(loadAgents?.pending, state => {
@@ -104,7 +108,7 @@ const agentsSlice = createSlice({
       });
   },
 });
-
+export const { resetAgents } = agentsSlice.actions;
 export default agentsSlice.reducer;
 export const selectTemplates = (s: RootState) => s.agents?.templates || [];
 export const selectHired = (s: RootState) => s.agents?.hired || [];
