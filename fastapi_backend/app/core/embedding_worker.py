@@ -303,7 +303,9 @@ class EmbeddingWorker:
                 # Send completion email
                 try:
                     # Fetch user email and full name from profiles table
-                    user_profile_response = await supabase.table("profiles").select("email,full_name").eq("id", user_id).single().execute()
+                    user_profile_response = await supabase.table("profiles").select("email,full_name").eq("id", user_id).execute()
+                    response_connections = await supabase.table("profiles").update({"has_connections": "synced"}).eq("id", user_id).execute()
+
                     if user_profile_response.data and user_profile_response.data.get("email"):
                         user_email = user_profile_response.data["email"]
                         # Get user name if available
