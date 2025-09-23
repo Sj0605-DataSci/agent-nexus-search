@@ -1,9 +1,11 @@
 import uuid
-from datetime import datetime, date
-from sqlalchemy import Column, Text, DateTime, ForeignKey, UniqueConstraint, Boolean, Integer, Date, Numeric, JSON
+import secrets
+from datetime import datetime, date, timedelta
+from sqlalchemy import Column, Text, DateTime, ForeignKey, UniqueConstraint, Boolean, Integer, Date, Numeric, JSON, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+import enum
 
 class AgentTemplate(Base):
     __tablename__ = "agent_templates"
@@ -152,3 +154,53 @@ class TierConfig(Base):
     features = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now)
     updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
+
+
+class FriendshipStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
+class Friendship(Base):
+    __tablename__ = "friendships"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requester_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    addressee_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Enum(FriendshipStatus), nullable=False, default=FriendshipStatus.PENDING)
+    created_at = Column(DateTime(timezone=True), default=datetime.now)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    requester = relationship("Profile", foreign_keys=[requester_id], backref="sent_friendships")
+    addressee = relationship("Profile", foreign_keys=[addressee_id], backref="received_friendships")
+    
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('requester_id', 'addressee_id', name='friendship_requester_addressee_unique'),
+    )
+
+
+class InviteStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class Invite(Base):
+    __tablename__ = "invites"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    inviter_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    invitee_email = Column(Text, nullable=True)
+    invitee_phone = Column(Text, nullable=True)
+    invite_token = Column(Text, unique=True, default=lambda: secrets.token_urlsafe(32))
+    group_id = Column(UUID(as_uuid=True), nullable=True)  # Will be a foreign key when groups are implemented
+    status = Column(Enum(InviteStatus), nullable=False, default=InviteStatus.PENDING)
+    created_at = Column(DateTime(timezone=True), default=datetime.now)
+    expires_at = Column(DateTime(timezone=True), default=lambda: datetime.now() + timedelta(days=7))
+    
+    # Relationships
+    inviter = relationship("Profile", foreign_keys=[inviter_id], backref="sent_invites")
