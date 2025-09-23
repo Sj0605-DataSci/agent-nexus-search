@@ -21,7 +21,7 @@ from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monit
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.profiling import Timer, record_request_time
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections, friendships
 from app.api.routes import emergency
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
@@ -353,6 +353,7 @@ app.include_router(linkedin_enrichment.router, prefix="/api", tags=["linkedin_en
 app.include_router(auto_enrichment.router, prefix="/api", tags=["auto_enrichment"])
 app.include_router(profiling.router, prefix="/api", tags=["profiling"])
 app.include_router(enrichment_status.router, prefix="/api", tags=["enrichment_status"])  # Add enrichment status WebSocket router
+app.include_router(friendships.router, prefix="/api", tags=["friendships"])  # Add friendships router
 app.include_router(emergency.router)  # Emergency memory cleanup
 
 @app.get("/")

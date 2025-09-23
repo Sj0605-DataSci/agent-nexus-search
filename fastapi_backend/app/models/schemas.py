@@ -1,11 +1,12 @@
 from datetime import datetime, date
-from typing import Generic, TypeVar, Optional, List, Dict, Any, Union
+from typing import Generic, TypeVar, Optional, List, Dict, Any, Union, Literal
 from pydantic import BaseModel, Field, EmailStr
 from fastapi.responses import JSONResponse
 from uuid import UUID
 from app.core.profiling import Timer
 import logging
 import json
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -346,3 +347,104 @@ class TitleAndIntentGeneratorOutput(BaseModel):
     title: str = Field(description="Title of the chat thread")
     intent: str = Field(description="Intent of the chat thread")
     direct_answer_response: Optional[str] = Field(default=None, description="Direct answer response if intent is direct_answer")
+
+
+# Friendship Schemas
+class FriendshipStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
+class FriendshipBase(BaseModel):
+    requester_id: UUID
+    addressee_id: UUID
+    status: FriendshipStatus = FriendshipStatus.PENDING
+
+
+class FriendshipCreate(BaseModel):
+    addressee_id: UUID = Field(..., description="ID of the user to send friend request to")
+
+
+class FriendshipUpdate(BaseModel):
+    status: FriendshipStatus = Field(..., description="New status of the friendship")
+
+
+class FriendshipResponse(FriendshipBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class FriendProfileResponse(BaseModel):
+    id: UUID  # Profile ID of the friend
+    friendship_id: UUID  # ID of the friendship record
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    status: FriendshipStatus
+    created_at: Optional[datetime] = None  
+    class Config:
+        from_attributes = True
+
+
+# Invite Schemas
+class InviteStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class InviteBase(BaseModel):
+    invitee_email: Optional[str] = None
+    invitee_phone: Optional[str] = None
+    group_id: Optional[UUID] = None  # Will be used when groups are implemented
+
+
+class InviteCreate(InviteBase):
+    pass
+
+
+class InviteResponse(InviteBase):
+    id: UUID
+    inviter_id: UUID
+    invite_token: str
+    status: InviteStatus
+    created_at: datetime
+    expires_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class InviteValidateResponse(BaseModel):
+    is_valid: bool
+    inviter_name: Optional[str] = None
+    inviter_email: Optional[str] = None
+    group_name: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    message: Optional[str] = None
+
+
+class InviteFriendsRequest(BaseModel):
+    emails: List[EmailStr] = Field(..., max_items=3, description="List of email addresses to invite (max 3)")
+
+
+class InviteFriendsResponse(BaseModel):
+    invited: List[Dict[str, Any]] = Field(default_factory=list, description="Successfully invited users")
+    existing_friends: List[Dict[str, Any]] = Field(default_factory=list, description="Users who are already friends")
+    errors: List[Dict[str, Any]] = Field(default_factory=list, description="Errors encountered during invitation")
+
+
+class FriendshipSummaryResponse(BaseModel):
+    """Comprehensive response containing all friendship-related information"""
+    friends: List[FriendProfileResponse] = Field(default_factory=list, description="Accepted friendships")
+    pending_requests: List[FriendProfileResponse] = Field(default_factory=list, description="Pending friend requests received")
+    sent_requests: List[FriendProfileResponse] = Field(default_factory=list, description="Pending friend requests sent")
+    total_friends: int = Field(0, description="Total number of accepted friends")
+    total_pending: int = Field(0, description="Total number of pending requests")
+    total_sent: int = Field(0, description="Total number of sent requests")
