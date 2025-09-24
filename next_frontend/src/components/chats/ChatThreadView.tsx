@@ -6,6 +6,7 @@ import { formatTimestamp, getFullTimestamp, getTimeBasedGreeting } from "@/utils
 import { throttle } from "@/utils/throttle";
 import { ChatNavigationControls } from "./ChatNavigationControls";
 import { createUserFriendlyErrorMessage } from "@/utils/errorUtils";
+import { showDevFeatureToast } from "@/utils/toast";
 import toast from "react-hot-toast";
 import { FiClock } from "react-icons/fi";
 import posthog from "posthog-js";
@@ -285,6 +286,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
   const handleSearch = async (incoming?: string) => {
     if (isStreaming) return;
+
+    if (profile?.has_connections !== "synced") {
+      showDevFeatureToast("Please upload LinkedIn connections to get started.");
+      setIsStreaming(false);
+      return;
+    }
+
     setIsStreaming(true);
 
     const q = incoming ?? query;
