@@ -336,6 +336,7 @@ Rules:
 - Always `ORDER BY embedding_generated_at DESC`.
 - Also use rank ts_rank_cd to rank the results.
 - Always `LIMIT 20`.
+- DO NOT use / between keywords whether in filters, traits or keyphrases like AI/Ml, only write Ai ML
 - Use plainto_tsquery for single words.
 - Use phraseto_tsquery for multi-word terms.
 - Use to_tsquery with :* for partial matches.
