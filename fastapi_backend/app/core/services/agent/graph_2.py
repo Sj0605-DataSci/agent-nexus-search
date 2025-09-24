@@ -137,6 +137,7 @@ Please provide:
 2. Filters for location, work experience, company, position, skills
 3. Key traits the user is looking for (e.g., "tech founder", "startup experience", "AI expertise")
 4. Exactly 5 important keyphrases for semantic matching (or fewer if query is simple)
+5. Focus on keywords proper nouns and never give / between keywords whether in filters, traits or keyphrases
 """
 
         # llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction)
@@ -154,8 +155,28 @@ Please provide:
         
         # Log query analysis
         try:
+            # Extract filter lists from SearchFilters object and add labels
+            filter_lists = []
+            if response.filters.location:
+                filter_lists.extend([f"filter:location:{item}" for item in response.filters.location])
+            if response.filters.work_experience:
+                filter_lists.extend([f"filter:work_experience:{item}" for item in response.filters.work_experience])
+            if response.filters.company:
+                filter_lists.extend([f"filter:company:{item}" for item in response.filters.company])
+            if response.filters.position:
+                filter_lists.extend([f"filter:position:{item}" for item in response.filters.position])
+            if response.filters.skills:
+                filter_lists.extend([f"filter:skills:{item}" for item in response.filters.skills])
+            
+            # Extract trait lists from SearchTraits object and add labels
+            trait_lists = [f"trait:{item}" for item in response.traits.traits] if response.traits.traits else []
+            
+            # Add labels to keyphrases
+            keyphrase_lists = [f"keyphrase:{item}" for item in response.keyphrases.keyphrases]
+            
+            # Combine all labeled lists
             await supabase_client.table("chat_messages").update({
-                "sub_queries": response.keyphrases.keyphrases,
+                "sub_queries": keyphrase_lists + filter_lists + trait_lists,
                 "weave_url": state["weave_url"],
             }).eq("id", current_message_id).execute()
             
@@ -315,6 +336,7 @@ Rules:
 - Always `ORDER BY embedding_generated_at DESC`.
 - Also use rank ts_rank_cd to rank the results.
 - Always `LIMIT 20`.
+- DO NOT use / between keywords whether in filters, traits or keyphrases like AI/Ml, only write Ai ML
 - Use plainto_tsquery for single words.
 - Use phraseto_tsquery for multi-word terms.
 - Use to_tsquery with :* for partial matches.
@@ -356,6 +378,8 @@ Requirements:
 - Always filter by `user_id IN ({user_ids})`
 - Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`
 - Search using full-text search: `search_tsv @@ plainto_tsquery('english', 'your terms here')`
+- example: `search_tsv @@ plainto_tsquery('english', 'Bangalore')`, `search_tsv @@ plainto_tsquery('english', 'AI ML')`
+- Don't use / between terms in inside plainto_tsquery like Ai/ML.
 - Return at most 20 rows, ordered by `embedding_generated_at DESC`
 - Always include `id` in the query
 - Do NOT use row_to_json or wrappers, return raw SELECT results
