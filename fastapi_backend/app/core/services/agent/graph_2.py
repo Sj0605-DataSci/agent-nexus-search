@@ -306,6 +306,7 @@ IMPORTANT: Use ONLY these exact column names from the connections table:
 - search_tsv (tsvector)
 
 Rules:
+- Think always go for keywords, rather typing Ai/ML experience type AI/ML, or AI and ML, or AI/ML, similarly 
 - Always filter by `user_id = '{user_id}'` (or `IN (...)` if multiple).
 - Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`.
 - Use multiple `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
@@ -314,6 +315,11 @@ Rules:
 - Always `ORDER BY embedding_generated_at DESC`.
 - Also use rank ts_rank_cd to rank the results.
 - Always `LIMIT 20`.
+- Use plainto_tsquery for single words.
+- Use phraseto_tsquery for multi-word terms.
+- Use to_tsquery with :* for partial matches.
+- At least one location keyword must be mandatory in the WHERE clause.
+- Other traits can be optional, included in the ts_rank_cd for ranking.
 
 Template of SQL to be followed:
 SELECT  
