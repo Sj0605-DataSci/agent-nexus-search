@@ -287,7 +287,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
   const handleSearch = async (incoming?: string) => {
     if (isStreaming) return;
 
-    if (profile?.has_connections !== "synced") {
+    if (userAccessToken && profile?.has_connections !== "synced") {
       showDevFeatureToast("Please upload LinkedIn connections to get started.");
       setIsStreaming(false);
       return;
