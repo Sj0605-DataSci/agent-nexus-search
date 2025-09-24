@@ -170,3 +170,18 @@ export interface ChatThread {
   last_message_at: string;
   weave_url?: string;
 }
+
+// Friend invitation types
+export interface InvitedFriend {
+  email: string;
+  profile_id: string;
+  status: string;
+}
+
+export interface InviteFriendsData {
+  invited: InvitedFriend[];
+  existing_friends: any[];
+  errors: any[];
+}
+
+export interface InviteFriendsResponse extends ApiResponse<InviteFriendsData> {}

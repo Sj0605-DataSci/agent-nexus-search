@@ -1,20 +1,130 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { FiLink } from "react-icons/fi";
 import toast from "react-hot-toast";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/store";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { showDevFeatureToast } from "@/utils/toast";
+import { isValidEmail } from "@/utils/formUtils";
+import { apiClient } from "@/integrations/fastapi/client";
 
 export default function FriendsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [emails, setEmails] = useState("");
+  // const [searchQuery, setSearchQuery] = useState("");
+  const [emails, setEmails] = useState<string[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const { profile, loading } = useAppSelector(state => state.profile);
   const isAuthenticated = !!profile?.id;
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
+
+  const addEmail = useCallback(
+    (email: string) => {
+      let processedEmail = email.trim();
+
+      const emailMatch = processedEmail.match(/<([^>]+)>/);
+      if (emailMatch) {
+        processedEmail = emailMatch[1];
+      }
+
+      const trimmedEmail = processedEmail.replace(/^['"<]|['">,;]$/g, "").trim();
+      if (trimmedEmail && isValidEmail(trimmedEmail) && !emails.includes(trimmedEmail) && emails.length < 3) {
+        setEmails(prevEmails => [...prevEmails, trimmedEmail]);
+        setInputValue("");
+        return true;
+      } else if (trimmedEmail && !isValidEmail(trimmedEmail)) {
+        toast.error("Please enter a valid email address.");
+      } else if (emails.length >= 3) {
+        toast.error("You can add up to 3 emails only.");
+        setInputValue("");
+      }
+      return false;
+    },
+    [emails, isValidEmail]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        addEmail(inputValue);
+      }
+    },
+    [inputValue, addEmail]
+  );
+
+  const removeEmail = useCallback((indexToRemove: number) => {
+    setEmails(emails.filter((_, index) => index !== indexToRemove));
+  }, [emails]);
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      const paste = e.clipboardData.getData("text");
+      const pastedEmails = paste.split(/[,\s]+/).filter(Boolean);
+      pastedEmails.forEach(email => addEmail(email));
+    },
+    [addEmail]
+  );
+
+  const handleBlur = useCallback(() => {
+    if (inputValue) {
+      addEmail(inputValue);
+    }
+  }, [inputValue, addEmail]);
+
+  const handleSend = useCallback(async () => {
+    let finalEmails = [...emails];
+    if (inputValue) {
+      if (addEmail(inputValue)) {
+        finalEmails.push(inputValue.trim());
+      } else {
+        return; // Stop if the last email is invalid
+      }
+    }
+
+    if (finalEmails.length === 0) {
+      toast.error("Please add at least one email.");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await apiClient.inviteFriends(finalEmails);
+
+      if (response.success) {
+        const { invited, existing_friends, errors } = response.data;
+
+        if (invited.length > 0) {
+          toast.success(`Successfully sent ${invited.length} invitation(s).`);
+        }
+        if (existing_friends.length > 0) {
+          toast.success(`${existing_friends.length} user(s) are already your friend.`);
+        }
+        if (errors.length > 0) {
+          errors.forEach((error: any) =>
+            toast.error(`Error inviting ${error.email}: ${error.error}`)
+          );
+        }
+
+        setEmails([]);
+        setInputValue("");
+      } else {
+        toast.error(response.message || "An unexpected error occurred.");
+      }
+    } catch (error) {
+      console.error("Failed to send invitations:", error);
+      toast.error("Failed to send invitations. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  }, [emails, inputValue, addEmail]);
 
   return (
     <div className="relative">
@@ -28,7 +138,7 @@ export default function FriendsPage() {
           <p className="text-muted-foreground">Friends can search each other's connections.</p>
         </div>
 
-        <div className="relative mb-8">
+        {/* <div className="relative mb-8">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
@@ -37,7 +147,7 @@ export default function FriendsPage() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
-        </div>
+        </div> */}
 
         <div className="rounded-lg border bg-card text-card-foreground border-[#5D9CEC50] bg-[#5D9CEC10]/50">
           <div className="flex flex-col space-y-1 p-3 md:p-6">
@@ -55,14 +165,6 @@ export default function FriendsPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <div className="text-sm font-medium">Email addresses</div>
-                      <button
-                        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-[#5D9CEC] hover:opacity-70 duration-0 h-auto gap-1.5 p-0"
-                        type="button"
-                        onClick={() => showDevFeatureToast()}
-                      >
-                        <FiLink className="h-4 w-4" />
-                        Invite link
-                      </button>
                     </div>
                     <div className="min-h-[2.25rem] w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm shadow-sm transition-colors relative flex flex-wrap items-start gap-1">
                       <span
@@ -71,10 +173,28 @@ export default function FriendsPage() {
                         john@gmail.com, jane@outlook.com, etc.
                       </span>
                       <div className="flex w-full flex-wrap items-center gap-1">
+                        {emails.map((email, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 bg-blue-100 border border-blue-200 rounded-full px-3 py-0.5 text-sm text-blue-800"
+                          >
+                            <span>{email}</span>
+                            <button
+                              onClick={() => removeEmail(index)}
+                              className="text-blue-500 hover:text-blue-700 transition-colors duration-200"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
                         <input
-                          className="flex-1 bg-transparent p-0 outline-none placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                          value={emails}
-                          onChange={e => setEmails(e.target.value)}
+                          className="flex-1 bg-transparent h-[26px] p-0 outline-none placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                          value={inputValue}
+                          onChange={handleInputChange}
+                          onKeyDown={handleKeyDown}
+                          onPaste={handlePaste}
+                          onBlur={handleBlur}
+                          placeholder={emails.length > 0 ? "" : "john@gmail.com, jane@outlook.com, etc."}
                         />
                       </div>
                     </div>
@@ -82,9 +202,10 @@ export default function FriendsPage() {
                 </div>
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => showDevFeatureToast()}
+                    onClick={handleSend}
                     className="bg-[#5D9CEC] hover:bg-green-700 text-white h-9 px-4 py-2 gap-2"
                     type="button"
+                    disabled={isSending}
                   >
                     Send
                   </Button>

@@ -489,6 +489,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
   const onSubmit = async (data: yup.InferType<typeof signInSchema>) => {
     setIsSubmitting(true);
     try {
+      router.prefetch("/chat/new");
       if (!data.email || !data.password) {
         toast.error("Please enter both email and password");
         setIsSubmitting(false);
@@ -749,7 +750,6 @@ interface SocialSignInProps {
 
 const SocialSignIn: React.FC<SocialSignInProps> = ({ mode = "signin", onError }) => {
   const [isLoading, setIsLoading] = useState(false);
-
 
   const handleSocialAuth = async () => {
     try {
