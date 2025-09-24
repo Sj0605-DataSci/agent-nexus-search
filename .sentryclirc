@@ -1,0 +1,9 @@
+[defaults]
+org=discoverminds
+project=test-web
+
+[auth]
+url=https://sentry.io/
+
+[mcp]
+url=https://mcp.sentry.dev/mcp/discoverminds/web-prod
