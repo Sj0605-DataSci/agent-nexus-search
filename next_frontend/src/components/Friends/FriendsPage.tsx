@@ -34,7 +34,12 @@ export default function FriendsPage() {
       }
 
       const trimmedEmail = processedEmail.replace(/^['"<]|['">,;]$/g, "").trim();
-      if (trimmedEmail && isValidEmail(trimmedEmail) && !emails.includes(trimmedEmail) && emails.length < 3) {
+      if (
+        trimmedEmail &&
+        isValidEmail(trimmedEmail) &&
+        !emails.includes(trimmedEmail) &&
+        emails.length < 3
+      ) {
         setEmails(prevEmails => [...prevEmails, trimmedEmail]);
         setInputValue("");
         return true;
@@ -59,9 +64,12 @@ export default function FriendsPage() {
     [inputValue, addEmail]
   );
 
-  const removeEmail = useCallback((indexToRemove: number) => {
-    setEmails(emails.filter((_, index) => index !== indexToRemove));
-  }, [emails]);
+  const removeEmail = useCallback(
+    (indexToRemove: number) => {
+      setEmails(emails.filter((_, index) => index !== indexToRemove));
+    },
+    [emails]
+  );
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -194,7 +202,9 @@ export default function FriendsPage() {
                           onKeyDown={handleKeyDown}
                           onPaste={handlePaste}
                           onBlur={handleBlur}
-                          placeholder={emails.length > 0 ? "" : "john@gmail.com, jane@outlook.com, etc."}
+                          placeholder={
+                            emails.length > 0 ? "" : "john@gmail.com, jane@outlook.com, etc."
+                          }
                         />
                       </div>
                     </div>

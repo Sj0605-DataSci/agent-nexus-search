@@ -790,7 +790,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                         <div className="flex w-full">
                           {renderAsTable(
                             m.content,
-                            profile?.full_name ? profile.full_name : 'Ashish Gupta'
+                            profile?.full_name ? profile.full_name : "Ashish Gupta"
                           )}
                         </div>
                       ) : (
