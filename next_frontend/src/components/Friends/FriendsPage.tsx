@@ -5,19 +5,133 @@ import { FiLink } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAppSelector } from "@/store";
+import { useAppDispatch, useAppSelector } from "@/store";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { showDevFeatureToast } from "@/utils/toast";
 import { isValidEmail } from "@/utils/formUtils";
 import { apiClient } from "@/integrations/fastapi/client";
+import { Friendship, FriendshipStatus } from "@/integrations/fastapi/types";
+import { respondToFriendRequest, revokeFriendRequest } from "@/store/friendshipsSlice";
+import FriendCardSkeleton from "./FriendCardSkeleton";
+
+const FriendListSection: React.FC<{
+  title: string;
+  count: number;
+  friends: Friendship[];
+  status: FriendshipStatus | "accepted";
+  loading: boolean;
+  dispatch: ReturnType<typeof useAppDispatch>;
+  currentUserId: string | undefined;
+}> = ({ title, count, friends, status, loading, dispatch, currentUserId }) => {
+  if (loading) {
+    return (
+      <div>
+        <h2 className="text-xl font-bold mb-4">
+          {title} ({count})
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <FriendCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4">
+        {title} ({count})
+      </h2>
+      {friends.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {friends.map(friend => (
+            <div
+              key={friend.id}
+              className="bg-white rounded-lg shadow-md p-4 transition-transform transform hover:scale-105 overflow-hidden"
+            >
+              <div className="flex items-center space-x-4">
+                <img
+                  src={friend.linkedin_profile_photo || "/default-avatar.png"}
+                  alt={friend.full_name}
+                  className="w-16 h-16 rounded-full border-2 border-gray-200"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-lg truncate">{friend.full_name}</p>
+                  <p className="text-sm text-gray-500 truncate">
+                    {friend.headline || friend.email}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end space-x-2">
+                {status === "pending" && friend.user_id !== currentUserId && (
+                  <>
+                    <Button
+                      variant="decline"
+                      size="sm"
+                      onClick={() =>
+                        dispatch(
+                          respondToFriendRequest({
+                            friendshipId: friend.friendship_id,
+                            status: "rejected",
+                          })
+                        )
+                      }
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      variant="accept"
+                      size="sm"
+                      onClick={() =>
+                        dispatch(
+                          respondToFriendRequest({
+                            friendshipId: friend.friendship_id,
+                            status: "accepted",
+                          })
+                        )
+                      }
+                    >
+                      Accept
+                    </Button>
+                  </>
+                )}
+                {status === "sent" && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => dispatch(revokeFriendRequest(friend.friendship_id))}
+                  >
+                    Revoke
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center py-12 border-2 border-gray-100 border-dashed rounded-lg">
+          <img src="/search/NoDataFound.svg" alt="No Data Found" className="w-10 h-10 mb-4" />
+          <p className="text-muted-foreground">No {title.toLowerCase()} found.</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function FriendsPage() {
+  const dispatch = useAppDispatch();
   // const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  const { profile, loading } = useAppSelector(state => state.profile);
+  const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
+  const {
+    data: friendshipsData,
+    status: friendshipsStatus,
+    error: friendshipsError,
+  } = useAppSelector(state => state.friendships);
   const isAuthenticated = !!profile?.id;
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,10 +250,10 @@ export default function FriendsPage() {
 
   return (
     <div className="relative">
-      {!isAuthenticated && !loading && <ComingSoonOverlay />}
+      {!isAuthenticated && !profileLoading && <ComingSoonOverlay />}
 
       <div
-        className={`container mx-auto px-4 ${!isAuthenticated && !loading ? "opacity-30 pointer-events-none" : ""}`}
+        className={`container mx-auto px-4 ${!isAuthenticated && !profileLoading ? "opacity-30 pointer-events-none" : ""}`}
       >
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Friends</h1>
@@ -225,12 +339,37 @@ export default function FriendsPage() {
           </div>
         </div>
 
-        {/* <div>
-          <h2 className="text-lg font-medium mb-4">Your Friends</h2>
-          <div className="text-muted-foreground text-center py-8 border rounded-lg">
-            <p>No friends yet. Invite some friends to get started!</p>
-          </div>
-        </div> */}
+        <div className="space-y-12 mt-8">
+          <FriendListSection
+            title="Your Friends"
+            count={friendshipsData.total_friends}
+            friends={friendshipsData.accepted}
+            status="accepted"
+            loading={friendshipsStatus === "loading"}
+            dispatch={dispatch}
+            currentUserId={profile?.id}
+          />
+          {friendshipsData.total_pending > 0 && (
+            <FriendListSection
+              title="Pending Invitations"
+              count={friendshipsData.total_pending}
+              friends={friendshipsData.pending}
+              status="pending"
+              loading={friendshipsStatus === "loading"}
+              dispatch={dispatch}
+              currentUserId={profile?.id}
+            />
+          )}
+          <FriendListSection
+            title="Sent Requests"
+            count={friendshipsData.total_sent}
+            friends={friendshipsData.sent}
+            status="sent"
+            loading={friendshipsStatus === "loading"}
+            dispatch={dispatch}
+            currentUserId={profile?.id}
+          />
+        </div>
       </div>
     </div>
   );

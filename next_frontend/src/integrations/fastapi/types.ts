@@ -185,3 +185,33 @@ export interface InviteFriendsData {
 }
 
 export interface InviteFriendsResponse extends ApiResponse<InviteFriendsData> {}
+
+// Friendship types
+export type FriendshipStatus = "accepted" | "pending" | "sent" | "rejected";
+
+export interface Friendship {
+  id: string;
+  user_id: string; // ID of the user who initiated the friendship
+  full_name: string;
+  email: string;
+  linkedin_url?: string;
+  headline?: string;
+  friendship_id: string;
+  status: FriendshipStatus;
+  linkedin_profile_photo?: string;
+  created_at: string;
+}
+
+export interface FriendshipsData {
+  accepted: Friendship[];
+  pending: Friendship[];
+  sent: Friendship[];
+  total_friends: number;
+  total_pending: number;
+  total_sent: number;
+}
+
+export interface FetchFriendshipsResponse extends ApiResponse<FriendshipsData> {}
+
+export interface FriendshipActionResponse
+  extends ApiResponse<{ friendship_id: string; status: FriendshipStatus }> {}

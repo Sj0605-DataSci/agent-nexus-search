@@ -4,6 +4,7 @@ import agentsReducer from "./agentsSlice";
 import uiReducer from "./uiSlice";
 import profileReducer from "./profileSlice";
 import chatThreadsReducer from "./chatThreadsSlice";
+import friendshipsReducer from "./friendshipsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     ui: uiReducer,
     profile: profileReducer,
     chatThreads: chatThreadsReducer,
+    friendships: friendshipsReducer,
   },
 });
 

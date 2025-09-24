@@ -4,6 +4,7 @@ import { BsMegaphone } from "react-icons/bs";
 import { GiSpiderWeb } from "react-icons/gi";
 import { FiSearch } from "react-icons/fi";
 import UseCasesSection from "./UseCasesSection";
+import VideoPlayer from "./VideoPlayer";
 
 const offeringsData = [
   {
@@ -87,25 +88,7 @@ const Offerings = () => {
         </div>
       </div>
       <UseCasesSection />
-      <div className="mx-auto max-w-6xl  mt-4 md:mt-12  px-4 sm:px-6 lg:px-8 xl:px-0">
-        <h2
-          id="offerings-title"
-          className="text-3xl font-medium tracking-tight text-[#0E3D15] sm:text-4xl md:text-5xl text-center "
-        >
-          Here's a Quick Demo
-        </h2>
-        <div className="relative mt-6 aspect-video overflow-hidden rounded-2xl shadow-xl">
-          <iframe
-            className="absolute top-0 left-0 w-full h-[101%] w-[101%] rounded-2xl border-none"
-            src="https://www.youtube.com/embed/_MD4aM5SyhI?rel=0&iv_load_policy=3&fs=0&modestbranding=1"
-            title="DiscoverMinds Quick Demo"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            frameBorder="0"
-            referrerPolicy="no-referrer"
-          ></iframe>
-        </div>
-      </div>
+      <VideoPlayer />
     </section>
   );
 };
