@@ -14,6 +14,7 @@ import { UserProfile } from "@/integrations/fastapi/types";
 import LinkedInUrlModal from "../Connections/LinkedInUrlModal";
 import toast from "react-hot-toast";
 import { LinkedInSection } from "./LinkedInSection";
+import { getNormalizedConnectionsStatus } from "@/utils/profile";
 
 interface ProfessionalProfileProps {
   onConnectionsClick: () => void;
@@ -158,7 +159,7 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
 
       <LinkedInSection
         linkedinUrl={profile?.linkedin_url}
-        hasConnections={profile?.has_connections}
+        hasConnections={getNormalizedConnectionsStatus(profile?.has_connections)}
         onEditClick={() => setLinkedinModalOpen(true)}
         onConnectionsClick={onConnectionsClick}
       />

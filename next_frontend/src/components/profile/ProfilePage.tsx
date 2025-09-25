@@ -7,6 +7,7 @@ import ProfessionalProfile from "@/components/profile/ProfessionalProfile";
 import UsageStatsCard from "@/components/profile/UsageStatsCard";
 import ImportConnectionsModal from "@/components/profile/ImportConnectionsModal";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
+import { getNormalizedConnectionsStatus } from "@/utils/profile";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,7 +16,8 @@ export default function ProfilePage() {
   const { profile, loading } = useAppSelector(s => s.profile);
 
   const handleConnectionsClick = () => {
-    if (profile && profile.has_connections === "no_data") {
+    const hasConnections = getNormalizedConnectionsStatus(profile?.has_connections);
+    if (hasConnections === "no_data") {
       setShowConnectionsModal(true);
     } else {
       router.push("/chat/new");
