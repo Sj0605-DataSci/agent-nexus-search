@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { useAppSelector } from "@/store";
 import { showDevFeatureToast } from "@/utils/toast";
+import { getNormalizedConnectionsStatus } from "@/utils/profile";
 import LinkedInUrlModal from "./LinkedInUrlModal";
 import ImportConnectionsModal from "../profile/ImportConnectionsModal";
 import ProfessionalProfile from "../profile/ProfessionalProfile";
@@ -16,6 +17,7 @@ import { LinkedInSection } from "../profile/LinkedInSection";
 export default function ConnectionsPage() {
   const router = useRouter();
   const { profile, loading } = useAppSelector(state => state.profile);
+  const hasConnections = getNormalizedConnectionsStatus(profile?.has_connections);
   const isAuthenticated = !!profile?.id;
   // const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
   // const [showConnectionsModal, setShowConnectionsModal] = useState(false);
@@ -139,10 +141,10 @@ export default function ConnectionsPage() {
                         <button
                           onClick={() => handleConnectionClick(connection)}
                           className={`inline-flex h-10 items-center justify-center rounded-md ${
-                            connection.id === "linkedin" && profile?.has_connections === "synced"
+                            connection.id === "linkedin" && hasConnections === "synced"
                               ? "bg-green-600 hover:bg-green-700"
                               : connection.id === "linkedin" &&
-                                  profile?.has_connections === "syncing"
+                                  hasConnections === "syncing"
                                 ? "bg-blue-600 hover:bg-blue-700"
                                 : connection.enabled
                                   ? "bg-primary hover:bg-indigo-700"
@@ -151,40 +153,38 @@ export default function ConnectionsPage() {
                           disabled={
                             !connection.enabled ||
                             !profile?.email ||
-                            (connection.id === "linkedin" && profile?.has_connections === "syncing")
+                            (connection.id === "linkedin" && hasConnections === "syncing")
                           }
                         >
                           <span className="flex items-center gap-1.5">
-                            {connection.id === "linkedin" &&
-                              profile?.has_connections === "synced" && <>Connected</>}
-                            {connection.id === "linkedin" &&
-                              profile?.has_connections === "syncing" && (
-                                <>
-                                  <div className="animate-spin h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full" />
-                                  Syncing
-                                </>
-                              )}
-                            {(connection.id !== "linkedin" ||
-                              profile?.has_connections === "no_data" ||
-                              !profile?.has_connections) && <>Connect</>}
-                            {(connection.id !== "linkedin" ||
-                              profile?.has_connections === "no_data" ||
-                              !profile?.has_connections) && (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="ml-0.5"
-                              >
-                                <path d="M5 12h14"></path>
-                                <path d="m12 5 7 7-7 7"></path>
-                              </svg>
+                            {connection.id === "linkedin" && hasConnections === "synced" && (
+                              <>Connected</>
+                            )}
+                            {connection.id === "linkedin" && hasConnections === "syncing" && (
+                              <>
+                                <div className="animate-spin h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full" />
+                                Syncing
+                              </>
+                            )}
+                            {(connection.id !== "linkedin" || hasConnections === "no_data") && (
+                              <>
+                                Connect
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="ml-0.5"
+                                >
+                                  <path d="M5 12h14"></path>
+                                  <path d="m12 5 7 7-7 7"></path>
+                                </svg>
+                              </>
                             )}
                           </span>
                         </button>
