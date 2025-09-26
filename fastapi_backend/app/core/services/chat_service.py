@@ -213,7 +213,7 @@ class ChatService:
             raise
     
     @traceable(project_name="Discoverminds",name="stream_chat")
-    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = ""):
+    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = "", device_id: str = "", device_type: str = "", client_ip: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
         
@@ -308,13 +308,19 @@ class ChatService:
                     "user_id": user_id, 
                     "id": thread_id,
                     "title": title,
-                    "weave_url": weave_url
+                    "weave_url": weave_url,
+                    "device_id": device_id,
+                    "device_type": device_type,
+                    "client_ip": client_ip
                 }).execute()
                 
                 logger.info("Created new chat thread",
                            user_id=user_id,
                            agent_id=agent_id,
                            chat_thread_id=thread_id,
+                           device_id=device_id,
+                           device_type=device_type,
+                           client_ip=client_ip,
                            title=title)
                 
                 # Invalidate chat threads cache for this user
@@ -323,7 +329,10 @@ class ChatService:
                 # Thread exists, update it if needed
                 await self.client.table("chat_threads").update({
                     "title": title,
-                    "weave_url": weave_url
+                    "weave_url": weave_url,
+                    "device_id": device_id,
+                    "device_type": device_type,
+                    "client_ip": client_ip
                 }).eq("id", thread_id).execute()
                 
                 logger.info("Updated existing chat thread",
@@ -350,7 +359,10 @@ class ChatService:
                     "weave_url": weave_url,
                     "format": format,
                     "search_mode":search_mode,
-                    "world_connections":world_connections
+                    "world_connections":world_connections,
+                    "device_id": device_id,
+                    "device_type": device_type,
+                    "client_ip": client_ip
                 }).execute()
                 
                 # Extract the message ID from the response

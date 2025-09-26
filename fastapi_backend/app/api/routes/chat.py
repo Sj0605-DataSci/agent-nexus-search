@@ -182,6 +182,9 @@ async def public_stream_chat(
         request_id = await enqueue_chat_task(
             user_id=settings.ASHISH_USERID,
             agent_id=settings.ASHISH_AGENTID,
+            device_id=x_device_id,
+            device_type=x_device_type,
+            client_ip=x_client_ip,
             messages=request.messages,
             format="table",
             search_mode="basic",
