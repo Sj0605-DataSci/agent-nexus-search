@@ -342,28 +342,36 @@ Rules:
 - Use to_tsquery with :* for partial matches.
 - At least one location keyword must be mandatory in the WHERE clause.
 - Other traits can be optional, included in the ts_rank_cd for ranking.
+- Use location and other keyword which are defined in and clause and others do OR clause. For and use && and  for OR use ||
 
 Template of SQL to be followed:
+Query: See early stage fintech founders in Delhi
 SELECT  
     id, user_id, first_name, last_name, headline, about_section,
     experience_json, education_json, skills, linkedin_url,
     company, position, location, profile_photo_url, embedding_generated_at,
     ts_rank_cd(
       search_tsv,
-      (plainto_tsquery('english', 'keyword')
-       && plainto_tsquery('english', 'keyword'))
-    ) AS rank
+      (plainto_tsquery('english', 'Delhi')
+       &&( plainto_tsquery('english', 'Fintech')
+       || plainto_tsquery('english', 'Founder')
+       || phraseto_tsquery('english', 'Early-stage founder')
+       || phraseto_tsquery('english', 'Fintech experience'))
+    )) AS rank
 FROM connections
-WHERE user_id IN ({user_ids})
+WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
   AND about_section IS NOT NULL
   AND experience_json IS NOT NULL
   AND embedding_generated_at IS NOT NULL
   AND search_tsv @@ (
-        plainto_tsquery('english', 'keyword')
-    &&  plainto_tsquery('english', 'keyword')
-  )
+        plainto_tsquery('english', 'Delhi')
+    &&(  plainto_tsquery('english', 'Fintech')
+    ||  plainto_tsquery('english', 'Founder')
+    ||  phraseto_tsquery('english', 'Early-stage founder')
+    ||  phraseto_tsquery('english', 'Fintech experience')
+  ))
 ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20;
+LIMIT 20
 
 
 FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
@@ -385,28 +393,33 @@ Requirements:
 - Do NOT use row_to_json or wrappers, return raw SELECT results
 
 Example format:
-Query: find me Designers in Delhi with 6 years of experience
-
+Query: See early stage fintech founders in Delhi
 SELECT  
     id, user_id, first_name, last_name, headline, about_section,
     experience_json, education_json, skills, linkedin_url,
     company, position, location, profile_photo_url, embedding_generated_at,
     ts_rank_cd(
       search_tsv,
-      (plainto_tsquery('english', 'Designer')
-       && plainto_tsquery('english', 'Delhi'))
-    ) AS rank
+      (plainto_tsquery('english', 'Delhi')
+       &&( plainto_tsquery('english', 'Fintech')
+       || plainto_tsquery('english', 'Founder')
+       || phraseto_tsquery('english', 'Early-stage founder')
+       || phraseto_tsquery('english', 'Fintech experience'))
+    )) AS rank
 FROM connections
-WHERE user_id IN ({user_ids})
+WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
   AND about_section IS NOT NULL
   AND experience_json IS NOT NULL
   AND embedding_generated_at IS NOT NULL
   AND search_tsv @@ (
-        plainto_tsquery('english', 'Designer')
-    &&  plainto_tsquery('english', 'Delhi')
-  )
+        plainto_tsquery('english', 'Delhi')
+    &&(  plainto_tsquery('english', 'Fintech')
+    ||  plainto_tsquery('english', 'Founder')
+    ||  phraseto_tsquery('english', 'Early-stage founder')
+    ||  phraseto_tsquery('english', 'Fintech experience')
+  ))
 ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20;
+LIMIT 20
 """
 
         keyword_results = []
