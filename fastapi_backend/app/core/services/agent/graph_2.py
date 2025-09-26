@@ -338,11 +338,11 @@ Rules:
 - Always `LIMIT 20`.
 - DO NOT use / between keywords whether in filters, traits or keyphrases like AI/Ml, only write Ai ML
 - Use plainto_tsquery for single words.
-- Use phraseto_tsquery for multi-word terms.
-- Use to_tsquery with :* for partial matches.
 - At least one location keyword must be mandatory in the WHERE clause.
 - Other traits can be optional, included in the ts_rank_cd for ranking.
 - Use location and other keyword which are defined in and clause and others do OR clause. For and use && and  for OR use ||
+- Use very little less && and || statements, as they can cause sql timeout
+- Do not use more than 3 || or && statements in search_tsv for either ranking or getting results
 
 Template of SQL to be followed:
 Query: See early stage fintech founders in Delhi
@@ -353,10 +353,8 @@ SELECT
     ts_rank_cd(
       search_tsv,
       (plainto_tsquery('english', 'Delhi')
-       &&( plainto_tsquery('english', 'Fintech')
        || plainto_tsquery('english', 'Founder')
-       || phraseto_tsquery('english', 'Early-stage founder')
-       || phraseto_tsquery('english', 'Fintech experience'))
+       || plainto_tsquery('english', 'Early-stage founder'))
     )) AS rank
 FROM connections
 WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
@@ -365,10 +363,8 @@ WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a4
   AND embedding_generated_at IS NOT NULL
   AND search_tsv @@ (
         plainto_tsquery('english', 'Delhi')
-    &&(  plainto_tsquery('english', 'Fintech')
     ||  plainto_tsquery('english', 'Founder')
-    ||  phraseto_tsquery('english', 'Early-stage founder')
-    ||  phraseto_tsquery('english', 'Fintech experience')
+    ||  plainto_tsquery('english', 'Early-stage founder')
   ))
 ORDER BY rank DESC, embedding_generated_at DESC
 LIMIT 20
@@ -402,10 +398,8 @@ SELECT
     ts_rank_cd(
       search_tsv,
       (plainto_tsquery('english', 'Delhi')
-       &&( plainto_tsquery('english', 'Fintech')
        || plainto_tsquery('english', 'Founder')
-       || phraseto_tsquery('english', 'Early-stage founder')
-       || phraseto_tsquery('english', 'Fintech experience'))
+       || plainto_tsquery('english', 'Early-stage founder')
     )) AS rank
 FROM connections
 WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
@@ -414,10 +408,8 @@ WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a4
   AND embedding_generated_at IS NOT NULL
   AND search_tsv @@ (
         plainto_tsquery('english', 'Delhi')
-    &&(  plainto_tsquery('english', 'Fintech')
     ||  plainto_tsquery('english', 'Founder')
-    ||  phraseto_tsquery('english', 'Early-stage founder')
-    ||  phraseto_tsquery('english', 'Fintech experience')
+    ||  plainto_tsquery('english', 'Early-stage founder')
   ))
 ORDER BY rank DESC, embedding_generated_at DESC
 LIMIT 20
