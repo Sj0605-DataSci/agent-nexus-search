@@ -132,6 +132,9 @@ class ChatWorker:
             search_mode = task.get("search_mode", "basic")
             world_connections = task.get("world_connections", "world")
             thread_id = task.get("thread_id", "")
+            device_id = task.get("device_id", "")
+            device_type = task.get("device_type", "")
+            client_ip = task.get("client_ip", "")
             
             # Process the chat request and stream results
             async for update in chat_service.stream_chat(
@@ -141,7 +144,10 @@ class ChatWorker:
                 format,
                 search_mode,
                 world_connections,
-                thread_id
+                thread_id,
+                device_id,
+                device_type,
+                client_ip
             ):
                 # Convert the update to a StreamingChatUpdate
                 if update["type"] == "thinking":
@@ -319,6 +325,9 @@ class ChatWorker:
 async def enqueue_chat_task(
     user_id: str, 
     agent_id: str, 
+    device_id: str,
+    device_type: str,
+    client_ip: str,
     messages: Union[str, List[Dict[str, Any]]],
     format: str = "table",
     search_mode: str = "basic",
@@ -355,6 +364,9 @@ async def enqueue_chat_task(
             "request_id": request_id,
             "user_id": user_id,
             "agent_id": agent_id,
+            "device_id": device_id,
+            "device_type": device_type,
+            "client_ip": client_ip,
             "messages": messages,
             "format": format,
             "search_mode": search_mode,
