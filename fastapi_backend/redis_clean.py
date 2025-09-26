@@ -1,8 +1,8 @@
 import redis
 
 # Use the exact Railway connection string
-# REDIS_URL = "redis://default:davSzHLaGvJCERCPGIuWtMKJwkgnaOuM@ballast.proxy.rlwy.net:11091"
-REDIS_URL = "redis://default:UeCYLmgJEgkxZpzvZDeXIpOxBCrtkXMd@gondola.proxy.rlwy.net:22961"
+REDIS_URL = "redis://default:davSzHLaGvJCERCPGIuWtMKJwkgnaOuM@ballast.proxy.rlwy.net:11091"  #production
+# REDIS_URL = "redis://default:UeCYLmgJEgkxZpzvZDeXIpOxBCrtkXMd@gondola.proxy.rlwy.net:22961"  #development
 
 try:
     r = redis.from_url(REDIS_URL, decode_responses=True)
