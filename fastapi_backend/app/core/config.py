@@ -106,7 +106,8 @@ class Settings(BaseSettings):
     LANGSMITH_PROJ_ID: str = os.getenv("LANGSMITH_PROJ_ID","")
     LANGSMITH_ORG_ID: str = os.getenv("LANGSMITH_ORG_ID","")
     LANGSMITH_WORKSPACE_ID: str = os.getenv("LANGSMITH_WORKSPACE_ID","")
-    
+    # MAXIM_API_KEY: str = os.getenv("MAXIM_API_KEY","")
+    # MAXIM_LOGGER_ID: str = os.getenv("MAXIM_LOGGER_ID","")
     # Logging settings
     ENABLE_STRUCTURED_LOGGING: bool = os.getenv("ENABLE_STRUCTURED_LOGGING", "true").lower() == "true"
 

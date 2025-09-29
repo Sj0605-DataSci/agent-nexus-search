@@ -7,15 +7,16 @@ from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
 from app.db.clients import get_async_supabase_client
 from app.core.config import settings
 from app.models.schemas import QueryAnalysis, ScoredProfilesResponse
-from langsmith import traceable
 from app.core.utils.cache import invalidate_chat_messages_cache
 import vecs
 import json
 import asyncio
 from urllib.parse import quote_plus
-from langsmith import traceable
 # Add imports for LangGraph caching
 from app.db.redis_client import redis_client
+# from app.core.utils.maxim_logger import maxim_client, max_logger
+# from maxim.decorators import span
+# from maxim.decorators import current_trace
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
@@ -35,7 +36,6 @@ def get_vecs_client():
     return client
 
 
-@traceable(project_name="Discoverminds",name="get_research_topic")
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """Get the research topic from the messages."""
     if not messages or len(messages) == 0:
@@ -65,7 +65,7 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 
 # ===== NODE 1: Query Analysis =====
-@traceable(project_name="Discoverminds",name="query_analysis")
+# @span(name="query_analysis", logger=max_logger, trace_id="1234567")
 async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
     """Analyze user query and extract filters, traits, and keyphrases.
     
@@ -79,7 +79,6 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
     try:
         if hasattr(state, "model_dump"):
             state = state.model_dump()
-
         supabase_client = await get_async_supabase_client()
         print("Node 1: Query Analysis (Cache Miss - Computing)")
         
@@ -233,8 +232,7 @@ Please provide:
     except Exception as e:
         raise
 
-# ===== NODE 2: SQL Search (Parallel) =====
-@traceable(project_name="Discoverminds",name="sql_search")
+# @span(name="sql_search", logger=max_logger, trace_id="1234567")
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
     try:
@@ -242,7 +240,6 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             state = state.model_dump()
         
         print("Node 2: SQL Search")
-        
         query_analysis = state.get("query_analysis", {})
         agent_config = state["agent_config"]
         user_id = agent_config["user_id"]
@@ -517,15 +514,14 @@ LIMIT 20
     except Exception as e:
         raise
 
-# ===== NODE 3: Vector Search (Parallel) =====
-@traceable(project_name="Discoverminds",name="vector_search")
+# @span(name="vector_search", logger=max_logger, trace_id="1234567")
 async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Perform vector search on keyword results using basic_info_embedding and experience_embedding."""
     try:
         print("Node 3: Reranking from vectors")
         if hasattr(state, "model_dump"):
             state = state.model_dump()
-
+        
         query_analysis = state.get("query_analysis", {})
         keyphrases = query_analysis.get("keyphrases", {}).get("keyphrases", [])
         agent_config = state["agent_config"]
@@ -811,7 +807,6 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         print(f"Error in vector_search: {str(e)}")
         raise
 
-@traceable(project_name="Discoverminds",name="embedding gen")
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding using Jina API"""
     try:
@@ -839,8 +834,7 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
         print(f"Error generating Jina embedding: {e}")
         return None
 
-
-@traceable(project_name="Discoverminds",name="finalize_sql_answer")
+# @span(name="finalize_sql_answer", logger=max_logger, trace_id="1234567")
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):

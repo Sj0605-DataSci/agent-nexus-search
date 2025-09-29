@@ -1,14 +1,13 @@
 from typing import Dict, Any, List, Union
-from langsmith import traceable, Client
+from langsmith import Client
 from app.core.services.agent.graph import graph
 from app.core.services.agent.graph_2 import graph_2
 from langchain_core.messages import HumanMessage, AIMessage
 import uuid
 import json
-from app.core.config import settings
 from app.core.services.credit_service import CreditService
-from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
-from app.core.services.agent.prompts import query_title_generation
+from app.core.utils.llm_utils import GroqChatModel
+from app.core.services.agent.prompts import query_title_system_instruction
 from app.models.schemas import TitleAndIntentGeneratorOutput
 from app.core.structured_logger import get_structured_logger
 from app.core.profiling import profile_async, AsyncTimer
@@ -19,10 +18,13 @@ from app.core.utils.cache import (
     invalidate_chat_threads_cache, invalidate_chat_messages_cache
 )
 from app.db.redis_client import redis_client
-from langsmith.run_helpers import get_current_run_tree
+# from app.core.utils.maxim_logger import maxim_langchain_tracer, max_logger
+# from maxim.decorators import trace, current_trace
 
 logger = get_structured_logger(__name__)
 langsmithclient = Client(api_key="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")
+# trace=current_trace()
+# print(trace)
 
 class ChatService:
     """Service for handling agent template operations"""
@@ -212,7 +214,8 @@ class ChatService:
             logger.error(f"Error in research agent chat: {str(e)}")
             raise
     
-    @traceable(project_name="Discoverminds",name="stream_chat")
+    # @traceable(project_name="Discoverminds",name="stream_chat")
+    # @trace(name="stream_chat",logger=max_logger)
     async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = "", device_id: str = "", device_type: str = "", client_ip: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
@@ -229,17 +232,15 @@ class ChatService:
             # Capture the Weave operation ID
                 # Check if user can perform this search
             credit_service = CreditService(client=self.client)
-            run_tree = get_current_run_tree()
-            if run_tree:
-                workspace_id = settings.LANGSMITH_WORKSPACE_ID
-                project_id=settings.LANGSMITH_PROJ_ID  # fetch from LangSmith API
+            # run_tree = get_current_run_tree()
+            # if run_tree:
+            #     workspace_id = settings.LANGSMITH_WORKSPACE_ID
+            #     project_id=settings.LANGSMITH_PROJ_ID  # fetch from LangSmith API
 
-                run_url = (
-        f"https://smith.langchain.com/o/{workspace_id}/projects/p/{project_id}"
-        f"?peek={run_tree.id}&peeked_trace={run_tree.id}"
-    )
+            #     run_url =""
                     
             limit_check = await credit_service.check_search_limit(user_id, search_mode=search_mode)
+            trace_id = current_trace()
                     
             if not limit_check.get("can_search", False):
                         # User cannot perform search, yield error and return
@@ -257,7 +258,7 @@ class ChatService:
                 }
                 return
 
-            weave_url = run_url
+            weave_url = ""
             
             # Fetch agent configuration
             agent_config = await self.get_agent_config(user_id, agent_id)
@@ -285,12 +286,8 @@ class ChatService:
             if thread_id == "new":
                 thread_id = str(uuid.uuid4())
                 
-            # Generate a title for the thread
-            system_instruction = "You are {agent_config} and you are a people search engine."
-            # llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0,system_instruction=system_instruction)
-            llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0,system_instruction=system_instruction)
-            title_gen_prompt = query_title_generation.format(latest_message=latest_message)
-            response_title, usage_metadata = await llm.with_structured_output(schema_type=TitleAndIntentGeneratorOutput, prompt=title_gen_prompt)
+            llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0,system_instruction=query_title_system_instruction)
+            response_title, usage_metadata = await llm.with_structured_output(schema_type=TitleAndIntentGeneratorOutput, prompt=latest_message)
             title = response_title.title
             intent = response_title.intent
             direct_answer_response = response_title.direct_answer_response
@@ -602,6 +599,7 @@ class ChatService:
                     }
                     
                     # Stream the graph execution
+                    # async for chunk in graph_2.astream(initial_state, stream_mode=["messages", "updates"], config={"callbacks": [maxim_langchain_tracer], "trace_id": trace_id}):
                     async for chunk in graph_2.astream(initial_state, stream_mode=["messages", "updates"]):
                         chunk_type, chunk_data = chunk
                         
