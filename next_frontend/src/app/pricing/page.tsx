@@ -6,9 +6,10 @@ import NewFooter from "@/components/Footer/NewFooter";
 
 export const metadata = {
   title: "Pricing | DiscoverMinds.ai",
-  description: "View our transparent pricing plans for all business sizes. Choose the plan that fits your needs.",
+  description:
+    "View our transparent pricing plans for all business sizes. Choose the plan that fits your needs.",
   alternates: {
-    canonical: 'https://www.discoverminds.ai/pricing',
+    canonical: "https://www.discoverminds.ai/pricing",
   },
   robots: {
     index: true,
@@ -19,16 +20,18 @@ export const metadata = {
     },
   },
   openGraph: {
-    title: 'Pricing | DiscoverMinds.ai',
-    description: 'View our transparent pricing plans for all business sizes. Choose the plan that fits your needs.',
-    url: 'https://www.discoverminds.ai/pricing',
-    siteName: 'DiscoverMinds.ai',
-    type: 'website',
+    title: "Pricing | DiscoverMinds.ai",
+    description:
+      "View our transparent pricing plans for all business sizes. Choose the plan that fits your needs.",
+    url: "https://www.discoverminds.ai/pricing",
+    siteName: "DiscoverMinds.ai",
+    type: "website",
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'Pricing | DiscoverMinds.ai',
-    description: 'View our transparent pricing plans for all business sizes. Choose the plan that fits your needs.',
+    card: "summary_large_image",
+    title: "Pricing | DiscoverMinds.ai",
+    description:
+      "View our transparent pricing plans for all business sizes. Choose the plan that fits your needs.",
   },
 };
 
