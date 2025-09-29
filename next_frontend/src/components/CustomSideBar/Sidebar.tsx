@@ -168,14 +168,20 @@ const Sidebar = () => {
   const { data: friendshipsData } = useAppSelector(state => state.friendships);
 
   const navItems = useMemo(() => {
-    const hasPendingFriendRequests = 
+    const hasPendingFriendRequests =
       friendshipsData.pending.some(f => f.user_id !== (cachedProfile || profile)?.id) &&
       friendshipsData.total_pending > 0;
 
     const items = [
       { href: "/connections", label: "Connections", icon: <FiGlobe /> },
-      { href: "/friends", label: "Friends", icon: <FiSmile />, notification: hasPendingFriendRequests },
+      {
+        href: "/friends",
+        label: "Friends",
+        icon: <FiSmile />,
+        notification: hasPendingFriendRequests,
+      },
       { href: "/groups", label: "Groups", icon: <FiUsers /> },
+      { href: "/research-person", label: "Research a person", icon: <FiSearch /> },
     ];
 
     const effectiveProfile = cachedProfile || profile;
@@ -197,15 +203,21 @@ const Sidebar = () => {
     dispatch(fetchChatThreads());
   }, [dispatch, profile?.id, cachedProfile]);
 
-  const loadMoreThreads = useCallback(() => {
-    const effectiveProfile = cachedProfile || profile;
-    if (!effectiveProfile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+  const loadMoreThreads = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
 
-    setLoadingMoreThreads(true);
-    dispatch(loadMoreChatThreads()).finally(() => {
-      setLoadingMoreThreads(false);
-    });
-  }, [hasMoreThreads, loadingMoreThreads, dispatch, profile?.id, cachedProfile, loadingThreads]);
+      const effectiveProfile = cachedProfile || profile;
+      if (!effectiveProfile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+
+      setLoadingMoreThreads(true);
+      dispatch(loadMoreChatThreads()).finally(() => {
+        setLoadingMoreThreads(false);
+      });
+    },
+    [hasMoreThreads, loadingMoreThreads, dispatch, profile?.id, cachedProfile, loadingThreads]
+  );
 
   useEffect(() => {
     const effectiveProfile = cachedProfile || profile;

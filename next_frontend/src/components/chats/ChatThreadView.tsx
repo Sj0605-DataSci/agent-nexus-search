@@ -744,7 +744,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
               <div className="max-w-4xl mx-auto px-2 w-full  md:px-0 overflow-y-scroll scrollbar-hide">
                 <div
                   key={m?.id || 1}
-                  className="rounded-xl flex-col flex-1 h-full w-full space-y-4 overflow-hidden flex items-start bg-white"
+                  className="rounded-md flex-col flex-1 h-full w-full space-y-4 overflow-hidden flex items-start bg-white"
                 >
                   {isStreaming && (
                     <SearchQueryDisplay
@@ -756,7 +756,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                   )}
 
                   {(!m.sources || m.sources.length === 0) && !isStreaming && (
-                    <div className="text-gray-700 w-full ">
+                    <div className="text-gray-700  w-full ">
                       {isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
                         <div className="flex flex-col items-center justify-center w-full py-10  px-4 mx-auto">
                           <Image
@@ -795,7 +795,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                       ) : /(first_name|last_name)/i.test(m.content) ||
                         (typeof m.content === "string" &&
                           (m.content.startsWith("[{") || m.content.startsWith("{"))) ? (
-                        <div className="flex w-full">
+                        <div className="flex  w-full">
                           {renderAsTable(
                             m.content,
                             profile?.full_name ? profile.full_name : "Ashish Gupta"

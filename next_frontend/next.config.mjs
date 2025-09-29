@@ -96,7 +96,7 @@ const nextConfig = {
 export default withSentryConfig(nextConfig, {
   org: "discoverminds",
   project: "web-prod",
-  silent: !process.env.CI,
+  silent: process.env.NODE_ENV != "production",
   widenClientFileUpload: true,
   tunnelRoute: "/monitoring",
   disableLogger: true,
