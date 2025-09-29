@@ -92,14 +92,17 @@ const friendshipsSlice = createSlice({
           state.data.total_pending -= 1;
         }
       })
-      .addCase(revokeFriendRequest.fulfilled, (state, action: PayloadAction<{ friendship_id: string }>) => {
-        const { friendship_id } = action.payload;
-        const friendIndex = state.data.sent.findIndex(f => f.friendship_id === friendship_id);
-        if (friendIndex !== -1) {
-          state.data.sent.splice(friendIndex, 1);
-          state.data.total_sent -= 1;
+      .addCase(
+        revokeFriendRequest.fulfilled,
+        (state, action: PayloadAction<{ friendship_id: string }>) => {
+          const { friendship_id } = action.payload;
+          const friendIndex = state.data.sent.findIndex(f => f.friendship_id === friendship_id);
+          if (friendIndex !== -1) {
+            state.data.sent.splice(friendIndex, 1);
+            state.data.total_sent -= 1;
+          }
         }
-      });
+      );
   },
 });
 

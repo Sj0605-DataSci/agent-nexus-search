@@ -28,3 +28,7 @@ export const getInitials = (name: string): string => {
     return (firstInitial + lastInitial).toUpperCase();
   }
 };
+export const capitalize = (s: string): string => {
+  if (typeof s !== "string" || !s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};

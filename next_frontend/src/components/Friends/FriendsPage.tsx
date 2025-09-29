@@ -51,11 +51,11 @@ const FriendListSection: React.FC<{
               className="bg-white rounded-lg shadow-md p-4 transition-transform transform hover:scale-105 overflow-hidden"
             >
               <div className="flex items-center space-x-4">
-                <img
+                {/* <img
                   src={friend.linkedin_profile_photo || "/default-avatar.png"}
                   alt={friend.full_name}
                   className="w-16 h-16 rounded-full border-2 border-gray-200"
-                />
+                /> */}
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-lg truncate">{friend.full_name}</p>
                   <p className="text-sm text-gray-500 truncate">
