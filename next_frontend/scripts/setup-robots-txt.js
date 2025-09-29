@@ -1,15 +1,16 @@
-import { writeFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const isProduction = process.env.NODE_ENV === 'production' && 
-                    process.env.NEXT_PUBLIC_APP_ENV !== 'staging' &&
-                    process.env.VERCEL_ENV !== 'preview';
+const isProduction =
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PUBLIC_APP_ENV !== "staging" &&
+  process.env.VERCEL_ENV !== "preview";
 
-const robotsTxtPath = join(process.cwd(), 'public/robots.txt');
+const robotsTxtPath = join(process.cwd(), "public/robots.txt");
 
 if (isProduction) {
   // Production - allow crawling
@@ -28,7 +29,7 @@ Disallow: /500
 Sitemap: https://www.discoverminds.ai/sitemap.xml`;
 
   writeFileSync(robotsTxtPath, productionContent);
-  console.log('✅ Generated production robots.txt');
+  console.log("✅ Generated production robots.txt");
 } else {
   // Staging/development - block all crawlers
   const stagingContent = `# Staging/Development robots.txt
@@ -39,5 +40,5 @@ User-agent: *
 Disallow: /`;
 
   writeFileSync(robotsTxtPath, stagingContent);
-  console.log('🛡️  Generated staging/development robots.txt - All crawlers blocked');
+  console.log("🛡️  Generated staging/development robots.txt - All crawlers blocked");
 }
