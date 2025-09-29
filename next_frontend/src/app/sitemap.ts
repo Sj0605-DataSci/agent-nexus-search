@@ -93,12 +93,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   // Combine all routes
-  const routes = [
-    ...corePages,
-    ...marketingPages,
-    ...blogPages,
-    ...legalPages,
-  ];
+  const routes = [...corePages, ...marketingPages, ...blogPages, ...legalPages];
 
   return routes;
 }

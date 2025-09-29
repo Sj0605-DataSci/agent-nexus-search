@@ -8,6 +8,7 @@ import { store } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { fetchProfile } from "@/store/profileSlice";
 import { fetchAgentTemplates, fetchHiredAgents } from "@/store/agentsSlice";
+import { fetchFriendships } from "@/store/friendshipsSlice";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
@@ -32,6 +33,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch();
   const profile = useAppSelector(state => state.profile.profile);
   const agentsStatus = useAppSelector(state => state.agents.status);
+  const friendshipsStatus = useAppSelector(state => state.friendships.status);
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
@@ -137,6 +139,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
             await Promise.all([
               dispatch(fetchAgentTemplates()).unwrap(),
               dispatch(fetchHiredAgents()).unwrap(),
+              dispatch(fetchFriendships("all")).unwrap(),
             ]);
           } catch (agentError) {
             console.error("Error fetching agent data:", agentError);
@@ -160,17 +163,25 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
           resetAxiosInstanceState();
         }
       }
-    } else if (profile && agentsStatus === "idle") {
-      try {
-        await Promise.all([
-          dispatch(fetchAgentTemplates()).unwrap(),
-          dispatch(fetchHiredAgents()).unwrap(),
-        ]);
-      } catch (agentError) {
-        console.error("Error fetching agent data after refresh:", agentError);
+    } else if (profile) {
+      const promisesToAwait = [];
+      if (agentsStatus === "idle") {
+        promisesToAwait.push(dispatch(fetchAgentTemplates()).unwrap());
+        promisesToAwait.push(dispatch(fetchHiredAgents()).unwrap());
+      }
+      if (friendshipsStatus === "idle") {
+        promisesToAwait.push(dispatch(fetchFriendships("all")).unwrap());
+      }
+
+      if (promisesToAwait.length > 0) {
+        try {
+          await Promise.all(promisesToAwait);
+        } catch (error) {
+          console.error("Error fetching data after refresh:", error);
+        }
       }
     }
-  }, [isInitialized, session, profile, dispatch, agentsStatus]);
+  }, [isInitialized, session, profile, dispatch, agentsStatus, friendshipsStatus]);
 
   useEffect(() => {
     let isMounted = true;

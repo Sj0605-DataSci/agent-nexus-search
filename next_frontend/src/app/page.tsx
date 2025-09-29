@@ -6,7 +6,7 @@ import PricingPlans from "@/components/Homepage/PricingPlans";
 import NewHeroSection from "@/components/Homepage/NewHeroSection";
 import FaqSection from "@/components/Pricing/FaqSection";
 import NewFooter from "@/components/Footer/NewFooter";
-import React, { Suspense } from "react";
+import React from "react";
 import WhyDiscoverMinds from "@/components/Homepage/WhyDiscoverMinds";
 
 export const dynamic = "force-static";
@@ -92,16 +92,8 @@ export default function Home() {
         <NewHeroSection />
         <Offerings />
         <HowItWorks />
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center min-h-[50vh]">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0E3D15]"></div>
-            </div>
-          }
-        >
-          <WhyDiscoverMinds />
-          <FaqSection />
-        </Suspense>
+        <WhyDiscoverMinds />
+        <FaqSection />
         <NewFooter />
       </main>
     </div>
