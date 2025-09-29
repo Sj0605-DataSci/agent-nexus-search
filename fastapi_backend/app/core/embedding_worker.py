@@ -306,10 +306,12 @@ class EmbeddingWorker:
                     user_profile_response = await supabase.table("profiles").select("email,full_name").eq("id", user_id).execute()
                     response_connections = await supabase.table("profiles").update({"has_connections": "synced"}).eq("id", user_id).execute()
 
-                    if user_profile_response.data and user_profile_response.data.get("email"):
-                        user_email = user_profile_response.data["email"]
+                    if user_profile_response.data and len(user_profile_response.data) > 0:
+                        # Extract user data from the first item in the data array
+                        user_data = user_profile_response.data[0]
+                        user_email = user_data.get("email")
                         # Get user name if available
-                        user_name = user_profile_response.data.get("full_name", "").split(" ")[0] if user_profile_response.data.get("full_name") else ""
+                        user_name = user_data.get("full_name", "").split(" ")[0] if user_data.get("full_name") else ""
                         
                         # Create subject line with user name if available
                         subject = f"{user_name + ', your' if user_name else 'Your'} Connections Are Ready!"

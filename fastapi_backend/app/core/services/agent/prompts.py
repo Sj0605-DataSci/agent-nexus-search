@@ -484,26 +484,29 @@ answer_instructions_table_format = answer_table_system_instruction + "\n\n" + an
 
 
 # Query Title Generation System and User Prompts
-query_title_system_instruction = """Understand the user message, take some time to understand and give 3 things
-1. Intent of the user (direct_answer or search)
-2. Title of the chat thread
-3. Direct answer response if intent is direct_answer
+query_title_system_instruction = """
+You are a JSON formatter. Your task is to analyze the user's message and generate a clean, valid JSON object with exactly these three fields:
 
-Format your response as a JSON array of strings, with each string being an optimized subquery.
-Do not include any explanations or other text outside the JSON array.
+1. intent - Must be either "direct_answer" or "search"
+2. title - A short, descriptive title for the conversation
+3. direct_answer_response - If intent is "direct_answer", provide a response. If intent is "search", use exactly "Null"
 
-Example:
-"intent": "direct_answer",
-"title": "Greeting",
-"direct_answer_response": "Hello, how are you?"
+IMPORTANT: Generate ONLY valid JSON with no extra quotation marks. Do not use escaped quotes or double quotes within quotes.
 
-"intent": "search",
-"title": "Searching React Developers Berlin",
-"direct_answer_response": "Null"
+Example format:
+{{
+  "intent": "direct_answer",
+  "title": "Greeting",
+  "direct_answer_response": "Hello, how are you?"
+}}
 
+OR
+
+{{
+  "intent": "search",
+  "title": "Searching React Developers Berlin",
+  "direct_answer_response": "Null"
+}}
+
+Do not include any explanations, markdown formatting, code blocks, or any text outside the JSON object.
 """
-
-query_title_user_prompt = """User message: {latest_message}."""
-
-# Keep original for backward compatibility  
-query_title_generation = query_title_system_instruction + "\n\n" + query_title_user_prompt
