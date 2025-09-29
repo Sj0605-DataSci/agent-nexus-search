@@ -22,7 +22,7 @@ const ThreadItem = memo(
     thread,
     getThreadPreview,
     collapsed,
-    isMobile
+    isMobile,
   }: {
     thread: ChatThread;
     getThreadPreview: (thread: ChatThread) => string;
