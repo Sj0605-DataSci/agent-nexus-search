@@ -3,14 +3,17 @@ import Link from "next/link";
 import Image from "next/image";
 
 const HeroHeader = () => {
-  const companyLogos = useMemo(() => [
-    { name: "Adobe", width: 80, height: 40 },
-    { name: "Cargill", width: 100, height: 40 },
-    { name: "Google", width: 100, height: 40 },
-    { name: "Juspay", width: 100, height: 40 },
-    { name: "Meta", width: 80, height: 40 },
-    { name: "Salesforce", width: 60, height: 24 }
-  ], []);
+  const companyLogos = useMemo(
+    () => [
+      { name: "Adobe", width: 80, height: 40 },
+      { name: "Cargill", width: 100, height: 40 },
+      { name: "Google", width: 100, height: 40 },
+      { name: "Juspay", width: 100, height: 40 },
+      { name: "Meta", width: 80, height: 40 },
+      { name: "Salesforce", width: 60, height: 24 },
+    ],
+    []
+  );
   return (
     <section className="relative pt-40 pb-0" aria-label="Hero section">
       <div className="relative z-10">
@@ -62,8 +65,7 @@ const HeroHeader = () => {
                     className="object-contain"
                     width={company.width}
                     height={company.height}
-                    loading="eager"
-                    priority={true}
+                    decoding="async"
                     sizes="(max-width: 768px) 80px, 120px"
                   />
                 </div>

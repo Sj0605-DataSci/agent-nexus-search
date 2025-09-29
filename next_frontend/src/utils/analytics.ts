@@ -2,30 +2,30 @@ import posthog from "posthog-js";
 import { updatePostHogUserProperties } from "@/utils/posthog-helpers";
 
 // Define flow stages for tracking user journeys
-export type UserFlowStage = 
-  | 'landing_page_view'
-  | 'signup_started'
-  | 'signup_completed'
-  | 'login_started'
-  | 'login_completed'
-  | 'profile_view'
-  | 'search_started'
-  | 'search_results_view'
-  | 'connection_view'
-  | 'connection_request_sent'
-  | 'checkout_started'
-  | 'checkout_completed'
-  | 'feature_discovery'
-  | 'settings_changed';
+export type UserFlowStage =
+  | "landing_page_view"
+  | "signup_started"
+  | "signup_completed"
+  | "login_started"
+  | "login_completed"
+  | "profile_view"
+  | "search_started"
+  | "search_results_view"
+  | "connection_view"
+  | "connection_request_sent"
+  | "checkout_started"
+  | "checkout_completed"
+  | "feature_discovery"
+  | "settings_changed";
 
 // Define user flow types
-export type UserFlowType = 
-  | 'onboarding'
-  | 'search'
-  | 'connection'
-  | 'profile_completion'
-  | 'subscription'
-  | 'feature_exploration';
+export type UserFlowType =
+  | "onboarding"
+  | "search"
+  | "connection"
+  | "profile_completion"
+  | "subscription"
+  | "feature_exploration";
 
 /**
  * Utility functions for tracking analytics events
@@ -150,7 +150,11 @@ export const Analytics = {
    * Track a user flow stage
    * This helps visualize the user journey through the application
    */
-  trackUserFlow: (flowType: UserFlowType, stage: UserFlowStage, properties?: Record<string, any>) => {
+  trackUserFlow: (
+    flowType: UserFlowType,
+    stage: UserFlowStage,
+    properties?: Record<string, any>
+  ) => {
     posthog.capture("user_flow_progression", {
       flow_type: flowType,
       flow_stage: stage,
@@ -165,10 +169,10 @@ export const Analytics = {
    */
   startUserFlow: (flowType: UserFlowType, properties?: Record<string, any>) => {
     // Store the flow start time in session storage
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       sessionStorage.setItem(`flow_start_${flowType}`, new Date().toISOString());
     }
-    
+
     posthog.capture("user_flow_started", {
       flow_type: flowType,
       timestamp: new Date().toISOString(),
@@ -183,20 +187,20 @@ export const Analytics = {
   completeUserFlow: (flowType: UserFlowType, properties?: Record<string, any>) => {
     let duration = 0;
     let startTime = null;
-    
+
     // Retrieve the flow start time from session storage
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const storedStartTime = sessionStorage.getItem(`flow_start_${flowType}`);
       if (storedStartTime) {
         startTime = new Date(storedStartTime);
         const endTime = new Date();
         duration = endTime.getTime() - startTime.getTime();
-        
+
         // Clean up storage
         sessionStorage.removeItem(`flow_start_${flowType}`);
       }
     }
-    
+
     posthog.capture("user_flow_completed", {
       flow_type: flowType,
       timestamp: new Date().toISOString(),
@@ -214,9 +218,9 @@ export const Analytics = {
     posthog.capture("$pageview", {
       page_name: pageName,
       page_category: pageCategory,
-      url: typeof window !== 'undefined' ? window.location.href : null,
-      path: typeof window !== 'undefined' ? window.location.pathname : null,
-      referrer: typeof document !== 'undefined' ? document.referrer : null,
+      url: typeof window !== "undefined" ? window.location.href : null,
+      path: typeof window !== "undefined" ? window.location.pathname : null,
+      referrer: typeof document !== "undefined" ? document.referrer : null,
       ...properties,
     });
   },
@@ -224,7 +228,11 @@ export const Analytics = {
   /**
    * Track user engagement metrics
    */
-  trackEngagement: (engagementType: string, duration?: number, properties?: Record<string, any>) => {
+  trackEngagement: (
+    engagementType: string,
+    duration?: number,
+    properties?: Record<string, any>
+  ) => {
     posthog.capture("user_engagement", {
       engagement_type: engagementType,
       duration_seconds: duration,

@@ -54,8 +54,9 @@ const CustomAvatar: React.FC<CustomAvatarProps> = ({
   const initials = name
     ?.split(" ")
     ?.map(n => n[0])
-    ?.join("")
-    ?.toUpperCase();
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   const [imgSrc, setImgSrc] = useState<string | undefined>(src);
   const sizeClass = sizeClasses[size] || sizeClasses.md;

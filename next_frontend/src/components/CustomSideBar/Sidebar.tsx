@@ -21,6 +21,7 @@ import { apiClient } from "@/integrations/fastapi/client";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
 import { fetchChatThreads, loadMoreChatThreads } from "@/store/chatThreadsSlice";
+import { fetchFriendships } from "@/store/friendshipsSlice";
 import { clearProfile } from "@/store/profileSlice";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/integrations/fastapi/types";
@@ -42,13 +43,13 @@ const NavigationItems = memo(
     collapsed,
     isMobile,
   }: {
-    navItems: Array<{ href: string; label: string; icon: React.ReactNode }>;
+    navItems: Array<{ href: string; label: string; icon: React.ReactNode; notification?: boolean }>;
     pathname: string | null;
     collapsed: boolean;
     isMobile: boolean;
   }) => (
     <ul className="space-y-[2px] mt-2 pb-3">
-      {navItems.map(({ href, label, icon }) => (
+      {navItems.map(({ href, label, icon, notification }) => (
         <li key={href}>
           <Link
             prefetch={true}
@@ -65,7 +66,12 @@ const NavigationItems = memo(
             <span className="relative group">
               <span className="text-lg">{icon}</span>
             </span>
-            {(!collapsed || isMobile) && <span>{label}</span>}
+            {(!collapsed || isMobile) && (
+              <span className="flex items-center gap-2">
+                {label}
+                {notification && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
+              </span>
+            )}
           </Link>
         </li>
       ))}
@@ -159,11 +165,23 @@ const Sidebar = () => {
   const isUserQueryRoute = pathname?.includes("user-query");
   const isInitialLoading = loadingThreads && recentThreads.length === 0;
 
+  const { data: friendshipsData } = useAppSelector(state => state.friendships);
+
   const navItems = useMemo(() => {
+    const hasPendingFriendRequests =
+      friendshipsData.pending.some(f => f.user_id !== (cachedProfile || profile)?.id) &&
+      friendshipsData.total_pending > 0;
+
     const items = [
       { href: "/connections", label: "Connections", icon: <FiGlobe /> },
-      { href: "/friends", label: "Friends", icon: <FiSmile /> },
+      {
+        href: "/friends",
+        label: "Friends",
+        icon: <FiSmile />,
+        notification: hasPendingFriendRequests,
+      },
       { href: "/groups", label: "Groups", icon: <FiUsers /> },
+      { href: "/research-person", label: "Research a person", icon: <FiSearch /> },
     ];
 
     const effectiveProfile = cachedProfile || profile;
@@ -172,7 +190,7 @@ const Sidebar = () => {
     }
 
     return items;
-  }, [profile?.id, cachedProfile]);
+  }, [profile?.id, cachedProfile, friendshipsData]);
 
   const getThreadPreview = useCallback((thread: ChatThread) => {
     if (thread.title) return thread.title;
@@ -185,20 +203,27 @@ const Sidebar = () => {
     dispatch(fetchChatThreads());
   }, [dispatch, profile?.id, cachedProfile]);
 
-  const loadMoreThreads = useCallback(() => {
-    const effectiveProfile = cachedProfile || profile;
-    if (!effectiveProfile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+  const loadMoreThreads = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
 
-    setLoadingMoreThreads(true);
-    dispatch(loadMoreChatThreads()).finally(() => {
-      setLoadingMoreThreads(false);
-    });
-  }, [hasMoreThreads, loadingMoreThreads, dispatch, profile?.id, cachedProfile, loadingThreads]);
+      const effectiveProfile = cachedProfile || profile;
+      if (!effectiveProfile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+
+      setLoadingMoreThreads(true);
+      dispatch(loadMoreChatThreads()).finally(() => {
+        setLoadingMoreThreads(false);
+      });
+    },
+    [hasMoreThreads, loadingMoreThreads, dispatch, profile?.id, cachedProfile, loadingThreads]
+  );
 
   useEffect(() => {
     const effectiveProfile = cachedProfile || profile;
     if (effectiveProfile?.id && !threadsFetchedRef.current) {
       fetchThreads();
+      dispatch(fetchFriendships("all"));
       threadsFetchedRef.current = true;
     }
   }, [profile?.id, cachedProfile, fetchThreads]);

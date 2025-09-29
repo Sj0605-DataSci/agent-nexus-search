@@ -44,7 +44,7 @@ export const setPostHogGuest = () => {
     auth_status: "anonymous",
   });
   posthog.people.set({
-    $name: `Guest User (${anonymousId?.substring(0, 8) ?? 'new'})`,
+    $name: `Guest User (${anonymousId?.substring(0, 8) ?? "new"})`,
     user_type: "guest",
     auth_status: "anonymous",
     first_seen_at: new Date().toISOString(),

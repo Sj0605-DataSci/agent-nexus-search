@@ -151,16 +151,16 @@ export function LinkedInSection({
                 </p>
               </div>
             )}
-            
+
             {hasConnections === "syncing" && (
               <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
                 <p className="text-sm text-blue-700">
-                  Your LinkedIn connections are currently being processed. This may take a few minutes.
-                  You'll receive an email when the import is complete.
+                  Your LinkedIn connections are currently being processed. This may take a few
+                  minutes. You'll receive an email when the import is complete.
                 </p>
               </div>
             )}
-            
+
             {hasConnections === "no_data" && (
               <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
                 <p className="text-sm text-amber-700">

@@ -86,7 +86,6 @@ function AuthCallbackContent() {
           }
 
           if (accessToken && refreshToken) {
-
             localStorage.setItem("discover_minds_access_token", accessToken);
             localStorage.setItem("discover_minds_refresh_token", refreshToken);
             setAuthToken(accessToken);

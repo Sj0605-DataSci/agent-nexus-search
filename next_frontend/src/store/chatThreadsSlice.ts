@@ -48,11 +48,11 @@ export const loadMoreChatThreads = createAsyncThunk(
     if (!hasMore) return null;
 
     try {
-      // Always use 10 for page size in pagination as per API requirements
       const nextPage = currentPage + 1;
-      const response = await apiClient.getChatThreads(10, nextPage);
+      const response = await apiClient.getChatThreads(pageSize, nextPage);
       return response;
     } catch (error) {
+      console.error("Error loading more threads:", error);
       return rejectWithValue("Failed to load more chat threads");
     }
   }

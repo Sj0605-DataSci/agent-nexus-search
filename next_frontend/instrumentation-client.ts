@@ -1,7 +1,6 @@
 "use client";
 import * as Sentry from "@sentry/nextjs";
 
-
 // Initialize Sentry
 // Disable Sentry in development mode or on localhost
 const isLocalhost =
@@ -30,7 +29,7 @@ Sentry.init({
 
   // Session replay is enabled by default in the Sentry NextJS SDK
   // No need to explicitly add the Replay integration
-  
+
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration({

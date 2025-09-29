@@ -6,7 +6,7 @@
  * Gets the initials from a name
  * @param name - The full name to extract initials from
  * @returns The initials (1-2 characters)
- * 
+ *
  * Examples:
  * - "Ashish Gupta" -> "AG"
  * - "John Doe Smith" -> "JS" (first and last)
@@ -14,10 +14,10 @@
  * - "" -> "AG" (default)
  */
 export const getInitials = (name: string): string => {
-  if (!name) return 'AG';
-  
+  if (!name) return "AG";
+
   const nameParts = name.trim().split(/\s+/);
-  
+
   if (nameParts.length === 1) {
     // If only one name, return first two letters or first letter if name is only one character
     return nameParts[0].substring(0, Math.min(2, nameParts[0].length)).toUpperCase();
@@ -27,4 +27,8 @@ export const getInitials = (name: string): string => {
     const lastInitial = nameParts[nameParts.length - 1].charAt(0);
     return (firstInitial + lastInitial).toUpperCase();
   }
+};
+export const capitalize = (s: string): string => {
+  if (typeof s !== "string" || !s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 };
