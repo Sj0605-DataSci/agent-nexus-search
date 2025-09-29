@@ -8,7 +8,6 @@ import useAnalytics from "@/hooks/useAnalytics";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { FaBriefcase, FaCode, FaBullhorn, FaUserTie } from "react-icons/fa";
 import { FiSearch } from "react-icons/fi";
-import { motion } from "framer-motion";
 import Link from "next/link";
 
 const quickSearchesData = [
@@ -85,7 +84,7 @@ const SearchSection = () => {
   };
 
   return (
-    <div className="relative z-20 pt-20 -mb-[330px]">
+    <div className="relative z-20 pt-12 -mb-90">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <section
           className="bg-[#1F4024] rounded-xl p-8 sm:p-12 shadow-xl"
@@ -128,11 +127,9 @@ const SearchSection = () => {
           <nav className="flex flex-col items-center w-full mt-6" aria-label="Quick search options">
             <div className="flex items-center justify-center w-full flex-wrap gap-3">
               {quickSearchesData.map((search, index) => (
-                <motion.div
+                <div
                   key={`${search.label}-${index}`}
-                  whileHover={{ y: -4, boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)" }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className="transition-transform duration-150 ease-out hover:-translate-y-1"
                 >
                   <Link
                     href={`/user-query?q=${encodeURIComponent(search.label.trim())}`}
@@ -178,7 +175,7 @@ const SearchSection = () => {
                       </div>
                     )}
                   </Link>
-                </motion.div>
+                </div>
               ))}
             </div>
             <p className="mt-8 text-sm text-white/70 font-light">

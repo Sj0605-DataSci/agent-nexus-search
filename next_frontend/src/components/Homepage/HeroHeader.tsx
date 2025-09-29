@@ -65,8 +65,7 @@ const HeroHeader = () => {
                     className="object-contain"
                     width={company.width}
                     height={company.height}
-                    loading="eager"
-                    priority={true}
+                    decoding="async"
                     sizes="(max-width: 768px) 80px, 120px"
                   />
                 </div>
