@@ -21,6 +21,10 @@ import {
   UserProfile,
   UsageStats,
   SignUpResponse,
+  InviteFriendsResponse,
+  FetchFriendshipsResponse,
+  FriendshipActionResponse,
+  FriendshipStatus,
 } from "./types";
 
 // Add setAuthToken to axios instance
@@ -336,6 +340,38 @@ export const apiClient = {
   async fetchProfile() {
     try {
       const res = await axiosInstance.get("/profiles");
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async inviteFriends(emails: string[]): Promise<InviteFriendsResponse> {
+    try {
+      const res = await axiosInstance.post("/friendships/invite", { emails });
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async fetchFriendships(
+    type: FriendshipStatus | "all" = "all"
+  ): Promise<FetchFriendshipsResponse> {
+    try {
+      const res = await axiosInstance.get(`/friendships/?type=${type}`);
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async respondToFriendRequest(
+    friendshipId: string,
+    status: "accepted" | "rejected"
+  ): Promise<FriendshipActionResponse> {
+    try {
+      const res = await axiosInstance.patch(`/friendships/${friendshipId}`, { status });
       return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
