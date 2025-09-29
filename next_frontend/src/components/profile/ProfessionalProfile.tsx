@@ -156,7 +156,6 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
         </div>
       </div>
 
-
       <LinkedInSection
         linkedinUrl={profile?.linkedin_url}
         hasConnections={getNormalizedConnectionsStatus(profile?.has_connections)}
