@@ -46,17 +46,16 @@ export function useAuthInitializer() {
   const router = useRouter();
 
   useEffect(() => {
-    
-    const { data: { subscription } } = supabaseHandler.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          setAuthToken(session.access_token);
-        } else if (event === 'SIGNED_OUT') {
-          setAuthToken(null);
-          router.push("/user-auth");
-        }
+    const {
+      data: { subscription },
+    } = supabaseHandler.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        setAuthToken(session.access_token);
+      } else if (event === "SIGNED_OUT") {
+        setAuthToken(null);
+        router.push("/user-auth");
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, [router]);
