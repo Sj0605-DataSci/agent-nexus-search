@@ -131,7 +131,7 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
     "@type": "BreadcrumbList",
     itemListElement:
       data?.itemListElement ||
-      generateBreadcrumbs(pathname).map((item, index) => ({
+      (pathname ? generateBreadcrumbs(pathname) : []).map((item, index) => ({
         "@type": "ListItem",
         position: index + 1,
         name: item.name,
@@ -139,30 +139,16 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
       })),
   };
 
-  // Select the appropriate structured data based on type
-  let structuredData;
-  switch (type) {
-    case "Organization":
-      structuredData = organizationData;
-      break;
-    case "WebSite":
-      structuredData = websiteData;
-      break;
-    case "SoftwareApplication":
-      structuredData = softwareApplicationData;
-      break;
-    case "Article":
-      structuredData = articleData;
-      break;
-    case "FAQPage":
-      structuredData = faqData;
-      break;
-    case "BreadcrumbList":
-      structuredData = breadcrumbData;
-      break;
-    default:
-      structuredData = organizationData;
-  }
+  const structuredDataMap = {
+    Organization: organizationData,
+    WebSite: websiteData,
+    SoftwareApplication: softwareApplicationData,
+    Article: articleData,
+    FAQPage: faqData,
+    BreadcrumbList: breadcrumbData,
+  };
+
+  const structuredData = structuredDataMap[type] || organizationData;
 
   return (
     <Script

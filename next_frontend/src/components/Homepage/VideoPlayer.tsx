@@ -33,7 +33,7 @@ const VideoPlayer = () => {
             />
 
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-red-600 hover:bg-red-700 rounded-full p-4 sm:p-6 shadow-2xl transform group-hover:scale-110 transition-all duration-300">
+              <div className="bg-red-600/80 hover:bg-red-700/90 backdrop-blur-sm rounded-2xl px-6 py-3 sm:px-8 sm:py-4 shadow-2xl transform group-hover:scale-110 transition-all duration-300">
                 <Play className="w-8 h-8 sm:w-12 sm:h-12 text-white ml-1" fill="currentColor" />
               </div>
             </div>

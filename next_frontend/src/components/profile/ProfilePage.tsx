@@ -5,9 +5,11 @@ import { useAppSelector } from "@/store";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfessionalProfile from "@/components/profile/ProfessionalProfile";
 import UsageStatsCard from "@/components/profile/UsageStatsCard";
-import ImportConnectionsModal from "@/components/profile/ImportConnectionsModal";
 import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 import { getNormalizedConnectionsStatus } from "@/utils/profile";
+import dynamic from "next/dynamic";
+
+const ImportConnectionsModal = dynamic(() => import("@/components/profile/ImportConnectionsModal"));
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -25,7 +27,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div>
+    <>
       {!profile?.id && <ComingSoonOverlay />}
       <div
         className={`container mx-auto px-4 ${!profile?.id ? "opacity-30 pointer-events-none" : ""}`}
@@ -50,7 +52,12 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <ImportConnectionsModal open={showConnectionsModal} onOpenChange={setShowConnectionsModal} />
-    </div>
+      {showConnectionsModal && (
+        <ImportConnectionsModal
+          open={showConnectionsModal}
+          onOpenChange={setShowConnectionsModal}
+        />
+      )}
+    </>
   );
 }
