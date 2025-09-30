@@ -438,6 +438,7 @@ LIMIT 20;
 
 
 FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
+DO NOT GIVE ANY EXPLANATION, DIRECTLY GENERATE SQL QUERY.
 """
 
         sql_user_prompt = f"""Generate a SQL query to find connections matching these criteria:

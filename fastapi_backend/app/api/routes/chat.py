@@ -103,6 +103,7 @@ async def stream_chat(
     x_client_ip: str = Header(None, alias="X-Client-Ip"),
     x_device_id: str = Header(..., alias="X-Device-Id"),
     x_device_type: str = Header(..., alias="X-Device-Type"),
+    endpoint:str="Private",
     current_user: Profile = Depends(get_current_user)
 ) -> StreamingResponse:
     """
@@ -128,7 +129,8 @@ async def stream_chat(
             thread_id=request.thread_id,
             device_id=x_device_id,
             device_type=x_device_type,
-            client_ip=x_client_ip
+            client_ip=x_client_ip,
+            endpoint=endpoint
         )
         
         logger.log_chat_event("chat_request_queued",
@@ -172,7 +174,8 @@ async def public_stream_chat(
     request: StreamingPublicChatRequest,
     x_client_ip: str = Header(None, alias="X-Client-Ip"),
     x_device_id: str = Header(..., alias="X-Device-Id"),
-    x_device_type: str = Header(..., alias="X-Device-Type")
+    x_device_type: str = Header(..., alias="X-Device-Type"),
+    endpoint:str="Public"
 ) -> StreamingResponse:
     
     cache_key = f"rate_limit:{x_device_id}:{x_client_ip}:{x_device_type}"
@@ -193,6 +196,7 @@ async def public_stream_chat(
             device_id=x_device_id,
             device_type=x_device_type,
             client_ip=x_client_ip,
+            endpoint=endpoint,
             messages=request.messages,
             format="table",
             search_mode="basic",
