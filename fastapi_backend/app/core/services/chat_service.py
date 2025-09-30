@@ -240,7 +240,7 @@ class ChatService:
             #     run_url =""
                     
             limit_check = await credit_service.check_search_limit(user_id, search_mode=search_mode)
-            trace_id = current_trace()
+            # trace_id = current_trace()
                     
             if not limit_check.get("can_search", False):
                         # User cannot perform search, yield error and return
