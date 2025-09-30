@@ -54,3 +54,6 @@ httpx
 
 # OpenAI client for Gemini API compatibility
 openai
+
+# Portkey AI for observability and tracing
+portkey-ai
