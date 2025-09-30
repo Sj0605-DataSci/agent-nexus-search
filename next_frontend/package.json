@@ -10,7 +10,8 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "setup-robots": "node scripts/setup-robots-txt",
-    "prepare": "husky"
+    "prepare": "husky",
+    "analyze": "ANALYZE=true yarn build"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.31.6",
@@ -104,6 +105,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^2.1.4",
     "@eslint/js": "^8.56.0",
+    "@next/bundle-analyzer": "^15.5.4",
     "@tailwindcss/postcss": "^4",
     "@types/aos": "^3.0.7",
     "@types/node": "^20.19.13",

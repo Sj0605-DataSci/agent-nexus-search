@@ -1,13 +1,14 @@
 import Header from "@/components/Homepage/Navbar";
 import { Metadata } from "next";
-import Offerings from "@/components/Homepage/Offerings";
-import HowItWorks from "@/components/Homepage/HowItWorks";
-import PricingPlans from "@/components/Homepage/PricingPlans";
 import NewHeroSection from "@/components/Homepage/NewHeroSection";
-import FaqSection from "@/components/Pricing/FaqSection";
-import NewFooter from "@/components/Footer/NewFooter";
 import React from "react";
-import WhyDiscoverMinds from "@/components/Homepage/WhyDiscoverMinds";
+import dynamicImporter from "next/dynamic";
+import Offerings from "@/components/Homepage/Offerings";
+
+const HowItWorks = dynamicImporter(() => import("@/components/Homepage/HowItWorks"));
+const FaqSection = dynamicImporter(() => import("@/components/Pricing/FaqSection"));
+const NewFooter = dynamicImporter(() => import("@/components/Footer/NewFooter"));
+const WhyDiscoverMinds = dynamicImporter(() => import("@/components/Homepage/WhyDiscoverMinds"));
 
 export const dynamic = "force-static";
 

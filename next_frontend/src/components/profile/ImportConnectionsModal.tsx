@@ -8,7 +8,8 @@ import { getSupabaseConfig } from "@/config/supabase";
 import { supabase } from "@/integrations/supabase/client";
 import { apiClient } from "@/integrations/fastapi/client";
 import { useAppDispatch } from "@/store";
-import { fetchProfile } from "@/store/profileSlice";
+import { fetchProfile, updateConnectionsStatus } from "@/store/profileSlice";
+import toast from "react-hot-toast";
 
 interface ImportConnectionsModalProps {
   open: boolean;
@@ -143,20 +144,21 @@ export default function ImportConnectionsModal({
       if (!fileId) throw new Error("Could not get file ID from database response");
 
       await apiClient.processConnectionFile(fileId);
+
+      dispatch(updateConnectionsStatus("syncing"));
+      toast.success("Upload successful! Processing your connections...");
+
       setUploadStatus("success");
       setUploading(false);
 
-      dispatch(fetchProfile());
-
       setTimeout(() => {
         onOpenChange(false);
-
         setTimeout(() => {
           setFile(null);
           setUploading(false);
           setUploadStatus("idle");
         }, 300);
-      }, 2000); // Show success message for 4 seconds
+      }, 2000);
     } catch (error) {
       console.error("Upload error:", error);
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred");

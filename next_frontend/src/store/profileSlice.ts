@@ -112,6 +112,11 @@ const profileSlice = createSlice({
     setLoadingState: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
     },
+    updateConnectionsStatus: (state, action: PayloadAction<"syncing" | "synced" | "no_data">) => {
+      if (state.profile) {
+        state.profile.has_connections = action.payload;
+      }
+    },
   },
   extraReducers: builder => {
     builder
@@ -162,5 +167,5 @@ const profileSlice = createSlice({
   },
 });
 
-export const { clearProfile, setProfileData, setLoadingState } = profileSlice.actions;
+export const { clearProfile, setProfileData, setLoadingState, updateConnectionsStatus } = profileSlice.actions;
 export default profileSlice.reducer;
