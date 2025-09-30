@@ -8,7 +8,14 @@ import { useAppSelector } from "@/store";
 import FullScreenLoader from "@/components/common/FullScreenLoader";
 import { getStoredToken } from "@/utils/tokenManagement";
 
-const PUBLIC_ROUTES = ["/user-query", "/groups", "/friends", "/connections", "/agents"];
+const PUBLIC_ROUTES = [
+  "/user-query",
+  "/groups",
+  "/friends",
+  "/connections",
+  "/agents",
+  "/research-person",
+];
 
 const MainContent = memo(({ children }: { children: React.ReactNode }) => (
   <div className="flex-1 overflow-hidden">
