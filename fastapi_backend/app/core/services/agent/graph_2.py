@@ -88,6 +88,7 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
         user_id = agent_config["user_id"]
         chat_thread_id = state["chat_thread_id"]
         current_message_id = state.get("current_message_id", "")
+        weave_url = state.get("weave_url", "")
         
         user_query = state["messages"][-1].get("content", "")
 
@@ -139,8 +140,26 @@ Please provide:
 5. Focus on keywords proper nouns and never give / between keywords whether in filters, traits or keyphrases
 """
 
-        # llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction)
-        llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0, system_instruction=system_instruction)
+        # Initialize LLM with Portkey tracing
+        # Create metadata for this node
+        node_metadata = {
+            "_user": user_id,
+            "agent_id": agent_id,
+            "chat_thread_id": chat_thread_id,
+            "message_id": current_message_id,
+            "node_name": "query_analysis",
+            "node_number": "1",
+            "user_query": user_query[:200]  # Truncate for size
+        }
+        
+        # llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction, trace_id=trace_id, metadata=node_metadata)
+        llm = GroqChatModel(
+            model="meta-llama/llama-4-maverick-17b-128e-instruct", 
+            temperature=0, 
+            system_instruction=system_instruction,
+            trace_id=weave_url,
+            metadata=node_metadata
+        )
 
         
         # Generate query analysis
@@ -242,11 +261,13 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         print("Node 2: SQL Search")
         query_analysis = state.get("query_analysis", {})
         agent_config = state["agent_config"]
+        agent_id = agent_config["id"]
         user_id = agent_config["user_id"]
         user_query = state["messages"][-1].get("content", "")
         current_message_id = state.get("current_message_id", "")
         chat_thread_id = state.get("chat_thread_id", "")
         supabase_client = await get_async_supabase_client()
+        weave_url = state.get("weave_url", "")
 
         cache_key = f"graph2:sql_search:{user_id}:{user_query}"
         
@@ -299,10 +320,22 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             "filters": filters,
             "traits": traits
         }
+        node_metadata = {
+            "_user": user_id,
+            "agent_id": agent_id,
+            "chat_thread_id": chat_thread_id,
+            "message_id": current_message_id,
+            "node_name": "sql_search",
+            "node_number": "2",
+            "user_query": user_query[:200]  # Truncate for size
+        }
+        
+        # llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction, trace_id=trace_id, metadata=node_metadata)
         
         sql_system_instruction = """You are an expert SQL query generator for a connections database.
 
-IMPORTANT: Use ONLY these exact column names from the connections table:
+Your job is to generate efficient, fast, and accurate SQL queries using ONLY the following exact column names from the `connections` table:
+
 - id (uuid)
 - first_name (text)
 - last_name (text) 
@@ -323,48 +356,100 @@ IMPORTANT: Use ONLY these exact column names from the connections table:
 - embedding_generated_at (timestamp)
 - search_tsv (tsvector)
 
-Rules:
-- Think always go for keywords, rather typing Ai/ML experience type AI/ML, or AI and ML, or AI/ML, similarly 
-- Always filter by `user_id = '{user_id}'` (or `IN (...)` if multiple).
-- Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`.
-- Use multiple `search_tsv @@ plainto_tsquery('english', ...)` for text matching instead of multiple OR/ILIKE conditions.
-- Return direct `SELECT` results (no `row_to_json` or wrappers).
-- Always include `id` in the query.
-- Always `ORDER BY embedding_generated_at DESC`.
-- Also use rank ts_rank_cd to rank the results.
-- Always `LIMIT 20`.
-- DO NOT use / between keywords whether in filters, traits or keyphrases like AI/Ml, only write Ai ML
-- Use plainto_tsquery for single words.
-- At least one location keyword must be mandatory in the WHERE clause.
-- Other traits can be optional, included in the ts_rank_cd for ranking.
-- Use location and other keyword which are defined in and clause and others do OR clause. For and use && and  for OR use ||
-- Use very little less && and || statements, as they can cause sql timeout
-- Do not use more than 3 || or && statements in search_tsv for either ranking or getting results
+---
 
-Template of SQL to be followed:
-Query: See early stage fintech founders in Delhi
-SELECT  
-    id, user_id, first_name, last_name, headline, about_section,
-    experience_json, education_json, skills, linkedin_url,
-    company, position, location, profile_photo_url, embedding_generated_at,
-    ts_rank_cd(
-      search_tsv,
-      (plainto_tsquery('english', 'Delhi')
-       || plainto_tsquery('english', 'Founder')
-       || plainto_tsquery('english', 'Early-stage founder'))
-    )) AS rank
+## ⚡ Core Querying Rules
+
+1. **Keyword Normalization**
+   - Always normalize composite keywords:
+     - "AI/ML", "AI and ML", "Ai-ML" → **"AI ML"**
+   - Do NOT use "/", "-", or "and" between terms. Use space-separated tokens only.
+   - Use standardized casing (Title Case or lower case consistently).
+
+2. **Mandatory User Filter**
+   - Always filter by user(s):
+     ```sql
+     user_id = '{user_id}'
+     ```
+     or
+     ```sql
+     user_id IN ('{user_id1}', '{user_id2}', ...)
+     ```
+
+3. **Data Completeness Filter**
+   - Always include:
+     ```sql
+     AND about_section IS NOT NULL
+     AND experience_json IS NOT NULL
+     AND embedding_generated_at IS NOT NULL
+     ```
+
+4. **Full-Text Search (FTS)**
+   - Always use Postgres FTS via:
+     ```sql
+     search_tsv @@ plainto_tsquery('english', 'keyword')
+     ```
+   - Never use ILIKE or raw string OR conditions.
+
+5. **Keyword Formatting**
+   - Use `plainto_tsquery` for every text search term.
+   - Do not use `/` or symbols; use `"AI ML"`, not `"AI/ML"`.
+
+6. **Mandatory Location**
+   - At least one **location** keyword is mandatory in the WHERE clause.
+   - Example:
+     ```sql
+     search_tsv @@ plainto_tsquery('english', 'Bangalore')
+     ```
+
+8. **Logical Operators (AND / OR)**
+   - Use `&&` for AND and `||` for OR.
+   - Keep combinations minimal (no more than **3 total** `&&` or `||` operators).
+   - Example (efficient form):
+     ```sql
+     search_tsv @@ (
+       plainto_tsquery('english', 'Bangalore')
+       && (plainto_tsquery('english', 'Founder') || plainto_tsquery('english', 'AI ML'))
+     )
+     ```
+
+10. **Result Columns**
+    - Always include `id` in SELECT.
+    - Return plain columns — never wrap in `row_to_json` or JSON aggregation.
+
+11. **Ordering**
+    - Always order by:
+      ```sql
+      ORDER BY embedding_generated_at DESC
+      ```
+
+12. **Result Limit**
+    - Always:
+      ```sql
+      LIMIT 20
+      ```
+
+---
+
+## ✅ Final SQL Query Template
+
+Example: *Find early-stage fintech founders in Delhi*
+
+```sql
+SELECT *
 FROM connections
 WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
-  AND about_section IS NOT NULL
-  AND experience_json IS NOT NULL
-  AND embedding_generated_at IS NOT NULL
-  AND search_tsv @@ (
-        plainto_tsquery('english', 'Delhi')
-    ||  plainto_tsquery('english', 'Founder')
-    ||  plainto_tsquery('english', 'Early-stage founder')
-  ))
-ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20
+    AND about_section IS NOT NULL
+    AND experience_json IS NOT NULL
+    AND embedding_generated_at IS NOT NULL
+    AND search_tsv @@ (
+      plainto_tsquery('english', 'Delhi')
+      || plainto_tsquery('english', 'Founder')
+      || plainto_tsquery('english', 'Early-stage Fintech')
+    )
+ORDER BY embedding_generated_at DESC
+LIMIT 20;
+```
 
 
 FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
@@ -374,49 +459,19 @@ FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQ
 
 User ID: {user_ids}
 Search Context: {json.dumps(search_context, indent=2)}
-
-Requirements:
-- Always filter by `user_id IN ({user_ids})`
-- Always require `about_section IS NOT NULL`, `experience_json IS NOT NULL`, and `embedding_generated_at IS NOT NULL`
-- Search using full-text search: `search_tsv @@ plainto_tsquery('english', 'your terms here')`
-- example: `search_tsv @@ plainto_tsquery('english', 'Bangalore')`, `search_tsv @@ plainto_tsquery('english', 'AI ML')`
-- Don't use / between terms in inside plainto_tsquery like Ai/ML.
-- Return at most 20 rows, ordered by `embedding_generated_at DESC`
-- Always include `id` in the query
-- Do NOT use row_to_json or wrappers, return raw SELECT results
-- Do not use more than 3 || or && statements in search_tsv for either ranking or getting results
-
-Example format:
-Query: See early stage fintech founders in Delhi
-SELECT  
-    id, user_id, first_name, last_name, headline, about_section,
-    experience_json, education_json, skills, linkedin_url,
-    company, position, location, profile_photo_url, embedding_generated_at,
-    ts_rank_cd(
-      search_tsv,
-      (plainto_tsquery('english', 'Delhi')
-       || plainto_tsquery('english', 'Founder')
-       || plainto_tsquery('english', 'Early-stage founder')
-    )) AS rank
-FROM connections
-WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
-  AND about_section IS NOT NULL
-  AND experience_json IS NOT NULL
-  AND embedding_generated_at IS NOT NULL
-  AND search_tsv @@ (
-        plainto_tsquery('english', 'Delhi')
-    ||  plainto_tsquery('english', 'Founder')
-    ||  plainto_tsquery('english', 'Early-stage founder')
-  ))
-ORDER BY rank DESC, embedding_generated_at DESC
-LIMIT 20
 """
 
         keyword_results = []
         generated_sql = ""
         try:            
             # sql_llm = GeminiChatModel(model="gemini-2.5-flash-lite", temperature=0, system_instruction=sql_system_instruction)
-            llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0, system_instruction=sql_system_instruction)
+            llm = GroqChatModel(
+                model="meta-llama/llama-4-maverick-17b-128e-instruct", 
+                temperature=0, 
+                system_instruction=sql_system_instruction,
+                trace_id=weave_url,
+                metadata=node_metadata
+            )            
             sql_response = await llm.ainvoke(sql_user_prompt)
             
             generated_sql = sql_response.content.strip()
@@ -444,9 +499,19 @@ LIMIT 20
                         keyword_results.append(row)
                         
         except Exception as e:
+            await supabase_client.table("chat_messages").update({
+                "error": "Node: Sql search failed" + str(e)
+            }).eq("id", current_message_id).execute()
+            
             # Fallback: get basic results without complex filtering
             try:
-                llm = GeminiChatModel(model="gemini-2.5-flash", temperature=0, system_instruction=sql_system_instruction)
+                llm = GeminiChatModel(
+                    model="gemini-2.5-flash", 
+                    temperature=0, 
+                    system_instruction=sql_system_instruction,
+                    trace_id=weave_url,
+                    metadata=node_metadata)
+
                 sql_response = await llm.ainvoke(sql_user_prompt)
             
                 generated_sql = sql_response.content.strip()
@@ -473,6 +538,9 @@ LIMIT 20
                         else:
                             keyword_results.append(row)
             except Exception as fallback_e:
+                await supabase_client.table("chat_messages").update({
+                    "error": "Node: Sql search failed with gemini-2.5-flash" + str(fallback_e)
+                }).eq("id", current_message_id).execute()
                 raise fallback_e
         
         print("Node 2: SQL Search Completed")
@@ -556,11 +624,11 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         # Log the extracted profile IDs
         print(f"Extracted {len(keyword_profile_ids)} profile IDs from SQL results")
         
-        print(f"Node 2: Found {len(keyword_profile_ids)} profiles from keyword search")
+        print(f"Node 3: Found {len(keyword_profile_ids)} profiles from keyword search")
         
         # If no keyword results, return empty results
         if not keyword_profile_ids:
-            print("Node 2: No keyword results to perform vector search on")
+            print("Node 3: No keyword results to perform vector search on")
             result = {
                 "messages": state["messages"],
                 "intent": state["intent"],
@@ -592,7 +660,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         
         # Generate embeddings for each keyphrase (limit to 5 for efficiency)
         all_vector_results = []
-        print("Node 2: Generating embeddings for vector search")
+        print("Node 3: Generating embeddings for vector search")
         
         for i, keyphrase in enumerate(keyphrases):
             try:
@@ -602,7 +670,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                 if not embedding:
                     continue
                 if embedding:
-                    print(f"Node 2: Generated embedding for keyphrase {keyphrase}")
+                    print(f"Node 3: Generated embedding for keyphrase {keyphrase}")
                 # Convert embedding to a list for JSON serialization
                 embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else list(embedding)
                 
@@ -618,6 +686,9 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                     ).execute()
                 except Exception as e:
                     print(f"Error calling vector_search_profiles RPC: {str(e)}")
+                    await supabase_client.table("chat_messages").update({
+                    "error": "Node 3: Error calling vector_search_profiles RPC: " + str(e)
+                }).eq("id", current_message_id).execute()
                     # Create a fallback RPC function if it doesn't exist
                     create_rpc_query = f"""
                     CREATE OR REPLACE FUNCTION vector_search_profiles(
@@ -698,6 +769,9 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                         ).execute()
                     except Exception as create_e:
                         print(f"Error creating RPC function: {str(create_e)}")
+                        await supabase_client.table("chat_messages").update({
+                        "error": "Node 3: Error creating RPC function: " + str(create_e)
+                        }).eq("id", current_message_id).execute()
                         # Fallback to empty result
                         vector_result = type('obj', (object,), {'data': []})
                 
@@ -760,11 +834,11 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         # Extract profile IDs from sorted results
         vector_profile_ids = [profile_id for profile_id, _ in sorted_profiles]
         
-        print(f"Node 2: Vector Search Completed - Found {len(vector_profile_ids)} profiles")
+        print(f"Node 3: Vector Search Completed - Found {len(vector_profile_ids)} profiles")
         
         # If no vector results, fall back to keyword results
         if not vector_profile_ids and keyword_profile_ids:
-            print("Node 2: No vector results, falling back to keyword results")
+            print("Node 3: No vector results, falling back to keyword results")
             vector_profile_ids = keyword_profile_ids[:10]
             for profile_id in vector_profile_ids:
                 unique_vector_profiles[profile_id] = {
@@ -805,6 +879,9 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
         
     except Exception as e:
         print(f"Error in vector_search: {str(e)}")
+        await supabase_client.table("chat_messages").update({
+        "error": "Node 3: Error in vector_search: " + str(e)
+        }).eq("id", current_message_id).execute()
         raise
 
 async def generate_jina_embedding(text: str) -> Optional[List[float]]:
@@ -848,6 +925,7 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     agent_id = agent_config.get("id", "")
     chat_thread_id = state.get("chat_thread_id", "")
     current_message_id = state.get("current_message_id", "")
+    weave_url = state.get("weave_url", "")
     
     # Get vector search results
     vector_results = state.get("vector_results", [])
@@ -906,6 +984,7 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     final_profiles = combined_profiles
     
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
+
     
     query_analysis = state.get("query_analysis", {})
     
@@ -1003,7 +1082,16 @@ Profiles to Score:
 
 
         # llm = GeminiChatModel(model=model, temperature=0, system_instruction=scoring_system_instruction)
-        llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0, system_instruction=scoring_system_instruction)
+        node_metadata = {
+            "_user": user_id,
+            "agent_id": agent_id,
+            "chat_thread_id": chat_thread_id,
+            "message_id": current_message_id,
+            "node_name": "scoring",
+            "node_number": "5",
+            "user_query": user_query[:200]  # Truncate for size
+        }
+        llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0, system_instruction=scoring_system_instruction, metadata=node_metadata, trace_id=weave_url)
         
         try:
             # Generate enhanced scores
@@ -1052,7 +1140,10 @@ Profiles to Score:
                 pass
                 
         except Exception as e:
-            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction)
+            await supabase_client.table("chat_messages").update({
+            "error": "Node 4: Error in score_profiles with groq: " + str(e)
+            }).eq("id", current_message_id).execute()
+            llm = GeminiChatModel(model="gemini-2.5-pro", temperature=0, system_instruction=scoring_system_instruction, metadata=node_metadata, trace_id=weave_url)
             try:
                 scoring_response, usage_metadata = await llm.with_structured_output(prompt=user_prompt, schema_type=ScoredProfilesResponse)
                 scored_profiles = []
@@ -1075,6 +1166,9 @@ Profiles to Score:
                             "scoring": scoring_dicts,
                         })
             except Exception as e:
+                await supabase_client.table("chat_messages").update({
+                "error": "Node 4: Error in score_profiles with gemini: " + str(e)
+                }).eq("id", current_message_id).execute()
                 raise e
             
         

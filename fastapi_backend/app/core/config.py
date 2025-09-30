@@ -96,6 +96,11 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     JINA_API_KEY: str = os.getenv("JINA_API_KEY", "")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    
+    # Portkey settings
+    PORTKEY_API_KEY: str = os.getenv("PORTKEY_API_KEY", "")
+    PORTKEY_ENABLED: bool = os.getenv("PORTKEY_ENABLED", "true").lower() == "true"
+    
     # Use Railway Redis environment variables if available
     REDIS_HOST: str = os.getenv("REDISHOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDISPORT", "6379"))
