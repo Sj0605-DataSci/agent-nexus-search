@@ -1,5 +1,11 @@
-/** @type {import('next').NextConfig} */
+import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
+
+/** @type {import('next').NextConfig} */
+
+const withAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const advancedHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -91,9 +97,15 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push("canvas");
+    }
+    return config;
+  },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withAnalyzer(nextConfig), {
   org: "discoverminds",
   project: "web-prod",
   silent: process.env.NODE_ENV != "production",
