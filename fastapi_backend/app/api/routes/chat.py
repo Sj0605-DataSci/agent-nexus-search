@@ -100,6 +100,9 @@ async def process_chat(
 @router.post("/stream")
 async def stream_chat(
     request: StreamingChatRequest,
+    x_client_ip: str = Header(None, alias="X-Client-Ip"),
+    x_device_id: str = Header(..., alias="X-Device-Id"),
+    x_device_type: str = Header(..., alias="X-Device-Type"),
     current_user: Profile = Depends(get_current_user)
 ) -> StreamingResponse:
     """
@@ -122,7 +125,10 @@ async def stream_chat(
             format="table",
             search_mode="basic",
             world_connections="connections",
-            thread_id=request.thread_id
+            thread_id=request.thread_id,
+            device_id=x_device_id,
+            device_type=x_device_type,
+            client_ip=x_client_ip
         )
         
         logger.log_chat_event("chat_request_queued",
@@ -147,10 +153,12 @@ async def stream_chat(
                         chat_thread_id=request.thread_id)
         
         # Return an error response
+        error_message = str(e)  # Capture the error message outside the generator
+        
         async def error_generator():
             error_update = StreamingChatUpdate(
                 type="error",
-                content={"message": f"Error: {str(e)}"}
+                content={"message": f"Error: {error_message}"}
             )
             yield f"event: update\ndata: {error_update.model_dump_json()}\n\n"
             
