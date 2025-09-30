@@ -216,7 +216,7 @@ class ChatService:
     
     # @traceable(project_name="Discoverminds",name="stream_chat")
     # @trace(name="stream_chat",logger=max_logger)
-    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = "", device_id: str = "", device_type: str = "", client_ip: str = ""):
+    async def stream_chat(self, user_id: str, agent_id: str, messages: Union[str, List[Dict[str, Any]]], format: str = "table", search_mode: str = "basic", world_connections: str = "world", thread_id: str = "", device_id: str = "", device_type: str = "", client_ip: str = "", endpoint: str = ""):
         """
         Stream chat with the research agent using LangGraph's streaming capabilities
         
@@ -380,7 +380,8 @@ class ChatService:
                     "world_connections":world_connections,
                     "device_id": device_id,
                     "device_type": device_type,
-                    "client_ip": client_ip
+                    "client_ip": client_ip,
+                    "endpoint": endpoint
                 }).execute()
                 
                 # Extract the message ID from the response
