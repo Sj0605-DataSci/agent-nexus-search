@@ -26,151 +26,145 @@ const robotoMono = Roboto_Mono({
 
 const isStaging = process.env.NODE_ENV != "production";
 
-const baseMetadata: Metadata = {
-  title: {
-    default: "DiscoverMinds.ai - Unlock Your Network's Potential",
-    template: "%s | DiscoverMinds.ai",
-  },
-  description: "",
-  robots: isStaging
-    ? {
-        index: false,
-        follow: false,
-        nocache: true,
-        googleBot: {
-          index: false,
-          follow: false,
-          noimageindex: true,
-          "max-video-preview": -1,
-          "max-image-preview": "none",
-          "max-snippet": -1,
-        },
-      }
-    : {
-        index: true,
-        follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-        },
-      },
-};
-
-const productionMetadata: Metadata = {
-  title: {
-    default: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
-    template: "%s | DiscoverMinds.ai - Network Intelligence Platform",
-  },
-  description:
-    "DiscoverMinds.ai helps you unlock the hidden job market and find opportunities through warm introductions. Leverage your extended professional network with our AI-powered people search engine.",
-  keywords: [
-    "professional network",
-    "warm introductions",
-    "hidden job market",
-    "AI-powered search",
-    "network intelligence",
-    "talent discovery",
-    "expert finder",
-    "referral network",
-    "career opportunities",
-    "people search engine",
-    "AI networking tool",
-    "professional connections",
-    "network mapping",
-    "LinkedIn network tool",
-  ],
-  authors: [
-    {
-      name: "DiscoverMinds.ai Team",
-      url: "https://discoverminds.ai/about",
+const metadataConfig = {
+  production: {
+    title: {
+      default: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
+      template: "%s | DiscoverMinds.ai - Network Intelligence Platform",
     },
-  ],
-  creator: "DiscoverMinds.ai",
-  publisher: "DiscoverMinds.ai",
-  metadataBase: new URL("https://discoverminds.ai"),
-  alternates: {
-    canonical: "/",
-    languages: {
-      "en-US": "https://discoverminds.ai",
-    },
-  },
-  icons: {
-    icon: "https://discoverminds.ai/Logo.webp",
-    shortcut:
-      "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
-    apple:
-      "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://discoverminds.ai",
-    siteName: "DiscoverMinds.ai",
-    title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
     description:
-      "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.",
-    images: [
+      "DiscoverMinds.ai helps you unlock the hidden job market and find opportunities through warm introductions. Leverage your extended professional network with our AI-powered people search engine.",
+    keywords: [
+      "professional network",
+      "warm introductions",
+      "hidden job market",
+      "AI-powered search",
+      "network intelligence",
+      "talent discovery",
+      "expert finder",
+      "referral network",
+      "career opportunities",
+      "people search engine",
+      "AI networking tool",
+      "professional connections",
+      "network mapping",
+      "LinkedIn network tool",
+    ],
+    authors: [
       {
-        url: "https://discoverminds.ai/Images/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform",
-        type: "image/png",
-        secureUrl: "https://discoverminds.ai/Images/og-image.png",
+        name: "DiscoverMinds.ai Team",
+        url: "https://discoverminds.ai/about",
       },
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
-    description:
-      "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.",
-    images: [
-      {
-        url: "https://discoverminds.ai/Images/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform",
+    creator: "DiscoverMinds.ai",
+    publisher: "DiscoverMinds.ai",
+    metadataBase: new URL("https://discoverminds.ai"),
+    alternates: {
+      canonical: "/",
+      languages: {
+        "en-US": "https://discoverminds.ai",
       },
-    ],
-    creator: "@discovermindsai",
-    site: "@discovermindsai",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    nocache: false,
-    googleBot: {
+    },
+    icons: {
+      icon: "https://discoverminds.ai/Logo.webp",
+      shortcut:
+        "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+      apple:
+        "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: "https://discoverminds.ai",
+      siteName: "DiscoverMinds.ai",
+      title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
+      description:
+        "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.",
+      images: [
+        {
+          url: "https://discoverminds.ai/Images/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform",
+          type: "image/png",
+          secureUrl: "https://discoverminds.ai/Images/og-image.png",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform",
+      description:
+        "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities.",
+      images: [
+        {
+          url: "https://discoverminds.ai/Images/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform",
+        },
+      ],
+      creator: "@discovermindsai",
+      site: "@discovermindsai",
+    },
+    robots: {
       index: true,
       follow: true,
-      noimageindex: false,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      nocache: false,
+      googleBot: {
+        index: true,
+        follow: true,
+        noimageindex: false,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
+    verification: {
+      google: "your-google-verification-code",
+      yandex: "1be636ef641bd072",
+      other: {
+        "msvalidate.01": "your-bing-verification-code",
+        y_key: "your-yahoo-verification-code",
+      },
+    },
+    manifest: "/manifest.json",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "DiscoverMinds.ai",
+    },
+    formatDetection: {
+      telephone: false,
+    },
+    category: "technology",
+  },
+  default: {
+    title: {
+      default: "DiscoverMinds.ai - Unlock Your Network's Potential",
+      template: "%s | DiscoverMinds.ai",
+    },
+    description: "",
+    robots: {
+      index: false,
+      follow: false,
+      nocache: true,
+      googleBot: {
+        index: false,
+        follow: false,
+        noimageindex: true,
+        "max-video-preview": -1,
+        "max-image-preview": "none",
+        "max-snippet": -1,
+      },
     },
   },
-  verification: {
-    google: "your-google-verification-code",
-    yandex: "1be636ef641bd072",
-    other: {
-      "msvalidate.01": "your-bing-verification-code",
-      y_key: "your-yahoo-verification-code",
-    },
-  } as any,
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "DiscoverMinds.ai",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  category: "technology",
 };
 
 export const metadata: Metadata =
-  process.env.NODE_ENV === "production" ? productionMetadata : baseMetadata;
+  process.env.NODE_ENV === "production"
+    ? (metadataConfig.production as Metadata)
+    : (metadataConfig.default as Metadata);
 
 export const viewport = {
   themeColor: "#ffffff",
