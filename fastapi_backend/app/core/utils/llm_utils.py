@@ -1,25 +1,46 @@
 from openai import AsyncOpenAI
 from app.core.config import settings
-from typing import Type, TypeVar, List, Dict, Any, Union, AsyncGenerator
+from typing import Type, TypeVar, List, Dict, Any, Union, AsyncGenerator, Optional
 import json
 from langsmith import traceable
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
 
 T = TypeVar('T')
 
 GOOGLE_API_KEY = settings.GOOGLE_API_KEY
 GROQ_API_KEY = settings.GROQ_API_KEY
+PORTKEY_API_KEY = settings.PORTKEY_API_KEY
+PORTKEY_ENABLED = settings.PORTKEY_ENABLED
 
 # OpenAI-compatible Gemini Chat Model wrapper
 class GeminiChatModel:
-    def __init__(self, model="gemini-2.5-flash", temperature=0, thinking_budget=0, system_instruction=None):
-        self.client = AsyncOpenAI(
-            api_key=GOOGLE_API_KEY,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
+    def __init__(self, model="gemini-2.5-flash", temperature=0, thinking_budget=0, 
+                 system_instruction=None, trace_id=None, metadata=None):
         self.model = model
         self.temperature = temperature
         self.thinking_budget = thinking_budget
         self.system_instruction = system_instruction
+        self.trace_id = trace_id
+        self.metadata = metadata or {}
+        
+        # Initialize client with Portkey if enabled
+        if PORTKEY_ENABLED:
+            self.client = AsyncOpenAI(
+                api_key=GOOGLE_API_KEY,  # Provider API key
+                base_url=PORTKEY_GATEWAY_URL,
+                default_headers=createHeaders(
+                    api_key=PORTKEY_API_KEY,  # Portkey API key
+                    provider="google-ai",
+                    trace_id=trace_id,
+                    metadata=metadata
+                )
+            )
+        else:
+            # Direct connection (fallback)
+            self.client = AsyncOpenAI(
+                api_key=GOOGLE_API_KEY,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            )
     
     def _prepare_messages(self, messages: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """Convert various message formats to OpenAI format"""
@@ -213,17 +234,35 @@ def create_tool_response_message(tool_call_id: str, content: str) -> Dict[str, A
         "tool_call_id": tool_call_id,
         "content": content
     }
-# OpenAI-compatible Gemini Chat Model wrapper
+# OpenAI-compatible Groq Chat Model wrapper
 class GroqChatModel:
-    def __init__(self, model="llama-3.1-8b-instant", temperature=0, thinking_budget=0, system_instruction=None):
-        self.client = AsyncOpenAI(
-            api_key=GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1"
-        )
+    def __init__(self, model="llama-3.1-8b-instant", temperature=0, thinking_budget=0, 
+                 system_instruction=None, trace_id=None, metadata=None):
         self.model = model
         self.temperature = temperature
         self.thinking_budget = thinking_budget
         self.system_instruction = system_instruction
+        self.trace_id = trace_id
+        self.metadata = metadata or {}
+        
+        # Initialize client with Portkey if enabled
+        if PORTKEY_ENABLED:
+            self.client = AsyncOpenAI(
+                api_key=GROQ_API_KEY,  # Provider API key
+                base_url=PORTKEY_GATEWAY_URL,
+                default_headers=createHeaders(
+                    api_key=PORTKEY_API_KEY,  # Portkey API key
+                    provider="groq",
+                    trace_id=trace_id,
+                    metadata=metadata
+                )
+            )
+        else:
+            # Direct connection (fallback)
+            self.client = AsyncOpenAI(
+                api_key=GROQ_API_KEY,
+                base_url="https://api.groq.com/openai/v1"
+            )
     
     def _prepare_messages(self, messages: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """Convert various message formats to OpenAI format"""
@@ -258,25 +297,102 @@ class GroqChatModel:
             A tuple containing:
             - An instance of the Pydantic model populated with the model's response
             - The usage metadata from the response
+            
+        Raises:
+            ValueError: If the response cannot be parsed into the schema after retries
         """
+        import json
+        from pydantic import ValidationError
+        
         messages = self._prepare_messages(prompt)
         
-        # Use OpenAI's structured output with Pydantic models
-        response = await self.client.beta.chat.completions.parse(
-            model=self.model,
-            messages=messages,
-            response_format=schema_type,
-            temperature=self.temperature,
-        )
+        # Convert Pydantic model to JSON schema for Groq
+        # Groq requires response_format with type "json_schema" and the schema definition
+        # mode='serialization' generates a simpler schema without $defs
+        json_schema = schema_type.model_json_schema(mode='serialization')
         
-        # Extract usage metadata
-        usage_metadata = {
-            "input_tokens": response.usage.prompt_tokens,
-            "output_tokens": response.usage.completion_tokens,
-            "total_tokens": response.usage.total_tokens
+        # Clean up the schema for Groq compatibility
+        def clean_schema(schema_dict):
+            """Ensure schema meets Groq's strict mode requirements"""
+            if isinstance(schema_dict, dict):
+                # If this is an object type, apply Groq's strict requirements
+                if schema_dict.get("type") == "object":
+                    schema_dict["additionalProperties"] = False
+                    
+                    # Groq strict mode requires ALL properties to be in 'required' array
+                    if "properties" in schema_dict:
+                        all_property_keys = list(schema_dict["properties"].keys())
+                        schema_dict["required"] = all_property_keys
+                
+                # Recursively clean nested objects
+                for key, value in schema_dict.items():
+                    if isinstance(value, dict):
+                        clean_schema(value)
+                    elif isinstance(value, list):
+                        for item in value:
+                            if isinstance(item, dict):
+                                clean_schema(item)
+            return schema_dict
+        
+        json_schema = clean_schema(json_schema)
+        
+        # Groq's structured output format
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema_type.__name__,
+                "schema": json_schema,
+                "strict": True  # Enforce strict schema adherence
+            }
         }
         
-        return response.choices[0].message.parsed, usage_metadata
+        # Retry logic for transient failures
+        max_retries = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                # Use standard chat.completions.create with response_format
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    response_format=response_format,
+                    temperature=self.temperature,
+                )
+                
+                # Extract usage metadata
+                usage_metadata = {
+                    "input_tokens": response.usage.prompt_tokens,
+                    "output_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens
+                }
+                
+                # Parse the JSON response into the Pydantic model
+                content = response.choices[0].message.content
+                
+                # Handle potential JSON parsing errors
+                try:
+                    parsed_data = json.loads(content)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Failed to parse JSON response: {content[:200]}...") from e
+                
+                # Validate against Pydantic model
+                try:
+                    validated_model = schema_type(**parsed_data)
+                    return validated_model, usage_metadata
+                except ValidationError as e:
+                    raise ValueError(f"Response does not match schema: {e}") from e
+                    
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    # Wait before retry (exponential backoff)
+                    import asyncio
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                else:
+                    # Final attempt failed
+                    raise ValueError(f"Failed to get structured output after {max_retries} attempts: {str(last_error)}") from last_error
     
     @traceable(project_name="Discoverminds", name="GroqChatModel.ainvoke")
     async def ainvoke(self, messages: Union[str, List[Dict[str, Any]]]) -> Any:

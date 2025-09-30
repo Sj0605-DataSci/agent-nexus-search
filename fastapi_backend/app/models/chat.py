@@ -97,6 +97,10 @@ class OverallState(BaseModel):
         description="Final ranked and scored results.",
         default_factory=list
     )
+    trace_id: Annotated[Optional[str], lambda x, y: y or x] = Field(
+        description="Portkey trace ID for observability.",
+        default=""
+    )
 
 class ReflectionState(BaseModel):
     messages: Annotated[list, add_messages] = Field(

@@ -285,8 +285,27 @@ class ChatService:
             # Generate thread_id if needed (before any database operations)
             if thread_id == "new":
                 thread_id = str(uuid.uuid4())
+            
+            # Generate trace_id early (before any LLM calls)
+            trace_id = f"chat:{thread_id}:msg:{uuid.uuid4()}"
+            weave_url = trace_id
+            # Metadata for title/intent generation LLM call
+            title_metadata = {
+                "_user": user_id,
+                "agent_id": agent_id,
+                "chat_thread_id": thread_id,
+                "node_name": "title_intent_generator",
+                "node_number": "0",  # Pre-graph node
+                "query": latest_message[:200]
+            }
                 
-            llm = GroqChatModel(model="meta-llama/llama-4-maverick-17b-128e-instruct", temperature=0,system_instruction=query_title_system_instruction)
+            llm = GroqChatModel(
+                model="meta-llama/llama-4-maverick-17b-128e-instruct", 
+                temperature=0,
+                system_instruction=query_title_system_instruction,
+                trace_id=trace_id,
+                metadata=title_metadata
+            )
             response_title, usage_metadata = await llm.with_structured_output(schema_type=TitleAndIntentGeneratorOutput, prompt=latest_message)
             title = response_title.title
             intent = response_title.intent
@@ -343,6 +362,8 @@ class ChatService:
                 
             # Initialize message_id variable
             message_id = ""
+            
+            # trace_id already generated above (before title/intent LLM call)
             
             # Record the message in the database
             try:
