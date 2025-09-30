@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 from tavily import TavilyClient
 from apify_client import ApifyClient
-import vecs
+# import vecs
 from urllib.parse import quote_plus
 from app.core.structured_logger import get_structured_logger
 from app.core.config import settings
@@ -53,36 +53,36 @@ class LinkedInEnrichmentService:
         elif client is not None:
             self.client = client
     
-    async def _get_vecs_collection(self):
-        """Initialize and get vecs collection for LinkedIn profiles"""
-        if self._vecs_client is None:
-            # Use the same URL construction pattern as the main database connection
-            if settings.SUPABASE_USER and settings.SUPABASE_PASSWORD and settings.SUPABASE_HOST and settings.SUPABASE_PORT and settings.SUPABASE_DBNAME:
-                # Construct URL with proper encoding (same as database.py)
-                db_url = f"postgresql://{settings.SUPABASE_USER}:{quote_plus(settings.SUPABASE_PASSWORD)}@{settings.SUPABASE_HOST}:{settings.SUPABASE_PORT}/{settings.SUPABASE_DBNAME}?sslmode=require"
-                logger.info(f"Using constructed database URL for vector DB")
-            else:
-                # Fallback to DATABASE_URL
-                db_url = settings.DATABASE_URL
-                if not db_url:
-                    logger.error("DATABASE_URL not configured for vector database")
-                    return None
+    # async def _get_vecs_collection(self):
+    #     """Initialize and get vecs collection for LinkedIn profiles"""
+    #     if self._vecs_client is None:
+    #         # Use the same URL construction pattern as the main database connection
+    #         if settings.SUPABASE_USER and settings.SUPABASE_PASSWORD and settings.SUPABASE_HOST and settings.SUPABASE_PORT and settings.SUPABASE_DBNAME:
+    #             # Construct URL with proper encoding (same as database.py)
+    #             db_url = f"postgresql://{settings.SUPABASE_USER}:{quote_plus(settings.SUPABASE_PASSWORD)}@{settings.SUPABASE_HOST}:{settings.SUPABASE_PORT}/{settings.SUPABASE_DBNAME}?sslmode=require"
+    #             logger.info(f"Using constructed database URL for vector DB")
+    #         else:
+    #             # Fallback to DATABASE_URL
+    #             db_url = settings.DATABASE_URL
+    #             if not db_url:
+    #                 logger.error("DATABASE_URL not configured for vector database")
+    #                 return None
                 
-            self._vecs_client = vecs.create_client(db_url)
+    #         self._vecs_client = vecs.create_client(db_url)
         
-        if self._linkedin_profiles_collection is None:
-            # Create or get collection with HNSW index
-            self._linkedin_profiles_collection = self._vecs_client.get_or_create_collection(
-                name="linkedin_profiles",
-                dimension=768,  # Gemini embedding dimension
-                index_method="hnsw",
-                index_options={
-                    "m": 16,
-                    "ef_construction": 64
-                }
-            )
+    #     if self._linkedin_profiles_collection is None:
+    #         # Create or get collection with HNSW index
+    #         self._linkedin_profiles_collection = self._vecs_client.get_or_create_collection(
+    #             name="linkedin_profiles",
+    #             dimension=768,  # Gemini embedding dimension
+    #             index_method="hnsw",
+    #             index_options={
+    #                 "m": 16,
+    #                 "ef_construction": 64
+    #             }
+    #         )
         
-        return self._linkedin_profiles_collection
+    #     return self._linkedin_profiles_collection
             
     async def enrich_batch_profiles(self, linkedin_urls: List[str], max_retries: int = 2, preferred_method: str = "apify") -> Dict[str, Any]:
         """
@@ -380,61 +380,61 @@ class LinkedInEnrichmentService:
         batch_result = await self._get_batch_profile_contents_via_tavily([linkedin_url])
         return batch_result.get(linkedin_url)
     
-    async def generate_embeddings_for_user(self, user_id: str):
-        """
-        Generate embeddings for all profiles of a user using Gemini and store in vecs
+    # async def generate_embeddings_for_user(self, user_id: str):
+    #     """
+    #     Generate embeddings for all profiles of a user using Gemini and store in vecs
         
-        Args:
-            user_id: User ID to generate embeddings for
-        """
-        try:
-            # Get vecs collection
-            collection = await self._get_vecs_collection()
+    #     Args:
+    #         user_id: User ID to generate embeddings for
+    #     """
+    #     try:
+    #         # Get vecs collection
+    #         collection = await self._get_vecs_collection()
             
-            # Get all profiles for user
-            response = await self.client.table("connections").select(
-                "id, first_name, last_name, headline, about_section, experience_json, education_json, skills, linkedin_url"
-            ).eq("user_id", user_id).execute()
+    #         # Get all profiles for user
+    #         response = await self.client.table("connections").select(
+    #             "id, first_name, last_name, headline, about_section, experience_json, education_json, skills, linkedin_url"
+    #         ).eq("user_id", user_id).execute()
             
-            if not response.data:
-                logger.info(f"No profiles found for user {user_id}")
+    #         if not response.data:
+    #             logger.info(f"No profiles found for user {user_id}")
             
-            for profile in response.data:
-                try:
-                    # Create comprehensive profile text
-                    profile_text = self._create_profile_text(profile)
+    #         for profile in response.data:
+    #             try:
+    #                 # Create comprehensive profile text
+    #                 profile_text = self._create_profile_text(profile)
                     
-                    # Generate embedding using Gemini
-                    embedding = await self._generate_gemini_embedding(profile_text)
+    #                 # Generate embedding using Gemini
+    #                 embedding = await self._generate_gemini_embedding(profile_text)
                     
-                    if embedding:
-                        # Store embedding in vecs with metadata
-                        collection.upsert([
-                            (
-                                str(profile["id"]),  # Use connection ID as key
-                                embedding,
-                                {
-                                    "user_id": user_id,
-                                }
-                            )
-                        ])
+    #                 if embedding:
+    #                     # Store embedding in vecs with metadata
+    #                     collection.upsert([
+    #                         (
+    #                             str(profile["id"]),  # Use connection ID as key
+    #                             embedding,
+    #                             {
+    #                                 "user_id": user_id,
+    #                             }
+    #                         )
+    #                     ])
                         
-                        # Update connections table to mark embedding as generated
-                        await self.client.table("connections").update({
-                            "embedding_generated_at": datetime.now().isoformat()
-                        }).eq("id", profile["id"]).execute()
+    #                     # Update connections table to mark embedding as generated
+    #                     await self.client.table("connections").update({
+    #                         "embedding_generated_at": datetime.now().isoformat()
+    #                     }).eq("id", profile["id"]).execute()
                         
-                        logger.info(f"Generated and stored embedding for profile {profile['id']} in vecs")
+    #                     logger.info(f"Generated and stored embedding for profile {profile['id']} in vecs")
                     
-                    # Rate limiting
-                    await asyncio.sleep(0.5)
+    #                 # Rate limiting
+    #                 await asyncio.sleep(0.5)
                     
-                except Exception as e:
-                    logger.error(f"Error processing profile {profile.get('id')}: {str(e)}")
-                    continue
+    #             except Exception as e:
+    #                 logger.error(f"Error processing profile {profile.get('id')}: {str(e)}")
+    #                 continue
                     
-        except Exception as e:
-            logger.error(f"Error generating embeddings for user {user_id}: {str(e)}")
+    #     except Exception as e:
+    #         logger.error(f"Error generating embeddings for user {user_id}: {str(e)}")
     
     def _create_profile_text(self, profile: Dict) -> str:
         """
