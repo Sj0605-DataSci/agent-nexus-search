@@ -8,7 +8,6 @@ from app.db.clients import get_async_supabase_client
 from app.core.config import settings
 from app.models.schemas import QueryAnalysis, ScoredProfilesResponse
 from app.core.utils.cache import invalidate_chat_messages_cache
-import vecs
 import json
 import asyncio
 from urllib.parse import quote_plus
@@ -20,20 +19,6 @@ from app.db.redis_client import redis_client
 
 if settings.GOOGLE_API_KEY is None:
     raise ValueError("GOOGLE_API_KEY is not set")
-
-
-def get_vecs_client():
-    """Get vecs client without caching to reduce memory pressure."""
-    try:
-        # Initialize vector client
-        if settings.SUPABASE_USER and settings.SUPABASE_PASSWORD and settings.SUPABASE_HOST and settings.SUPABASE_PORT and settings.SUPABASE_DBNAME:
-            db_url = f"postgresql://{settings.SUPABASE_USER}:{quote_plus(settings.SUPABASE_PASSWORD)}@{settings.SUPABASE_HOST}:{settings.SUPABASE_PORT}/{settings.SUPABASE_DBNAME}?sslmode=require"
-        else:
-            db_url = settings.DATABASE_URL
-    except Exception as e:
-        raise e
-    client = vecs.create_client(db_url)
-    return client
 
 
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
