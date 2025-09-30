@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "yarn format && node scripts/setup-robots-txt && next build",
+    "build": "yarn format && node scripts/generate-sitemap.mjs && next build",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
     "setup-robots": "node scripts/setup-robots-txt",
+    "generate-sitemap": "node scripts/generate-sitemap.mjs",
     "prepare": "husky",
     "analyze": "ANALYZE=true yarn build"
   },
@@ -117,6 +118,7 @@
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.5.1",
     "globals": "^15.9.0",
+    "globby": "^15.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.0",
     "lovable-tagger": "^1.1.7",
