@@ -14,7 +14,16 @@ const __dirname = path.dirname(__filename);
  * It automatically discovers pages in the Next.js app and adds them to the sitemap.
  */
 async function generateSitemap() {
-  const prettierConfig = await prettier.resolveConfig('./.prettierrc.json');
+  // Try to resolve prettier config, but use empty object if it fails
+  let prettierConfig = {};
+  try {
+    const resolvedConfig = await prettier.resolveConfig('./.prettierrc.json');
+    if (resolvedConfig) {
+      prettierConfig = resolvedConfig;
+    }
+  } catch (error) {
+    console.warn('Warning: Could not resolve prettier config, using defaults');
+  }
   
   // Base URL for the site
   const baseUrl = 'https://discoverminds.ai';
@@ -96,10 +105,17 @@ async function generateSitemap() {
 </urlset>`;
   
   // Format with prettier
-  const formatted = prettier.format(sitemap, {
-    ...prettierConfig,
-    parser: 'html',
-  });
+  let formatted;
+  try {
+    formatted = await prettier.format(sitemap, {
+      ...prettierConfig,
+      parser: 'html',
+    });
+  } catch (error) {
+    // Fallback to unformatted sitemap if prettier fails
+    console.warn('Warning: Prettier formatting failed, using unformatted sitemap');
+    formatted = sitemap;
+  }
   
   // Write to public directory
   const sitemapPath = path.join(process.cwd(), 'public/sitemap.xml');
