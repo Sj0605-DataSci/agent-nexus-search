@@ -143,8 +143,7 @@ export default function ConnectionsPage() {
                           className={`inline-flex h-10 items-center justify-center rounded-md ${
                             connection.id === "linkedin" && hasConnections === "synced"
                               ? "bg-green-600 hover:bg-green-700"
-                              : connection.id === "linkedin" &&
-                                  hasConnections === "syncing"
+                              : connection.id === "linkedin" && hasConnections === "syncing"
                                 ? "bg-blue-600 hover:bg-blue-700"
                                 : connection.enabled
                                   ? "bg-primary hover:bg-indigo-700"

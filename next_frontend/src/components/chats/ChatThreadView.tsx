@@ -42,6 +42,7 @@ const isEmptyOrErrorMessage = (content: string | null | undefined): boolean => {
     "No matching connections found for your query.",
     "⚠️ An error occurred while searching. Please try again later.",
     "⏳ Searching for information...",
+    "Failed to generate JSON.",
   ];
 
   return errorMessages.includes(content);
