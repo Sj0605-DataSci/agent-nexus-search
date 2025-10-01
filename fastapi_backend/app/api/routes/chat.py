@@ -191,8 +191,8 @@ async def public_stream_chat(
 
     try:
         request_id = await enqueue_chat_task(
-            user_id=settings.ASHISH_USERID,
-            agent_id=settings.ASHISH_AGENTID,
+            user_id=settings.FOUNDERS_USERID,
+            agent_id=settings.FOUNDERS_AGENTID,
             device_id=x_device_id,
             device_type=x_device_type,
             client_ip=x_client_ip,
@@ -202,14 +202,6 @@ async def public_stream_chat(
             search_mode="basic",
             world_connections="connections",
             thread_id="new"
-        )
-        
-        logger.log_chat_event(
-            "public_chat_request",
-            user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575",
-            agent_id="e0563cd2-f372-41eb-9ed3-49e5b0abf6e8",
-            chat_thread_id="new",
-            request_id=request_id
         )
 
         # Increment the count and set TTL (only on first time or reset TTL)
@@ -225,7 +217,8 @@ async def public_stream_chat(
             "Error in public chat stream",
             exception_type=type(e).__name__,
             error_message=str(e),
-            user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575"
+            user_id=settings.FOUNDERS_USERID,
+            agent_id=settings.FOUNDERS_AGENTID
         )
         raise HTTPException(
             status_code=500,

@@ -11,6 +11,7 @@ import json
 import asyncio
 from app.db.redis_client import redis_client
 from app.core.services.agent.prompts import query_analysis_system_instruction, sql_search_system_instruction, scoring_system_instruction
+from app.core.config import settings
 
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """Get the research topic from the messages."""
@@ -196,7 +197,10 @@ Query: "{user_query}"
             "user_query": user_query
         }
         
-        await redis_client.set(cache_key, result, expire=3600)
+        if user_id == settings.FOUNDERS_USERID:
+            await redis_client.set(cache_key, result, expire=2628288)
+        else:
+            await redis_client.set(cache_key, result, expire=3600)
         return OverallState(**result)
         
     except Exception as e:
@@ -398,7 +402,10 @@ Search Context: {json.dumps(search_context, indent=2)}
             "sql_results":keyword_results
         }
 
-        await redis_client.set(cache_key, result, expire=3600)
+        if user_id == settings.FOUNDERS_USERID:
+            await redis_client.set(cache_key, result, expire=2628288)
+        else:
+            await redis_client.set(cache_key, result, expire=3600)
         await supabase_client.table("chat_messages").update({
             "generated_sql": clean_query
         }).eq("user_id", user_id).eq("id", current_message_id).execute()
@@ -480,7 +487,10 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                 "vector_results": [],
                 "vector_similarity_data": {}
             }
-            await redis_client.set(cache_key, result, expire=3600)
+            if user_id == settings.FOUNDERS_USERID:
+                await redis_client.set(cache_key, result, expire=2628288)
+            else:
+                await redis_client.set(cache_key, result, expire=3600)
             return OverallState(**result)
         
         # Initialize Supabase client
@@ -702,7 +712,10 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
             "vector_similarity_data": unique_vector_profiles
         }
 
-        await redis_client.set(cache_key, result, expire=3600)
+        if user_id == settings.FOUNDERS_USERID:
+            await redis_client.set(cache_key, result, expire=2628288)
+        else:
+            await redis_client.set(cache_key, result, expire=3600)
         return OverallState(**result)
         
     except Exception as e:
@@ -1016,7 +1029,10 @@ Profiles to Score:
         "vector_results": state["vector_results"],
         "vector_similarity_data": state["vector_similarity_data"]
     }
-    await redis_client.set(cache_key, result, expire=3600)
+    if user_id == settings.FOUNDERS_USERID:
+            await redis_client.set(cache_key, result, expire=2628288)
+    else:
+            await redis_client.set(cache_key, result, expire=3600)
     return OverallState(**result)
 
 # Create simplified SQL-only Agent Graph
