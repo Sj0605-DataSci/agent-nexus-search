@@ -1,5 +1,11 @@
 import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// ES modules equivalent for __filename and __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 
@@ -24,8 +30,8 @@ const nextConfig = {
   experimental: {
     swcPlugins: [["next-superjson-plugin", {}]],
     instrumentationHook: true,
-    workerThreads: false,
-    cpus: 1,
+    workerThreads: true,
+    cpus: 4,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
@@ -101,16 +107,45 @@ const nextConfig = {
     if (isServer) {
       config.externals.push("canvas");
     }
+
+    // Fix for caching issues
+    config.cache = {
+      type: "filesystem",
+      buildDependencies: {
+        config: [__filename],
+      },
+      cacheDirectory: path.join(process.cwd(), ".next/cache/webpack"),
+      name: isServer ? "server" : "client",
+      version: "1.0.1", // Change this to invalidate cache
+    };
+
+    // Optimize chunking
+    config.optimization = {
+      ...config.optimization,
+      moduleIds: "deterministic",
+      chunkIds: "deterministic",
+    };
+
     return config;
   },
 };
 
-export default withSentryConfig(withAnalyzer(nextConfig), {
-  org: "discoverminds",
-  project: "web-prod",
-  silent: process.env.NODE_ENV != "production",
-  widenClientFileUpload: true,
-  tunnelRoute: "/monitoring",
-  disableLogger: true,
-  automaticVercelMonitors: true,
-});
+// Only use Sentry in production builds
+const config =
+  process.env.NODE_ENV === "production"
+    ? withSentryConfig(withAnalyzer(nextConfig), {
+        org: "discoverminds",
+        project: "web-prod",
+        silent: false,
+        widenClientFileUpload: true,
+        tunnelRoute: "/monitoring",
+        disableLogger: true,
+        automaticVercelMonitors: true,
+        telemetry: false, // Disable Sentry telemetry
+        sourcemaps: {
+          disable: true, // Disable source map uploads
+        },
+      })
+    : withAnalyzer(nextConfig);
+
+export default config;

@@ -4,13 +4,11 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Script from "next/script";
 import { Providers } from "./Providers";
-import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import NoIndexTags from "@/components/seo/NoIndexTags";
-import StructuredData from "@/components/seo/StructuredData";
-import CanonicalUrl from "@/components/seo/CanonicalUrl";
-import PostHogAnalytics from "@/components/analytics/PostHogAnalytics";
-import PlerdyAnalytics from "@/components/analytics/PlerdyAnalytics";
-import SEOInitializer from "@/components/seo/SEOInitializer";
+import AnalyticsLoader from "@/components/analytics/AnalyticsLoader";
+import ConsolidatedStructuredData from "@/components/seo/ConsolidatedStructuredData";
+import OptimizedCanonicalUrl from "@/components/seo/OptimizedCanonicalUrl";
+import OptimizedSEOInitializer from "@/components/seo/OptimizedSEOInitializer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -197,12 +195,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://apis.discoverminds.ai" />
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
-        <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
-        <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
-        <link rel="dns-prefetch" href="https://us.i.posthog.com" />
 
         <Script id="load-css" strategy="afterInteractive">
           {`
@@ -219,16 +213,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </noscript>
         {process.env.NODE_ENV === "production" ? (
           <>
-            <GoogleAnalytics />
-            <PostHogAnalytics />
-            <PlerdyAnalytics />
-            <SEOInitializer />
-            <StructuredData type="Organization" />
-            <StructuredData type="WebSite" />
-            <StructuredData type="SoftwareApplication" />
-            <StructuredData type="BreadcrumbList" />
-            <StructuredData type="FAQPage" />
-            <CanonicalUrl />
+            <link rel="preconnect" href="https://www.googletagmanager.com" />
+            <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
+            <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
+            <link rel="dns-prefetch" href="https://us.i.posthog.com" />
+            <OptimizedSEOInitializer />
+            <ConsolidatedStructuredData />
+            <OptimizedCanonicalUrl />
+            <AnalyticsLoader />
+            <Analytics />
           </>
         ) : (
           <NoIndexTags />
@@ -239,7 +232,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>
-        <Analytics />
       </body>
     </html>
   );

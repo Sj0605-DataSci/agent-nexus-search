@@ -1,11 +1,38 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
 
 const VideoPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+
+  // Set up Intersection Observer to detect when the video is in viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        const [entry] = entries;
+        setIsInView(entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.1, // Trigger when 10% of the element is visible
+      }
+    );
+
+    if (videoContainerRef.current) {
+      observer.observe(videoContainerRef.current);
+    }
+
+    return () => {
+      if (videoContainerRef.current) {
+        observer.unobserve(videoContainerRef.current);
+      }
+    };
+  }, []);
 
   const handlePlayClick = () => {
     setIsPlaying(true);
@@ -20,21 +47,38 @@ const VideoPlayer = () => {
         Here's a Quick Demo
       </h2>
 
-      <div className="relative mt-6 aspect-video overflow-hidden rounded-2xl shadow-xl">
-        {!isPlaying && (
+      <div
+        ref={videoContainerRef}
+        className="relative mt-6 aspect-video overflow-hidden rounded-2xl shadow-xl"
+      >
+        {isPlaying && isInView ? (
+          <iframe
+            className="absolute inset-0 w-full h-full rounded-2xl"
+            src="https://www.youtube.com/embed/_MD4aM5SyhI?rel=0&modestbranding=1&autoplay=1"
+            title="DiscoverMinds Quick Demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            style={{ border: "none" }}
+            loading="lazy"
+          />
+        ) : (
           <div className="absolute inset-0 z-10 cursor-pointer group" onClick={handlePlayClick}>
             <Image
               src="/Images/YoutubeTumbnailImage.jpg"
               alt="Video thumbnail"
               fill
-              priority
+              priority={true}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover rounded-2xl"
             />
 
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-red-600/80 hover:bg-red-700/90 backdrop-blur-sm rounded-2xl px-6 py-3 sm:px-8 sm:py-4 shadow-2xl transform group-hover:scale-110 transition-all duration-300">
-                <Play className="w-8 h-8 sm:w-12 sm:h-12 text-white ml-1" fill="currentColor" />
+              <div className="bg-[#FF0000] hover:bg-[#CC0000] rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-4 shadow-2xl transform group-hover:scale-105 transition-all duration-200">
+                <Play
+                  className="w-10 h-10 sm:w-16 sm:h-16 text-white ml-0.5 sm:ml-1"
+                  fill="currentColor"
+                  strokeWidth={0}
+                />
               </div>
             </div>
 
@@ -45,19 +89,10 @@ const VideoPlayer = () => {
             </div>
           </div>
         )}
-
-        <iframe
-          className="absolute inset-0 w-full h-full rounded-2xl"
-          src={`https://www.youtube.com/embed/_MD4aM5SyhI?rel=0&iv_load_policy=3&modestbranding=1${isPlaying ? "&autoplay=1" : ""}`}
-          title="DiscoverMinds Quick Demo"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-          style={{ border: "none" }}
-          loading="lazy"
-        />
       </div>
     </div>
   );
 };
 
-export default VideoPlayer;
+// Memoize the component to prevent unnecessary re-renders
+export default memo(VideoPlayer);

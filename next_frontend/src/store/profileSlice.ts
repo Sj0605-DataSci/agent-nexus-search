@@ -167,5 +167,6 @@ const profileSlice = createSlice({
   },
 });
 
-export const { clearProfile, setProfileData, setLoadingState, updateConnectionsStatus } = profileSlice.actions;
+export const { clearProfile, setProfileData, setLoadingState, updateConnectionsStatus } =
+  profileSlice.actions;
 export default profileSlice.reducer;

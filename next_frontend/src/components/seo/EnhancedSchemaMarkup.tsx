@@ -20,24 +20,26 @@ interface EnhancedSchemaMarkupProps {
 
 /**
  * Enhanced Schema Markup Component
- * 
+ *
  * This component extends the existing StructuredData component with additional
  * schema types that are relevant for professional networking and career services.
  */
 export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarkupProps) {
   const pathname = usePathname();
-  
+
   // Only render in production environment
   if (!isProduction()) {
     return null;
   }
-  
+
   // Job Posting schema
   const jobPostingData = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: data?.title || "Professional Opportunity",
-    description: data?.description || "A career opportunity found through DiscoverMinds.ai network intelligence platform.",
+    description:
+      data?.description ||
+      "A career opportunity found through DiscoverMinds.ai network intelligence platform.",
     datePosted: data?.datePosted || new Date().toISOString(),
     validThrough: data?.validThrough,
     employmentType: data?.employmentType || "FULL_TIME",
@@ -58,13 +60,15 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     },
     ...data,
   };
-  
+
   // How-To schema (for guides, tutorials)
   const howToData = {
     "@context": "https://schema.org",
     "@type": "HowTo",
     name: data?.name || "How to Use DiscoverMinds.ai for Professional Networking",
-    description: data?.description || "A step-by-step guide to leveraging your professional network with DiscoverMinds.ai.",
+    description:
+      data?.description ||
+      "A step-by-step guide to leveraging your professional network with DiscoverMinds.ai.",
     totalTime: data?.totalTime || "PT30M",
     tool: data?.tools || [
       {
@@ -82,7 +86,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     ],
     ...data,
   };
-  
+
   // Local Business schema
   const localBusinessData = {
     "@context": "https://schema.org",
@@ -106,13 +110,15 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     },
     ...data,
   };
-  
+
   // Product schema
   const productData = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: data?.name || "DiscoverMinds.ai Platform",
-    description: data?.description || "AI-Powered Network Intelligence Platform that helps professionals leverage their extended networks.",
+    description:
+      data?.description ||
+      "AI-Powered Network Intelligence Platform that helps professionals leverage their extended networks.",
     image: data?.image || [`${BASE_URL}/Images/og-image.png`],
     brand: {
       "@type": "Brand",
@@ -127,7 +133,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     },
     ...data,
   };
-  
+
   // Review schema
   const reviewData = {
     "@context": "https://schema.org",
@@ -147,10 +153,11 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
       "@type": "Person",
       name: data?.authorName || "Platform User",
     },
-    reviewBody: data?.reviewBody || "DiscoverMinds.ai has transformed how I network professionally.",
+    reviewBody:
+      data?.reviewBody || "DiscoverMinds.ai has transformed how I network professionally.",
     ...data,
   };
-  
+
   // Event schema
   const eventData = {
     "@context": "https://schema.org",
@@ -163,7 +170,9 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
       name: data?.locationName || "Online",
       address: data?.address || "Virtual Event",
     },
-    description: data?.description || "Join us for a professional networking event powered by DiscoverMinds.ai.",
+    description:
+      data?.description ||
+      "Join us for a professional networking event powered by DiscoverMinds.ai.",
     organizer: {
       "@type": "Organization",
       name: "DiscoverMinds.ai",
@@ -171,13 +180,15 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     },
     ...data,
   };
-  
+
   // Course schema
   const courseData = {
     "@context": "https://schema.org",
     "@type": "Course",
     name: data?.name || "Mastering Professional Networking with DiscoverMinds.ai",
-    description: data?.description || "Learn how to leverage your professional network effectively using DiscoverMinds.ai.",
+    description:
+      data?.description ||
+      "Learn how to leverage your professional network effectively using DiscoverMinds.ai.",
     provider: {
       "@type": "Organization",
       name: "DiscoverMinds.ai",
@@ -185,23 +196,25 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     },
     ...data,
   };
-  
+
   // Person schema
   const personData = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: data?.name || "",
     jobTitle: data?.jobTitle || "",
-    worksFor: data?.worksFor ? {
-      "@type": "Organization",
-      name: data.worksFor,
-    } : undefined,
+    worksFor: data?.worksFor
+      ? {
+          "@type": "Organization",
+          name: data.worksFor,
+        }
+      : undefined,
     description: data?.description || "",
     image: data?.image,
     sameAs: data?.sameAs || [],
     ...data,
   };
-  
+
   // Professional Service schema
   const professionalServiceData = {
     "@context": "https://schema.org",
@@ -216,7 +229,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     },
     ...data,
   };
-  
+
   // Map schema types to their data
   const schemaDataMap = {
     JobPosting: jobPostingData,
@@ -229,9 +242,9 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     Person: personData,
     ProfessionalService: professionalServiceData,
   };
-  
+
   const structuredData = schemaDataMap[type];
-  
+
   return (
     <Script
       id={`enhanced-schema-${type.toLowerCase()}`}
