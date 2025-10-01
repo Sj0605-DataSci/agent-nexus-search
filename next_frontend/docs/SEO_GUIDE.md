@@ -32,21 +32,21 @@ We've implemented comprehensive SEO analytics tracking to measure user engagemen
 
 ```tsx
 // In any component
-import { useSEOAnalytics } from '@/hooks/useSEOAnalytics';
+import { useSEOAnalytics } from "@/hooks/useSEOAnalytics";
 
 function MyComponent() {
   const { trackEngagement, trackConversion } = useSEOAnalytics();
-  
+
   // Track user engagement
   const handleButtonClick = () => {
-    trackEngagement('feature_interaction', { feature_name: 'search' });
+    trackEngagement("feature_interaction", { feature_name: "search" });
   };
-  
+
   // Track conversions
   const handleDemoBooking = () => {
-    trackConversion('demo_booking');
+    trackConversion("demo_booking");
   };
-  
+
   return (
     <div>
       <button onClick={handleButtonClick}>Search</button>
@@ -97,12 +97,12 @@ We've implemented comprehensive structured data markup for rich search results:
 
 ```tsx
 // In any page component
-import EnhancedSchemaMarkup from '@/components/seo/EnhancedSchemaMarkup';
+import EnhancedSchemaMarkup from "@/components/seo/EnhancedSchemaMarkup";
 
 export default function JobPostingPage() {
   return (
     <>
-      <EnhancedSchemaMarkup 
+      <EnhancedSchemaMarkup
         type="JobPosting"
         data={{
           title: "Network Intelligence Specialist",
@@ -110,7 +110,7 @@ export default function JobPostingPage() {
           datePosted: "2025-09-15T00:00:00Z",
           validThrough: "2025-10-15T00:00:00Z",
           employmentType: "FULL_TIME",
-          organizationName: "DiscoverMinds.ai"
+          organizationName: "DiscoverMinds.ai",
         }}
       />
       {/* Page content */}
@@ -158,7 +158,7 @@ We've optimized internal linking for better SEO and user experience:
 ### Usage
 
 ```tsx
-import InternalLinkOptimizer from '@/components/seo/InternalLinkOptimizer';
+import InternalLinkOptimizer from "@/components/seo/InternalLinkOptimizer";
 
 function Navigation() {
   return (
@@ -166,7 +166,7 @@ function Navigation() {
       <InternalLinkOptimizer href="/about" title="Learn about DiscoverMinds.ai">
         About Us
       </InternalLinkOptimizer>
-      
+
       <InternalLinkOptimizer href="https://blog.discoverminds.ai" rel="nofollow">
         Blog
       </InternalLinkOptimizer>

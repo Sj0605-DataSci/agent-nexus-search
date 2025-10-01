@@ -1,7 +1,7 @@
 import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "path";
+import { fileURLToPath } from "url";
 
 // ES modules equivalent for __filename and __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -107,40 +107,45 @@ const nextConfig = {
     if (isServer) {
       config.externals.push("canvas");
     }
-    
+
     // Fix for caching issues
     config.cache = {
-      type: 'filesystem',
+      type: "filesystem",
       buildDependencies: {
         config: [__filename],
       },
-      cacheDirectory: path.join(process.cwd(), '.next/cache/webpack'),
-      name: isServer ? 'server' : 'client',
-      version: '1.0.1', // Change this to invalidate cache
+      cacheDirectory: path.join(process.cwd(), ".next/cache/webpack"),
+      name: isServer ? "server" : "client",
+      version: "1.0.1", // Change this to invalidate cache
     };
-    
+
     // Optimize chunking
     config.optimization = {
       ...config.optimization,
-      moduleIds: 'deterministic',
-      chunkIds: 'deterministic',
+      moduleIds: "deterministic",
+      chunkIds: "deterministic",
     };
-    
+
     return config;
   },
 };
 
 // Only use Sentry in production builds
-const config = process.env.NODE_ENV === "production" 
-  ? withSentryConfig(withAnalyzer(nextConfig), {
-      org: "discoverminds",
-      project: "web-prod",
-      silent: false,
-      widenClientFileUpload: true,
-      tunnelRoute: "/monitoring",
-      disableLogger: true,
-      automaticVercelMonitors: true,
-    })
-  : withAnalyzer(nextConfig);
+const config =
+  process.env.NODE_ENV === "production"
+    ? withSentryConfig(withAnalyzer(nextConfig), {
+        org: "discoverminds",
+        project: "web-prod",
+        silent: false,
+        widenClientFileUpload: true,
+        tunnelRoute: "/monitoring",
+        disableLogger: true,
+        automaticVercelMonitors: true,
+        telemetry: false, // Disable Sentry telemetry
+        sourcemaps: {
+          disable: true, // Disable source map uploads
+        },
+      })
+    : withAnalyzer(nextConfig);
 
 export default config;

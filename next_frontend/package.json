@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/setup-robots-txt && next build",
-    "build:fast": "NEXT_DISABLE_SOURCEMAPS=true NODE_ENV=development next build",
-    "build:full": "yarn format && node scripts/generate-sitemap.mjs && next build",
+    "build": "yarn format && node scripts/generate-sitemap.mjs && next build",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
