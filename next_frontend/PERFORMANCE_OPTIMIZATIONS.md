@@ -122,6 +122,21 @@ This document outlines the performance optimizations implemented to address Java
 
 **Fixed in**: Version 1.0.2 of the webpack config (cache version updated)
 
+### High Total Blocking Time (TBT) - 1,030ms
+
+**Issue**: Aggressive code splitting with `chunks: "all"` created too many synchronous chunks that blocked the main thread during initial load.
+
+**Solution Applied (v1.0.3)**:
+
+1. Changed `chunks: "all"` to `chunks: "async"` - only split async imports
+2. Increased `minSize` to 20KB to reduce number of chunks
+3. Simplified cache groups to use Next.js defaults
+4. Disabled PostHog session recording completely (major TBT contributor)
+5. Increased analytics loading delay from 1s to 2-3s
+6. Disabled PostHog autocapture and pageleave tracking
+
+**Expected Impact**: TBT should reduce from 1,030ms to ~300-500ms
+
 ## Rollback Instructions
 
 If issues arise, revert these files:
