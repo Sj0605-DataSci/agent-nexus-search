@@ -14,16 +14,13 @@ const __dirname = path.dirname(__filename);
  * It automatically discovers pages in the Next.js app and adds them to the sitemap.
  */
 async function generateSitemap() {
-  // Try to resolve prettier config, but use empty object if it fails
-  let prettierConfig = {};
-  try {
-    const resolvedConfig = await prettier.resolveConfig('./.prettierrc.json');
-    if (resolvedConfig) {
-      prettierConfig = resolvedConfig;
-    }
-  } catch (error) {
-    console.warn('Warning: Could not resolve prettier config, using defaults');
-  }
+  // Use default prettier config to avoid file system operations
+  const prettierConfig = {
+    printWidth: 100,
+    tabWidth: 2,
+    semi: true,
+    singleQuote: true,
+  };
   
   // Base URL for the site
   const baseUrl = 'https://discoverminds.ai';
@@ -104,18 +101,8 @@ async function generateSitemap() {
   `).join('')}
 </urlset>`;
   
-  // Format with prettier
-  let formatted;
-  try {
-    formatted = await prettier.format(sitemap, {
-      ...prettierConfig,
-      parser: 'html',
-    });
-  } catch (error) {
-    // Fallback to unformatted sitemap if prettier fails
-    console.warn('Warning: Prettier formatting failed, using unformatted sitemap');
-    formatted = sitemap;
-  }
+  // Skip formatting for faster builds
+  const formatted = sitemap;
   
   // Write to public directory
   const sitemapPath = path.join(process.cwd(), 'public/sitemap.xml');
@@ -160,8 +147,12 @@ Disallow: /`;
   }
 }
 
-// Run the generator
-generateSitemap().catch(err => {
-  console.error('Error generating sitemap:', err);
-  process.exit(1);
-});
+// Only run sitemap generator in production to save build time
+if (process.env.NODE_ENV === 'production') {
+  generateSitemap().catch(err => {
+    console.error('Error generating sitemap:', err);
+    process.exit(1);
+  });
+} else {
+  console.log('⏩ Skipping sitemap generation in development environment');
+}

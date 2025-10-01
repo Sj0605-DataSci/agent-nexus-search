@@ -197,12 +197,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://apis.discoverminds.ai" />
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
-        <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
-        <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
-        <link rel="dns-prefetch" href="https://us.i.posthog.com" />
 
         <Script id="load-css" strategy="afterInteractive">
           {`
@@ -219,6 +215,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </noscript>
         {process.env.NODE_ENV === "production" ? (
           <>
+            <link rel="preconnect" href="https://www.googletagmanager.com" />
+            <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
+            <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
+            <link rel="dns-prefetch" href="https://us.i.posthog.com" />
             <GoogleAnalytics />
             <PostHogAnalytics />
             <PlerdyAnalytics />
@@ -229,6 +229,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <StructuredData type="BreadcrumbList" />
             <StructuredData type="FAQPage" />
             <CanonicalUrl />
+            <Analytics />
           </>
         ) : (
           <NoIndexTags />
@@ -239,7 +240,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>
-        <Analytics />
       </body>
     </html>
   );

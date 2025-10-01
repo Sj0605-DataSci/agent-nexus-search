@@ -305,7 +305,7 @@ export default function NewFooter() {
           width={1191}
           height={128}
           className="w-full max-w-6xl h-auto"
-          priority
+          loading="lazy"
         />
       </div>
     </footer>
