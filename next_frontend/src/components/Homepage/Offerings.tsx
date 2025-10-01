@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { FaHandshake } from "react-icons/fa6";
 import { BsMegaphone } from "react-icons/bs";
 import { GiSpiderWeb } from "react-icons/gi";
 import { FiSearch } from "react-icons/fi";
+
+// Note: react-icons v5.5.0 supports tree-shaking with named imports
 import UseCasesSection from "./UseCasesSection";
 import VideoPlayer from "./VideoPlayer";
 
@@ -37,6 +39,43 @@ const offeringsData = [
 ];
 
 const Offerings = () => {
+  // Memoize offerings cards to prevent re-renders
+  const offeringCards = useMemo(
+    () =>
+      offeringsData.map((offering, index) => (
+        <li
+          key={offering.title}
+          className="flex flex-col rounded-xl sm:rounded-2xl transition-all duration-300 overflow-hidden"
+          aria-labelledby={`offering-title-${index}`}
+        >
+          <div
+            className={`py-8 sm:py-10 md:py-12 flex items-center justify-center ${offering.bgColor}`}
+            aria-hidden="true"
+          >
+            <div
+              className="bg-white p-3 sm:p-4 rounded-full shadow-sm"
+              role="img"
+              aria-label={offering.title}
+            >
+              {offering.icon}
+            </div>
+          </div>
+          <div className="p-4 sm:p-5 md:p-6 text-center h-28 md:h-36 lg:h-32 bg-white">
+            <h3
+              id={`offering-title-${index}`}
+              className="text-lg sm:text-xl font-bold text-[#0E3D15] mb-1 sm:mb-2"
+            >
+              {offering.title}
+            </h3>
+            <p className="text-sm sm:text-base text-gray-600 line-clamp-3 sm:line-clamp-none">
+              {offering.description}
+            </p>
+          </div>
+        </li>
+      )),
+    []
+  );
+
   return (
     <section
       className="bg-[#B2DC8A] items-center justify-center py-12 sm:py-16 md:py-20 lg:py-24"
@@ -53,37 +92,7 @@ const Offerings = () => {
         </header>
         <div className="mx-auto mt-5 sm:mt-8 lg:mt-10 w-full">
           <ul className="grid grid-cols-1 gap-5 sm:gap-6 md:gap-8 sm:grid-cols-2 list-none p-0">
-            {offeringsData.map((offering, index) => (
-              <li
-                key={offering.title}
-                className="flex flex-col rounded-xl sm:rounded-2xl transition-all duration-300 overflow-hidden"
-                aria-labelledby={`offering-title-${index}`}
-              >
-                <div
-                  className={`py-8 sm:py-10 md:py-12 flex items-center justify-center ${offering.bgColor}`}
-                  aria-hidden="true"
-                >
-                  <div
-                    className="bg-white p-3 sm:p-4 rounded-full shadow-sm"
-                    role="img"
-                    aria-label={offering.title}
-                  >
-                    {offering.icon}
-                  </div>
-                </div>
-                <div className="p-4 sm:p-5 md:p-6 text-center h-28 md:h-36 lg:h-32 bg-white">
-                  <h3
-                    id={`offering-title-${index}`}
-                    className="text-lg sm:text-xl font-bold text-[#0E3D15] mb-1 sm:mb-2"
-                  >
-                    {offering.title}
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 line-clamp-3 sm:line-clamp-none">
-                    {offering.description}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {offeringCards}
           </ul>
         </div>
       </div>

@@ -9,7 +9,6 @@ const VideoPlayer = () => {
   const [isInView, setIsInView] = useState(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  // Set up Intersection Observer to detect when the video is in viewport
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
@@ -19,7 +18,7 @@ const VideoPlayer = () => {
       {
         root: null,
         rootMargin: "0px",
-        threshold: 0.1, // Trigger when 10% of the element is visible
+        threshold: 0.1,
       }
     );
 
@@ -94,5 +93,5 @@ const VideoPlayer = () => {
   );
 };
 
-// Memoize the component to prevent unnecessary re-renders
+
 export default memo(VideoPlayer);

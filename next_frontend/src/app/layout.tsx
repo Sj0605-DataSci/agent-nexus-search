@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "./Providers";
 import NoIndexTags from "@/components/seo/NoIndexTags";
-import AnalyticsLoader from "@/components/analytics/AnalyticsLoader";
 import ConsolidatedStructuredData from "@/components/seo/ConsolidatedStructuredData";
 import OptimizedCanonicalUrl from "@/components/seo/OptimizedCanonicalUrl";
 import OptimizedSEOInitializer from "@/components/seo/OptimizedSEOInitializer";
+import dynamic from "next/dynamic";
+
+const Analytics = dynamic(
+  () => import("@vercel/analytics/next").then(mod => mod.Analytics),
+  { ssr: false }
+);
+const AnalyticsLoader = dynamic(
+  () => import("@/components/analytics/AnalyticsLoader"),
+  { ssr: false }
+);
 
 const inter = Inter({
   variable: "--font-inter",
@@ -205,8 +213,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <OptimizedSEOInitializer />
             <ConsolidatedStructuredData />
             <OptimizedCanonicalUrl />
-            <AnalyticsLoader />
-            <Analytics />
           </>
         ) : (
           <NoIndexTags />
@@ -217,6 +223,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>
+        {process.env.NODE_ENV === "production" && (
+          <>
+            <AnalyticsLoader />
+            <Analytics />
+          </>
+        )}
       </body>
     </html>
   );
