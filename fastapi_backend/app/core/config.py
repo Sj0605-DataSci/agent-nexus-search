@@ -78,12 +78,12 @@ class Settings(BaseSettings):
         return os.getenv("STAGING_SUPABASE_DBNAME", "") if ENVIRONMENT == "STAGING" else os.getenv("SUPABASE_DBNAME", "")
 
     @property
-    def ASHISH_AGENTID(self) -> str:
-        return os.getenv("STAGING_ASHISH_AGENTID", "") if ENVIRONMENT == "STAGING" else os.getenv("ASHISH_AGENTID", "")
+    def FOUNDERS_AGENTID(self) -> str:
+        return os.getenv("STAGING_FOUNDERS_AGENTID", "") if ENVIRONMENT == "STAGING" else os.getenv("FOUNDERS_AGENTID", "")
 
     @property
-    def ASHISH_USERID(self) -> str:
-        return os.getenv("STAGING_ASHISH_USERID", "") if ENVIRONMENT == "STAGING" else os.getenv("ASHISH_USERID", "")        
+    def FOUNDERS_USERID(self) -> str:
+        return os.getenv("STAGING_FOUNDERS_USERID", "") if ENVIRONMENT == "STAGING" else os.getenv("FOUNDERS_USERID", "")        
 
     # JWT settings
     ALGORITHM: str = "HS256"
