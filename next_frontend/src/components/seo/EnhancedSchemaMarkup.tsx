@@ -14,7 +14,9 @@ interface EnhancedSchemaMarkupProps {
     | "Event"
     | "Course"
     | "Person"
-    | "ProfessionalService";
+    | "ProfessionalService"
+    | "AggregateRating"
+    | "ImageObject";
   data?: Record<string, any>;
 }
 
@@ -128,7 +130,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
       "@type": "Offer",
       price: data?.price || "0",
       priceCurrency: data?.priceCurrency || "USD",
-      availability: "https://schema.org/InStock",
+      availability: data?.availability || "https://schema.org/InStock",
       url: `${BASE_URL}/pricing`,
     },
     ...data,
@@ -230,6 +232,24 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     ...data,
   };
 
+  // AggregateRating data
+  const aggregateRatingData = {
+    "@context": "https://schema.org",
+    "@type": "AggregateRating",
+    ratingValue: data?.ratingValue || "5",
+    bestRating: data?.bestRating || "5",
+    ratingCount: data?.ratingCount || "100",
+    ...data,
+  };
+
+  // ImageObject data
+  const imageObjectData = {
+    "@context": "https://schema.org",
+    "@type": "ImageObject",
+    url: data?.url || `${BASE_URL}/Images/og-image.png`,
+    ...data,
+  };
+
   // Map schema types to their data
   const schemaDataMap = {
     JobPosting: jobPostingData,
@@ -241,6 +261,8 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     Course: courseData,
     Person: personData,
     ProfessionalService: professionalServiceData,
+    AggregateRating: aggregateRatingData,
+    ImageObject: imageObjectData,
   };
 
   const structuredData = schemaDataMap[type];
