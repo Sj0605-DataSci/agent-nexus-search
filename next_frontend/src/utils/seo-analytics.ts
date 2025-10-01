@@ -4,13 +4,13 @@ import { updatePostHogUserProperties } from "./posthog-helpers";
 
 /**
  * SEO Analytics Utility
- * 
+ *
  * This utility provides enhanced tracking capabilities for SEO-relevant user interactions.
  * It complements the existing analytics.ts by focusing specifically on interactions
  * that are important for SEO metrics and conversion tracking.
  */
 
-export type UserEngagementType = 
+export type UserEngagementType =
   | "page_scroll_depth"
   | "time_on_page"
   | "click_through"
@@ -68,7 +68,7 @@ export const SEOAnalytics = {
     // Only track at meaningful thresholds to avoid excessive events
     const thresholds = [25, 50, 75, 90, 100];
     const nearestThreshold = thresholds.find(t => depth <= t);
-    
+
     if (nearestThreshold) {
       posthog.capture("scroll_depth_milestone", {
         depth_percentage: nearestThreshold,
@@ -86,7 +86,7 @@ export const SEOAnalytics = {
   trackTimeOnPage: (seconds: number, pageId: string) => {
     // Track at meaningful intervals
     const intervals = [10, 30, 60, 120, 300, 600];
-    
+
     for (const interval of intervals) {
       if (seconds >= interval && seconds < interval * 1.1) {
         posthog.capture("time_on_page_milestone", {
@@ -151,13 +151,13 @@ export const SEOAnalytics = {
    */
   trackTrafficSource: () => {
     if (typeof window === "undefined") return;
-    
+
     const url = new URL(window.location.href);
     const utmSource = url.searchParams.get("utm_source");
     const utmMedium = url.searchParams.get("utm_medium");
     const utmCampaign = url.searchParams.get("utm_campaign");
     const referrer = document.referrer;
-    
+
     posthog.capture("traffic_source_identified", {
       utm_source: utmSource,
       utm_medium: utmMedium,
@@ -182,11 +182,7 @@ export const SEOAnalytics = {
   /**
    * Track key SEO metrics
    */
-  trackSEOMetric: (
-    metricType: SEOMetric,
-    value: number,
-    details: Record<string, any> = {}
-  ) => {
+  trackSEOMetric: (metricType: SEOMetric, value: number, details: Record<string, any> = {}) => {
     posthog.capture("seo_metric", {
       metric_type: metricType,
       value: value,
@@ -242,9 +238,9 @@ export const SEOAnalytics = {
    * This provides more context than the default page view tracking
    */
   trackPageView: (pageName: string, properties?: Record<string, any>) => {
-    const pageCategory = typeof window !== "undefined" ? 
-      window.location.pathname.split('/')[1] || 'main' : 'unknown';
-      
+    const pageCategory =
+      typeof window !== "undefined" ? window.location.pathname.split("/")[1] || "main" : "unknown";
+
     posthog.capture("$pageview", {
       page_name: pageName,
       page_category: pageCategory,
@@ -268,14 +264,14 @@ export const SEOAnalytics = {
     // Set up scroll depth tracking
     let maxScrollDepth = 0;
     const pageId = window.location.pathname;
-    
+
     const handleScroll = () => {
       const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (scrollHeight <= 0) return;
-      
+
       const scrollPosition = window.scrollY;
       const scrollDepth = Math.round((scrollPosition / scrollHeight) * 100);
-      
+
       if (scrollDepth > maxScrollDepth) {
         maxScrollDepth = scrollDepth;
         SEOAnalytics.trackScrollDepth(maxScrollDepth, pageId);
@@ -285,11 +281,11 @@ export const SEOAnalytics = {
     // Set up time on page tracking
     const startTime = Date.now();
     let timeTracked = false;
-    
+
     const trackTimeBeforeLeaving = () => {
       if (timeTracked) return;
       timeTracked = true;
-      
+
       const timeOnPage = Math.round((Date.now() - startTime) / 1000);
       SEOAnalytics.trackTimeOnPage(timeOnPage, pageId);
     };
@@ -309,7 +305,7 @@ export const SEOAnalytics = {
       window.removeEventListener("beforeunload", trackTimeBeforeLeaving);
       trackTimeBeforeLeaving();
     };
-  }
+  },
 };
 
 export default SEOAnalytics;
