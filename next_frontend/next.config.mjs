@@ -22,9 +22,7 @@ const advancedHeaders = [
   { key: "Service-Worker-Allowed", value: "/" },
 ];
 
-const cacheHeaders = [
-  { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-];
+const cacheHeaders = [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }];
 
 const PRODUCTION_API = "https://apis.discoverminds.ai";
 const STAGING_API = "https://staging-apis.discoverminds.ai";
@@ -79,11 +77,11 @@ const nextConfig = {
       // Cache fonts
       { source: "/fonts/:path*", headers: cacheHeaders },
       // Cache images with moderate TTL
-      { 
-        source: "/images/:path*", 
+      {
+        source: "/images/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=2592000, stale-while-revalidate=86400" }
-        ]
+          { key: "Cache-Control", value: "public, max-age=2592000, stale-while-revalidate=86400" },
+        ],
       },
     ];
   },
@@ -141,46 +139,48 @@ const nextConfig = {
       },
       cacheDirectory: path.join(process.cwd(), ".next/cache/webpack"),
       name: isServer ? "server" : "client",
-      version: "1.0.1", // Change this to invalidate cache
+      version: "1.0.2", // Change this to invalidate cache
     };
 
-    // Optimize chunking and reduce bundle size
-    config.optimization = {
-      ...config.optimization,
-      moduleIds: "deterministic",
-      chunkIds: "deterministic",
-      splitChunks: {
-        chunks: "all",
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // Vendor chunk for node_modules
-          vendor: {
-            name: "vendor",
-            chunks: "all",
-            test: /node_modules/,
-            priority: 20,
-          },
-          // Separate chunk for heavy libraries
-          heavy: {
-            name: "heavy",
-            test: /[\\/]node_modules[\\/](framer-motion|gsap|recharts|@radix-ui)[\\/]/,
-            chunks: "all",
-            priority: 30,
-          },
-          // Common chunk for shared code
-          common: {
-            name: "common",
-            minChunks: 2,
-            chunks: "all",
-            priority: 10,
-            reuseExistingChunk: true,
-            enforce: true,
+    // Optimize chunking and reduce bundle size (client-side only)
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: "deterministic",
+        chunkIds: "deterministic",
+        splitChunks: {
+          chunks: "all",
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunk for node_modules
+            vendor: {
+              name: "vendor",
+              chunks: "all",
+              test: /node_modules/,
+              priority: 20,
+            },
+            // Separate chunk for heavy libraries
+            heavy: {
+              name: "heavy",
+              test: /[\\/]node_modules[\\/](framer-motion|gsap|recharts|@radix-ui)[\\/]/,
+              chunks: "all",
+              priority: 30,
+            },
+            // Common chunk for shared code
+            common: {
+              name: "common",
+              minChunks: 2,
+              chunks: "all",
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
           },
         },
-      },
-      minimize: process.env.NODE_ENV === "production",
-    };
+        minimize: process.env.NODE_ENV === "production",
+      };
+    }
 
     return config;
   },

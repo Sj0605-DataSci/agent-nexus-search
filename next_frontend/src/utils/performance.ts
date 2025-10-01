@@ -6,13 +6,10 @@
  * Batch DOM reads and writes to prevent forced reflows
  * Use this when you need to read and write DOM properties in sequence
  */
-export const batchDOMOperations = (
-  reads: Array<() => void>,
-  writes: Array<() => void>
-) => {
+export const batchDOMOperations = (reads: Array<() => void>, writes: Array<() => void>) => {
   // Perform all reads first
   reads.forEach(read => read());
-  
+
   // Then perform all writes
   requestAnimationFrame(() => {
     writes.forEach(write => write());
@@ -27,7 +24,7 @@ export const debounce = <T extends (...args: any[]) => any>(
   wait: number
 ): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout | null = null;
-  
+
   return (...args: Parameters<T>) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
@@ -42,7 +39,7 @@ export const throttle = <T extends (...args: any[]) => any>(
   limit: number
 ): ((...args: Parameters<T>) => void) => {
   let inThrottle: boolean = false;
-  
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
@@ -61,30 +58,27 @@ export const observeElement = (
   callback: (entry: IntersectionObserverEntry) => void,
   options?: IntersectionObserverInit
 ) => {
-  const observer = new IntersectionObserver((entries) => {
+  const observer = new IntersectionObserver(entries => {
     entries.forEach(callback);
   }, options);
-  
+
   observer.observe(element);
-  
+
   return () => observer.disconnect();
 };
 
 /**
  * Measure performance of a function
  */
-export const measurePerformance = async <T>(
-  name: string,
-  fn: () => T | Promise<T>
-): Promise<T> => {
+export const measurePerformance = async <T>(name: string, fn: () => T | Promise<T>): Promise<T> => {
   const start = performance.now();
   const result = await fn();
   const end = performance.now();
-  
+
   if (process.env.NODE_ENV === "development") {
     console.log(`[Performance] ${name}: ${(end - start).toFixed(2)}ms`);
   }
-  
+
   return result;
 };
 
@@ -107,7 +101,7 @@ export const getElementDimensions = (element: HTMLElement) => {
  */
 export const preloadResource = (href: string, as: string) => {
   if (typeof document === "undefined") return;
-  
+
   const link = document.createElement("link");
   link.rel = "preload";
   link.href = href;
