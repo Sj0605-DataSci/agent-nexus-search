@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import SearchInputField from "../chats/SearchInputField";
 import { useRouter } from "next/navigation";
 import Analytics from "@/utils/analytics";
@@ -37,7 +37,7 @@ const SearchSection = () => {
   const [loading, setLoading] = useState(false);
   const [loadingButtonIndex, setLoadingButtonIndex] = useState<number | null>(null);
 
-  const handleSearch = (e?: React.FormEvent<HTMLFormElement>) => {
+  const handleSearch = useCallback((e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const query = searchQuery.trim();
     if (query) {
@@ -54,16 +54,16 @@ const SearchSection = () => {
 
       router.push(`/user-query?q=${encodeURIComponent(query)}`);
     }
-  };
+  }, [searchQuery, capture, router]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSearch(e as any);
     }
-  };
+  }, [handleSearch]);
 
-  const handleQuickSearch = (label: string, index: number) => {
+  const handleQuickSearch = useCallback((label: string, index: number) => {
     setLoading(true);
     setLoadingButtonIndex(index);
     Analytics.trackSearch(label.trim(), 0, {
@@ -81,7 +81,7 @@ const SearchSection = () => {
       setLoading(false);
       setLoadingButtonIndex(null);
     }, 3000);
-  };
+  }, [capture]);
 
   return (
     <div className="relative z-20 pt-12 -mb-90">
@@ -126,7 +126,7 @@ const SearchSection = () => {
 
           <nav className="flex flex-col items-center w-full mt-6" aria-label="Quick search options">
             <div className="flex items-center justify-center w-full flex-wrap gap-3">
-              {quickSearchesData.map((search, index) => (
+              {useMemo(() => quickSearchesData.map((search, index) => (
                 <div
                   key={`${search.label}-${index}`}
                   className="transition-transform duration-150 ease-out hover:-translate-y-1"
@@ -176,7 +176,7 @@ const SearchSection = () => {
                     )}
                   </Link>
                 </div>
-              ))}
+              )), [loading, loadingButtonIndex, handleQuickSearch])}
             </div>
             <p className="mt-8 text-sm text-white/70 font-light">
               Try searching for roles, skills, or companies

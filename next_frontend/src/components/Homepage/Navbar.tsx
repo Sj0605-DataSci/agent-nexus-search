@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import BrandLogo from "../BrandLogo";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,22 +65,37 @@ const Navbar: React.FC = () => {
       window.location.href = `/${sectionId}`;
     }
   };
-  // Handle scroll visibility
+  // Handle scroll visibility with debouncing using RAF
   useEffect(() => {
+    let rafId: number | null = null;
+    let lastKnownScrollY = 0;
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+      lastKnownScrollY = window.scrollY;
+      
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          const currentScrollY = lastKnownScrollY;
 
-      if (currentScrollY > 200) {
-        setIsVisible(currentScrollY < lastScrollY);
-      } else {
-        setIsVisible(true);
+          if (currentScrollY > 200) {
+            setIsVisible(currentScrollY < lastScrollY);
+          } else {
+            setIsVisible(true);
+          }
+
+          setLastScrollY(currentScrollY);
+          rafId = null;
+        });
       }
-
-      setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
   }, [lastScrollY]);
 
   // Close mobile menu on resize
@@ -112,15 +127,50 @@ const Navbar: React.FC = () => {
     setIsMobileMenuOpen(prev => !prev);
   }, []);
 
+  // Memoize nav links to prevent re-renders
+  const navLinks = useMemo(
+    () =>
+      NAV_LINKS.map(link => (
+        <Link
+          key={link.name}
+          prefetch={true}
+          href={link.href}
+          className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 relative group px-2 py-1 rounded focus:outline-none cursor-pointer"
+        >
+          {link.name}
+          <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-[#EFFBD7] transition-all duration-300 group-hover:w-[calc(100%-1rem)]" />
+        </Link>
+      )),
+    []
+  );
+
+  // Memoize mobile menu links
+  const mobileNavLinks = useMemo(
+    () =>
+      NAV_LINKS.map(link => (
+        <li key={link.name}>
+          <Link
+            href={link.href}
+            className="block mx-2 my-1 px-4 py-3 font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            {link.name}
+          </Link>
+        </li>
+      )),
+    []
+  );
+
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.header
           className="fixed inset-x-0 top-0 z-50 pt-6 px-4 sm:px-6"
-          initial={{ y: 0 }}
-          animate={{ y: 0 }}
-          exit={{ y: -100 }}
+          initial={{ opacity: 1, transform: "translateY(0)" }}
+          animate={{ opacity: 1, transform: "translateY(0)" }}
+          exit={{ opacity: 0, transform: "translateY(-100%)" }}
           transition={{ type: "spring", damping: 20, stiffness: 100 }}
+          style={{ willChange: "transform, opacity" }}
         >
           {/* Desktop Navigation */}
           <div className="hidden w-full justify-center items-center md:flex">
@@ -129,17 +179,7 @@ const Navbar: React.FC = () => {
                 <BrandLogo />
 
                 <nav className="flex items-center gap-8">
-                  {NAV_LINKS.map(link => (
-                    <Link
-                      key={link.name}
-                      prefetch={true}
-                      href={link.href}
-                      className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200 relative group px-2 py-1 rounded focus:outline-none cursor-pointer"
-                    >
-                      {link.name}
-                      <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-[#EFFBD7] transition-all duration-300 group-hover:w-[calc(100%-1rem)]" />
-                    </Link>
-                  ))}
+                  {navLinks}
                 </nav>
 
                 <MobileMenuIcon isOpen={isMobileMenuOpen} onClick={toggleMobileMenu} />
@@ -173,23 +213,14 @@ const Navbar: React.FC = () => {
                 {/* Mobile Menu Content */}
                 <motion.nav
                   className="absolute top-20 left-4 right-4 bg-white/95 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-xl overflow-hidden"
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
+                  initial={{ transform: "translateY(-20px)", opacity: 0 }}
+                  animate={{ transform: "translateY(0)", opacity: 1 }}
+                  exit={{ transform: "translateY(-20px)", opacity: 0 }}
                   transition={{ type: "spring", damping: 25 }}
+                  style={{ willChange: "transform, opacity" }}
                 >
                   <ul className="py-2">
-                    {NAV_LINKS.map(link => (
-                      <li key={link.name}>
-                        <Link
-                          href={link.href}
-                          className="block mx-2 my-1 px-4 py-3 font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          {link.name}
-                        </Link>
-                      </li>
-                    ))}
+                    {mobileNavLinks}
                   </ul>
                 </motion.nav>
               </motion.div>

@@ -108,3 +108,96 @@ export const preloadResource = (href: string, as: string) => {
   link.as = as;
   document.head.appendChild(link);
 };
+
+/**
+ * RAF-based throttle for scroll/resize handlers
+ * More efficient than time-based throttle for visual updates
+ */
+export const rafThrottle = <T extends (...args: any[]) => any>(
+  callback: T
+): ((...args: Parameters<T>) => void) => {
+  let rafId: number | null = null;
+  let latestArgs: Parameters<T> | null = null;
+
+  return (...args: Parameters<T>) => {
+    latestArgs = args;
+
+    if (rafId === null) {
+      rafId = requestAnimationFrame(() => {
+        if (latestArgs) {
+          callback(...latestArgs);
+        }
+        rafId = null;
+        latestArgs = null;
+      });
+    }
+  };
+};
+
+/**
+ * Defer non-critical work until browser is idle
+ */
+export const runWhenIdle = (callback: () => void, options?: IdleRequestOptions) => {
+  if (typeof window === "undefined") return;
+
+  if ("requestIdleCallback" in window) {
+    return requestIdleCallback(callback, options);
+  } else {
+    // Fallback for browsers without requestIdleCallback
+    return setTimeout(callback, 1) as unknown as number;
+  }
+};
+
+/**
+ * Cancel idle callback
+ */
+export const cancelIdle = (id: number) => {
+  if (typeof window === "undefined") return;
+
+  if ("cancelIdleCallback" in window) {
+    cancelIdleCallback(id);
+  } else {
+    clearTimeout(id);
+  }
+};
+
+/**
+ * Optimize long tasks by breaking them into chunks
+ */
+export const chunkTask = async <T>(
+  items: T[],
+  processItem: (item: T) => void,
+  chunkSize: number = 50
+): Promise<void> => {
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    chunk.forEach(processItem);
+
+    // Yield to browser between chunks
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
+};
+
+/**
+ * Monitor main thread blocking time
+ */
+export const monitorMainThreadBlocking = () => {
+  if (typeof window === "undefined" || process.env.NODE_ENV !== "development") return;
+
+  let lastTime = performance.now();
+
+  const checkBlocking = () => {
+    const currentTime = performance.now();
+    const delta = currentTime - lastTime;
+
+    // If more than 50ms passed, main thread was likely blocked
+    if (delta > 50) {
+      console.warn(`[Performance] Main thread blocked for ${delta.toFixed(2)}ms`);
+    }
+
+    lastTime = currentTime;
+    requestAnimationFrame(checkBlocking);
+  };
+
+  requestAnimationFrame(checkBlocking);
+};
