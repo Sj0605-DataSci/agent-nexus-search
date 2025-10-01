@@ -139,7 +139,7 @@ const nextConfig = {
       },
       cacheDirectory: path.join(process.cwd(), ".next/cache/webpack"),
       name: isServer ? "server" : "client",
-      version: "1.0.2", // Change this to invalidate cache
+      version: "1.0.3", // Change this to invalidate cache
     };
 
     // Optimize chunking and reduce bundle size (client-side only)
@@ -149,32 +149,35 @@ const nextConfig = {
         moduleIds: "deterministic",
         chunkIds: "deterministic",
         splitChunks: {
-          chunks: "all",
+          chunks: "async", // Changed from "all" to "async" to reduce initial load
+          maxInitialRequests: 25,
+          maxAsyncRequests: 30,
+          minSize: 20000,
           cacheGroups: {
-            default: false,
-            vendors: false,
-            // Vendor chunk for node_modules
-            vendor: {
-              name: "vendor",
-              chunks: "all",
-              test: /node_modules/,
-              priority: 20,
-            },
-            // Separate chunk for heavy libraries
-            heavy: {
-              name: "heavy",
-              test: /[\\/]node_modules[\\/](framer-motion|gsap|recharts|@radix-ui)[\\/]/,
-              chunks: "all",
-              priority: 30,
-            },
-            // Common chunk for shared code
-            common: {
-              name: "common",
-              minChunks: 2,
-              chunks: "all",
-              priority: 10,
+            defaultVendors: {
+              test: /[\\/]node_modules[\\/]/,
+              priority: -10,
               reuseExistingChunk: true,
-              enforce: true,
+              name(module, chunks, cacheGroupKey) {
+                const moduleFileName = module
+                  .identifier()
+                  .split("/")
+                  .reduceRight(item => item);
+                const allChunksNames = chunks.map(item => item.name).join("~");
+                return `${cacheGroupKey}-${allChunksNames}-${moduleFileName}`;
+              },
+            },
+            default: {
+              minChunks: 2,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
+            // Only split out truly heavy libraries
+            heavy: {
+              test: /[\\/]node_modules[\\/](framer-motion|recharts)[\\/]/,
+              name: "heavy-libs",
+              chunks: "async",
+              priority: 10,
             },
           },
         },
