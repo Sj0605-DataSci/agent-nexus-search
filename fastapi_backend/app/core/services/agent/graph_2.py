@@ -5,21 +5,12 @@ from langchain_core.runnables import RunnableConfig
 from app.models.chat import OverallState
 from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
 from app.db.clients import get_async_supabase_client
-from app.core.config import settings
 from app.models.schemas import QueryAnalysis, ScoredProfilesResponse
 from app.core.utils.cache import invalidate_chat_messages_cache
 import json
 import asyncio
-from urllib.parse import quote_plus
-# Add imports for LangGraph caching
 from app.db.redis_client import redis_client
-# from app.core.utils.maxim_logger import maxim_client, max_logger
-# from maxim.decorators import span
-# from maxim.decorators import current_trace
-
-if settings.GOOGLE_API_KEY is None:
-    raise ValueError("GOOGLE_API_KEY is not set")
-
+from app.core.services.agent.prompts import query_analysis_system_instruction, sql_search_system_instruction, scoring_system_instruction
 
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """Get the research topic from the messages."""
@@ -50,7 +41,6 @@ def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
 
 
 # ===== NODE 1: Query Analysis =====
-# @span(name="query_analysis", logger=max_logger, trace_id="1234567")
 async def query_analysis(state: OverallState, config: RunnableConfig) -> OverallState:
     """Analyze user query and extract filters, traits, and keyphrases.
     
@@ -95,34 +85,10 @@ async def query_analysis(state: OverallState, config: RunnableConfig) -> Overall
 
             return OverallState(**cached_result_dict)
       
-        system_instruction = """You are an expert at analyzing search queries for professional networking and people search. 
-
-Extract exactly 5 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
-
-Given a user's search query, you need to:
-1. Paraphrase the query in a clear, professional manner
-2. Extract relevant filters (location, work experience, company, position, skills)
-3. Identify key traits the user is looking for in people
-4. Extract exactly 5 important keyphrases for semantic search (or fewer if query is simple)
-
-Lets say i searched : Tech founders in NYC who raised a pre-seed round
-
-filters : [Location, Work Work Including prior work experience]
-traits : [Is a tech founder,Is based in NYC, Has closed a pre-seed funding round of less than or approximately $3M]
-keyphrases : [Startup founder in technology,Entrepreneur in the tech sector,Built a tech company from the ground up,Lives in New York City,NYC-based professional,Operating out of the greater New York area,Raised pre-seed capital,Secured early-stage funding under $3 million,Closed a seed round of approximately $2.5M]
-
-Be thorough but precise. Focus on professional attributes and qualifications."""
 
         user_prompt = f"""Analyze this search query and extract structured information:
 
 Query: "{user_query}"
-
-Please provide:
-1. A paraphrased version of the query
-2. Filters for location, work experience, company, position, skills
-3. Key traits the user is looking for (e.g., "tech founder", "startup experience", "AI expertise")
-4. Exactly 5 important keyphrases for semantic matching (or fewer if query is simple)
-5. Focus on keywords proper nouns and never give / between keywords whether in filters, traits or keyphrases
 """
 
         # Initialize LLM with Portkey tracing
@@ -141,7 +107,7 @@ Please provide:
         llm = GroqChatModel(
             model="meta-llama/llama-4-maverick-17b-128e-instruct", 
             temperature=0, 
-            system_instruction=system_instruction,
+            system_instruction=query_analysis_system_instruction,
             trace_id=weave_url,
             metadata=node_metadata
         )
@@ -236,7 +202,7 @@ Please provide:
     except Exception as e:
         raise
 
-# @span(name="sql_search", logger=max_logger, trace_id="1234567")
+# ===== NODE 2: SQL Search =====
 async def sql_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Generate SQL queries and execute keyword search."""
     try:
@@ -316,130 +282,6 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         }
         
         # llm = GeminiChatModel(model=model, temperature=0, system_instruction=system_instruction, trace_id=trace_id, metadata=node_metadata)
-        
-        sql_system_instruction = """You are an expert SQL query generator for a connections database.
-
-Your job is to generate efficient, fast, and accurate SQL queries using ONLY the following exact column names from the `connections` table:
-
-- id (uuid)
-- first_name (text)
-- last_name (text) 
-- linkedin_url (text)
-- email_address (text)
-- company (text)
-- position (text)
-- connected_on (date)
-- headline (text)
-- about_section (text)
-- experience_json (jsonb)
-- education_json (jsonb)
-- skills (text[])
-- location (text)
-- profile_photo_url (text)
-- user_id (uuid)
-- created_at (timestamp)
-- embedding_generated_at (timestamp)
-- search_tsv (tsvector)
-
----
-
-## ⚡ Core Querying Rules
-
-1. **Keyword Normalization**
-   - Always normalize composite keywords:
-     - "AI/ML", "AI and ML", "Ai-ML" → **"AI ML"**
-   - Do NOT use "/", "-", or "and" between terms. Use space-separated tokens only.
-   - Use standardized casing (Title Case or lower case consistently).
-
-2. **Mandatory User Filter**
-   - Always filter by user(s):
-     ```sql
-     user_id = '{user_id}'
-     ```
-     or
-     ```sql
-     user_id IN ('{user_id1}', '{user_id2}', ...)
-     ```
-
-3. **Data Completeness Filter**
-   - Always include:
-     ```sql
-     AND about_section IS NOT NULL
-     AND experience_json IS NOT NULL
-     AND embedding_generated_at IS NOT NULL
-     ```
-
-4. **Full-Text Search (FTS)**
-   - Always use Postgres FTS via:
-     ```sql
-     search_tsv @@ plainto_tsquery('english', 'keyword')
-     ```
-   - Never use ILIKE or raw string OR conditions.
-
-5. **Keyword Formatting**
-   - Use `plainto_tsquery` for every text search term.
-   - Do not use `/` or symbols; use `"AI ML"`, not `"AI/ML"`.
-
-6. **Mandatory Location**
-   - At least one **location** keyword is mandatory in the WHERE clause.
-   - Example:
-     ```sql
-     search_tsv @@ plainto_tsquery('english', 'Bangalore')
-     ```
-
-8. **Logical Operators (AND / OR)**
-   - Use `&&` for AND and `||` for OR.
-   - Keep combinations minimal (no more than **3 total** `&&` or `||` operators).
-   - Example (efficient form):
-     ```sql
-     search_tsv @@ (
-       plainto_tsquery('english', 'Bangalore')
-       && (plainto_tsquery('english', 'Founder') || plainto_tsquery('english', 'AI ML'))
-     )
-     ```
-
-10. **Result Columns**
-    - Always include `id` in SELECT.
-    - Return plain columns — never wrap in `row_to_json` or JSON aggregation.
-
-11. **Ordering**
-    - Always order by:
-      ```sql
-      ORDER BY embedding_generated_at DESC
-      ```
-
-12. **Result Limit**
-    - Always:
-      ```sql
-      LIMIT 20
-      ```
-
----
-
-## ✅ Final SQL Query Template
-
-Example: *Find early-stage fintech founders in Delhi*
-
-```sql
-SELECT *
-FROM connections
-WHERE user_id IN ('54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5', '06f7e3ea-162c-46a4-a494-4459dd4bea10')
-    AND about_section IS NOT NULL
-    AND experience_json IS NOT NULL
-    AND embedding_generated_at IS NOT NULL
-    AND search_tsv @@ (
-      plainto_tsquery('english', 'Delhi')
-      || plainto_tsquery('english', 'Founder')
-      || plainto_tsquery('english', 'Early-stage Fintech')
-    )
-ORDER BY embedding_generated_at DESC
-LIMIT 20;
-```
-
-
-FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
-DO NOT GIVE ANY EXPLANATION, DIRECTLY GENERATE SQL QUERY.
-"""
 
         sql_user_prompt = f"""Generate a SQL query to find connections matching these criteria:
 
@@ -454,7 +296,7 @@ Search Context: {json.dumps(search_context, indent=2)}
             llm = GroqChatModel(
                 model="meta-llama/llama-4-maverick-17b-128e-instruct", 
                 temperature=0, 
-                system_instruction=sql_system_instruction,
+                system_instruction=sql_search_system_instruction,
                 trace_id=weave_url,
                 metadata=node_metadata
             )            
@@ -568,7 +410,7 @@ Search Context: {json.dumps(search_context, indent=2)}
     except Exception as e:
         raise
 
-# @span(name="vector_search", logger=max_logger, trace_id="1234567")
+# ===== NODE 3: Vector Search =====
 async def vector_search(state: OverallState, config: RunnableConfig) -> OverallState:
     """Perform vector search on keyword results using basic_info_embedding and experience_embedding."""
     try:
@@ -897,7 +739,7 @@ async def generate_jina_embedding(text: str) -> Optional[List[float]]:
         print(f"Error generating Jina embedding: {e}")
         return None
 
-# @span(name="finalize_sql_answer", logger=max_logger, trace_id="1234567")
+# ===== NODE 4: Finalize SQL Answer =====
 async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     """Enhanced answer finalization with Yes/Maybe/No scoring, quotes, and profile photos."""
     if hasattr(state, "model_dump"):
@@ -979,81 +821,6 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
         message_content = final_message.content
     else:
         # Enhanced scoring system with Yes/Maybe/No and quotes
-        scoring_system_instruction = """You are an expert at evaluating professional profiles against search criteria.
-
-For each profile, analyze how well it matches the user's query and provide:
-1. Assign confidence scores between 0 and 1 (e.g., 0.7 for strong match, 0.4 for partial match, 0.1 for no match)
-
-2. For each confidence score:
-   - Supporting quotes from the profile data (specific text from experience, education, about section, etc.)
-   - Matching traits identified with HTML-parsable titles and descriptions
-
-3. For each keyphrase in the query, evaluate if the profile has the trait associated with that keyphrase:
-   - Extract specific quotes that demonstrate the trait
-   - Format trait titles and descriptions in HTML-parsable format (can use <b>, <i>, <u> tags)
-
-4. For title_trait questions (e.g., "Is this person a good Product Manager?"):
-   - Specifically evaluate if the profile demonstrates expertise in the role/skill mentioned
-   - Look for direct evidence in job titles, responsibilities, and accomplishments
-   - Assign to yes/maybe/no category based on strength of evidence
-   - Include relevant job titles or responsibilities as matching_traits with HTML formatting
-
-Be thorough in your analysis and provide specific evidence from the profile data.
-
-IMPORTANT: 
-- You MUST score ALL profiles provided in the input. Do not skip any profiles.
-- Always assign confidence scores within the correct ranges (yes: 70-100, maybe: 40-70, no: 0-40)
-- Extract the most relevant and concise quotes that clearly demonstrate why the profile matches or doesn't match
-- Ensure quotes are direct excerpts from the profile, not paraphrased
-- Remove any duplicate quotes across categories
-- For title_trait questions, specifically evaluate if the profile has expertise in the area mentioned in the title
-- In all_quotes, combine all the yes, maybe, no quotes into one list, remove duplicates
-- When extracting quotes, prioritize the most compelling evidence that directly relates to the query
-- Format quotes to be easily readable in the UI (avoid very long quotes)
-- Format trait titles and descriptions with HTML tags for better display in the UI
-- There can be multiple traits in each category (yes/maybe/no) - focus on confidence values to determine categorization
-- A profile can have all three yes traits, all three no traits, all three maybe traits, or any mix
-- Only use <b></b> tag, no other tags needed
-- Do not use any other HTML tags
-- Also you have filters in the query analysis, also give out same filter from them for the profile
-- Always give 3 scores in scoring array
-- Use filters from user query for the profile
-
-Return answer like this 
-
-Give answer in correct json format
-Example format:
-
-'''json
-{
-"profile_id": "uuid-2",
-"linkedin_url": "https://www.linkedin.com/in/username2",
-"all_quotes": ["5 years of <b>product management experience</b>","Launched <b>3 successful products</b>","Some experience with <b>data analytics</b>","No <b>engineering background</b> mentioned"],
-"scoring": [
-        {
-          "confidence": 0.85,
-          "filter": " Suitable Filter from user query",
-          "traitTitle": "<b>Experienced Product Manager</b> at Top Tech Company",
-          "traitDescription": "Has <b>5+ years experience</b> managing successful products at <b>Google</b>"
-        },
-        {
-          "confidence": 0.45,
-          "filter": "Suitable Filter from user query",
-          "traitTitle": "Basic <i>UX Design</i> Knowledge",
-          "traitDescription": "Has <i>fundamental understanding</i> of user experience principles"
-        },
-        {
-          "confidence": 0.15,
-          "filter": "Suitable Filter from user query",
-          "traitTitle": "No Healthcare Industry Experience",
-          "traitDescription": "Profile shows <b>no evidence</b> of healthcare sector work"
-        }
-      ]
-}
-      '''
-
-All profile ids should get all the three scores, it can be permutation, can be all same scores, but they should answer the keyphrases and traits and everything. The "scoring" array should contain traits with confidence values that determine their categorization (yes/maybe/no).
-"""
         user_prompt = f"""User Query: "{user_query}"
 
 Search Criteria:
@@ -1251,96 +1018,6 @@ Profiles to Score:
     }
     await redis_client.set(cache_key, result, expire=3600)
     return OverallState(**result)
-
-
-# Add custom key functions for caching
-# @traceable(project_name="Discoverminds",name="query caching inmem")
-# def query_cache_key(state):
-#     """Generate a cache key based on the user query.
-    
-#     This ensures that identical queries use cached results even if other state elements differ.
-#     """
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Extract user query from messages
-#     messages = state.get("messages", [])
-#     user_query = get_research_topic(messages)
-    
-#     # Create a cache key based on user query and user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     # Return a tuple that will be used as the cache key
-#     return pickle.dumps((user_query, user_id))
-
-# @traceable(project_name="Discoverminds",name="vector caching inmem")
-# def vector_search_cache_key(state):
-#     """Generate a cache key for vector search based on query analysis and user ID."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use keyphrases from query analysis for the cache key
-#     query_analysis = state.get("query_analysis", {})
-#     keyphrases = tuple(query_analysis.get("keyphrases", {}).get("keyphrases", []))
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((keyphrases, user_id))
-
-# @traceable(project_name="Discoverminds",name="sql search caching inmem")
-# def sql_search_cache_key(state):
-#     """Generate a cache key for SQL search based on query analysis and user ID."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use filters and traits from query analysis for the cache key
-#     query_analysis = state.get("query_analysis", {})
-#     filters = json.dumps(query_analysis.get("filters", {}), sort_keys=True)
-#     traits = json.dumps(query_analysis.get("traits", {}).get("traits", []), sort_keys=True)
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((filters, traits, user_id))
-
-# @traceable(project_name="Discoverminds",name="fusion ranking caching inmem")
-# def fusion_ranking_cache_key(state):
-#     """Generate a cache key for fusion ranking based on vector and SQL search results."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use vector search and SQL search results for the cache key
-#     vector_search_results = state.get("vector_search", {})
-#     sql_search_results = state.get("sql_search", {})
-    
-#     # Convert to strings for hashing
-#     vector_key = json.dumps(vector_search_results, sort_keys=True) if vector_search_results else ""
-#     sql_key = json.dumps(sql_search_results, sort_keys=True) if sql_search_results else ""
-    
-#     # Include user_id to ensure user-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-    
-#     return pickle.dumps((vector_key, sql_key, user_id))
-
-# @traceable(project_name="Discoverminds",name="sql query answer caching inmem")
-# def finalize_sql_answer_cache_key(state):
-#     """Generate a cache key for final answer generation based on fusion ranking results."""
-#     if hasattr(state, "model_dump"):
-#         state = state.model_dump()
-    
-#     # Use fusion ranking results for the cache key
-#     fusion_results = state.get("fusion_ranking", {})
-    
-#     # Convert to string for hashing
-#     fusion_key = json.dumps(fusion_results, sort_keys=True) if fusion_results else ""
-    
-#     # Include user_id and original query to ensure user-specific and query-specific caching
-#     user_id = state.get("agent_config", {}).get("user_id", "")
-#     messages = state.get("messages", [])
-#     user_query = get_research_topic(messages)
-    
-#     return pickle.dumps((fusion_key, user_query, user_id))
 
 # Create simplified SQL-only Agent Graph
 builder = StateGraph(OverallState)
