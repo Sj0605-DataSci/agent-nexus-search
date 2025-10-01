@@ -30,7 +30,7 @@ class GeminiChatModel:
                 base_url=PORTKEY_GATEWAY_URL,
                 default_headers=createHeaders(
                     api_key=PORTKEY_API_KEY,  # Portkey API key
-                    provider="google-ai",
+                    provider="google",  # Correct provider name for Gemini
                     trace_id=trace_id,
                     metadata=metadata
                 )
