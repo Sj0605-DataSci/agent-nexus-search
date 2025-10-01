@@ -201,7 +201,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
         {process.env.NODE_ENV === "production" ? (
           <>
-            <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
+            <link
+              rel="preconnect"
+              href="https://www.googletagmanager.com"
+              crossOrigin="anonymous"
+            />
             <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
             <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
             <link rel="preconnect" href="https://us.i.posthog.com" crossOrigin="anonymous" />
