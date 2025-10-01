@@ -92,6 +92,14 @@ We've implemented comprehensive structured data markup for rich search results:
 - Course
 - Person
 - ProfessionalService
+- WebPage
+- ImageObject
+- ReadAction
+- EntryPoint
+- PropertyValueSpecification
+- AggregateRating
+- InStock
+- NewCondition
 
 ### Usage
 

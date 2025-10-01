@@ -11,7 +11,15 @@ interface StructuredDataProps {
     | "SoftwareApplication"
     | "FAQPage"
     | "Article"
-    | "BreadcrumbList";
+    | "BreadcrumbList"
+    | "WebPage"
+    | "ImageObject"
+    | "ReadAction"
+    | "EntryPoint"
+    | "PropertyValueSpecification"
+    | "AggregateRating"
+    | "InStock"
+    | "NewCondition";
   data?: Record<string, any>;
 }
 
@@ -139,6 +147,70 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
       })),
   };
 
+  // WebPage data
+  const webpageData = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    url: `${BASE_URL}${pathname}`,
+    ...data,
+  };
+
+  // ImageObject data
+  const imageObjectData = {
+    "@context": "https://schema.org",
+    "@type": "ImageObject",
+    url: data?.url || `${BASE_URL}/Images/og-image.png`,
+    ...data,
+  };
+
+  // ReadAction data
+  const readActionData = {
+    "@context": "https://schema.org",
+    "@type": "ReadAction",
+    ...data,
+  };
+
+  // EntryPoint data
+  const entryPointData = {
+    "@context": "https://schema.org",
+    "@type": "EntryPoint",
+    urlTemplate: data?.urlTemplate || `${BASE_URL}/search?q={query}`,
+    ...data,
+  };
+
+  // PropertyValueSpecification data
+  const propertyValueSpecificationData = {
+    "@context": "https://schema.org",
+    "@type": "PropertyValueSpecification",
+    ...data,
+  };
+
+  // AggregateRating data
+  const aggregateRatingData = {
+    "@context": "https://schema.org",
+    "@type": "AggregateRating",
+    ratingValue: data?.ratingValue || "5",
+    bestRating: data?.bestRating || "5",
+    ratingCount: data?.ratingCount || "100",
+    ...data,
+  };
+
+  // InStock data
+  const inStockData = {
+    "@context": "https://schema.org",
+    "@type": "ItemAvailability",
+    name: "InStock",
+    ...data,
+  };
+
+  // NewCondition data
+  const newConditionData = {
+    "@context": "https://schema.org",
+    "@type": "OfferItemCondition",
+    name: "NewCondition",
+    ...data,
+  };
+
   const structuredDataMap = {
     Organization: organizationData,
     WebSite: websiteData,
@@ -146,6 +218,14 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
     Article: articleData,
     FAQPage: faqData,
     BreadcrumbList: breadcrumbData,
+    WebPage: webpageData,
+    ImageObject: imageObjectData,
+    ReadAction: readActionData,
+    EntryPoint: entryPointData,
+    PropertyValueSpecification: propertyValueSpecificationData,
+    AggregateRating: aggregateRatingData,
+    InStock: inStockData,
+    NewCondition: newConditionData,
   };
 
   const structuredData = structuredDataMap[type] || organizationData;
