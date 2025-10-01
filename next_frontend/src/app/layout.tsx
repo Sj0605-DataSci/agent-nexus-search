@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
-import Script from "next/script";
 import { Providers } from "./Providers";
 import NoIndexTags from "@/components/seo/NoIndexTags";
 import AnalyticsLoader from "@/components/analytics/AnalyticsLoader";
@@ -201,15 +200,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
         {process.env.NODE_ENV === "production" ? (
           <>
-            <link
-              rel="preconnect"
-              href="https://www.googletagmanager.com"
-              crossOrigin="anonymous"
-            />
             <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
             <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
-            <link rel="preconnect" href="https://us.i.posthog.com" crossOrigin="anonymous" />
-            <link rel="preconnect" href="https://us-assets.i.posthog.com" crossOrigin="anonymous" />
             <OptimizedSEOInitializer />
             <ConsolidatedStructuredData />
             <OptimizedCanonicalUrl />
