@@ -12,8 +12,28 @@ export default function AnalyticsLoader() {
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
+    // Add preconnect links after interactive
+    const addPreconnects = () => {
+      const preconnects = [
+        { href: "https://www.googletagmanager.com", crossOrigin: "anonymous" },
+        { href: "https://us.i.posthog.com", crossOrigin: "anonymous" },
+        { href: "https://us-assets.i.posthog.com", crossOrigin: "anonymous" },
+      ];
+
+      preconnects.forEach((link) => {
+        const el = document.createElement("link");
+        el.rel = "preconnect";
+        el.href = link.href;
+        if (link.crossOrigin) el.crossOrigin = link.crossOrigin;
+        document.head.appendChild(el);
+      });
+    };
+
     // Defer analytics loading until after page is interactive and idle
     const loadAnalytics = () => {
+      // Add preconnects first
+      addPreconnects();
+
       // Use requestIdleCallback to load during idle time
       if ("requestIdleCallback" in window) {
         requestIdleCallback(() => setShouldLoad(true), { timeout: 3000 });
