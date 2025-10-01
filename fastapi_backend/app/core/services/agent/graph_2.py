@@ -315,6 +315,10 @@ Search Context: {json.dumps(search_context, indent=2)}
             
             # Clean the SQL query by removing trailing semicolon
             clean_query = generated_sql.strip().rstrip(';')
+
+            await supabase_client.table("chat_messages").update({
+                "generated_sql": clean_query
+            }).eq("user_id", user_id).eq("id", current_message_id).execute()
             
             # Execute the SQL query using JSON wrapper to avoid type mismatch
             json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
@@ -332,17 +336,18 @@ Search Context: {json.dumps(search_context, indent=2)}
                         
         except Exception as e:
             await supabase_client.table("chat_messages").update({
-                "error": "Node: Sql search failed" + str(e)
+                "error": "Node: Sql search failed with 1st time groq" + str(e)
             }).eq("id", current_message_id).execute()
             
             # Fallback: get basic results without complex filtering
             try:
                 llm = GeminiChatModel(
-                    model="gemini-2.5-flash", 
-                    temperature=0, 
-                    system_instruction=sql_system_instruction,
-                    trace_id=weave_url,
-                    metadata=node_metadata)
+                model="gemini-2.5-pro", 
+                temperature=0, 
+                system_instruction=sql_search_system_instruction + "\n\n" + "Error: " + str(e),
+                trace_id=weave_url,
+                metadata=node_metadata
+            )
 
                 sql_response = await llm.ainvoke(sql_user_prompt)
             
@@ -355,6 +360,10 @@ Search Context: {json.dumps(search_context, indent=2)}
             
                 # Clean the SQL query by removing trailing semicolon
                 clean_query = generated_sql.strip().rstrip(';')
+
+                await supabase_client.table("chat_messages").update({
+            "generated_sql": clean_query
+            }).eq("user_id", user_id).eq("id", current_message_id).execute()
             
                 # Execute the SQL query using JSON wrapper to avoid type mismatch
                 json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
@@ -371,7 +380,7 @@ Search Context: {json.dumps(search_context, indent=2)}
                             keyword_results.append(row)
             except Exception as fallback_e:
                 await supabase_client.table("chat_messages").update({
-                    "error": "Node: Sql search failed with gemini-2.5-flash" + str(fallback_e)
+                    "error": "Node: Sql search failed with 2nd time openai oss" + str(fallback_e)
                 }).eq("id", current_message_id).execute()
                 raise fallback_e
         
@@ -406,9 +415,6 @@ Search Context: {json.dumps(search_context, indent=2)}
             await redis_client.set(cache_key, result, expire=2628288)
         else:
             await redis_client.set(cache_key, result, expire=3600)
-        await supabase_client.table("chat_messages").update({
-            "generated_sql": clean_query
-        }).eq("user_id", user_id).eq("id", current_message_id).execute()
         
         invalidate_chat_messages_cache(chat_thread_id)
         
