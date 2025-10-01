@@ -12,13 +12,13 @@ const VideoPlayer = () => {
   // Set up Intersection Observer to detect when the video is in viewport
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
+      entries => {
         const [entry] = entries;
         setIsInView(entry.isIntersecting);
       },
       {
         root: null,
-        rootMargin: '0px',
+        rootMargin: "0px",
         threshold: 0.1, // Trigger when 10% of the element is visible
       }
     );
@@ -47,7 +47,7 @@ const VideoPlayer = () => {
         Here's a Quick Demo
       </h2>
 
-      <div 
+      <div
         ref={videoContainerRef}
         className="relative mt-6 aspect-video overflow-hidden rounded-2xl shadow-xl"
       >
@@ -73,8 +73,12 @@ const VideoPlayer = () => {
             />
 
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-red-600/80 hover:bg-red-700/90 backdrop-blur-sm rounded-2xl px-6 py-3 sm:px-8 sm:py-4 shadow-2xl transform group-hover:scale-110 transition-all duration-300">
-                <Play className="w-8 h-8 sm:w-12 sm:h-12 text-white ml-1" fill="currentColor" />
+              <div className="bg-[#FF0000] hover:bg-[#CC0000] rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-4 shadow-2xl transform group-hover:scale-105 transition-all duration-200">
+                <Play
+                  className="w-10 h-10 sm:w-16 sm:h-16 text-white ml-0.5 sm:ml-1"
+                  fill="currentColor"
+                  strokeWidth={0}
+                />
               </div>
             </div>
 

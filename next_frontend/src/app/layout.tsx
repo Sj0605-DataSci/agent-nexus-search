@@ -4,13 +4,11 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Script from "next/script";
 import { Providers } from "./Providers";
-import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import NoIndexTags from "@/components/seo/NoIndexTags";
-import StructuredData from "@/components/seo/StructuredData";
-import CanonicalUrl from "@/components/seo/CanonicalUrl";
-import PostHogAnalytics from "@/components/analytics/PostHogAnalytics";
-import PlerdyAnalytics from "@/components/analytics/PlerdyAnalytics";
-import SEOInitializer from "@/components/seo/SEOInitializer";
+import AnalyticsLoader from "@/components/analytics/AnalyticsLoader";
+import ConsolidatedStructuredData from "@/components/seo/ConsolidatedStructuredData";
+import OptimizedCanonicalUrl from "@/components/seo/OptimizedCanonicalUrl";
+import OptimizedSEOInitializer from "@/components/seo/OptimizedSEOInitializer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -219,16 +217,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
             <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
             <link rel="dns-prefetch" href="https://us.i.posthog.com" />
-            <GoogleAnalytics />
-            <PostHogAnalytics />
-            <PlerdyAnalytics />
-            <SEOInitializer />
-            <StructuredData type="Organization" />
-            <StructuredData type="WebSite" />
-            <StructuredData type="SoftwareApplication" />
-            <StructuredData type="BreadcrumbList" />
-            <StructuredData type="FAQPage" />
-            <CanonicalUrl />
+            <OptimizedSEOInitializer />
+            <ConsolidatedStructuredData />
+            <OptimizedCanonicalUrl />
+            <AnalyticsLoader />
             <Analytics />
           </>
         ) : (
