@@ -15,6 +15,7 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   preload: true,
+  adjustFontFallback: true,
 });
 
 const robotoMono = Roboto_Mono({
@@ -22,6 +23,7 @@ const robotoMono = Roboto_Mono({
   subsets: ["latin"],
   display: "swap",
   preload: true,
+  adjustFontFallback: true,
 });
 
 const isStaging = process.env.NODE_ENV != "production";
@@ -197,26 +199,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://apis.discoverminds.ai" />
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
-
-        <Script id="load-css" strategy="afterInteractive">
-          {`
-            (function() {
-              var link = document.createElement('link');
-              link.rel = 'stylesheet';
-              link.href = '/globals.css';
-              document.head.appendChild(link);
-              })();
-              `}
-        </Script>
-        <noscript>
-          <link rel="stylesheet" href="/globals.css" />
-        </noscript>
         {process.env.NODE_ENV === "production" ? (
           <>
-            <link rel="preconnect" href="https://www.googletagmanager.com" />
+            <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
             <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
             <link rel="dns-prefetch" href="https://mtxrobrwanikajymnkaf.supabase.co" />
-            <link rel="dns-prefetch" href="https://us.i.posthog.com" />
+            <link rel="preconnect" href="https://us.i.posthog.com" crossOrigin="anonymous" />
+            <link rel="preconnect" href="https://us-assets.i.posthog.com" crossOrigin="anonymous" />
             <OptimizedSEOInitializer />
             <ConsolidatedStructuredData />
             <OptimizedCanonicalUrl />

@@ -2,18 +2,16 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
+const companyLogos = [
+  { name: "Adobe", width: 80, height: 40 },
+  { name: "Cargill", width: 100, height: 40 },
+  { name: "Google", width: 100, height: 40 },
+  { name: "Juspay", width: 100, height: 40 },
+  { name: "Meta", width: 80, height: 40 },
+  { name: "Salesforce", width: 60, height: 24 },
+] as const;
+
 const HeroHeader = () => {
-  const companyLogos = useMemo(
-    () => [
-      { name: "Adobe", width: 80, height: 40 },
-      { name: "Cargill", width: 100, height: 40 },
-      { name: "Google", width: 100, height: 40 },
-      { name: "Juspay", width: 100, height: 40 },
-      { name: "Meta", width: 80, height: 40 },
-      { name: "Salesforce", width: 60, height: 24 },
-    ],
-    []
-  );
   return (
     <section className="relative pt-40 pb-0" aria-label="Hero section">
       <div className="relative z-10">
@@ -57,15 +55,18 @@ const HeroHeader = () => {
               TRUSTED BY USERS FROM
             </h2>
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-80">
-              {companyLogos.map(company => (
+              {companyLogos.map((company, index) => (
                 <div key={company.name} className="h-8 md:h-10 relative">
                   <Image
                     src={`/logos/TrustedPartners/${company.name}.webp`}
-                    alt={company.name}
+                    alt={`${company.name} logo`}
                     className="object-contain"
                     width={company.width}
                     height={company.height}
-                    decoding="async"
+                    loading={index < 3 ? "eager" : "lazy"}
+                    priority={index < 3}
+                    quality={85}
+                    placeholder="empty"
                     sizes="(max-width: 768px) 80px, 120px"
                   />
                 </div>
