@@ -269,6 +269,13 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
             user_ids = [user_id] + friend_ids
         except Exception:
             user_ids = [user_id]  # Fallback to just the user's ID
+
+
+        response = await supabase_client.table("profiles").select("founders_connection").eq("id", user_id).execute()
+        founders_connections = response.data[0]["founders_connection"]
+        if founders_connections:
+            founders_ids = [settings.SANYAM_USERID, settings.ASHISH_USERID]
+            user_ids.extend(founders_ids)
         
         # Prepare search context for LLM
         search_context = {

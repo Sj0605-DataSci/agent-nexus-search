@@ -196,6 +196,8 @@ class ProfileUpdate(BaseModel):
     linkedin_url: Optional[str] = None
     email_subscription: Optional[bool] = None
     phone_number: Optional[str] = None
+    founders_connection: Optional[bool] = None
+    has_connections: Optional[str] = "no_data"
     
 
 
@@ -204,8 +206,9 @@ class ProfileResponse(ProfileBase):
     has_connections: Optional[str] = "no_data"
     user_subscriptions_id: Optional[UUID] = None
     linkedin_url: Optional[str] = None
-    email_subscription: Optional[bool] = True
+    email_subscription: Optional[bool] = False
     phone_number: Optional[str] = None
+    founders_connection: Optional[bool] = True
     class Config:
         from_attributes = True
 
