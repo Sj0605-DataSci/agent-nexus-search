@@ -60,6 +60,7 @@ class Profile(Base):
     email_subscription = Column(Boolean, default=False)
     phone_number = Column(Text, nullable=True)
     linkedin_url = Column(Text, nullable=True)
+    founders_connection = Column(Boolean, default=True)
 
     # Relationships
     hired_agents = relationship("HiredAgent", back_populates="user", cascade="all, delete")
