@@ -87,11 +87,11 @@ class Settings(BaseSettings):
 
     @property
     def FOUNDERS_USERID(self) -> str:
-        return os.getenv("STAGING_FOUNDERS_USERID", "") if ENVIRONMENT == "STAGING" else os.getenv("FOUNDRS_USERID", "")
+        return os.getenv("STAGING_FOUNDERS_USERID", "") if ENVIRONMENT == "STAGING" else os.getenv("FOUNDERS_USERID", "")
     
     @property
     def FOUNDERS_AGENTID(self) -> str:
-        return os.getenv("STAGING_FOUNDERS_AGENTID", "") if ENVIRONMENT == "STAGING" else os.getenv("FOUNDRS_AGENTID", "")
+        return os.getenv("STAGING_FOUNDERS_AGENTID", "") if ENVIRONMENT == "STAGING" else os.getenv("FOUNDERS_AGENTID", "")
 
 
     # JWT settings
