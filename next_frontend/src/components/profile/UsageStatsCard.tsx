@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, FC, ReactNode } from "react";
+import { useState, useEffect, useCallback, FC, memo } from "react";
 import { apiClient } from "@/integrations/fastapi/client";
 import type { UsageStats } from "@/integrations/fastapi/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Search, Clock, BarChart2, TrendingUp, AlertCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
 
@@ -129,4 +126,4 @@ const UsageStatsCard = () => {
   );
 };
 
-export default UsageStatsCard;
+export default memo(UsageStatsCard);

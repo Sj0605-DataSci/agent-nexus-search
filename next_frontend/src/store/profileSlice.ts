@@ -71,7 +71,7 @@ export const loginUser = createAsyncThunk(
 
 export const updateUserProfile = createAsyncThunk(
   "profile/updateProfile",
-  async (data: { email_subscription: boolean }, { rejectWithValue }) => {
+  async (data: { email_subscription?: boolean; founders_connection?: boolean }, { rejectWithValue }) => {
     try {
       const response = await apiClient.updateProfile(data);
       return response;
@@ -107,6 +107,11 @@ const profileSlice = createSlice({
     updateSubscriptionOptimistic: (state, action: PayloadAction<boolean>) => {
       if (state.profile) {
         state.profile.email_subscription = action.payload;
+      }
+    },
+    updateFoundersConnectionOptimistic: (state, action: PayloadAction<boolean>) => {
+      if (state.profile) {
+        state.profile.founders_connection = action.payload;
       }
     },
     setLoadingState: (state, action: PayloadAction<boolean>) => {
@@ -167,6 +172,6 @@ const profileSlice = createSlice({
   },
 });
 
-export const { clearProfile, setProfileData, setLoadingState, updateConnectionsStatus } =
+export const { clearProfile, setProfileData, setLoadingState, updateConnectionsStatus, updateFoundersConnectionOptimistic } =
   profileSlice.actions;
 export default profileSlice.reducer;
