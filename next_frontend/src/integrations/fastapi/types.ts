@@ -87,6 +87,7 @@ export interface UserProfile {
   hired_agents?: string[];
   linkedin_url?: string;
   email_subscription?: boolean;
+  founders_connection?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -118,6 +119,7 @@ export interface ProfileUpdate {
   full_name?: string;
   linkedin_url?: string;
   email_subscription?: boolean;
+  founders_connection?: boolean;
 }
 
 // Chat types
