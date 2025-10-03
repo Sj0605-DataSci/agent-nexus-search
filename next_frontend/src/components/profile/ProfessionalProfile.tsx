@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Mail, Users } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
@@ -15,6 +15,7 @@ import LinkedInUrlModal from "../Connections/LinkedInUrlModal";
 import toast from "react-hot-toast";
 import { LinkedInSection } from "./LinkedInSection";
 import { getNormalizedConnectionsStatus } from "@/utils/profile";
+import { showDevFeatureToast } from "@/utils/toast";
 
 interface ProfessionalProfileProps {
   onConnectionsClick: () => void;
@@ -68,7 +69,7 @@ const ProfileSkeleton = () => (
   </div>
 );
 
-export default function ProfessionalProfile({ onConnectionsClick }: ProfessionalProfileProps) {
+const ProfessionalProfile = ({ onConnectionsClick }: ProfessionalProfileProps) => {
   const { profile, loading } = useSelector((state: RootState) => state.profile);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
@@ -104,6 +105,11 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
   };
 
   const handleFoundersConnectionChange = async (checked: boolean) => {
+    if (profile?.has_connections !== "synced") {
+      toast.dismiss();
+      showDevFeatureToast("Please upload LinkedIn connections to disable this feature");
+      return;
+    }
     setIsUpdatingFounders(true);
     try {
       await dispatch(updateUserProfile({ founders_connection: checked })).unwrap();
@@ -255,4 +261,6 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
       <LinkedInUrlModal open={linkedinModalOpen} onOpenChange={setLinkedinModalOpen} />
     </div>
   );
-}
+};
+
+export default memo(ProfessionalProfile);

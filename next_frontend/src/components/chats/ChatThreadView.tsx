@@ -289,9 +289,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
     if (isStreaming) return;
 
     if (!!profile && profile?.has_connections !== "synced") {
-      showDevFeatureToast("Please upload LinkedIn connections to get started.");
-      setIsStreaming(false);
-      return;
+      showDevFeatureToast(
+        "We would recommend to add your connections too to search across your connections"
+      );
     }
 
     setIsStreaming(true);
