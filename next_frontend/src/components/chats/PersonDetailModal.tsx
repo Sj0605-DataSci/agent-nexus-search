@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useEffect, memo } from "react";
 import {
   BriefcaseBusiness,
-  AtSign,
   Share,
   Linkedin,
   Twitter,
@@ -11,9 +10,7 @@ import {
   Instagram,
   X,
 } from "lucide-react";
-import toast from "react-hot-toast";
 import { showDevFeatureToast } from "@/utils/toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import PaginationControls from "./PaginationControls";
 import CustomAvatar from "../ui/CustomAvatar";
 import { SocialLinks } from "../ui/SocialLinks";
@@ -86,6 +83,24 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   userName,
   onPrevious,
 }) => {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen, onClose]);
+
   if (!person) return null;
 
   const fullName = `${person.FName || ""} ${person.LName || ""}`.trim();
@@ -273,4 +288,4 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   );
 };
 
-export default PersonDetailModal;
+export default memo(PersonDetailModal);
