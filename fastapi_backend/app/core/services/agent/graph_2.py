@@ -327,19 +327,33 @@ Search Context: {json.dumps(search_context, indent=2)}
                 "generated_sql": clean_query
             }).eq("user_id", user_id).eq("id", current_message_id).execute()
             
-            # Execute the SQL query using JSON wrapper to avoid type mismatch
-            json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
+            # Execute SQL with timeout to prevent hanging queries
+            keyword_result = await asyncio.wait_for(
+                supabase_client.rpc('execute_dynamic_sql', {'query_text': clean_query}).execute(),
+                timeout=1200  # 20 minute timeout for SQL execution
+            )
             
-            keyword_result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
-            
-            # Parse JSONB results
             keyword_results = []
             if keyword_result.data:
-                for row in keyword_result.data:
-                    if isinstance(row, dict) and 'to_jsonb' in row:
-                        keyword_results.append(row['to_jsonb'])
-                    else:
-                        keyword_results.append(row)
+                    for row in keyword_result.data:
+                        if isinstance(row, dict):
+                            # Check for error response from RPC
+                            if 'error' in row and 'query' in row:
+                                print(f"SQL execution error: {row.get('error')}")
+                                continue
+                            # Extract the 'result' field from RPC response
+                            if 'result' in row:
+                                keyword_results.append(row['result'])
+                            else:
+                                keyword_results.append(row)
+                        else:
+                            keyword_results.append(row)
+        
+        except asyncio.TimeoutError:
+            await supabase_client.table("chat_messages").update({
+                "error": "Node: SQL query timed out after 30 seconds"
+            }).eq("id", current_message_id).execute()
+            raise Exception("SQL query execution timed out after 30 seconds")
                         
         except Exception as e:
             await supabase_client.table("chat_messages").update({
@@ -372,19 +386,37 @@ Search Context: {json.dumps(search_context, indent=2)}
             "generated_sql": clean_query
             }).eq("user_id", user_id).eq("id", current_message_id).execute()
             
-                # Execute the SQL query using JSON wrapper to avoid type mismatch
-                json_query = f"SELECT to_jsonb(t) FROM ({clean_query}) t"
+                # Execute the SQL query directly - RPC function handles row_to_json conversion
+                # This avoids the 27x performance overhead of client-side to_jsonb wrapping
+                # Add timeout to prevent hanging queries
+                keyword_result = await asyncio.wait_for(
+                    supabase_client.rpc('execute_dynamic_sql', {'query_text': clean_query}).execute(),
+                    timeout=1200  # 20 minute timeout for SQL execution
+                )
             
-                keyword_result = await supabase_client.rpc('execute_dynamic_sql', {'query_text': json_query}).execute()
-            
-                # Parse JSONB results
+                # Parse JSONB results from RPC function
                 keyword_results = []
                 if keyword_result.data:
                     for row in keyword_result.data:
-                        if isinstance(row, dict) and 'to_jsonb' in row:
-                            keyword_results.append(row['to_jsonb'])
+                        if isinstance(row, dict):
+                            # Check for error response from RPC
+                            if 'error' in row and 'query' in row:
+                                print(f"SQL execution error: {row.get('error')}")
+                                continue
+                            # Extract the 'result' field from RPC response
+                            if 'result' in row:
+                                keyword_results.append(row['result'])
+                            else:
+                                keyword_results.append(row)
                         else:
                             keyword_results.append(row)
+            
+            except asyncio.TimeoutError:
+                await supabase_client.table("chat_messages").update({
+                    "error": "Node: SQL query timed out after 1200 seconds (fallback)"
+                }).eq("id", current_message_id).execute()
+                raise Exception("SQL query execution timed out after 1200 seconds (fallback)")
+            
             except Exception as fallback_e:
                 await supabase_client.table("chat_messages").update({
                     "error": "Node: Sql search failed with 2nd time openai oss" + str(fallback_e)
@@ -462,7 +494,7 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
             # Handle different possible structures of the results
             if isinstance(result_item, dict):
                 # Direct profile object
-                profile_id = result_item.get("result", {}).get("id", "")
+                profile_id = result_item.get("id", "")
                 if profile_id:
                     keyword_profile_ids.append(profile_id)
             elif isinstance(result_item, str):
@@ -816,8 +848,8 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
             # Get the profile data from keyword results
             profile_data = None
             for result in keyword_results:
-                if isinstance(result, dict) and result.get("result", {}).get("id") == profile_id:
-                    profile_data = result.get("result", {})
+                if isinstance(result, dict) and result.get("id") == profile_id:
+                    profile_data = result
                     break
             
             if profile_data:

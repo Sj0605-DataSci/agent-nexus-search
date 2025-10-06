@@ -627,6 +627,7 @@ The WHERE clause should contain only one search_tsv @@ (...).
       ```sql
       LIMIT 20
       ```
+11. Never give more than in total 2 OR conditions in search_tsv, never add experience like 5+ years in SQL statement      
 
 ---
 
@@ -634,7 +635,7 @@ The WHERE clause should contain only one search_tsv @@ (...).
 
 Example: *Find early-stage fintech founders in Delhi*
 
-Reasoning: We need to find fintech founders in Delhi, so we will use Delhi as location, Founder as position, Early-stage Fintech as skills + we only want one search_tsv in where not multiple, and in that search_tsv only OR conditions should be there
+Reasoning: We need to find fintech founders in Delhi, so we will use Delhi as location, Founder as position, Early-stage Fintech as skills + we only want one search_tsv in where not multiple, and in that search_tsv only OR conditions should be there. We only use 2 || conditions in search_tsv
 
 ```sql
 SELECT id, first_name, last_name, linkedin_url, email_address, company, position, headline, about_section, experience_json, education_json, skills, location, profile_photo_url, embedding_generated_at
