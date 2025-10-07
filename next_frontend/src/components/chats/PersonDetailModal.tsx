@@ -2,12 +2,6 @@ import React, { useEffect, memo } from "react";
 import {
   BriefcaseBusiness,
   Share,
-  Linkedin,
-  Twitter,
-  Globe,
-  Github,
-  Facebook,
-  Instagram,
   X,
 } from "lucide-react";
 import { showDevFeatureToast } from "@/utils/toast";
@@ -16,12 +10,6 @@ import CustomAvatar from "../ui/CustomAvatar";
 import { SocialLinks } from "../ui/SocialLinks";
 import Image from "next/image";
 import { getInitials } from "@/utils/stringUtils";
-
-interface ScoreData {
-  confidence: number;
-  quotes: string[];
-  matching_traits: string[];
-}
 
 interface ScoringItem {
   traitDescription: string;
@@ -57,22 +45,6 @@ interface PersonDetailModalProps {
   onPrevious?: () => void;
 }
 
-const renderSocialLinkIcon = (link: string) => {
-  if (!link) return null;
-
-  const icon = (IconComponent: React.ElementType) => (
-    <IconComponent className="size-4 text-gray-500 hover:text-gray-800" />
-  );
-
-  if (link.includes("linkedin.com")) return icon(Linkedin);
-  if (link.includes("twitter.com")) return icon(Twitter);
-  if (link.includes("facebook.com")) return icon(Facebook);
-  if (link.includes("instagram.com")) return icon(Instagram);
-  if (link.includes("github.com")) return icon(Github);
-
-  return icon(Globe);
-};
-
 const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   person,
   isOpen,
@@ -83,6 +55,7 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   userName,
   onPrevious,
 }) => {
+
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isOpen) {
@@ -106,10 +79,6 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   const fullName = `${person.FName || ""} ${person.LName || ""}`.trim();
 
   const quotes = Array.isArray(person.all_quotes) ? person.all_quotes : [];
-
-  const traits = Array.isArray(person.scoring)
-    ? person.scoring.map(item => item.traitTitle).filter(Boolean)
-    : [];
 
   if (!isOpen) return null;
 
