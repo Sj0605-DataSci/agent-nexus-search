@@ -23,6 +23,7 @@ import { getAgentAvatar } from "@/constant/getAgentAvatar";
 
 import React, { Suspense } from "react";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
+import ComingSoonOverlay from "@/components/ComingSoonOverlay";
 
 const Agents = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>("");
@@ -36,6 +37,9 @@ const Agents = () => {
   const hiredRaw = useAppSelector(selectHired);
   const hiredIds = hiredRaw.map(h => h.template_id);
   const darkMode = false;
+
+  const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
+  const isAuthenticated = !!profile?.id;
 
   useEffect(() => {
     if (agentsStatus === "idle" && user) {
@@ -144,8 +148,13 @@ const Agents = () => {
   };
 
   return (
-    <div className="container mx-auto  pt-12 pb-12 sm:pb-16 md:pb-20 relative z-10">
-      <div className="text-center mb-8 sm:mb-12 relative px-2 sm:px-0">
+    <div className="relative">
+      {!isAuthenticated && !profileLoading && <ComingSoonOverlay type="login-required" />}
+
+      <div
+        className={`container mx-auto pt-12 pb-12 sm:pb-16 md:pb-20 relative z-10 ${!isAuthenticated && !profileLoading ? "opacity-20 pointer-events-none" : ""}`}
+      >
+        <div className="text-center mb-8 sm:mb-12 relative px-2 sm:px-0">
         <div className="relative mb-3 inline-block max-w-full">
           <div className="flex flex-col items-center">
             <h1
@@ -640,6 +649,7 @@ const Agents = () => {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

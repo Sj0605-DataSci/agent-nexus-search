@@ -20,7 +20,7 @@ export default function AnalyticsLoader() {
         { href: "https://us-assets.i.posthog.com", crossOrigin: "anonymous" },
       ];
 
-      preconnects.forEach((link) => {
+      preconnects.forEach(link => {
         const el = document.createElement("link");
         el.rel = "preconnect";
         el.href = link.href;

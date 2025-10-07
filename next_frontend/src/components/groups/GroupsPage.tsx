@@ -22,7 +22,7 @@ export default function GroupsPage() {
   return (
     <>
       <main className="relative">
-        {!isAuthenticated && !loading && <ComingSoonOverlay />}
+        {!isAuthenticated && !loading && <ComingSoonOverlay type="login-required" />}
         <div
           className={`container mx-auto  max-w-screen-xl p-4 ${!isAuthenticated && !loading ? "opacity-30 pointer-events-none" : ""}`}
         >

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { FieldValues, UseFormSetValue, Path, PathValue } from "react-hook-form";
 import {
@@ -139,7 +141,7 @@ function CountryCodeSelectorInner<TFieldValues extends FieldValues = FieldValues
   return (
     <div className={`relative ${className || ""}`}>
       <div className="relative w-full">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-20">
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 pointer-events-none z-20">
           {icon}
         </div>
         <div className="flex w-full relative rounded-lg group focus-within:ring-2 focus-within:ring-blue-400">
@@ -147,7 +149,7 @@ function CountryCodeSelectorInner<TFieldValues extends FieldValues = FieldValues
             <button
               type="button"
               onClick={() => setIsOpen(!isOpen)}
-              className={`flex items-center justify-between w-24 md:w-28 pl-10 pr-2 py-3 bg-white border ${
+              className={`flex items-center justify-between w-24 pl-6 pr-2 py-3 bg-gray-100 border ${
                 error || localInvalid ? "border-red-500" : "border-gray-300"
               } border-r-0 rounded-l-lg focus:outline-none group-focus-within:border-transparent ${
                 error || localInvalid ? "focus:ring-red-500" : "focus:ring-gray-300"
@@ -181,7 +183,7 @@ function CountryCodeSelectorInner<TFieldValues extends FieldValues = FieldValues
             </button>
 
             {isOpen && (
-              <div className="absolute z-50 w-72 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg left-0 top-full max-h-[80vh] md:max-h-[400px] overflow-hidden flex flex-col">
+              <div className="absolute z-50 w-72 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg left-0 top-full max-h-[300px] md:max-h-[200px] overflow-y-auto flex flex-col">
                 <div className="sticky top-0 p-2 border-b bg-white z-10">
                   <input
                     type="text"
@@ -246,7 +248,7 @@ function CountryCodeSelectorInner<TFieldValues extends FieldValues = FieldValues
             onFocus={handleFocus}
             onBlur={handleBlur}
             maxLength={MAX_LOCAL_DIGITS}
-            className={`flex-1 bg-white border border-l-0 rounded-r-lg py-3 pl-4 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none ${
+            className={`flex-1 bg-gray-100 border border-l-0 rounded-r-lg py-3 pl-4 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none ${
               error || localInvalid ? "border-red-500" : "border-gray-300"
             } group-focus-within:border-transparent ${inputClassName || ""}`}
             aria-invalid={Boolean(error || localInvalid)}

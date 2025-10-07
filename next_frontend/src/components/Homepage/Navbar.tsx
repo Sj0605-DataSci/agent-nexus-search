@@ -72,7 +72,7 @@ const Navbar: React.FC = () => {
 
     const handleScroll = () => {
       lastKnownScrollY = window.scrollY;
-      
+
       if (rafId === null) {
         rafId = requestAnimationFrame(() => {
           const currentScrollY = lastKnownScrollY;
@@ -178,9 +178,7 @@ const Navbar: React.FC = () => {
               <div className="flex h-16 items-center justify-between px-6">
                 <BrandLogo />
 
-                <nav className="flex items-center gap-8">
-                  {navLinks}
-                </nav>
+                <nav className="flex items-center gap-8">{navLinks}</nav>
 
                 <MobileMenuIcon isOpen={isMobileMenuOpen} onClick={toggleMobileMenu} />
               </div>
@@ -219,9 +217,7 @@ const Navbar: React.FC = () => {
                   transition={{ type: "spring", damping: 25 }}
                   style={{ willChange: "transform, opacity" }}
                 >
-                  <ul className="py-2">
-                    {mobileNavLinks}
-                  </ul>
+                  <ul className="py-2">{mobileNavLinks}</ul>
                 </motion.nav>
               </motion.div>
             )}

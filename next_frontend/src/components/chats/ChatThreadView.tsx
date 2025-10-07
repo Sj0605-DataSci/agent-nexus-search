@@ -289,6 +289,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
     if (isStreaming) return;
 
     if (!!profile && profile?.has_connections !== "synced") {
+      toast.dismiss();
       showDevFeatureToast(
         "We would recommend to add your connections too to search across your connections"
       );

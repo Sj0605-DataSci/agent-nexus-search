@@ -121,7 +121,6 @@ const FriendListSection: React.FC<{
 
 export default function FriendsPage() {
   const dispatch = useAppDispatch();
-  // const [searchQuery, setSearchQuery] = useState("");
   const [emails, setEmails] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -250,10 +249,10 @@ export default function FriendsPage() {
 
   return (
     <div className="relative">
-      {!isAuthenticated && !profileLoading && <ComingSoonOverlay />}
+      {!isAuthenticated && !profileLoading && <ComingSoonOverlay type="login-required" />}
 
       <div
-        className={`container mx-auto px-4 ${!isAuthenticated && !profileLoading ? "opacity-30 pointer-events-none" : ""}`}
+        className={`container mx-auto px-4 ${!isAuthenticated && !profileLoading ? "opacity-20 pointer-events-none" : ""}`}
       >
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Friends</h1>

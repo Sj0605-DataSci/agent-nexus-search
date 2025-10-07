@@ -37,7 +37,7 @@ const WhyDiscoverMinds = () => {
             </thead>
             <tbody>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">🔍 Natural Language Search</td>
+                <td className="p-3 px-3 font-medium">Natural Language Search</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">
                   ✓<br />
                   <span className="text-xs text-gray-500">Understands intent and context</span>
@@ -48,7 +48,7 @@ const WhyDiscoverMinds = () => {
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">🧠 Learns & Adapts</td>
+                <td className="p-3 px-3 font-medium">Learns & Adapts</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">
                   ✓<br />
                   <span className="text-xs text-gray-500">Remembers patterns & preferences</span>
@@ -56,12 +56,12 @@ const WhyDiscoverMinds = () => {
                 <td className="p-3 px-2 text-center text-red-500">✗</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">🆓 Free Tier Available</td>
+                <td className="p-3 px-3 font-medium">Free Tier Available</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">✓</td>
                 <td className="p-3 px-2 text-center text-red-500">✗</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">🌍 DiscoverMinds + Personal Networks</td>
+                <td className="p-3 px-3 font-medium">DiscoverMinds + Personal Networks</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">
                   ✓<br />
                   <span className="text-xs text-gray-500">
@@ -74,7 +74,7 @@ const WhyDiscoverMinds = () => {
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">🎯 Verified Results</td>
+                <td className="p-3 px-3 font-medium">Verified Results</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">
                   ✓<br />
                   <span className="text-xs text-gray-500">No guesswork, just facts</span>
@@ -82,7 +82,7 @@ const WhyDiscoverMinds = () => {
                 <td className="p-3 px-2 text-center text-red-500">✗</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">📱 Multi-Platform Tracking</td>
+                <td className="p-3 px-3 font-medium">Multi-Platform Tracking</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">
                   ✓<br />
                   <span className="text-xs text-gray-500">LinkedIn, Gmail, Slack & more</span>
@@ -93,18 +93,18 @@ const WhyDiscoverMinds = () => {
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">👪 Search Within Connections</td>
+                <td className="p-3 px-3 font-medium">Search Within Connections</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">✓</td>
                 <td className="p-3 px-2 text-center text-green-500">✓</td>
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">📊 Export to CSV/Excel</td>
+                <td className="p-3 px-3 font-medium">Export to CSV/Excel</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">✓</td>
                 <td className="p-3 px-2 text-center text-green-500">✓</td>
               </tr>
 
               <tr className="border-b border-gray-100">
-                <td className="p-3 px-3 font-medium">🤝 Team Collaboration</td>
+                <td className="p-3 px-3 font-medium">Team Collaboration</td>
                 <td className="p-3 px-2 text-center text-green-500 bg-[#FAFFF2]">
                   ✓<br />
                   <span className="text-xs text-gray-500">Share findings instantly</span>

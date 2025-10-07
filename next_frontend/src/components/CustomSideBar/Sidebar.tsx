@@ -182,12 +182,8 @@ const Sidebar = () => {
       },
       { href: "/groups", label: "Groups", icon: <FiUsers /> },
       { href: "/research-person", label: "Research a person", icon: <FiSearch /> },
+      { href: "/agents", label: "Agents", icon: <FiZap /> },
     ];
-
-    const effectiveProfile = cachedProfile || profile;
-    if (effectiveProfile?.id) {
-      items.unshift({ href: "/agents", label: "Agents", icon: <FiZap /> });
-    }
 
     return items;
   }, [profile?.id, cachedProfile, friendshipsData]);

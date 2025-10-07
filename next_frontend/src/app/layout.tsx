@@ -8,14 +8,12 @@ import OptimizedCanonicalUrl from "@/components/seo/OptimizedCanonicalUrl";
 import OptimizedSEOInitializer from "@/components/seo/OptimizedSEOInitializer";
 import dynamic from "next/dynamic";
 
-const Analytics = dynamic(
-  () => import("@vercel/analytics/next").then(mod => mod.Analytics),
-  { ssr: false }
-);
-const AnalyticsLoader = dynamic(
-  () => import("@/components/analytics/AnalyticsLoader"),
-  { ssr: false }
-);
+const Analytics = dynamic(() => import("@vercel/analytics/next").then(mod => mod.Analytics), {
+  ssr: false,
+});
+const AnalyticsLoader = dynamic(() => import("@/components/analytics/AnalyticsLoader"), {
+  ssr: false,
+});
 
 const inter = Inter({
   variable: "--font-inter",

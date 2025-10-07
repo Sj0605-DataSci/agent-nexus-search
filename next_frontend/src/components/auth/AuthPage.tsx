@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -46,8 +46,18 @@ const GoogleIcon = () => (
 );
 
 const AuthPage = () => {
+  const searchParams = useSearchParams();
+  const activeParam = searchParams?.get("active");
+
+  const getInitialForm = (): "signup" | "signin" | "reset" | "hidetoggle" => {
+    if (activeParam === "signin" || activeParam === "signup" || activeParam === "reset") {
+      return activeParam;
+    }
+    return "signup";
+  };
+
   const [formToShow, setFormToShow] = useState<"signup" | "signin" | "reset" | "hidetoggle">(
-    "signin"
+    getInitialForm()
   );
 
   const router = useRouter();
@@ -68,12 +78,14 @@ const AuthPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <div className="grid grid-cols-1 md:grid-cols-2 h-screen">
+        <AuthBrandingPanel />
+
         <div className="flex justify-center p-4 md:mt-12 sm:p-6 lg:p-8">
           <div className="w-full max-w-md">
             <BrandLogo className="mb-3" size="large" />
 
             <div className="relative flex justify-between items-center mb-8">
-              {/* {formToShow != "reset" && formToShow != "hidetoggle" && (
+              {formToShow != "reset" && formToShow != "hidetoggle" && (
                 <div className="relative bg-gray-200 p-1 rounded-full flex items-center w-[170px]">
                   {["Sign up", "Sign in"].map((item, index) => {
                     const isActive =
@@ -81,7 +93,7 @@ const AuthPage = () => {
                       (formToShow === "signin" && index === 1);
                     return (
                       <div
-                        key={item}
+                        key={index}
                         onClick={() => setFormToShow(index === 0 ? "signup" : "signin")}
                         className="relative w-1/2 text-center text-sm font-semibold py-2 cursor-pointer"
                       >
@@ -101,7 +113,7 @@ const AuthPage = () => {
                     );
                   })}
                 </div>
-              )} */}
+              )}
               <button
                 onClick={() =>
                   formToShow === "hidetoggle" ? setFormToShow("signin") : router.push("/")
@@ -121,9 +133,9 @@ const AuthPage = () => {
                 exit="exit"
                 transition={{ duration: 0.3 }}
               >
-                {/* {formToShow === "signup" && (
+                {formToShow === "signup" && (
                   <SignUpForm successSignupSubmission={() => setFormToShow("hidetoggle")} />
-                )} */}
+                )}
                 {formToShow === "hidetoggle" && <SuccessSignupModal />}
                 {formToShow === "signin" && (
                   <SignInForm onForgotPassword={() => setFormToShow("reset")} />
@@ -135,7 +147,6 @@ const AuthPage = () => {
             </AnimatePresence>
           </div>
         </div>
-        <AuthBrandingPanel />
       </div>
     </div>
   );
@@ -173,6 +184,10 @@ const schema = yup.object().shape({
     .string()
     .required("Phone number is required")
     .matches(phoneRegex, "Please enter a valid phone number (select a code and enter 10 digits)."),
+  agreeToTerms: yup
+    .boolean()
+    .oneOf([true], "User must agree to the Terms & Conditions and Privacy Policy")
+    .required("User must agree to the Terms & Conditions and Privacy Policy"),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -360,12 +375,12 @@ const SignUpFormComponent = ({
       <p className="text-gray-500 mb-6 text-sm">
         Get started with our app, just create an account.
       </p>
-      <SocialSignIn
+      {/* <SocialSignIn
         mode="signup"
         onError={error => {
           console.error("Sign up error:", error);
         }}
-      />
+      /> */}
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-1">
         <div>
           <div className="relative">
@@ -411,6 +426,22 @@ const SignUpFormComponent = ({
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">{errors.password?.message}</p>
         </div>
         <div>
+          <div className="relative w-full">
+            <CountryCodeSelector
+              value={phoneValue}
+              onChange={setPhoneValue}
+              register={register}
+              name="phone_number"
+              error={!!errors.phone_number}
+              className=""
+              setValue={setValue}
+            />
+          </div>
+          <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">
+            {errors.phone_number?.message}
+          </p>
+        </div>
+        <div>
           <div className="relative">
             <Linkedin
               className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -427,22 +458,38 @@ const SignUpFormComponent = ({
             {errors.linkedin_url?.message}
           </p>
         </div>
-        <div>
-          <div className="relative w-full">
-            <CountryCodeSelector
-              value={phoneValue}
-              onChange={setPhoneValue}
-              register={register}
-              name="phone_number"
-              error={!!errors.phone_number}
-              className=""
-              setValue={setValue}
+
+        <div className="">
+          <label className="flex items-center justify-start gap-2 cursor-pointer group">
+            <input
+              {...register("agreeToTerms")}
+              type="checkbox"
+              className=" w-4 h-4  text-indigo-600 border-gray-300 rounded-md overflow-hidden cursor-pointer"
             />
-          </div>
-          <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">
-            {errors.phone_number?.message}
-          </p>
+            <span className="text-xs mt-[2px] text-gray-600 leading-relaxed">
+              I agree to the{" "}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-indigo-600 hover:text-indigo-700 underline"
+              >
+                Terms & Conditions
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-indigo-600 hover:text-indigo-700 underline"
+              >
+                Privacy Policy
+              </a>
+            </span>
+          </label>
+          <p className="text-red-500 text-[10px] h-5 ">{errors.agreeToTerms?.message}</p>
         </div>
+
         <button
           type="submit"
           disabled={isSubmitting || !isDirty}
@@ -451,13 +498,6 @@ const SignUpFormComponent = ({
           {isSubmitting ? "Creating Account..." : "Create an account"}
         </button>
       </form>
-
-      <p className="text-center text-xs text-gray-400 mt-3">
-        By creating an account, you agree to our{" "}
-        <a href="#" className="font-semibold text-gray-500">
-          Terms & Service
-        </a>
-      </p>
     </div>
   );
 };
@@ -535,7 +575,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
     <div>
       <h2 className="text-3xl font-bold text-gray-900 ">Welcome back</h2>
       <p className="text-gray-500 mb-4 text-sm">Sign in to continue to your account.</p>
-      <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+      {/* <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
         <p className="text-yellow-700 text-sm mb-2">
           Login access is currently limited to approved users only.
         </p>
@@ -548,7 +588,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
         >
           Join Waitlist
         </a>
-      </div>
+      </div> */}
 
       {/* <SocialSignIn
         mode="signin"
