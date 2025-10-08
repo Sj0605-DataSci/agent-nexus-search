@@ -41,6 +41,8 @@ apify-shared==2.0.0
     #   apify-client
 asyncio==4.0.0
     # via -r requirements.txt
+asyncpg==0.30.0
+    # via -r requirements.txt
 attrs==25.3.0
     # via
     #   -r requirements.txt

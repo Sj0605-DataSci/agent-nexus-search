@@ -5,6 +5,7 @@ from langchain_core.runnables import RunnableConfig
 from app.models.chat import OverallState
 from app.core.utils.llm_utils import GeminiChatModel, GroqChatModel
 from app.db.clients import get_async_supabase_client
+from app.db.pg_pool import execute_query, execute_update, execute_query_one
 from app.models.schemas import QueryAnalysis, ScoredProfilesResponse
 from app.core.utils.cache import invalidate_chat_messages_cache
 import json
@@ -12,6 +13,20 @@ import asyncio
 from app.db.redis_client import redis_client
 from app.core.services.agent.prompts import query_analysis_system_instruction, sql_search_system_instruction, scoring_system_instruction
 from app.core.config import settings
+from uuid import UUID
+from datetime import datetime, date
+
+def convert_to_json_serializable(obj):
+    """Recursively convert UUID and datetime objects to strings for JSON serialization."""
+    if isinstance(obj, (UUID, datetime, date)):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: convert_to_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_to_json_serializable(item) for item in obj]
+    else:
+        return obj
+
 
 def get_research_topic(messages: List[Union[BaseMessage, dict]]) -> str:
     """Get the research topic from the messages."""
@@ -249,16 +264,26 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         user_query = state["messages"][-1].get("content", "")
         current_message_id = state.get("current_message_id", "")
         chat_thread_id = state.get("chat_thread_id", "")
-        supabase_client = await get_async_supabase_client()
         weave_url = state.get("weave_url", "")
+        
+        # Keep Supabase client only for cache update (non-critical)
+        supabase_client = await get_async_supabase_client()
 
         cache_key = f"graph2:sql_search:{user_id}:{user_query}"
         
         cached_result = await redis_client.get(cache_key)
         if cached_result is not None:
-            await supabase_client.table("chat_messages").update({
-                "generated_sql": cached_result.get("sql_queries"),
-            }).eq("id", current_message_id).execute()
+            # Update chat_messages using direct PostgreSQL
+            try:
+                sql_queries = cached_result.get("sql_queries")
+                if sql_queries:
+                    await execute_update(
+                        "UPDATE chat_messages SET generated_sql = $1 WHERE id = $2",
+                        sql_queries,
+                        current_message_id
+                    )
+            except Exception as e:
+                print(f"⚠️ Failed to update cached SQL in DB: {e}")
             
             invalidate_chat_messages_cache(chat_thread_id)
             cached_result_dict = cached_result if isinstance(cached_result, dict) else cached_result.model_dump()
@@ -271,39 +296,46 @@ async def sql_search(state: OverallState, config: RunnableConfig) -> OverallStat
         filters = query_analysis.get("filters", {})
         traits = query_analysis.get("traits", {}).get("traits", [])
         
-        # Get all friends of the current user (where status is accepted)
+        # Get all friends of the current user (where status is accepted) - using direct PostgreSQL
         friend_ids = []
         try:
             # Query 1: Get friends where user is requester
-            requester_friends = await supabase_client.table("friendships").select("addressee_id")\
-                .eq("requester_id", str(user_id))\
-                .eq("status", "accepted")\
-                .execute()
+            requester_friends = await execute_query(
+                "SELECT addressee_id FROM friendships WHERE requester_id = $1 AND status = 'accepted'",
+                str(user_id),
+                timeout=10.0
+            )
             
             # Query 2: Get friends where user is addressee
-            addressee_friends = await supabase_client.table("friendships").select("requester_id")\
-                .eq("addressee_id", str(user_id))\
-                .eq("status", "accepted")\
-                .execute()
+            addressee_friends = await execute_query(
+                "SELECT requester_id FROM friendships WHERE addressee_id = $1 AND status = 'accepted'",
+                str(user_id),
+                timeout=10.0
+            )
             
             # Extract friend IDs from both queries
-            if requester_friends.data:
-                friend_ids.extend([item["addressee_id"] for item in requester_friends.data])
-            
-            if addressee_friends.data:
-                friend_ids.extend([item["requester_id"] for item in addressee_friends.data])
+            friend_ids.extend([record["addressee_id"] for record in requester_friends])
+            friend_ids.extend([record["requester_id"] for record in addressee_friends])
             
             # Include the user's own ID
             user_ids = [user_id] + friend_ids
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Failed to fetch friends: {e}")
             user_ids = [user_id]  # Fallback to just the user's ID
 
-
-        response = await supabase_client.table("profiles").select("founders_connection").eq("id", user_id).execute()
-        founders_connections = response.data[0]["founders_connection"]
-        if founders_connections:
-            founders_ids = [settings.SANYAM_USERID, settings.ASHISH_USERID]
-            user_ids.extend(founders_ids)
+        # Check founders connection - using direct PostgreSQL
+        try:
+            profile_record = await execute_query_one(
+                "SELECT founders_connection FROM profiles WHERE id = $1",
+                str(user_id),
+                timeout=10.0
+            )
+            founders_connections = profile_record["founders_connection"] if profile_record else False
+            if founders_connections:
+                founders_ids = [settings.SANYAM_USERID, settings.ASHISH_USERID]
+                user_ids.extend(founders_ids)
+        except Exception as e:
+            print(f"⚠️ Failed to check founders connection: {e}")
         
         # Prepare search context for LLM
         search_context = {
@@ -351,42 +383,58 @@ Search Context: {json.dumps(search_context, indent=2)}
             # Clean the SQL query by removing trailing semicolon
             clean_query = generated_sql.strip().rstrip(';')
 
-            await supabase_client.table("chat_messages").update({
-                "generated_sql": clean_query
-            }).eq("user_id", user_id).eq("id", current_message_id).execute()
+            # Update chat_messages using direct PostgreSQL
+            try:
+                await execute_update(
+                    "UPDATE chat_messages SET generated_sql = $1 WHERE user_id = $2 AND id = $3",
+                    clean_query,
+                    str(user_id),
+                    current_message_id,
+                    timeout=10.0
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to update generated_sql in DB: {e}")
             
-            # Execute SQL with timeout to prevent hanging queries
-            keyword_result = await asyncio.wait_for(
-                supabase_client.rpc('execute_dynamic_sql', {'query_text': clean_query}).execute(),
-                timeout=1200  # 20 minute timeout for SQL execution
+            # Execute SQL directly using asyncpg with timeout (no RPC overhead!)
+            print(f"🔍 Executing SQL query directly via asyncpg...")
+            keyword_result = await execute_query(
+                clean_query,
+                timeout=1200.0  # 20 minute timeout for SQL execution
             )
             
+            # Convert asyncpg records to dictionaries
             keyword_results = []
-            if keyword_result.data:
-                    for row in keyword_result.data:
-                        if isinstance(row, dict):
-                            # Check for error response from RPC
-                            if 'error' in row and 'query' in row:
-                                print(f"SQL execution error: {row.get('error')}")
-                                continue
-                            # Extract the 'result' field from RPC response
-                            if 'result' in row:
-                                keyword_results.append(row['result'])
-                            else:
-                                keyword_results.append(row)
-                        else:
-                            keyword_results.append(row)
+            if keyword_result:
+                for record in keyword_result:
+                    # asyncpg returns Record objects, convert to dict
+                    keyword_results.append(dict(record))
+            
+            print(f"✅ SQL query executed successfully, found {len(keyword_results)} results")
         
         except asyncio.TimeoutError:
-            await supabase_client.table("chat_messages").update({
-                "error": "Node: SQL query timed out after 30 seconds"
-            }).eq("id", current_message_id).execute()
-            raise Exception("SQL query execution timed out after 30 seconds")
+            error_msg = "Node: SQL query timed out after 1200 seconds"
+            try:
+                await execute_update(
+                    "UPDATE chat_messages SET error = $1 WHERE id = $2",
+                    error_msg,
+                    current_message_id,
+                    timeout=10.0
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to update timeout error in DB: {e}")
+            raise Exception(error_msg)
                         
         except Exception as e:
-            await supabase_client.table("chat_messages").update({
-                "error": "Node: Sql search failed with 1st time groq" + str(e)
-            }).eq("id", current_message_id).execute()
+            error_msg = "Node: Sql search failed with 1st time groq: " + str(e)
+            try:
+                await execute_update(
+                    "UPDATE chat_messages SET error = $1 WHERE id = $2",
+                    error_msg,
+                    current_message_id,
+                    timeout=10.0
+                )
+            except Exception as update_e:
+                print(f"⚠️ Failed to update error in DB: {update_e}")
             
             # Fallback: get basic results without complex filtering
             try:
@@ -410,45 +458,57 @@ Search Context: {json.dumps(search_context, indent=2)}
                 # Clean the SQL query by removing trailing semicolon
                 clean_query = generated_sql.strip().rstrip(';')
 
-                await supabase_client.table("chat_messages").update({
-            "generated_sql": clean_query
-            }).eq("user_id", user_id).eq("id", current_message_id).execute()
+                # Update chat_messages using direct PostgreSQL
+                try:
+                    await execute_update(
+                        "UPDATE chat_messages SET generated_sql = $1 WHERE user_id = $2 AND id = $3",
+                        clean_query,
+                        str(user_id),
+                        current_message_id,
+                        timeout=10.0
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to update generated_sql in DB (fallback): {e}")
             
-                # Execute the SQL query directly - RPC function handles row_to_json conversion
-                # This avoids the 27x performance overhead of client-side to_jsonb wrapping
-                # Add timeout to prevent hanging queries
-                keyword_result = await asyncio.wait_for(
-                    supabase_client.rpc('execute_dynamic_sql', {'query_text': clean_query}).execute(),
-                    timeout=1200  # 20 minute timeout for SQL execution
+                # Execute SQL directly using asyncpg (fallback attempt)
+                print(f"🔄 Executing fallback SQL query directly via asyncpg...")
+                keyword_result = await execute_query(
+                    clean_query,
+                    timeout=1200.0  # 20 minute timeout for SQL execution
                 )
             
-                # Parse JSONB results from RPC function
+                # Convert asyncpg records to dictionaries (fallback)
                 keyword_results = []
-                if keyword_result.data:
-                    for row in keyword_result.data:
-                        if isinstance(row, dict):
-                            # Check for error response from RPC
-                            if 'error' in row and 'query' in row:
-                                print(f"SQL execution error: {row.get('error')}")
-                                continue
-                            # Extract the 'result' field from RPC response
-                            if 'result' in row:
-                                keyword_results.append(row['result'])
-                            else:
-                                keyword_results.append(row)
-                        else:
-                            keyword_results.append(row)
+                if keyword_result:
+                    for record in keyword_result:
+                        keyword_results.append(dict(record))
+                
+                print(f"✅ Fallback SQL query executed successfully, found {len(keyword_results)} results")
             
             except asyncio.TimeoutError:
-                await supabase_client.table("chat_messages").update({
-                    "error": "Node: SQL query timed out after 1200 seconds (fallback)"
-                }).eq("id", current_message_id).execute()
-                raise Exception("SQL query execution timed out after 1200 seconds (fallback)")
+                error_msg = "Node: SQL query timed out after 1200 seconds (fallback)"
+                try:
+                    await execute_update(
+                        "UPDATE chat_messages SET error = $1 WHERE id = $2",
+                        error_msg,
+                        current_message_id,
+                        timeout=10.0
+                    )
+                except Exception as e:
+                    print(f"⚠️ Failed to update timeout error in DB (fallback): {e}")
+                raise Exception(error_msg)
             
             except Exception as fallback_e:
-                await supabase_client.table("chat_messages").update({
-                    "error": "Node: Sql search failed with 2nd time openai oss" + str(fallback_e)
-                }).eq("id", current_message_id).execute()
+                error_msg = "Node: Sql search failed with 2nd time openai oss: " + str(fallback_e)
+                try:
+                    await execute_update(
+                        "UPDATE chat_messages SET error = $1 WHERE id = $2",
+                        error_msg,
+                        current_message_id,
+                        timeout=10.0
+                    )
+                except Exception as update_e:
+                    print(f"⚠️ Failed to update fallback error in DB: {update_e}")
                 raise fallback_e
         
         print("Node 2: SQL Search Completed")
@@ -528,7 +588,8 @@ async def vector_search(state: OverallState, config: RunnableConfig) -> OverallS
                 # Direct profile object
                 profile_id = result_item.get("id", "")
                 if profile_id:
-                    keyword_profile_ids.append(profile_id)
+                    # Convert UUID to string for JSON serialization
+                    keyword_profile_ids.append(str(profile_id))
             elif isinstance(result_item, str):
                 # Just the ID as string
                 keyword_profile_ids.append(result_item)
@@ -880,7 +941,8 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
             # Get the profile data from keyword results
             profile_data = None
             for result in keyword_results:
-                if isinstance(result, dict) and result.get("id") == profile_id:
+                # Convert UUID to string for comparison (asyncpg returns UUID objects)
+                if isinstance(result, dict) and str(result.get("id")) == str(profile_id):
                     profile_data = result
                     break
             
@@ -900,6 +962,9 @@ async def finalize_sql_answer(state: OverallState, config: RunnableConfig):
     
     # Limit to top results based on agent config
     final_profiles = combined_profiles
+    
+    # Convert UUIDs and dates to strings for JSON serialization
+    final_profiles = convert_to_json_serializable(final_profiles)
     
     print(f"Node 5: Finalize SQL Answer : Using {len(final_profiles)} profiles")
 
