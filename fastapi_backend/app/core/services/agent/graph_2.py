@@ -118,7 +118,7 @@ Query: "{user_query}"
         response, usage_metadata = await llm.with_structured_output(
             schema_type=QueryAnalysis, 
             prompt=user_prompt
-        )        
+        )
         # Store query analysis in state for other nodes
         state["query_analysis"] = response.model_dump()
         state["user_query"] = user_query
@@ -175,6 +175,10 @@ Query: "{user_query}"
             pass
         
         print("Node 1: Query Analysis Completed")
+        
+        # Convert response to dict for validation
+        query_analysis_dict = response.model_dump() if hasattr(response, 'model_dump') else response
+        
         result = {
             "messages": state["messages"],
             "intent": state["intent"],
@@ -193,14 +197,38 @@ Query: "{user_query}"
             "initial_search_query_count": state["initial_search_query_count"],
             "number_of_results_returned": state["number_of_results_returned"],
             "world_connections": state["world_connections"],
-            "query_analysis": response.model_dump() if hasattr(response, 'model_dump') else response,
+            "query_analysis": query_analysis_dict,
             "user_query": user_query
         }
         
-        if user_id == settings.FOUNDERS_USERID:
-            await redis_client.set(cache_key, result, expire=2628288)
-        else:
-            await redis_client.set(cache_key, result, expire=3600)
+        # Only cache if we have valid query analysis data with all required fields
+        try:
+            # Extract fields the same way they're used in other nodes
+            filters = query_analysis_dict.get("filters", {})
+            traits = query_analysis_dict.get("traits", {}).get("traits", [])
+            keyphrases = query_analysis_dict.get("keyphrases", {}).get("keyphrases", [])
+            
+            # Validate all three required fields exist and have data
+            has_valid_data = (
+                filters is not None and 
+                traits is not None and 
+                keyphrases is not None and 
+                len(keyphrases) > 0  # At least ensure keyphrases has some data
+            )
+            
+            if has_valid_data:
+                if user_id == settings.FOUNDERS_USERID:
+                    await redis_client.set(cache_key, result, expire=2628288)
+                else:
+                    await redis_client.set(cache_key, result, expire=3600)
+                print(f"✅ Cached query analysis for user {user_id} (filters: {bool(filters)}, traits: {len(traits)}, keyphrases: {len(keyphrases)})")
+            else:
+                print(f"⚠️ Skipping cache - missing required fields (filters: {bool(filters)}, traits: {len(traits) if traits else 0}, keyphrases: {len(keyphrases) if keyphrases else 0})")
+        except Exception as cache_error:
+            print(f"⚠️ Failed to cache query analysis: {cache_error}")
+            # Don't fail the request if caching fails
+            pass
+        
         return OverallState(**result)
         
     except Exception as e:
@@ -450,10 +478,14 @@ Search Context: {json.dumps(search_context, indent=2)}
             "sql_results":keyword_results
         }
 
-        if user_id == settings.FOUNDERS_USERID:
-            await redis_client.set(cache_key, result, expire=2628288)
+        if keyword_results is not None and generated_sql is not None:
+
+            if user_id == settings.FOUNDERS_USERID:
+                await redis_client.set(cache_key, result, expire=2628288)
+            else:
+                await redis_client.set(cache_key, result, expire=3600)
         else:
-            await redis_client.set(cache_key, result, expire=3600)
+            print("skip cache not sql + result found")        
         
         invalidate_chat_messages_cache(chat_thread_id)
         

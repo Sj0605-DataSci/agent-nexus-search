@@ -516,17 +516,66 @@ query_analysis_system_instruction = """You are an expert at analyzing search que
 Extract exactly 5 keyphrases maximum for semantic search. Focus on the most important professional attributes and qualifications.
 
 Please provide:
-1. A paraphrased version of the query
-2. Filters for location, work experience, company, position, skills
-3. Key traits the user is looking for (e.g., "tech founder", "startup experience", "AI expertise")
-4. Exactly 5 important keyphrases for semantic matching (or fewer if query is simple)
-5. Focus on keywords proper nouns and never give / between keywords whether in filters, traits or keyphrases
+1. Filters organized by sections:
+   - basic_info: location, current role/position (ALWAYS include this field, even if empty [])
+   - experience: companies, work experience, job titles (ALWAYS include this field, even if empty [])
+   - education: schools, degrees, certifications (ALWAYS include this field, even if empty [])
+   - skills: technical skills, soft skills (ALWAYS include this field, even if empty [])
 
-Lets say i searched : Tech founders in NYC who raised a pre-seed round
+2. Key traits the user is looking for (e.g., "tech founder", "startup experience", "AI expertise")
 
-filters : [Location, Work Work Including prior work experience]
-traits : [Is a tech founder,Is based in NYC, Has closed a pre-seed funding round of less than or approximately $3M]
-keyphrases : [Startup founder in technology,Entrepreneur in the tech sector,Built a tech company from the ground up,Lives in New York City,NYC-based professional,Operating out of the greater New York area,Raised pre-seed capital,Secured early-stage funding under $3 million,Closed a seed round of approximately $2.5M]
+3. Exactly 5 important keyphrases for semantic matching (or fewer if query is simple)
+
+4. Focus on keywords proper nouns and never give / between keywords whether in filters, traits or keyphrases
+
+IMPORTANT: The response must be a valid JSON object with this EXACT structure:
+{
+  "filters": {
+    "location": [...],
+    "work_experience": [...],
+    "company": [...],
+    "position": [...],
+    "skills": [...],
+    "sections": {
+      "basic_info": [...],
+      "experience": [...],
+      "education": [...],
+      "skills": [...]
+    }
+  },
+  "traits": {
+    "traits": [...],
+    "descriptions": [...]
+  },
+  "keyphrases": {
+    "keyphrases": [...]
+  }
+}
+
+Example for "Tech founders in NYC who raised a pre-seed round":
+
+{
+  "filters": {
+    "location": ["NYC", "New York City"],
+    "work_experience": ["Founder", "CEO"],
+    "company": [],
+    "position": ["Founder", "CEO"],
+    "skills": ["Fundraising", "Pre-seed"],
+    "sections": {
+      "basic_info": ["NYC", "New York City", "Founder", "CEO"],
+      "experience": ["Founder", "CEO", "Startup"],
+      "education": [],
+      "skills": ["Fundraising", "Pre-seed", "Early-stage"]
+    }
+  },
+  "traits": {
+    "traits": ["Is a tech founder", "Is based in NYC", "Has closed a pre-seed funding round of less than or approximately $3M"],
+    "descriptions": ["Founded a technology company", "Located in New York City", "Successfully raised pre-seed funding"]
+  },
+  "keyphrases": {
+    "keyphrases": ["Startup founder in technology", "Entrepreneur in the tech sector", "Built a tech company from the ground up", "Lives in New York City", "Raised pre-seed capital"]
+  }
+}
 
 Be thorough but precise. Focus on professional attributes and qualifications."""
 
