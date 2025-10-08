@@ -33,10 +33,10 @@ class ScoredProfilesResponse(BaseModel):
     profiles: List[ScoredProfile]
 
 class SectionFilters(BaseModel):
-    basic_info: Optional[List[str]] = []
-    experience: Optional[List[str]] = []
-    education: Optional[List[str]] = []
-    skills: Optional[List[str]] = []
+    basic_info: List[str] = Field(default_factory=list)
+    experience: List[str] = Field(default_factory=list)
+    education: List[str] = Field(default_factory=list)
+    skills: List[str] = Field(default_factory=list)
 
 class SearchFilters(BaseModel):
     # Legacy fields for backward compatibility
