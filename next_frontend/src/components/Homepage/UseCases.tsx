@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Reveal, Stagger } from "../common/Animations";
 
@@ -191,21 +192,22 @@ const UseCases: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* CTA Section */}
         <Reveal delay={0.6}>
           <div className="text-center mt-20">
             <div className="inline-block p-8 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl text-white">
-              <h3 className="text-2xl font-bold mb-4">Ready to unleash Arya?</h3>
+              <h3 className="text-2xl font-bold mb-4">Ready to discover your network?</h3>
               <p className="text-gray-300 mb-6 max-w-md">
-                Join the waitlist and be among the first to experience precision people hunting.
+                Get started today and unlock hidden opportunities through warm introductions.
               </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 bg-white text-gray-900 font-semibold rounded-full hover:bg-gray-100 transition-colors"
-              >
-                Join Waitlist
-              </motion.button>
+              <Link href="/user-auth" prefetch={false}>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-3 bg-white text-gray-900 font-semibold rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  Get Started
+                </motion.button>
+              </Link>
             </div>
           </div>
         </Reveal>

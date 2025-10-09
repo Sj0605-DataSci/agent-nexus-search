@@ -36,21 +36,21 @@ const HeroHeader = () => {
       <div className="relative z-10">
         <div className="max-w-6xl items-center px-4 sm:px-6 lg:px-8 mx-auto">
           <header className="text-center">
-            <h1 className="text-4xl md:text-6xl font-medium max-w-[90%] mx-auto text-gray-900 mb-6">
-              Unlock Hidden Opportunities within Your Trusted Networks
+            <h1 className="text-4xl md:text-6xl font-medium max-w-[100%] mx-auto text-gray-900 mb-6">
+              Your Secret Weapon for Professional Networking
             </h1>
-
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12">
               AI that maps your network, delivers warm intros effortlessly.
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
               <Link
-                href="/#waitlist-email"
-                className="px-8 py-3 text-lg font-medium rounded-xl text-white bg-[#0E3D15] hover:bg-[#1F3A21] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-102 hover:-translate-y-0.5 active:translate-y-0"
-                aria-label="Join waitlist"
+                href="/user-auth"
+                prefetch={false}
+                className="px-8 py-1 text-lg font-medium rounded-xl text-white bg-[#0E3D15] hover:bg-[#1F3A21] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-102 hover:-translate-y-0.5 active:translate-y-0"
+                aria-label="Get Started"
               >
-                Join waitlist
+                Get Started
               </Link>
               <Link
                 href="https://calendly.com/founders-discoverminds/30min"

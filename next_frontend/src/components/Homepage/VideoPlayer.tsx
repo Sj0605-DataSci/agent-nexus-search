@@ -69,7 +69,7 @@ const VideoPlayer = () => {
         ) : (
           <div className="absolute inset-0 z-10 cursor-pointer group" onClick={handlePlayClick}>
             <Image
-              src="/Images/YoutubeTumbnailImage.jpg"
+              src="/Images/YoutubeTumbnailImage.png"
               alt="Video thumbnail"
               fill
               priority={true}
@@ -83,8 +83,8 @@ const VideoPlayer = () => {
                   src="/logos/YoutubeLogo.png"
                   alt="Play video"
                   width={140}
-                  height={110}
-                  className="w-38 h-34 sm:w-48 sm:h-42"
+                  height={120}
+                  className="w-38 h-36"
                 />
               </div>
             </div>

@@ -118,9 +118,9 @@ const WhyDiscoverMinds = () => {
               <tr>
                 <td className="p-4 px-2"></td>
                 <td className="p-4 px-2 text-center bg-[#FAFFF2]">
-                  <Link href="/#waitlist-email">
+                  <Link href="/user-auth">
                     <button className="px-6 py-2.5 rounded-lg bg-[#B2DC8A] text-[#0E3D15] px-4 sm:px-6 py-2 text-sm sm:text-base font-medium transition-colors  hover:opacity-90 transition-colors duration-200 text-sm font-medium">
-                      Join waitlist
+                      Get Started
                     </button>
                   </Link>
                 </td>
