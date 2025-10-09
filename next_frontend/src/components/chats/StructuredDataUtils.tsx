@@ -731,7 +731,6 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({ people, userN
                           </td>
                           <td className="p-3 align-middle py-3">
                             <div className="flex flex-col items-center justify-center gap-2">
-                              {/* Mutual connections */}
                               {person.MutualConnection ? (
                                 <div
                                   className="relative group cursor-pointer"

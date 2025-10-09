@@ -102,7 +102,6 @@ const EnhancedProfileList: React.FC<EnhancedProfileListProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
@@ -111,7 +110,6 @@ const EnhancedProfileList: React.FC<EnhancedProfileListProps> = ({
           </p>
         </div>
 
-        {/* View Mode Toggle */}
         <div className="flex items-center gap-2">
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
@@ -140,9 +138,7 @@ const EnhancedProfileList: React.FC<EnhancedProfileListProps> = ({
         </div>
       </div>
 
-      {/* Filters and Sort */}
       <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg">
-        {/* Filter Buttons */}
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">Filter:</span>
@@ -170,7 +166,6 @@ const EnhancedProfileList: React.FC<EnhancedProfileListProps> = ({
           </div>
         </div>
 
-        {/* Sort Options */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-700">Sort by:</span>
           <div className="flex gap-1">
@@ -206,7 +201,6 @@ const EnhancedProfileList: React.FC<EnhancedProfileListProps> = ({
         </div>
       </div>
 
-      {/* Profile Grid/List */}
       {sortedProfiles.length > 0 ? (
         <div
           className={
@@ -239,7 +233,6 @@ const EnhancedProfileList: React.FC<EnhancedProfileListProps> = ({
         </div>
       )}
 
-      {/* Summary Stats */}
       {profiles.length > 0 && (
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Summary</h3>
