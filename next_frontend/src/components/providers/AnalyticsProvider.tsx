@@ -55,7 +55,6 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     if (user) {
       posthog.register({
         user_id: user.id,
-        fullName: user.user_metadata.full_name,
         email_domain: user.email ? user.email.split("@")[1] : null,
       });
     }
