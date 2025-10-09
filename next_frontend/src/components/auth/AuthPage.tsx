@@ -454,7 +454,7 @@ const SignUpFormComponent = ({
               </a>{" "}
               and{" "}
               <a
-                href="/privacy"
+                href="/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-semibold text-indigo-600 hover:text-indigo-700 underline"
