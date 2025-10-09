@@ -11,9 +11,12 @@ import dynamic from "next/dynamic";
 const Analytics = dynamic(() => import("@vercel/analytics/next").then(mod => mod.Analytics), {
   ssr: false,
 });
-const SpeedInsights = dynamic(() => import("@vercel/speed-insights/next").then(mod => mod.SpeedInsights), {
-  ssr: false,
-});
+const SpeedInsights = dynamic(
+  () => import("@vercel/speed-insights/next").then(mod => mod.SpeedInsights),
+  {
+    ssr: false,
+  }
+);
 const AnalyticsLoader = dynamic(() => import("@/components/analytics/AnalyticsLoader"), {
   ssr: false,
 });
