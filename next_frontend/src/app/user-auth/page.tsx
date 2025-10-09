@@ -20,7 +20,7 @@ function AuthPageSkeleton() {
             </div>
           </div>
         </div>
-        <div className="hidden md:block bg-gradient-to-br from-indigo-500 to-purple-600"></div>
+        <div className="hidden md:block bg-[#b2dc8b]"></div>
       </div>
     </div>
   );
