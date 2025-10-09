@@ -110,7 +110,7 @@ export default function AryaPage() {
           <SearchModes />
 
           {/* Use Cases */}
-          <UseCases />
+          {/* <UseCases /> */}
 
           {/* How Arya Works */}
           <section className="py-20 px-4">

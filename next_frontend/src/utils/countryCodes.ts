@@ -6,6 +6,10 @@ export interface CountryCode {
 }
 
 export const countryCodes: CountryCode[] = [
+  { code: "IN", name: "India", flag: "🇮🇳", dialCode: "+91" },
+  { code: "AE", name: "United Arab Emirates", flag: "🇦🇪", dialCode: "+971" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧", dialCode: "+44" },
+  { code: "US", name: "United States", flag: "🇺🇸", dialCode: "+1" },
   { code: "AF", name: "Afghanistan", flag: "🇦🇫", dialCode: "+93" },
   { code: "AL", name: "Albania", flag: "🇦🇱", dialCode: "+355" },
   { code: "DZ", name: "Algeria", flag: "🇩🇿", dialCode: "+213" },
@@ -101,7 +105,6 @@ export const countryCodes: CountryCode[] = [
   { code: "HK", name: "Hong Kong", flag: "🇭🇰", dialCode: "+852" },
   { code: "HU", name: "Hungary", flag: "🇭🇺", dialCode: "+36" },
   { code: "IS", name: "Iceland", flag: "🇮🇸", dialCode: "+354" },
-  { code: "IN", name: "India", flag: "🇮🇳", dialCode: "+91" },
   { code: "ID", name: "Indonesia", flag: "🇮🇩", dialCode: "+62" },
   { code: "IR", name: "Iran", flag: "🇮🇷", dialCode: "+98" },
   { code: "IQ", name: "Iraq", flag: "🇮🇶", dialCode: "+964" },
@@ -230,9 +233,7 @@ export const countryCodes: CountryCode[] = [
   { code: "TV", name: "Tuvalu", flag: "🇹🇻", dialCode: "+688" },
   { code: "UG", name: "Uganda", flag: "🇺🇬", dialCode: "+256" },
   { code: "UA", name: "Ukraine", flag: "🇺🇦", dialCode: "+380" },
-  { code: "AE", name: "United Arab Emirates", flag: "🇦🇪", dialCode: "+971" },
-  { code: "GB", name: "United Kingdom", flag: "🇬🇧", dialCode: "+44" },
-  { code: "US", name: "United States", flag: "🇺🇸", dialCode: "+1" },
+
   { code: "UY", name: "Uruguay", flag: "🇺🇾", dialCode: "+598" },
   { code: "UZ", name: "Uzbekistan", flag: "🇺🇿", dialCode: "+998" },
   { code: "VU", name: "Vanuatu", flag: "🇻🇺", dialCode: "+678" },

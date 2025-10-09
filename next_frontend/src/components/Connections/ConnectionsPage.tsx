@@ -72,7 +72,7 @@ export default function ConnectionsPage() {
 
   return (
     <div className="relative">
-      {!isAuthenticated && !loading && <ComingSoonOverlay />}
+      {!isAuthenticated && !loading && <ComingSoonOverlay type="login-required" />}
       <div
         className={`container mx-auto px-4 ${!isAuthenticated && !loading ? "opacity-30 pointer-events-none" : ""}`}
       ></div>

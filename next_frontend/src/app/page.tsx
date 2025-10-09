@@ -6,34 +6,22 @@ import dynamicImporter from "next/dynamic";
 import Offerings from "@/components/Homepage/Offerings";
 
 // Lazy load below-the-fold components with loading states
-const HowItWorks = dynamicImporter(
-  () => import("@/components/Homepage/HowItWorks"),
-  {
-    loading: () => <div className="min-h-[400px] bg-gray-50" />,
-    ssr: true,
-  }
-);
-const FaqSection = dynamicImporter(
-  () => import("@/components/Pricing/FaqSection"),
-  {
-    loading: () => <div className="min-h-[300px] bg-white" />,
-    ssr: true,
-  }
-);
-const NewFooter = dynamicImporter(
-  () => import("@/components/Footer/NewFooter"),
-  {
-    loading: () => <div className="min-h-[200px] bg-gray-900" />,
-    ssr: true,
-  }
-);
-const WhyDiscoverMinds = dynamicImporter(
-  () => import("@/components/Homepage/WhyDiscoverMinds"),
-  {
-    loading: () => <div className="min-h-[500px] bg-white" />,
-    ssr: true,
-  }
-);
+const HowItWorks = dynamicImporter(() => import("@/components/Homepage/HowItWorks"), {
+  loading: () => <div className="min-h-[400px] bg-gray-50" />,
+  ssr: true,
+});
+const FaqSection = dynamicImporter(() => import("@/components/Pricing/FaqSection"), {
+  loading: () => <div className="min-h-[300px] bg-white" />,
+  ssr: true,
+});
+const NewFooter = dynamicImporter(() => import("@/components/Footer/NewFooter"), {
+  loading: () => <div className="min-h-[200px] bg-gray-900" />,
+  ssr: true,
+});
+const WhyDiscoverMinds = dynamicImporter(() => import("@/components/Homepage/WhyDiscoverMinds"), {
+  loading: () => <div className="min-h-[500px] bg-white" />,
+  ssr: true,
+});
 
 export const dynamic = "force-static";
 

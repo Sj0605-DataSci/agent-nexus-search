@@ -4,7 +4,7 @@ import Image from "next/image";
 
 const companyLogos = [
   { name: "Adobe", width: 80, height: 40 },
-  { name: "Cargill", width: 100, height: 40 },
+  // { name: "Cargill", width: 100, height: 40 },
   { name: "Google", width: 100, height: 40 },
   { name: "Juspay", width: 100, height: 40 },
   { name: "Meta", width: 80, height: 40 },
@@ -16,7 +16,7 @@ const HeroHeader = () => {
   const logoImages = useMemo(
     () =>
       companyLogos.map(company => (
-        <div key={company.name} className="h-8 md:h-10 relative">
+        <div key={company.name} className="h-8 md:h-9 relative">
           <Image
             src={`/logos/TrustedPartners/${company.name}.webp`}
             alt={`${company.name} logo`}
@@ -36,21 +36,21 @@ const HeroHeader = () => {
       <div className="relative z-10">
         <div className="max-w-6xl items-center px-4 sm:px-6 lg:px-8 mx-auto">
           <header className="text-center">
-            <h1 className="text-4xl md:text-6xl font-medium max-w-[90%] mx-auto text-gray-900 mb-6">
-              Unlock Hidden Opportunities within Your Trusted Networks
+            <h1 className="text-4xl md:text-6xl font-medium max-w-[100%] mx-auto text-gray-900 mb-6">
+              Your Secret Weapon for Professional Networking
             </h1>
-
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12">
               AI that maps your network, delivers warm intros effortlessly.
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
               <Link
-                href="/#waitlist-email"
+                href="/user-auth"
+                prefetch={false}
                 className="px-8 py-3 text-lg font-medium rounded-xl text-white bg-[#0E3D15] hover:bg-[#1F3A21] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-102 hover:-translate-y-0.5 active:translate-y-0"
-                aria-label="Join waitlist"
+                aria-label="Get Started"
               >
-                Join waitlist
+                Get Started
               </Link>
               <Link
                 href="https://calendly.com/founders-discoverminds/30min"

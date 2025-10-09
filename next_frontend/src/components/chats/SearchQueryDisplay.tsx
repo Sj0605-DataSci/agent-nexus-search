@@ -503,7 +503,7 @@ const SearchQueryDisplay = ({
       </p> */}
       {!isUserLoggedIn && (
         <p className="md:text-md text-sm text-gray-600 max-w-3xl mb-2 ">
-          Certainly! I'm searching across founder's 18075+ 1st degree connections
+          Certainly! I'm searching across founder's 20175+ 1st degree connections
         </p>
       )}
       <div

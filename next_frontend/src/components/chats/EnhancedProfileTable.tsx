@@ -256,7 +256,6 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
 
   return (
     <div className="w-full">
-      {/* Header with controls */}
       <div className="mb-4 px-3 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
@@ -264,7 +263,6 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View Mode Toggle */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode("table")}
@@ -290,7 +288,6 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
             </button>
           </div>
 
-          {/* Download CSV Button */}
           <Button
             onClick={() => downloadEnhancedProfilesCSV(profiles)}
             variant="outline"
@@ -303,7 +300,6 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
         </div>
       </div>
 
-      {/* Table View */}
       {viewMode === "table" && (
         <div className="rounded-xl bg-white shadow-sm border border-gray-200">
           <div className="overflow-auto">
@@ -443,7 +439,6 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
         </div>
       )}
 
-      {/* Card View - Reuse existing EnhancedProfileList component */}
       {viewMode === "cards" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedProfiles.map((profile, index) => (
@@ -451,7 +446,6 @@ const EnhancedProfileTable: React.FC<EnhancedProfileTableProps> = ({
               key={profile.id || index}
               className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 p-6"
             >
-              {/* This would be the EnhancedProfileCard component content */}
               <div className="text-center">
                 <div className="font-medium text-gray-900">
                   {profile.first_name} {profile.last_name}

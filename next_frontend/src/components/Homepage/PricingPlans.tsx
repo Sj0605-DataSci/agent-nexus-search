@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Link from "next/link";
 import { FiCheckCircle, FiSearch, FiArrowRight } from "react-icons/fi";
 import { FaCrown } from "react-icons/fa";
 import { BsShieldCheck, BsBuilding } from "react-icons/bs";
@@ -25,19 +26,6 @@ const PricingPlans = () => {
 
   const getProPlanDetail = (cycle: "monthly" | "yearly") => {
     return cycle === "monthly" ? "/user/month" : "/user/month";
-  };
-  const scrollToWaitlistInput = (e: React.MouseEvent) => {
-    e.preventDefault();
-
-    const emailInput = document.getElementById("waitlist-email");
-
-    if (emailInput) {
-      emailInput.scrollIntoView({ behavior: "smooth", block: "center" });
-
-      setTimeout(() => {
-        emailInput.focus();
-      }, 800);
-    }
   };
 
   const plans: PlanProps[] = [
@@ -190,16 +178,17 @@ const PricingPlans = () => {
             </div>
 
             <div className="mt-4 mb-5">
-              <button
-                onClick={scrollToWaitlistInput}
+              <Link
+                href="/user-auth"
+                prefetch={false}
                 className={`w-full bg-[#C1E1A6] hover:bg-[#B1D196] text-[#0E3D15] font-medium py-3 px-4 rounded-[8px] group-hover:scale-105
-                           transition-all duration-300 transform hover:bg-[#A1CC86] hover:shadow-md`}
+                           transition-all duration-300 transform hover:bg-[#A1CC86] hover:shadow-md flex items-center justify-center`}
               >
                 <span className="flex text-[18px] font-medium items-center justify-center">
-                  Join Waitlist
+                  Get Started
                   <FiArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 " />
                 </span>
-              </button>
+              </Link>
             </div>
 
             <div
@@ -281,16 +270,17 @@ const PricingPlans = () => {
             </div>
 
             <div className="mt-4 mb-5">
-              <button
-                onClick={scrollToWaitlistInput}
+              <Link
+                href="/user-auth"
+                prefetch={false}
                 className={`w-full bg-white hover:bg-gray-50 text-[#0E3D15] border border-[#0E3D15] font-medium py-3 px-4 rounded-[8px] group-hover:scale-105
-                           transition-all duration-300 transform hover:bg-white hover:text-[#0E3D15] hover:border hover:border-[#0E3D15]`}
+                           transition-all duration-300 transform hover:bg-white hover:text-[#0E3D15] hover:border hover:border-[#0E3D15] flex items-center justify-center`}
               >
                 <span className="flex text-[18px] font-medium items-center justify-center">
-                  Join Waitlist
+                  Get Started
                   <FiArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 " />
                 </span>
-              </button>
+              </Link>
             </div>
 
             <div
@@ -362,16 +352,17 @@ const PricingPlans = () => {
             </div>
 
             <div className="mt-4 mb-5">
-              <button
-                onClick={scrollToWaitlistInput}
+              <Link
+                href="mailto:founders@discoverminds.ai"
+                prefetch={false}
                 className={`w-full bg-[#C1E1A6] hover:bg-[#B1D196] text-[#0E3D15] font-medium py-3 px-4 rounded-[8px] group-hover:scale-105
-                           transition-all duration-300 transform hover:bg-[#A1CC86] hover:shadow-md`}
+                           transition-all duration-300 transform hover:bg-[#A1CC86] hover:shadow-md flex items-center justify-center`}
               >
                 <span className="flex text-[18px] font-medium items-center justify-center">
-                  Join Waitlist
+                  Contact Sales
                   <FiArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 " />
                 </span>
-              </button>
+              </Link>
             </div>
 
             <div
@@ -400,7 +391,6 @@ const PricingPlans = () => {
               <div className="flex items-center ">
                 <FiCheckCircle className="h-4 w-4 mr-2 flex-shrink-0 text-[#0E3D15] transition-all duration-300 group-hover:scale-105" />
                 <span className="text-[#0E3D15] transition-all text-[16px] duration-300">
-                  {/* Advanced analytics dashboard */}
                   Slack and Discord integrations
                 </span>
               </div>

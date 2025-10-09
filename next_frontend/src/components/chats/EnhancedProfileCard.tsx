@@ -146,9 +146,7 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 p-6">
-      {/* Header with photo and basic info */}
       <div className="flex items-start gap-4 mb-4">
-        {/* Profile Photo */}
         <div className="flex-shrink-0">
           {profile.profile_photo_url ? (
             <img
@@ -163,7 +161,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
               }}
             />
           ) : null}
-          {/* Fallback initials avatar */}
           <div
             className={`w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg border-2 border-gray-200 ${profile.profile_photo_url ? "hidden" : ""}`}
           >
@@ -172,14 +169,12 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
           </div>
         </div>
 
-        {/* Basic Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-semibold text-gray-900 truncate">{fullName}</h3>
               <p className="text-sm text-gray-600 mb-1">{profile.headline}</p>
 
-              {/* Company and Position */}
               {(profile.company || profile.position) && (
                 <div className="flex items-center text-sm text-gray-500 mb-1">
                   <BriefcaseBusiness className="w-4 h-4 mr-1 flex-shrink-0" />
@@ -191,7 +186,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
                 </div>
               )}
 
-              {/* Location */}
               {profile.location && (
                 <div className="flex items-center text-sm text-gray-500">
                   <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
@@ -200,7 +194,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
               )}
             </div>
 
-            {/* LinkedIn Link */}
             {profile.linkedin_url && (
               <a
                 href={profile.linkedin_url}
@@ -216,7 +209,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
         </div>
       </div>
 
-      {/* Score Circles */}
       <div className="flex items-center gap-3 mb-4">
         <span className="text-sm font-medium text-gray-700">Scores:</span>
         <div className="flex flex-col items-center gap-1">
@@ -225,7 +217,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
           <ScoreCircle score={profile.no_score} type="no" />
         </div>
 
-        {/* Primary match indicator */}
         <div className="ml-auto">
           <span
             className={`
@@ -244,7 +235,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
         </div>
       </div>
 
-      {/* Quotes Section */}
       {profile.all_quotes.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
@@ -281,7 +271,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
         </div>
       )}
 
-      {/* Mutual Connections */}
       {profile.mutual_connection && (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
@@ -294,7 +283,6 @@ const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({ profile, onVi
         </div>
       )}
 
-      {/* Action Button */}
       {onViewDetails && (
         <button
           onClick={onViewDetails}

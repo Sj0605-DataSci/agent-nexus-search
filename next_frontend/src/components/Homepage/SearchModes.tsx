@@ -65,7 +65,6 @@ const SearchModes: React.FC = () => {
           </div>
         </Reveal>
 
-        {/* Mode Selector */}
         <div className="flex justify-center mb-12">
           <div className="inline-flex bg-gray-100 rounded-full p-1">
             {searchModes.map((mode, index) => (
@@ -84,7 +83,6 @@ const SearchModes: React.FC = () => {
           </div>
         </div>
 
-        {/* Active Mode Display */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMode}
@@ -95,7 +93,6 @@ const SearchModes: React.FC = () => {
             className="max-w-6xl mx-auto"
           >
             <div className="grid lg:grid-cols-2 gap-12 items-center">
-              {/* Left Side - Content */}
               <div>
                 <div className="mb-6">
                   <div
@@ -112,7 +109,6 @@ const SearchModes: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Features */}
                 <div className="space-y-3">
                   {searchModes[activeMode].features.map((feature, index) => (
                     <motion.div
@@ -131,9 +127,7 @@ const SearchModes: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Side - Example */}
               <div className="space-y-6">
-                {/* User Query */}
                 <div className="bg-gray-50 rounded-2xl p-6 border-l-4 border-gray-300">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-bold">
@@ -145,7 +139,6 @@ const SearchModes: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Arya Response */}
                 <div
                   className={`bg-gradient-to-r ${searchModes[activeMode].color} rounded-2xl p-6 text-white`}
                 >
@@ -160,7 +153,6 @@ const SearchModes: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-xl">
                     <div className="text-2xl font-bold text-gray-900">&lt; 2 min</div>

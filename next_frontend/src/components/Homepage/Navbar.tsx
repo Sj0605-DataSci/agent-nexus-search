@@ -72,7 +72,7 @@ const Navbar: React.FC = () => {
 
     const handleScroll = () => {
       lastKnownScrollY = window.scrollY;
-      
+
       if (rafId === null) {
         rafId = requestAnimationFrame(() => {
           const currentScrollY = lastKnownScrollY;
@@ -172,22 +172,18 @@ const Navbar: React.FC = () => {
           transition={{ type: "spring", damping: 20, stiffness: 100 }}
           style={{ willChange: "transform, opacity" }}
         >
-          {/* Desktop Navigation */}
           <div className="hidden w-full justify-center items-center md:flex">
             <div className=" bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/50 w-full self-center  max-w-6xl -ml-3 ">
               <div className="flex h-16 items-center justify-between px-6">
                 <BrandLogo />
 
-                <nav className="flex items-center gap-8">
-                  {navLinks}
-                </nav>
+                <nav className="flex items-center gap-8">{navLinks}</nav>
 
                 <MobileMenuIcon isOpen={isMobileMenuOpen} onClick={toggleMobileMenu} />
               </div>
             </div>
           </div>
 
-          {/* Mobile Header */}
           <div className="block md:hidden">
             <div className="flex bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/50 h-16 px-2 items-center justify-between">
               <BrandLogo />
@@ -195,7 +191,6 @@ const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Mobile Menu */}
           <AnimatePresence>
             {isMobileMenuOpen && (
               <motion.div
@@ -204,13 +199,11 @@ const Navbar: React.FC = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                {/* Backdrop */}
                 <div
                   className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 />
 
-                {/* Mobile Menu Content */}
                 <motion.nav
                   className="absolute top-20 left-4 right-4 bg-white/95 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-xl overflow-hidden"
                   initial={{ transform: "translateY(-20px)", opacity: 0 }}
@@ -219,9 +212,7 @@ const Navbar: React.FC = () => {
                   transition={{ type: "spring", damping: 25 }}
                   style={{ willChange: "transform, opacity" }}
                 >
-                  <ul className="py-2">
-                    {mobileNavLinks}
-                  </ul>
+                  <ul className="py-2">{mobileNavLinks}</ul>
                 </motion.nav>
               </motion.div>
             )}

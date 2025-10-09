@@ -18,8 +18,8 @@ type AuthErrorType =
 function AuthErrorContent() {
   const router = useRouter();
   const sp = useSearchParams();
-  const error = (sp.get("error") as AuthErrorType) ?? "auth_error";
-  const errorDescription = sp.get("error_description") ?? "";
+  const error = (sp?.get("error") as AuthErrorType) ?? "auth_error";
+  const errorDescription = sp?.get("error_description") ?? "";
   const [isProcessing, setIsProcessing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 

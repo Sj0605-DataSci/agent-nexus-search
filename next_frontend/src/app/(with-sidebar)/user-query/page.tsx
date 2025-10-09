@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import FullScreenLoader from "@/components/common/FullScreenLoader";
+import { slugToQuery } from "@/utils/urlHelpers";
 
 const ChatThreadView = dynamic(() => import("@/components/chats/ChatThreadView"), {
   ssr: false,
@@ -21,7 +22,10 @@ interface PageProps {
 }
 
 function UserQueryContent({ searchParams }: PageProps) {
-  const query = typeof searchParams.q === "string" ? searchParams.q : "";
+  const querySlug = typeof searchParams.q === "string" ? searchParams.q : "";
+  const title = typeof searchParams.title === "string" ? searchParams.title : "";
+
+  const query = querySlug ? slugToQuery(querySlug) : title;
 
   return <ChatThreadView threadId="new" initialQuery={query} />;
 }

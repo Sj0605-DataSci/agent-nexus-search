@@ -731,7 +731,6 @@ const StructuredDataTable: React.FC<StructuredDataTableProps> = ({ people, userN
                           </td>
                           <td className="p-3 align-middle py-3">
                             <div className="flex flex-col items-center justify-center gap-2">
-                              {/* Mutual connections */}
                               {person.MutualConnection ? (
                                 <div
                                   className="relative group cursor-pointer"
@@ -776,9 +775,9 @@ export const renderAsTable = (content: string, userName?: string) => {
   return (
     <div className=" w-full flex flex-col">
       <div className="mb-2 flex justify-between items-center ">
-        <h2 className="text-xl font-medium text-gray-600">
+        <h2 className="text-lg font-medium text-gray-600">
           {!!people?.length && people?.length > 0
-            ? `I have found ${people?.length} results`
+            ? `I have found ${people?.length} results across ${userName != "Ashish Gupta" ? `${userName}'s` : "founder's"} 20,175+ 1st degree connections`
             : "No Results"}
         </h2>
         <div className=" flex justify-end">

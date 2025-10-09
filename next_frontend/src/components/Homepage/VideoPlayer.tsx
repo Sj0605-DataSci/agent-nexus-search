@@ -2,14 +2,20 @@
 
 import React, { useState, useEffect, useRef, memo } from "react";
 import Image from "next/image";
-import { Play } from "lucide-react";
 
 const VideoPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isInView, setIsInView] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const observer = new IntersectionObserver(
       entries => {
         const [entry] = entries;
@@ -31,7 +37,7 @@ const VideoPlayer = () => {
         observer.unobserve(videoContainerRef.current);
       }
     };
-  }, []);
+  }, [isMounted]);
 
   const handlePlayClick = () => {
     setIsPlaying(true);
@@ -57,13 +63,13 @@ const VideoPlayer = () => {
             title="DiscoverMinds Quick Demo"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
-            style={{ border: "none" }}
+            // style={{ border: "none" }}
             loading="lazy"
           />
         ) : (
           <div className="absolute inset-0 z-10 cursor-pointer group" onClick={handlePlayClick}>
             <Image
-              src="/Images/YoutubeTumbnailImage.jpg"
+              src="/Images/YoutubeTumbnailImage.png"
               alt="Video thumbnail"
               fill
               priority={true}
@@ -72,11 +78,13 @@ const VideoPlayer = () => {
             />
 
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-[#FF0000] hover:bg-[#CC0000] rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-4 shadow-2xl transform group-hover:scale-105 transition-all duration-200">
-                <Play
-                  className="w-10 h-10 sm:w-16 sm:h-16 text-white ml-0.5 sm:ml-1"
-                  fill="currentColor"
-                  strokeWidth={0}
+              <div className="transform group-hover:scale-105 transition-all duration-200">
+                <Image
+                  src="/logos/YoutubeLogo.png"
+                  alt="Play video"
+                  width={140}
+                  height={120}
+                  className="w-38 h-36"
                 />
               </div>
             </div>
@@ -92,6 +100,5 @@ const VideoPlayer = () => {
     </div>
   );
 };
-
 
 export default memo(VideoPlayer);

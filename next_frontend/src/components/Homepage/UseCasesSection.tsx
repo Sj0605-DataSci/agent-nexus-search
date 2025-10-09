@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FiUser, FiUsers, FiSearch } from "react-icons/fi";
 import { BsMegaphone } from "react-icons/bs";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { queryToSlug } from "@/utils/urlHelpers";
 
 const useCasesData = [
   {
@@ -46,7 +47,7 @@ const UseCasesSection = () => {
     setLoadingIndex(index);
 
     if (label?.trim()) {
-      router.push(`/user-query?q=${encodeURIComponent(label?.trim())}`);
+      router.push(`/user-query?q=${queryToSlug(label?.trim())}`);
     }
 
     setTimeout(() => {

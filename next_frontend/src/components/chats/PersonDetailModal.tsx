@@ -1,27 +1,14 @@
 import React, { useEffect, memo } from "react";
-import {
-  BriefcaseBusiness,
-  Share,
-  Linkedin,
-  Twitter,
-  Globe,
-  Github,
-  Facebook,
-  Instagram,
-  X,
-} from "lucide-react";
+import { BriefcaseBusiness, Share, X } from "lucide-react";
 import { showDevFeatureToast } from "@/utils/toast";
+import { copyToClipboard } from "@/utils/shareUtils";
 import PaginationControls from "./PaginationControls";
 import CustomAvatar from "../ui/CustomAvatar";
 import { SocialLinks } from "../ui/SocialLinks";
 import Image from "next/image";
 import { getInitials } from "@/utils/stringUtils";
-
-interface ScoreData {
-  confidence: number;
-  quotes: string[];
-  matching_traits: string[];
-}
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 interface ScoringItem {
   traitDescription: string;
@@ -57,22 +44,6 @@ interface PersonDetailModalProps {
   onPrevious?: () => void;
 }
 
-const renderSocialLinkIcon = (link: string) => {
-  if (!link) return null;
-
-  const icon = (IconComponent: React.ElementType) => (
-    <IconComponent className="size-4 text-gray-500 hover:text-gray-800" />
-  );
-
-  if (link.includes("linkedin.com")) return icon(Linkedin);
-  if (link.includes("twitter.com")) return icon(Twitter);
-  if (link.includes("facebook.com")) return icon(Facebook);
-  if (link.includes("instagram.com")) return icon(Instagram);
-  if (link.includes("github.com")) return icon(Github);
-
-  return icon(Globe);
-};
-
 const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   person,
   isOpen,
@@ -80,9 +51,18 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
   currentIndex,
   totalCount,
   onNext,
-  userName,
   onPrevious,
+  userName,
 }) => {
+  const isAuthenticated = useSelector((state: RootState) => state.profile.isAuthenticated);
+
+  const handleShareProfile = async () => {
+    const socialLink = person?.["SocialLinks"];
+    const fullName = `${person?.FName || ""} ${person?.LName || ""}`.trim();
+
+    await copyToClipboard(socialLink || "", `${fullName}'s profile link copied to clipboard!`);
+  };
+
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isOpen) {
@@ -107,10 +87,6 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
 
   const quotes = Array.isArray(person.all_quotes) ? person.all_quotes : [];
 
-  const traits = Array.isArray(person.scoring)
-    ? person.scoring.map(item => item.traitTitle).filter(Boolean)
-    : [];
-
   if (!isOpen) return null;
 
   return (
@@ -128,13 +104,19 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => showDevFeatureToast("Share feature is under development")}
+              onClick={handleShareProfile}
               className="h-9 px-4 py-2 text-sm font-medium bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-1.5"
             >
               <Share className="size-4" />
             </button>
             <button
-              onClick={() => showDevFeatureToast("Get an intro feature is under development")}
+              onClick={() =>
+                showDevFeatureToast(
+                  isAuthenticated
+                    ? "Get an intro feature is under development"
+                    : "Please login to access personalised intro"
+                )
+              }
               className="h-9 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1.5"
             >
               Get an intro
