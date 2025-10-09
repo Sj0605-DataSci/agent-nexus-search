@@ -101,7 +101,7 @@ const AuthPage = () => {
               )}
             </div>
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
               <motion.div
                 key={formToShow}
                 variants={formVariants}

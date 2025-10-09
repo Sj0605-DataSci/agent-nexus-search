@@ -20,7 +20,7 @@ function AuthPageSkeleton() {
             </div>
           </div>
         </div>
-        <div className="hidden md:block bg-[#b2dc8b]"></div>
+        <div className="hidden md:block bg-[#b2dc8b] p-8 md:p-12 rounded-xl mx-6 my-6"></div>
       </div>
     </div>
   );

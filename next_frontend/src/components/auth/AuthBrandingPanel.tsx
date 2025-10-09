@@ -39,18 +39,16 @@ const AuthBrandingPanel = () => {
         </p>
       </div>
 
-      <div className="flex justify-center items-center my-6">
-        <div className="relative w-full max-w-lg">
-          <div className="relative bg-white pl-1 rounded-md shadow-2xl">
-            <Image
-              src="/hero/SearchResult.webp"
-              alt="Dashboard Preview"
-              width={500}
-              height={400}
-              className="rounded-2xl"
-              priority
-            />
-          </div>
+      <div className="flex justify-center items-center my-6 w-full">
+        <div className="relative w-full max-w-[500px] max-h-[300px] aspect-[5/4]">
+          <Image
+            src="/hero/SearchResult.webp"
+            alt="Dashboard Preview"
+            fill
+            className="rounded-md object-contain"
+            priority
+            sizes="(max-width: 768px) 100vw, 500px"
+          />
         </div>
       </div>
 
