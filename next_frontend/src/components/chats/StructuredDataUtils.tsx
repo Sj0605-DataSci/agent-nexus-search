@@ -775,9 +775,9 @@ export const renderAsTable = (content: string, userName?: string) => {
   return (
     <div className=" w-full flex flex-col">
       <div className="mb-2 flex justify-between items-center ">
-        <h2 className="text-xl font-medium text-gray-600">
+        <h2 className="text-lg font-medium text-gray-600">
           {!!people?.length && people?.length > 0
-            ? `I have found ${people?.length} results`
+            ? `I have found ${people?.length} results across ${userName != "Ashish Gupta" ? `${userName}'s` : "founder's"} 20,175+ 1st degree connections`
             : "No Results"}
         </h2>
         <div className=" flex justify-end">
