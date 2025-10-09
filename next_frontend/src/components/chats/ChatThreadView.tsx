@@ -309,8 +309,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
         updated_at: new Date(),
         world_connections: "connections",
       };
-      setChatPairs(prev => [...prev, newChatPair]);
-      setCurrentMessageIndex(chatPairs.length);
+      setChatPairs(prev => {
+        const updated = [...prev, newChatPair];
+        setCurrentMessageIndex(updated.length - 1);
+        return updated;
+      });
     }
     setIsLoading(true);
 
@@ -458,21 +461,52 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
             }
             break;
           case "final_answer":
-            if (update.content && update.content.message[0]?.content) {
-              currentContent = update.content.message[0].content;
-              updateMessageContent(currentContent);
+            if (update.content) {
+              let answerContent = "";
 
-              setMessages(m => {
-                if (m.length === 0) return m;
-                const lastIndex = m.length - 1;
-                const updatedMessages = [...m];
-                updatedMessages[lastIndex] = {
-                  ...updatedMessages[lastIndex],
-                  id: update.content.message_id || updatedMessages[lastIndex].id,
-                };
-                return updatedMessages;
-              });
-              setIsStreaming(false);
+              if (update.content.message && Array.isArray(update.content.message)) {
+                if (update.content.message[0]?.content) {
+                  answerContent = update.content.message[0].content;
+                }
+              } else if (typeof update.content.message === "string") {
+                answerContent = update.content.message;
+              } else if (update.content.content) {
+                answerContent = update.content.content;
+              }
+
+              if (answerContent) {
+                currentContent = answerContent;
+                updateMessageContent(currentContent);
+
+                setMessages(m => {
+                  if (m.length === 0) return m;
+                  const lastIndex = m.length - 1;
+                  const updatedMessages = [...m];
+                  updatedMessages[lastIndex] = {
+                    ...updatedMessages[lastIndex],
+                    id: update.content.message_id || updatedMessages[lastIndex].id,
+                  };
+                  return updatedMessages;
+                });
+
+                // Update the temporary ChatPair with final answer
+                if (threadId && threadId !== "new") {
+                  setChatPairs(prev => {
+                    if (prev.length === 0) return prev;
+                    const lastIndex = prev.length - 1;
+                    const updatedPairs = [...prev];
+                    updatedPairs[lastIndex] = {
+                      ...updatedPairs[lastIndex],
+                      message: answerContent,
+                      id: update.content.message_id || updatedPairs[lastIndex].id,
+                      updated_at: new Date(),
+                    };
+                    return updatedPairs;
+                  });
+                }
+
+                setIsStreaming(false);
+              }
             }
 
             posthog.capture("search_completed", {
@@ -527,6 +561,28 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
                 };
                 return updatedMessages;
               });
+
+              // Update ChatPair with final message_id if not already updated
+              if (threadId && threadId !== "new") {
+                setChatPairs(prev => {
+                  if (prev.length === 0) return prev;
+                  const lastIndex = prev.length - 1;
+                  const lastPair = prev[lastIndex];
+                  const lastPairId = String(lastPair.id);
+                  // Only update if it's still a temp ID or doesn't have the message_id
+                  if (lastPairId.startsWith("temp-") || lastPairId !== update.content.message_id) {
+                    const updatedPairs = [...prev];
+                    updatedPairs[lastIndex] = {
+                      ...lastPair,
+                      id: update.content.message_id,
+                      message: currentContent || lastPair.message,
+                      updated_at: new Date(),
+                    };
+                    return updatedPairs;
+                  }
+                  return prev;
+                });
+              }
             }
             break;
 
