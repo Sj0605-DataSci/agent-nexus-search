@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
  */
 export const showDevFeatureToast = (
   message: string = "This feature is under development",
-  duration: number = 3000
+  duration: number = 4000
 ) => {
   return toast.success(message, {
     duration,

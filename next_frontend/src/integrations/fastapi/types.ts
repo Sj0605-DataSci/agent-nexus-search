@@ -160,7 +160,14 @@ export interface StreamingChatUpdate {
     | "done"
     | "error"
     | "token"
-    | "connected";
+    | "connected"
+    | "thread_id"
+    | "sql_search_results"
+    | "vector_search_results"
+    | "fusion_ranking"
+    | "query_analysis"
+    | "sql_query"
+    | "final_answer";
   content: any;
 }
 
