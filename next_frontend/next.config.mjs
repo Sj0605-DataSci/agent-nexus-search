@@ -143,6 +143,18 @@ const nextConfig = {
       config.externals.push("canvas");
     }
 
+    // Suppress critical dependency warnings from instrumentation packages
+    config.ignoreWarnings = [
+      { module: /node_modules\/require-in-the-middle/ },
+      { module: /node_modules\/@opentelemetry\/instrumentation/ },
+      { module: /node_modules\/@prisma\/instrumentation/ },
+      { message: /Critical dependency: the request of a dependency is an expression/ },
+      {
+        message:
+          /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+      },
+    ];
+
     // Fix for caching issues
     config.cache = {
       type: "filesystem",
