@@ -4,7 +4,7 @@ import Image from "next/image";
 
 const companyLogos = [
   { name: "Adobe", width: 80, height: 40 },
-  { name: "Cargill", width: 100, height: 40 },
+  // { name: "Cargill", width: 100, height: 40 },
   { name: "Google", width: 100, height: 40 },
   { name: "Juspay", width: 100, height: 40 },
   { name: "Meta", width: 80, height: 40 },
@@ -16,7 +16,7 @@ const HeroHeader = () => {
   const logoImages = useMemo(
     () =>
       companyLogos.map(company => (
-        <div key={company.name} className="h-8 md:h-10 relative">
+        <div key={company.name} className="h-8 md:h-9 relative">
           <Image
             src={`/logos/TrustedPartners/${company.name}.webp`}
             alt={`${company.name} logo`}

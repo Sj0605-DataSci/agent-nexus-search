@@ -40,7 +40,7 @@ const AuthBrandingPanel = () => {
       </div>
 
       <div className="flex justify-center items-center my-6 w-full">
-        <div className="relative w-full max-w-[500px] max-h-[300px] aspect-[5/4]">
+        <div className="relative w-full max-w-[500px] max-h-[280px] aspect-[5/4]">
           <Image
             src="/hero/SearchResult.webp"
             alt="Dashboard Preview"
