@@ -33,13 +33,14 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
       });
     }
   }, [pathname]);
-
+  const userAgent = navigator.userAgent;
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
   // Set up super properties that will be sent with every event
   useEffect(() => {
     // Set super properties that will be included with all events
     posthog.register({
       app_version: process.env.NEXT_PUBLIC_APP_VERSION || "unknown",
-      platform: "web",
+      platform: isMobile ? "mobile" : "desktop",
       is_authenticated: !!user,
     });
 
@@ -47,6 +48,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
     if (user) {
       posthog.register({
         user_id: user.id,
+        fullName: user.user_metadata.full_name,
         email_domain: user.email ? user.email.split("@")[1] : null,
       });
     }

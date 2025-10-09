@@ -14,36 +14,13 @@ import { SignUpResponse } from "@/integrations/fastapi/types";
 import toast from "react-hot-toast";
 import posthog from "posthog-js";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { loginUser, fetchProfile } from "@/store/profileSlice";
 import { useWindowSize } from "@/constant/styles/useWindowSize";
-import { useAuth } from "@/hooks/useAuth";
 import AuthBrandingPanel from "@/components/auth/AuthBrandingPanel";
 import BrandLogo from "@/components/BrandLogo";
 import { supabaseHandler } from "@/integrations/supabase/client";
 import { DEFAULT_COUNTRY_CODE } from "@/utils/countryCodes";
 import { saveTokens } from "@/utils/tokenManagement";
 import Image from "next/image";
-
-const GoogleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 48 48">
-    <path
-      fill="#FFC107"
-      d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
-    />
-    <path
-      fill="#FF3D00"
-      d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"
-    />
-    <path
-      fill="#4CAF50"
-      d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
-    />
-    <path
-      fill="#1976D2"
-      d="M43.611 20.083H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 35.853 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z"
-    />
-  </svg>
-);
 
 const AuthPage = () => {
   const searchParams = useSearchParams();
@@ -78,13 +55,21 @@ const AuthPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <div className="grid grid-cols-1 md:grid-cols-2 h-screen">
-        <AuthBrandingPanel />
-
         <div className="flex justify-center p-4 md:mt-12 sm:p-6 lg:p-8">
           <div className="w-full max-w-md">
-            <BrandLogo className="mb-3" size="large" />
+            <div className="flex w-full flex-col mb-2">
+              <BrandLogo className="mb-3" size="medium" />
+              <button
+                onClick={() =>
+                  formToShow === "hidetoggle" ? setFormToShow("signin") : router.push("/")
+                }
+                className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
 
-            <div className="relative flex justify-between items-center mb-8">
+            <div className="relative flex justify-between items-center mb-2">
               {formToShow != "reset" && formToShow != "hidetoggle" && (
                 <div className="relative bg-gray-200 p-1 rounded-full flex items-center w-[170px]">
                   {["Sign up", "Sign in"].map((item, index) => {
@@ -114,14 +99,6 @@ const AuthPage = () => {
                   })}
                 </div>
               )}
-              <button
-                onClick={() =>
-                  formToShow === "hidetoggle" ? setFormToShow("signin") : router.push("/")
-                }
-                className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
             </div>
 
             <AnimatePresence mode="wait">
@@ -147,6 +124,7 @@ const AuthPage = () => {
             </AnimatePresence>
           </div>
         </div>
+        <AuthBrandingPanel />
       </div>
     </div>
   );
@@ -193,7 +171,7 @@ const schema = yup.object().shape({
 type FormData = yup.InferType<typeof schema>;
 
 const SuccessSignupModal = () => {
-  const [resendTimer, setResendTimer] = useState(5);
+  const [resendTimer, setResendTimer] = useState(30);
   const [lastSignupData, setLastSignupData] = useState<FormData | null>(null);
   const { width = 800, height = 600 } = useWindowSize();
 
@@ -372,9 +350,7 @@ const SignUpFormComponent = ({
   return (
     <div>
       <h2 className="text-3xl font-bold text-gray-900">Create an account</h2>
-      <p className="text-gray-500 mb-6 text-sm">
-        Get started with our app, just create an account.
-      </p>
+      <p className="text-gray-500 mb-6 text-sm">Connect with the right people, right away</p>
       {/* <SocialSignIn
         mode="signup"
         onError={error => {
@@ -384,43 +360,43 @@ const SignUpFormComponent = ({
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-1">
         <div>
           <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               {...register("name")}
               type="text"
               placeholder="Full Name"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.name ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.name ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
           </div>
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">{errors.name?.message}</p>
         </div>
         <div>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               {...register("email")}
               type="email"
               placeholder="Enter your email"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
           </div>
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">{errors.email?.message}</p>
         </div>
         <div>
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               {...register("password")}
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-12 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-10 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">{errors.password?.message}</p>
@@ -444,14 +420,14 @@ const SignUpFormComponent = ({
         <div>
           <div className="relative">
             <Linkedin
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={20}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={16}
             />
             <input
               {...register("linkedin_url")}
               type="text"
               placeholder="LinkedIn Profile URL"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.linkedin_url ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.linkedin_url ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
           </div>
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">
@@ -464,9 +440,9 @@ const SignUpFormComponent = ({
             <input
               {...register("agreeToTerms")}
               type="checkbox"
-              className=" w-4 h-4  text-indigo-600 border-gray-300 rounded-md overflow-hidden cursor-pointer"
+              className=" w-3.5 h-3.5  text-indigo-600 border-gray-300 rounded-md overflow-hidden cursor-pointer"
             />
-            <span className="text-xs mt-[2px] text-gray-600 leading-relaxed">
+            <span className="text-[11px] mt-[2px] text-gray-600 leading-relaxed">
               I agree to the{" "}
               <a
                 href="/terms"
@@ -493,9 +469,9 @@ const SignUpFormComponent = ({
         <button
           type="submit"
           disabled={isSubmitting || !isDirty}
-          className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="w-full bg-gray-900 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-gray-800 transition-colors duration-300 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Creating Account..." : "Create an account"}
+          {isSubmitting ? "Creating Account..." : "Start Discovering"}
         </button>
       </form>
     </div>
@@ -573,22 +549,8 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-900 ">Welcome back</h2>
-      <p className="text-gray-500 mb-4 text-sm">Sign in to continue to your account.</p>
-      {/* <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-        <p className="text-yellow-700 text-sm mb-2">
-          Login access is currently limited to approved users only.
-        </p>
-        <p className="text-yellow-700 text-sm mb-3">
-          Thanks for showing interest! Join our waitlist and we'll reach out once we launch.
-        </p>
-        <a
-          href="/join-waitlist"
-          className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded text-sm transition-colors duration-200"
-        >
-          Join Waitlist
-        </a>
-      </div> */}
+      <h2 className="text-2xl font-bold text-gray-900 ">Welcome back</h2>
+      <p className="text-gray-500 mb-4 text-sm">Sign in to unlock warm introductions</p>
 
       {/* <SocialSignIn
         mode="signin"
@@ -605,31 +567,31 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
       >
         <div>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               {...register("email")}
               type="email"
               placeholder="Enter your email"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
           </div>
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">{errors.email?.message}</p>
         </div>
         <div>
           <div className="relative -mt-2">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               {...register("password")}
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-12 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-10 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
           <p className="text-red-500 text-[10px] -mt-[4px] h-5 pt-1">{errors.password?.message}</p>
@@ -638,7 +600,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
           <button
             type="button"
             onClick={onForgotPassword}
-            className="text-sm text-indigo-600 hover:text-indigo-500 font-medium"
+            className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
           >
             Forgot password?
           </button>
@@ -646,7 +608,7 @@ const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
         <button
           type="submit"
           disabled={isSubmitting || !isDirty}
-          className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="w-full bg-gray-900 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-gray-800 transition-colors duration-300 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Signing in..." : "Sign in"}
         </button>
@@ -726,21 +688,21 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
   if (emailSent) {
     return (
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
-        <p className="text-gray-600 mb-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
+        <p className="text-gray-600 text-xs mb-4">
           We've sent a password reset link to{" "}
           <strong className="text-gray-800">{submittedEmail}</strong>.
         </p>
         <button
           onClick={handleResend}
           disabled={resendTimer > 0 || isLoading}
-          className={`w-full py-2 px-4 rounded-lg font-semibold transition-colors ${resendTimer > 0 || isLoading ? "bg-gray-200 text-gray-500" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}
+          className={`w-full py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${resendTimer > 0 || isLoading ? "bg-gray-200 text-gray-500" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}
         >
           {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend Email"}
         </button>
         <button
           onClick={onBackToSignIn}
-          className="mt-4 text-sm text-indigo-600 hover:text-indigo-500 font-medium"
+          className="mt-4 text-xs text-indigo-600 hover:text-indigo-500 font-medium"
         >
           &larr; Back to Sign In
         </button>
@@ -750,17 +712,17 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-900">Reset Password</h2>
+      <h2 className="text-2xl font-bold text-gray-900">Reset Password</h2>
       <p className="text-gray-500 mb-6 text-sm">Enter your email to receive a reset link.</p>
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
         <div>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               {...register("email")}
               type="email"
               placeholder="Enter your email"
-              className={`w-full bg-gray-100 border rounded-lg py-3 pl-12 pr-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
+              className={`w-full bg-gray-100 border rounded-lg h-9 py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`}
             />
           </div>
           <p className="text-red-500 text-xs h-5 pt-1">{errors.email?.message}</p>
@@ -768,7 +730,7 @@ const ResetPasswordForm = ({ onBackToSignIn }: { onBackToSignIn: () => void }) =
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="w-full bg-gray-900 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-gray-800 transition-colors duration-300 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {isLoading ? "Sending..." : "Send Reset Link"}
         </button>
