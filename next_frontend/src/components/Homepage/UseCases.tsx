@@ -104,7 +104,6 @@ const UseCases: React.FC = () => {
           </div>
         </Reveal>
 
-        {/* Professional Use Cases */}
         <div className="mb-20">
           <Reveal delay={0.2}>
             <div className="flex items-center justify-center mb-12">
@@ -148,7 +147,6 @@ const UseCases: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Personal Use Cases */}
         <div>
           <Reveal delay={0.4}>
             <div className="flex items-center justify-center mb-12">
