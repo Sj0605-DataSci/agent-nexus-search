@@ -11,10 +11,7 @@ import { fetchAgentTemplates, fetchHiredAgents } from "@/store/agentsSlice";
 import { fetchFriendships } from "@/store/friendshipsSlice";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
-import { PostHogProvider } from "@/components/providers/PostHogProvider";
-import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
-import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
-import posthog from "posthog-js";
+import dynamic from "next/dynamic";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { supabaseHandler } from "@/integrations/supabase/client";
@@ -26,7 +23,32 @@ import { saveTokens, clearTokens, getStoredToken } from "@/utils/tokenManagement
 import { ErrorFallback } from "@/components/ErrorHandling/ErrorFallback";
 import { logError } from "@/utils/errorLogging";
 import { identifyPostHogUser, setPostHogGuest } from "@/utils/posthog-helpers";
-// import { ClerkProvider } from "@clerk/nextjs";
+import posthog from "posthog-js";
+
+const PostHogProvider = dynamic(
+  () =>
+    import("@/components/providers/PostHogProvider").then(mod => ({
+      default: mod.PostHogProvider,
+    })),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
+const AnalyticsProvider = dynamic(
+  () =>
+    import("@/components/providers/AnalyticsProvider").then(mod => ({
+      default: mod.AnalyticsProvider,
+    })),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
+const ServiceWorkerRegistration = dynamic(() => import("@/components/ServiceWorkerRegistration"), {
+  ssr: false,
+  loading: () => null,
+});
 
 function ProfileDataFetcher({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -109,7 +131,11 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
 
     // Handle guest user tracking if no token or profile is available
     if (!token && !profile) {
-      setPostHogGuest();
+      if (typeof window !== "undefined" && window.requestIdleCallback) {
+        window.requestIdleCallback(() => setPostHogGuest(), { timeout: 2000 });
+      } else {
+        setTimeout(() => setPostHogGuest(), 1000);
+      }
     } else if (token && !profile) {
       try {
         posthog.capture("profile_fetch_attempted", {

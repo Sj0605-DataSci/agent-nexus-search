@@ -8,13 +8,13 @@ import NewFooter from "@/components/Footer/NewFooter";
 const baseMetadata = {
   title: "About Us | DiscoverMinds.ai",
   description:
-    "Learn about our mission to unlock human potential through a mutual network-sharing platform.",
+    "Learn about our mission to turn your network into your competitive advantage through AI-powered professional networking.",
 };
 
 const productionMetadata = {
-  title: "About Us | DiscoverMinds.ai - Our Mission to Unlock Human Potential",
+  title: "About Us | DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
   description:
-    "Learn about the mission and team behind DiscoverMinds.ai, a mutual network-sharing platform dedicated to unlocking hidden opportunities through meaningful, warm introductions.",
+    "Learn about the mission and team behind DiscoverMinds.ai, your secret weapon for professional networking that turns connections into competitive advantages through AI-powered search.",
   keywords: [
     "professional networking",
     "warm introductions",
@@ -26,9 +26,9 @@ const productionMetadata = {
     "our mission",
   ],
   openGraph: {
-    title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
+    title: "About DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
     description:
-      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
+      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai turns your network into your competitive advantage.",
     url: "https://discoverminds.ai/about",
     siteName: "DiscoverMinds.ai",
     images: [
@@ -36,7 +36,7 @@ const productionMetadata = {
         url: "/Logo.png",
         width: 512,
         height: 512,
-        alt: "DiscoverMinds.ai - Unlocking opportunities through warm introductions",
+        alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
       },
     ],
     locale: "en_US",
@@ -44,9 +44,9 @@ const productionMetadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
+    title: "About DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
     description:
-      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
+      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai turns your network into your competitive advantage.",
     images: ["/Logo.png"],
   },
   alternates: {

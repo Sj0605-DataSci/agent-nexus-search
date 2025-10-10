@@ -3,45 +3,48 @@ import { Metadata } from "next";
 import NewHeroSection from "@/components/Homepage/NewHeroSection";
 import React from "react";
 import dynamicImporter from "next/dynamic";
-import Offerings from "@/components/Homepage/Offerings";
+const Offerings = dynamicImporter(() => import("@/components/Homepage/Offerings"), {
+  loading: () => <div className="min-h-[600px] bg-[#B2DC8A]" />,
+  ssr: false,
+});
 
-// Lazy load below-the-fold components with loading states
+// Lazy load below-the-fold components - client-side only for optimal performance
 const HowItWorks = dynamicImporter(() => import("@/components/Homepage/HowItWorks"), {
   loading: () => <div className="min-h-[400px] bg-gray-50" />,
-  ssr: true,
-});
-const FaqSection = dynamicImporter(() => import("@/components/Pricing/FaqSection"), {
-  loading: () => <div className="min-h-[300px] bg-white" />,
-  ssr: true,
-});
-const NewFooter = dynamicImporter(() => import("@/components/Footer/NewFooter"), {
-  loading: () => <div className="min-h-[200px] bg-gray-900" />,
-  ssr: true,
+  ssr: false,
 });
 const WhyDiscoverMinds = dynamicImporter(() => import("@/components/Homepage/WhyDiscoverMinds"), {
   loading: () => <div className="min-h-[500px] bg-white" />,
-  ssr: true,
+  ssr: false,
+});
+const FaqSection = dynamicImporter(() => import("@/components/Pricing/FaqSection"), {
+  loading: () => <div className="min-h-[300px] bg-white" />,
+  ssr: false,
+});
+const NewFooter = dynamicImporter(() => import("@/components/Footer/NewFooter"), {
+  loading: () => <div className="min-h-[200px] bg-gray-900" />,
+  ssr: false,
 });
 
 export const dynamic = "force-static";
 
 const baseMetadata = {
-  title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
+  title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
   description:
-    "A mutual network-sharing platform to unlock hidden opportunities through warm introductions.",
+    "A mutual network-sharing platform that turns your network into your competitive advantage through AI-powered search and warm introductions.",
 };
 
 const productionMetadata: Metadata = {
-  title: "Home | Unlock Your Network's Hidden Opportunities",
+  title: "Home | Your Secret Weapon for Professional Networking",
   description:
-    "DiscoverMinds.ai is a mutual network-sharing platform that helps you unlock hidden opportunities through warm introductions. Find and connect with the right people to achieve your goals.",
+    "DiscoverMinds.ai is your secret weapon for professional networking. Find the right connections instantly through AI-powered search and turn your network into your competitive advantage.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
+    title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
     description:
-      "Join a community where sharing your network leads to discovering new career paths, investment opportunities, and valuable connections.",
+      "Turn your network into your competitive advantage. Find the right connections instantly with AI-powered search and warm introductions.",
     url: "https://discoverminds.ai",
     siteName: "DiscoverMinds.ai",
     locale: "en_US",
@@ -51,7 +54,7 @@ const productionMetadata: Metadata = {
         url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "DiscoverMinds.ai - Unlock Your Network's Hidden Opportunities",
+        alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
         type: "image/png",
         secureUrl: "https://discoverminds.ai/Images/og-image.png",
       },
@@ -59,15 +62,15 @@ const productionMetadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DiscoverMinds.ai | Unlock Your Network's Hidden Opportunities",
+    title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
     description:
-      "Join a community where sharing your network leads to discovering new career paths, investment opportunities, and valuable connections.",
+      "Turn your network into your competitive advantage. Find the right connections instantly with AI-powered search and warm introductions.",
     images: [
       {
         url: "https://discoverminds.ai/Images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "DiscoverMinds.ai - Unlock Your Network's Hidden Opportunities",
+        alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
       },
     ],
     creator: "@discovermindsai",
