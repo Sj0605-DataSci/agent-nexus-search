@@ -30,7 +30,7 @@ export default function ConsolidatedStructuredData() {
         "https://www.linkedin.com/company/discoverminds-ai",
       ],
       description:
-        "AI-Powered Network Intelligence Platform that helps you leverage your extended professional network.",
+        "Your secret weapon for professional networking that turns your network into your competitive advantage.",
     },
     // WebSite
     {
@@ -78,7 +78,7 @@ export default function ConsolidatedStructuredData() {
           name: "What is DiscoverMinds.ai?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "DiscoverMinds.ai is an AI-powered network intelligence platform that helps you leverage your extended professional network to find opportunities through warm introductions.",
+            text: "DiscoverMinds.ai is your secret weapon for professional networking. Turn your network into your competitive advantage with AI-powered search and warm introductions.",
           },
         },
         {
