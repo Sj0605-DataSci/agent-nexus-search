@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -12,27 +12,8 @@ const companyLogos = [
 ] as const;
 
 const HeroHeader = () => {
-  // Memoize logo images to prevent unnecessary re-renders
-  const logoImages = useMemo(
-    () =>
-      companyLogos.map(company => (
-        <div key={company.name} className="h-8 md:h-9 relative">
-          <Image
-            src={`/logos/TrustedPartners/${company.name}.webp`}
-            alt={`${company.name} logo`}
-            className="object-contain"
-            width={company.width}
-            height={company.height}
-            priority={true}
-            sizes="(max-width: 768px) 80px, 120px"
-          />
-        </div>
-      )),
-    []
-  );
-
   return (
-    <section className="relative pt-40 pb-0" aria-label="Hero section">
+    <section className="relative pt-40 pb-0 hero-section" aria-label="Hero section">
       <div className="relative z-10">
         <div className="max-w-6xl items-center px-4 sm:px-6 lg:px-8 mx-auto">
           <header className="text-center">
@@ -47,7 +28,7 @@ const HeroHeader = () => {
               <Link
                 href="/user-auth"
                 prefetch={false}
-                className="px-8 py-3 text-lg font-medium rounded-xl text-white bg-[#0E3D15] hover:bg-[#1F3A21] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-102 hover:-translate-y-0.5 active:translate-y-0"
+                className="px-8 py-3 text-lg font-medium rounded-xl text-white bg-[#0E3D15] hover:bg-[#1F3A21] transition-colors duration-200 shadow-lg hover:shadow-xl"
                 aria-label="Get Started"
               >
                 Get Started
@@ -56,7 +37,7 @@ const HeroHeader = () => {
                 href="https://calendly.com/founders-discoverminds/30min"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-8 py-3 text-lg font-medium rounded-xl text-gray-700 border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 active:translate-y-0"
+                className="px-8 py-3 text-lg font-medium rounded-xl text-gray-700 border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200 shadow-sm hover:shadow-md"
                 aria-label="Book a demo"
               >
                 Book a demo
@@ -74,7 +55,20 @@ const HeroHeader = () => {
               TRUSTED BY USERS FROM
             </h2>
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-80">
-              {logoImages}
+              {companyLogos.map(company => (
+                <div key={company.name} className="h-8 md:h-9 relative">
+                  <Image
+                    src={`/logos/TrustedPartners/${company.name}.webp`}
+                    alt={`${company.name} logo`}
+                    className="object-contain"
+                    width={company.width}
+                    height={company.height}
+                    loading="eager"
+                    fetchPriority="high"
+                    sizes="(max-width: 768px) 80px, 120px"
+                  />
+                </div>
+              ))}
             </div>
           </section>
         </div>

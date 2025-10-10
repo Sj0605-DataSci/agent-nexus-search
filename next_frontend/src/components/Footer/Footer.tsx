@@ -46,7 +46,7 @@ export default function Footer() {
           <div className="md:col-span-2">
             <BrandLogo />
             <p className="text-gray-500 mt-4 max-w-xs">
-              Unlock hidden opportunities in your extended network
+              Your secret weapon for professional networking
             </p>
           </div>
           <div>
@@ -125,6 +125,7 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-gray-500"
+              aria-label="Follow DiscoverMinds on Twitter"
             >
               <FaTwitter size={20} />
             </a>
@@ -133,6 +134,7 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-gray-500"
+              aria-label="Visit DiscoverMinds on LinkedIn"
             >
               <FaLinkedin size={20} />
             </a>

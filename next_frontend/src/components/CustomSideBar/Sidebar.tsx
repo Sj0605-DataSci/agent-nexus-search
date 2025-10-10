@@ -318,14 +318,13 @@ const Sidebar = () => {
         <Button
           onClick={toggleMobileSidebar}
           variant="ghost"
-          size="icon"
-          className="h-16 w-16 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100"
+          className="h-16 w-16 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100 flex items-center justify-center"
           aria-label={isMobileSidebarOpen ? "Close menu" : "Open menu"}
         >
           {isMobileSidebarOpen ? (
-            <FiX size={28} />
+            <FiX size={40} style={{ width: "40px", height: "40px" }} />
           ) : (
-            <PiSidebarSimple size={32} className="rotate-180 h-8 w-8" />
+            <PiSidebarSimple size={26} style={{ width: "28px", height: "28px" }} />
           )}
         </Button>
         {profile?.id && (
@@ -381,7 +380,7 @@ const Sidebar = () => {
                 size="icon"
                 className="h-8 w-8 text-gray-500 hover:text-gray-700 ml-auto"
               >
-                <PiSidebarSimple size={28} />
+                <PiSidebarSimple size={26} style={{ width: "26px", height: "26px" }} />
               </Button>
             )}
           </div>
