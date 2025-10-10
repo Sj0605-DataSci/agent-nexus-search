@@ -109,6 +109,7 @@ export default function NewFooter() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-gray-300"
+              aria-label="Visit DiscoverMinds on LinkedIn"
               onClick={() => {
                 Analytics.trackButtonClick("social_link", {
                   platform: "linkedin",
@@ -123,6 +124,7 @@ export default function NewFooter() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-gray-300"
+              aria-label="Follow DiscoverMinds on Twitter"
               onClick={() => {
                 Analytics.trackButtonClick("social_link", {
                   platform: "twitter",

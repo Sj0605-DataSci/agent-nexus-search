@@ -195,7 +195,7 @@ const UseCases: React.FC = () => {
             <div className="inline-block p-8 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl text-white">
               <h3 className="text-2xl font-bold mb-4">Ready to discover your network?</h3>
               <p className="text-gray-300 mb-6 max-w-md">
-                Get started today and unlock hidden opportunities through warm introductions.
+                Get started today and turn your network into your competitive advantage.
               </p>
               <Link href="/user-auth" prefetch={false}>
                 <motion.button
