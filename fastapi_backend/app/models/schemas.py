@@ -194,9 +194,9 @@ class ProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     linkedin_url: Optional[str] = None
-    email_subscription: Optional[bool] = None
+    email_subscription: Optional[bool] = False
     phone_number: Optional[str] = None
-    founders_connection: Optional[bool] = None
+    founders_connection: Optional[bool] = True
     has_connections: Optional[str] = "no_data"
     
 
