@@ -4,7 +4,7 @@
 
 **Product Name:** DiscoverMinds.ai
 
-**Purpose:** To unlock hidden opportunities within professional extended networks by facilitating warm introductions and addressing the fragmentation of existing professional networks.
+**Purpose:** Your secret weapon for professional networking - turn your network into your competitive advantage by facilitating warm introductions and addressing the fragmentation of existing professional networks.
 
 **Target Users:** Professionals, entrepreneurs, VCs, communities, and working professionals ("prosumers").
 

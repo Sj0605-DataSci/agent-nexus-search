@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import React from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./Providers";
@@ -10,31 +11,38 @@ import dynamic from "next/dynamic";
 
 const Analytics = dynamic(() => import("@vercel/analytics/next").then(mod => mod.Analytics), {
   ssr: false,
+  loading: () => null,
 });
 const SpeedInsights = dynamic(
   () => import("@vercel/speed-insights/next").then(mod => mod.SpeedInsights),
   {
     ssr: false,
+    loading: () => null,
   }
 );
 const AnalyticsLoader = dynamic(() => import("@/components/analytics/AnalyticsLoader"), {
   ssr: false,
+  loading: () => null,
 });
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  display: "swap",
+  display: "optional", // Changed from swap to optional for faster FCP
   preload: true,
   adjustFontFallback: true,
+  fallback: ["system-ui", "arial"],
+  weight: ["400", "500", "600"], // Limit font weights to reduce bundle
 });
 
 const robotoMono = Roboto_Mono({
   variable: "--font-roboto-mono",
   subsets: ["latin"],
-  display: "swap",
-  preload: true,
+  display: "optional", // Changed from swap to optional
+  preload: false, // Don't preload secondary font
   adjustFontFallback: true,
+  fallback: ["monospace"],
+  weight: ["400", "500"], // Limit weights
 });
 
 const isStaging = process.env.NODE_ENV != "production";
@@ -42,11 +50,11 @@ const isStaging = process.env.NODE_ENV != "production";
 const metadataConfig = {
   production: {
     title: {
-      default: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform for Career Growth",
-      template: "%s | DiscoverMinds.ai - Network Intelligence Platform",
+      default: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
+      template: "%s | DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
     },
     description:
-      "DiscoverMinds.ai helps professionals unlock the hidden job market and find career opportunities through warm introductions. Leverage your extended professional network with our AI-powered people search engine to discover connections and grow your career.",
+      "Turn your network into your competitive advantage with DiscoverMinds.ai. Find the right connections instantly through AI-powered search and warm introductions to unlock career opportunities and grow your professional network.",
     keywords: [
       "professional network intelligence",
       "warm introductions network",
@@ -99,15 +107,15 @@ const metadataConfig = {
       locale: "en_US",
       url: "https://discoverminds.ai",
       siteName: "DiscoverMinds.ai",
-      title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform for Career Growth",
+      title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
       description:
-        "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities for career advancement through warm introductions.",
+        "Turn your network into your competitive advantage with DiscoverMinds.ai. Our AI-powered search engine helps you find the right connections instantly and unlock opportunities through warm introductions.",
       images: [
         {
           url: "https://discoverminds.ai/Images/og-image.png",
           width: 1200,
           height: 630,
-          alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform for Career Growth",
+          alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
           type: "image/png",
           secureUrl: "https://discoverminds.ai/Images/og-image.png",
         },
@@ -121,15 +129,15 @@ const metadataConfig = {
     },
     twitter: {
       card: "summary_large_image",
-      title: "DiscoverMinds.ai | AI-Powered Network Intelligence Platform for Career Growth",
+      title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
       description:
-        "Unlock your professional network's potential with DiscoverMinds.ai. Our AI-powered people search engine helps you discover hidden connections and opportunities for career advancement through warm introductions.",
+        "Turn your network into your competitive advantage with DiscoverMinds.ai. Our AI-powered search engine helps you find the right connections instantly and unlock opportunities through warm introductions.",
       images: [
         {
           url: "https://discoverminds.ai/Images/og-image.png",
           width: 1200,
           height: 630,
-          alt: "DiscoverMinds.ai - AI-Powered Network Intelligence Platform for Career Growth",
+          alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
         },
       ],
       creator: "@discovermindsai",
@@ -171,7 +179,7 @@ const metadataConfig = {
   },
   default: {
     title: {
-      default: "DiscoverMinds.ai - Unlock Your Network's Potential",
+      default: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
       template: "%s | DiscoverMinds.ai",
     },
     description: "",
@@ -206,10 +214,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              body{background:#fff;color:#0f1729;font-family:system-ui,-apple-system,sans-serif;margin:0;padding:0}
+              html{scroll-behavior:smooth;text-rendering:optimizeSpeed;overflow-x:hidden}
+              .hero-section{position:relative;padding-top:10rem;padding-bottom:0}
+              @media(min-width:768px){.hero-section{padding-top:10rem}}
+              h1,h2{font-weight:500;line-height:1.2}
+              img{max-width:100%;height:auto}
+              *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+            `,
+          }}
+        />
+        <link rel="modulepreload" href="/_next/static/chunks/main-app.js" />
+        <link rel="modulepreload" href="/_next/static/chunks/webpack.js" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
         <link rel="dns-prefetch" href="https://apis.discoverminds.ai" />
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
+        {/* Preload only critical above-the-fold logos */}
+        <link
+          rel="preload"
+          href="/logos/TrustedPartners/Adobe.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          href="/logos/TrustedPartners/Google.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          href="/logos/TrustedPartners/Meta.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
         {process.env.NODE_ENV === "production" ? (
           <>
             <link rel="dns-prefetch" href="https://wznveojncixcptajnjom.supabase.co" />
@@ -229,9 +276,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>{children}</Providers>
         {process.env.NODE_ENV === "production" && (
           <>
-            <AnalyticsLoader />
-            <Analytics />
-            <SpeedInsights />
+            <React.Suspense fallback={null}>
+              <AnalyticsLoader />
+              <Analytics />
+              <SpeedInsights />
+            </React.Suspense>
           </>
         )}
       </body>
