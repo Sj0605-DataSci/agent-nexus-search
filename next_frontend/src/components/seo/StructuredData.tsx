@@ -48,7 +48,7 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
       // Add other social profiles here
     ],
     description:
-      "AI-Powered Network Intelligence Platform that helps you leverage your extended professional network.",
+      "Your secret weapon for professional networking that turns your network into your competitive advantage.",
     ...data,
   };
 
@@ -85,7 +85,7 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
   const articleData = {
     "@context": "https://schema.org",
     "@type": "Article",
-    headline: data?.headline || "DiscoverMinds.ai - AI-Powered Network Intelligence",
+    headline: data?.headline || "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
     image: data?.image || [`${BASE_URL}/Images/og-image.png`],
     datePublished: data?.datePublished || new Date().toISOString(),
     dateModified: data?.dateModified || new Date().toISOString(),
@@ -119,7 +119,7 @@ export default function StructuredData({ type, data }: StructuredDataProps) {
         name: "What is DiscoverMinds.ai?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "DiscoverMinds.ai is an AI-powered network intelligence platform that helps you leverage your extended professional network to find opportunities through warm introductions.",
+          text: "DiscoverMinds.ai is your secret weapon for professional networking. Turn your network into your competitive advantage with AI-powered search and warm introductions.",
         },
       },
       {

@@ -147,6 +147,7 @@ const SearchInputField = memo(
                       }
                     }}
                     disabled={isButtonDisabled || loading}
+                    aria-label={loading ? "Searching..." : "Submit search"}
                   >
                     {loading ? (
                       <AiOutlineLoading3Quarters className="h-4 w-4 text-white animate-spin" />

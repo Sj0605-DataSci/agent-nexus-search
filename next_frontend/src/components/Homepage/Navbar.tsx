@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import BrandLogo from "../BrandLogo";
-import { motion, AnimatePresence } from "framer-motion";
 import Analytics from "@/utils/analytics";
 import { usePathname } from "next/navigation";
 
@@ -162,15 +161,15 @@ const Navbar: React.FC = () => {
   );
 
   return (
-    <AnimatePresence>
+    <>
       {isVisible && (
-        <motion.header
+        <header
           className="fixed inset-x-0 top-0 z-50 pt-6 px-4 sm:px-6"
-          initial={{ opacity: 1, transform: "translateY(0)" }}
-          animate={{ opacity: 1, transform: "translateY(0)" }}
-          exit={{ opacity: 0, transform: "translateY(-100%)" }}
-          transition={{ type: "spring", damping: 20, stiffness: 100 }}
-          style={{ willChange: "transform, opacity" }}
+          style={{
+            opacity: 1,
+            transform: "translateY(0)",
+            transition: "transform 0.3s ease-out, opacity 0.3s ease-out",
+          }}
         >
           <div className="hidden w-full justify-center items-center md:flex">
             <div className=" bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/50 w-full self-center  max-w-6xl -ml-3 ">
@@ -191,35 +190,34 @@ const Navbar: React.FC = () => {
             </div>
           </div>
 
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <motion.div
-                className="fixed inset-0 z-40 md:hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <div
-                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                />
+          {isMobileMenuOpen && (
+            <div
+              className="fixed inset-0 z-40 md:hidden"
+              style={{
+                opacity: 1,
+                transition: "opacity 0.2s ease-out",
+              }}
+            >
+              <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setIsMobileMenuOpen(false)}
+              />
 
-                <motion.nav
-                  className="absolute top-20 left-4 right-4 bg-white/95 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-xl overflow-hidden"
-                  initial={{ transform: "translateY(-20px)", opacity: 0 }}
-                  animate={{ transform: "translateY(0)", opacity: 1 }}
-                  exit={{ transform: "translateY(-20px)", opacity: 0 }}
-                  transition={{ type: "spring", damping: 25 }}
-                  style={{ willChange: "transform, opacity" }}
-                >
-                  <ul className="py-2">{mobileNavLinks}</ul>
-                </motion.nav>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.header>
+              <nav
+                className="absolute top-20 left-4 right-4 bg-white/95 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-xl overflow-hidden"
+                style={{
+                  transform: "translateY(0)",
+                  opacity: 1,
+                  transition: "transform 0.2s ease-out, opacity 0.2s ease-out",
+                }}
+              >
+                <ul className="py-2">{mobileNavLinks}</ul>
+              </nav>
+            </div>
+          )}
+        </header>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

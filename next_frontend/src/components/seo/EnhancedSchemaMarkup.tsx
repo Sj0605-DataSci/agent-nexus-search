@@ -41,7 +41,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     title: data?.title || "Professional Opportunity",
     description:
       data?.description ||
-      "A career opportunity found through DiscoverMinds.ai network intelligence platform.",
+      "A career opportunity found through DiscoverMinds.ai, your secret weapon for professional networking.",
     datePosted: data?.datePosted || new Date().toISOString(),
     validThrough: data?.validThrough,
     employmentType: data?.employmentType || "FULL_TIME",
@@ -94,7 +94,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: data?.name || "DiscoverMinds.ai",
-    description: data?.description || "AI-Powered Network Intelligence Platform for professionals.",
+    description: data?.description || "Your secret weapon for professional networking.",
     url: BASE_URL,
     telephone: data?.telephone,
     address: {
@@ -120,7 +120,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     name: data?.name || "DiscoverMinds.ai Platform",
     description:
       data?.description ||
-      "AI-Powered Network Intelligence Platform that helps professionals leverage their extended networks.",
+      "Your secret weapon for professional networking that turns your network into your competitive advantage.",
     image: data?.image || [`${BASE_URL}/Images/og-image.png`],
     brand: {
       "@type": "Brand",
@@ -222,7 +222,7 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     name: data?.name || "DiscoverMinds.ai Network Intelligence",
-    description: data?.description || "AI-powered professional networking intelligence service.",
+    description: data?.description || "Your secret weapon for professional networking - AI-powered intelligence service.",
     serviceType: data?.serviceType || "Professional Networking",
     provider: {
       "@type": "Organization",

@@ -46,8 +46,11 @@ const nextConfig = {
       "react-icons/fi",
       "react-icons/bs",
       "react-icons/gi",
+      "posthog-js",
+      "@tanstack/react-query",
     ],
     optimizeCss: true,
+    optimizeServerReact: true,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
@@ -55,8 +58,12 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
+  reactStrictMode: true,
+  swcMinify: true,
   images: {
     unoptimized: false,
+    formats: ["image/webp", "image/avif"],
+    minimumCacheTTL: 31536000,
     remotePatterns: [
       {
         protocol: "https",
@@ -174,7 +181,7 @@ const nextConfig = {
         chunkIds: "deterministic",
         splitChunks: {
           chunks: "async", // Changed from "all" to "async" to reduce initial load
-          maxInitialRequests: 25,
+          maxInitialRequests: 20,
           maxAsyncRequests: 30,
           minSize: 20000,
           cacheGroups: {
@@ -196,12 +203,26 @@ const nextConfig = {
               priority: -20,
               reuseExistingChunk: true,
             },
-            // Only split out truly heavy libraries
+            // Split out heavy libraries to load async
             heavy: {
               test: /[\\/]node_modules[\\/](framer-motion|recharts)[\\/]/,
               name: "heavy-libs",
               chunks: "async",
               priority: 10,
+            },
+            // Separate analytics to defer loading
+            analytics: {
+              test: /[\\/]node_modules[\\/](posthog-js|@vercel\/analytics|@vercel\/speed-insights)[\\/]/,
+              name: "analytics",
+              chunks: "async",
+              priority: 15,
+            },
+            // React core should be in main bundle
+            react: {
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              name: "react-vendor",
+              chunks: "all",
+              priority: 20,
             },
           },
         },
