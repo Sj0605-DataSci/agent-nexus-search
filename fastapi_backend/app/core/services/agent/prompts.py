@@ -615,11 +615,11 @@ Your job is to generate efficient, fast, and accurate SQL queries using ONLY the
 1. **Keyword Normalization**
    - Normalize compound terms:
      - “AI/ML”, “AI-ML”, “AI and ML” → “AI ML”.
-   - Use lowercase or title case consistently.
-   - Never use “/”, “-”, “and”, or punctuation inside the search text.
+   - Convert to lowercase or title case consistently.
+   - Never include “/”, “-”, “and”, “+”, or punctuation inside the search phrase.
 
 2. **Mandatory User Filter**
-   - Always restrict results by user(s):
+   - Always restrict by user(s):
      ```sql
      user_id = '{user_id}'
      ```
@@ -628,67 +628,61 @@ Your job is to generate efficient, fast, and accurate SQL queries using ONLY the
      user_id IN ('{user_id1}', '{user_id2}', ...)
      ```
 
-3. **Data Completeness Filter**
+3. **Data Completeness**
    - Always include:
      ```sql
-     AND about_section IS NOT NULL
-     AND experience_json IS NOT NULL
      AND embedding_generated_at IS NOT NULL
      ```
 
-4. **Full-Text Search (FTS)**
-   - Use field-specific tsvectors:
-     - `about_tsv` → roles, titles, general professional context.
-     - `experience_tsv` → company names, job titles, technologies.
-     - `education_tsv` → schools, degrees, universities, programs.
-   - USE ILIKE only for Location
-   - Always wrap each term in `plainto_tsquery('english', 'keyword')`.
-
-5. **Semantic Field Routing**
-   - When generating queries, map keywords to TSV fields:
-     - **Company, employer, industry terms** → `experience_tsv`
-     - **Position, title, or role terms** → `about_tsv`
-     - **University, degree, institution, academic terms** → `education_tsv`
-     - **Skill or technology terms** → `experience_tsv`
-     - **Location names** → `about_tsv`
-   - When uncertain, default to `about_tsv`.
-
-6. **Keyword Formatting**
-   - Each keyword is enclosed in:
+4. **Field-Specific Full-Text Search (FTS)**
+   - Use proper TSV columns:
+     - `about_tsv` → roles, titles, general context, professional summaries.
+     - `experience_tsv` → company names, roles, technologies, tools, skills.
+     - `education_tsv` → universities, degrees, majors, programs.
+   - Use `ILIKE` **only** for location.
+   - Wrap every keyword in:
      ```sql
      plainto_tsquery('english', 'keyword')
      ```
-   - Use a maximum of **2 OR conditions** per field.
 
-7. **Mandatory Location Filter**
-   - Every query must include at least one location-related token:
+5. **Semantic Keyword Routing**
+   - Map search keywords to TSV fields intelligently:
+     - **Company, employer, industry** → `experience_tsv`
+     - **Position, title, job role** → `about_tsv`
+     - **Degree, university, academic field** → `education_tsv`
+     - **Skill, tool, technology (e.g., Python, CSS, SQL)** → `experience_tsv`
+     - **Location (city, region)** → use `location ILIKE`
+   - **Skip generic or non-informative terms** like “top”, “best”, “great”, “leading”, “highly ranked”, “top tech companies”, “top university”, etc.
+     These should **never appear in tsqueries**.
+
+6. **Keyword Filtering Rules**
+   - Each tsquery per field should contain meaningful domain-relevant tokens only.
+   - If all keywords in a group are invalid (e.g., “top tech companies”), **omit that clause entirely**.
+   - Combine related terms in the same field with `OR` (max 2 terms):
+     ```sql
+     (experience_tsv @@ (plainto_tsquery('english', 'Unify') || plainto_tsquery('english', 'Google')))
+     ```
+
+7. **Location Filter**
      ```sql
      location ILIKE '%Bangalore%'
      ```
+     or multiple:
+     ```sql
+     (location ILIKE '%Bangalore%' OR location ILIKE '%Delhi%')
+     ```
+   - In user prompt location will be given, if not given let it be empty, don't give any location filter in that case   
 
-8. **Logical Operators**
+8. **Logical Structure**
    - Default structure:
      ```sql
      (about_tsv @@ ...) AND (experience_tsv @@ ...) AND (education_tsv @@ ...)
      ```
-   - Inside a single TSV field, use at most two ORs:
-     ```sql
-     plainto_tsquery('english', 'Bangalore')
-     || plainto_tsquery('english', 'Software Engineer')
-     ```
-   - Never mix AND/OR at the same level.
+   - Each field may include at most **2 ORs** inside.
+   - Never mix AND/OR at the same nesting level.
 
-9. **Ranking**
-   - Always compute rank using `ts_rank_cd` on a combined vector:
-     ```sql
-     ts_rank_cd(
-       (about_tsv || experience_tsv || education_tsv),
-       plainto_tsquery('english', 'combined keywords')
-     ) AS relevance_score
-     ```
-
-10. **Result Columns**
-    - Always return the standard projection:
+10. **Projection**
+    - Always return standard columns:
       ```sql
       SELECT id, first_name, last_name, linkedin_url, email_address, company, position,
              headline, about_section, experience_json, education_json, skills, location,
@@ -696,46 +690,51 @@ Your job is to generate efficient, fast, and accurate SQL queries using ONLY the
       ```
 
 11. **Ordering**
-    - Always order by rank and recency:
+    - Order by recency:
       ```sql
-      ORDER BY relevance_score DESC, embedding_generated_at DESC
+      ORDER BY embedding_generated_at DESC
       ```
 
 12. **Result Limit**
-    - Always:
+    - Always limit results:
       ```sql
       LIMIT 20
       ```
 
 13. **Restrictions**
-    - Never include more than 2 OR conditions in a single tsquery.
+    - Never include more than 2 ORs per field.
     - Never include numeric filters like “5+ years”.
+    - Never use filler or descriptive phrases like “top tech company”, “leading organization”, “prestigious college”.
 
 ---
 
-## ✅ Final SQL Query Template
+## ✅ Example Query
 
-Example: *Find software engineers from Bangalore who worked at Unify and studied at Imperial College London*
+**Prompt:** Find software engineers from Delhi NCR who worked at Unify and studied at Imperial College London.
 
+**Generated Query:**
 ```sql
 SELECT id, first_name, last_name, linkedin_url, email_address, company, position,
        headline, about_section, experience_json, education_json, skills, location,
-       profile_photo_url, embedding_generated_at
+       profile_photo_url, embedding_generated_at 
 FROM connections
-WHERE user_id IN ('06f7e3ea-162c-46a4-a494-4459dd4bea10', '54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5')
+WHERE user_id IN ('06f7e3ea-162c-46a4-a494-4459dd4bea10')
   AND embedding_generated_at IS NOT NULL
-  AND (
-       experience_tsv @@ plainto_tsquery('english', 'Unify')
-       AND education_tsv @@ plainto_tsquery('english', 'Imperial College London')
-       AND about_tsv @@ plainto_tsquery('english', 'Software Engineer')
-  )
-  AND location ILIKE '%Bangalore%'
+  AND (about_tsv @@ plainto_tsquery('english', 'software engineer'))
+  AND (experience_tsv @@ plainto_tsquery('english', 'Unify'))
+  AND (education_tsv @@ plainto_tsquery('english', 'Imperial College London'))
+  AND location ILIKE '%Delhi NCR%'
 ORDER BY embedding_generated_at DESC
 LIMIT 20;
 ```
 
-FOLLOW USER PROMPT TO GET USER_IDS, keywords from search_context and generate SQL query.
-DO NOT GIVE ANY EXPLANATION, DIRECTLY GENERATE SQL QUERY.
+FOLLOW USER PROMPT TO GET user_ids AND CONTEXTUAL KEYWORDS,
+MAP EACH TO THE CORRECT FIELD TYPE,
+FILTER OUT NON-INFORMATIVE TERMS,
+AND GENERATE THE FINAL SQL WITHOUT EXPLANATION.
+
+Write small and optimised query
+
 """
 
 
