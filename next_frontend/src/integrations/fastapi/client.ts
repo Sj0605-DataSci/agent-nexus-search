@@ -530,6 +530,33 @@ export const apiClient = {
     }
   },
 
+  async submitGuestSearchQuery(
+    email: string,
+    searchQuery: string
+  ): Promise<{
+    success: boolean;
+    status_code: number;
+    message: string;
+    data: { invitee_id?: string } | null;
+  }> {
+    try {
+      const data = {
+        email,
+        message: searchQuery,
+      };
+      const res = await axiosInstance.post("/auth/join_waitlist", data);
+      return res.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 409) {
+          return error.response.data;
+        }
+        throw new Error(handleAxiosError(error));
+      }
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async sendStreamingChatRequest(
     agentId: string,
     message: string,

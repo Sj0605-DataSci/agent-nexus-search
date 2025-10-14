@@ -73,7 +73,7 @@ DiscoverMinds.ai is more than a search tool; it's a complete system for network 
 
 - Access to DiscoverMinds Search.
 
-### Pro Plan ($15/month per user)
+### Pro Plan (₹225/month)
 
 - Unlimited Searches Per Month
 - Unlimited Connected Accounts
@@ -82,6 +82,7 @@ DiscoverMinds.ai is more than a search tool; it's a complete system for network 
 - Unlimited Results Per Search
 - Export Search Results To CSV
 - Forward Emails To Agent@DiscoverMinds.Ai
+- AI icebreaker suggestions and unlimited warm intros
 
 ---
 
