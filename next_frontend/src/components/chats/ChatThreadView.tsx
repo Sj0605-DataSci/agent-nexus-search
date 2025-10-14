@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { FiSearch, FiRefreshCw } from "react-icons/fi";
 import { formatTimestamp, getFullTimestamp, getTimeBasedGreeting } from "@/utils/timeUtils";
 import { throttle } from "@/utils/throttle";
 import { ChatNavigationControls } from "./ChatNavigationControls";
@@ -22,11 +21,13 @@ import { renderAsTable } from "./StructuredDataUtils";
 import StyledMarkdown from "../common/StyledMarkdown";
 import MessagePlaceholder from "./MessagePlaceholder";
 import FeedbackModule from "./FeedbackModule";
+import NoResultsFound from "./NoResultsFound";
 
 const LinkedInUrlModal = dynamic(() => import("../Connections/LinkedInUrlModal"), { ssr: false });
 const SearchQueryDisplay = dynamic(() => import("@/components/chats/SearchQueryDisplay"), {
   ssr: false,
 });
+const GuestEmailModal = dynamic(() => import("./GuestEmailModal"), { ssr: false });
 
 import { ChatSource, MessageType } from "@/types/chat";
 import { WorkerMessage } from "@/types/api";
@@ -82,6 +83,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
   const [query, setQuery] = useState<string>(initialQuery ? initialQuery : "");
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
+  const [guestEmailModalOpen, setGuestEmailModalOpen] = useState<boolean>(false);
   const [chatPairs, setChatPairs] = useState<ChatPair[]>([]);
   const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -815,41 +817,13 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
                   {(!m.sources || m.sources.length === 0) && !isStreaming && (
                     <div className="text-gray-700  w-full ">
-                      {isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
-                        <div className="flex flex-col items-center justify-center w-full py-10  px-4 mx-auto">
-                          <Image
-                            src="/search/NoDataFound.svg"
-                            alt="No data found"
-                            width={100}
-                            height={100}
-                            className="mb-6"
-                            priority
-                          />
-                          <h3 className="text-xl font-medium text-gray-800 mb-2">
-                            No Results Found
-                          </h3>
-                          <p className="text-gray-600 text-center mb-6 max-w-md">
-                            We couldn't find any matching results for your query. Try adjusting your
-                            search terms or explore different keywords.
-                          </p>
-
-                          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md justify-center">
-                            <button
-                              onClick={() => textareaRef.current?.focus()}
-                              className="flex items-center justify-center h-10 px-5 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-medium rounded-md hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-sm"
-                            >
-                              <FiSearch className="mr-2 h-4 w-4" />
-                              Try Another Search
-                            </button>
-                            <button
-                              onClick={() => setQuery("")}
-                              className="flex items-center justify-center h-10 px-5 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm"
-                            >
-                              <FiRefreshCw className="mr-2 h-4 w-4" />
-                              Clear Query
-                            </button>
-                          </div>
-                        </div>
+                      {!isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
+                        <NoResultsFound
+                          onTryAgain={() => textareaRef.current?.focus()}
+                          onClearQuery={() => setQuery("")}
+                          onGetResultsByEmail={() => setGuestEmailModalOpen(true)}
+                          isGuest={!userAccessToken}
+                        />
                       ) : /(first_name|last_name)/i.test(m.content) ||
                         (typeof m.content === "string" &&
                           (m.content.startsWith("[{") || m.content.startsWith("{"))) ? (
@@ -902,6 +876,12 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
           }}
         />
       )}
+
+      <GuestEmailModal
+        isOpen={guestEmailModalOpen}
+        onClose={() => setGuestEmailModalOpen(false)}
+        searchQuery={query}
+      />
     </div>
   );
 };

@@ -28,6 +28,7 @@ export default function ImportConnectionsModal({
   const [countdown, setCountdown] = useState<number | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,9 +38,7 @@ export default function ImportConnectionsModal({
     }
   }, [countdown]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
+  const validateAndSetFile = (selectedFile: File) => {
 
       // Check if it's a zip file
       if (selectedFile.type === "application/zip" || selectedFile.name.endsWith(".zip")) {
@@ -64,22 +63,65 @@ export default function ImportConnectionsModal({
         return;
       }
 
-      setFile(selectedFile);
-      setErrorMessage("");
-      setUploadStatus("idle");
-      setCountdown(3);
+    setFile(selectedFile);
+    setErrorMessage("");
+    setUploadStatus("idle");
+    setCountdown(3);
 
-      // Start countdown
-      const timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev === null) return null;
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0; // Return 0 instead of null to trigger the useEffect
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    // Start countdown
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0; // Return 0 instead of null to trigger the useEffect
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading && countdown === null) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading && countdown === null) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set isDragging to false if we're leaving the modal container
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (uploading || countdown !== null) return;
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles[0]) {
+      validateAndSetFile(droppedFiles[0]);
     }
   };
 
@@ -158,7 +200,7 @@ export default function ImportConnectionsModal({
           setUploading(false);
           setUploadStatus("idle");
         }, 300);
-      }, 2000);
+      }, 100);
     } catch (error) {
       console.error("Upload error:", error);
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred");
@@ -172,9 +214,15 @@ export default function ImportConnectionsModal({
   return (
     <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm">
       <div
-        className="fixed  left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-xl border border-gray-200 bg-white p-6 shadow-2xl shadow-black/10 duration-200"
+        className={`fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-xl border bg-white p-6 shadow-2xl shadow-black/10 duration-200 transition-all ${
+          isDragging ? "border-blue-400 border-2 ring-4 ring-blue-100" : "border-gray-200"
+        }`}
         style={{ pointerEvents: "auto" }}
         tabIndex={-1}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <div className="flex flex-col h-[30px]  space-y-1.5 text-left">
           <h2 className="text-lg font-semibold leading-none tracking-tight flex items-center gap-3">
@@ -188,7 +236,7 @@ export default function ImportConnectionsModal({
         <div className="w-full h-full mt-3 md:max-h-[480px] overflow-y-auto">
           <div className="mt-4 h-full ">
             <div className="rounded-xl bg-white border-2 border-gray-100 shadow-sm">
-              <div className="p-6 pt-6">
+              <div className="p-3 pt-3">
                 <div className="flex items-center space-x-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -213,7 +261,7 @@ export default function ImportConnectionsModal({
                   <h3 className="text-lg font-semibold">File upload</h3>
                 </div>
 
-                <div className="my-4 space-y-4">
+                <div className="my-3 space-y-3">
                   <div className="flex items-start space-x-3">
                     <div className="mt-1 rounded-full bg-primary/10 p-1">
                       <svg
@@ -316,7 +364,11 @@ export default function ImportConnectionsModal({
                   />
 
                   <div
-                    className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors hover:border-blue-400 border-gray-300 bg-gray-50 hover:bg-gray-50/50"
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                      isDragging
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-gray-50/50"
+                    }`}
                     onClick={() =>
                       !uploading && countdown === null && fileInputRef.current?.click()
                     }

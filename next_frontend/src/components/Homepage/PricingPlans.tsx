@@ -1,9 +1,15 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { FiCheckCircle, FiSearch, FiArrowRight } from "react-icons/fi";
 import { FaCrown } from "react-icons/fa";
 import { BsShieldCheck, BsBuilding } from "react-icons/bs";
+import {
+  getUserCountry,
+  getPricingConfig,
+  formatPrice,
+  PricingConfig,
+} from "@/utils/locationUtils";
 
 interface PlanProps {
   name: string;
@@ -19,13 +25,33 @@ interface PlanProps {
 
 const PricingPlans = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
+
+  useEffect(() => {
+    const loadPricingConfig = async () => {
+      try {
+        const country = await getUserCountry();
+        const config = getPricingConfig(country);
+        setPricingConfig(config);
+      } catch (error) {
+        const config = getPricingConfig("US");
+        setPricingConfig(config);
+      } finally {
+      }
+    };
+
+    loadPricingConfig();
+  }, []);
 
   const getProPlanPrice = (cycle: "monthly" | "yearly") => {
-    return cycle === "monthly" ? "$20" : "$15";
+    if (!pricingConfig) return "...";
+
+    const amount = cycle === "monthly" ? pricingConfig.monthlyPrice : pricingConfig.yearlyPrice;
+    return formatPrice(amount, pricingConfig);
   };
 
   const getProPlanDetail = (cycle: "monthly" | "yearly") => {
-    return cycle === "monthly" ? "/user/month" : "/user/month";
+    return "/month";
   };
 
   const plans: PlanProps[] = [
@@ -271,20 +297,20 @@ const PricingPlans = () => {
 
             <div className="mt-4 mb-5">
               <Link
-                href="/user-auth"
+                href="https://calendly.com/founders-discoverminds/30min"
                 prefetch={false}
                 className={`w-full bg-white hover:bg-gray-50 text-[#0E3D15] border border-[#0E3D15] font-medium py-3 px-4 rounded-[8px] group-hover:scale-105
                            transition-all duration-300 transform hover:bg-white hover:text-[#0E3D15] hover:border hover:border-[#0E3D15] flex items-center justify-center`}
               >
                 <span className="flex text-[18px] font-medium items-center justify-center">
-                  Get Started
+                  Contact Sales
                   <FiArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 " />
                 </span>
               </Link>
             </div>
 
             <div
-              className={`w-full border-t mb-4 border-gray-200 transition-all duration-300 group-hover:border-opacity-100`}
+              className={`w-full border-t mb-4 border-gra0 transition-all duration-300 group-hover:border-opacity-100`}
             ></div>
 
             <div className="space-y-2 flex-grow">

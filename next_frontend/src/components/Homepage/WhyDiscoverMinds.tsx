@@ -1,6 +1,20 @@
+"use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { getUserCountry, getPricingConfig, formatPrice } from "@/utils/locationUtils";
 
 const WhyDiscoverMinds = () => {
+  const [priceDisplay, setPriceDisplay] = useState("₹225/mo");
+
+  useEffect(() => {
+    const loadPrice = async () => {
+      const country = await getUserCountry();
+      const config = getPricingConfig(country);
+      setPriceDisplay(`${formatPrice(config.yearlyPrice, config)}/mo`);
+    };
+    loadPrice();
+  }, []);
+
   return (
     <section id="why-discoverminds" className="py-20 bg-gray-50">
       <div className="mx-auto max-w-6xl px-5">
@@ -23,7 +37,7 @@ const WhyDiscoverMinds = () => {
                 <th className="p-4 px-3 text-left min-w-[220px]">Features</th>
                 <th className="p-4 px-2 text-center bg-[#FAFFF2] rounded-tl-lg min-w-[180px]">
                   <span className="block font-bold text-[#0E3D15]">DiscoverMinds</span>
-                  <span className="text-sm font-normal">Pro $15/mo</span>
+                  <span className="text-sm font-normal">Pro {priceDisplay}</span>
                   <p className="text-xs mt-1 text-gray-600">
                     Best for precision people hunting & learning
                   </p>
