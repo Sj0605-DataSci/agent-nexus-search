@@ -27,10 +27,7 @@ export default function GuestEmailModal({ isOpen, onClose, searchQuery }: GuestE
       const response = await apiClient.submitGuestSearchQuery(email, searchQuery);
 
       if (response.success || response.status_code === 409) {
-        toast.success(
-          "Thanks! We'll send the results to your email shortly.",
-          { duration: 4000 }
-        );
+        toast.success("Thanks! We'll send the results to your email shortly.", { duration: 4000 });
         setEmail("");
         onClose();
       } else {
@@ -58,16 +55,14 @@ export default function GuestEmailModal({ isOpen, onClose, searchQuery }: GuestE
           >
             <FiX className="h-5 w-5" />
           </button>
-          
+
           <div className="flex items-center justify-center mb-3">
             <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
               <FiMail className="h-8 w-8" />
             </div>
           </div>
-          
-          <h2 className="text-2xl font-bold text-center mb-2">
-            We'll Find Your Results
-          </h2>
+
+          <h2 className="text-2xl font-bold text-center mb-2">We'll Find Your Results</h2>
           <p className="text-blue-100 text-center text-sm">
             Our search is still processing. Share your email and we'll send you the results shortly.
           </p>
@@ -84,7 +79,7 @@ export default function GuestEmailModal({ isOpen, onClose, searchQuery }: GuestE
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg  transition-all outline-none"
                 required
