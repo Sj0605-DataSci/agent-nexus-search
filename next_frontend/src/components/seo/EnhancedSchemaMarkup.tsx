@@ -222,7 +222,9 @@ export default function EnhancedSchemaMarkup({ type, data }: EnhancedSchemaMarku
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     name: data?.name || "DiscoverMinds.ai Network Intelligence",
-    description: data?.description || "Your secret weapon for professional networking - AI-powered intelligence service.",
+    description:
+      data?.description ||
+      "Your secret weapon for professional networking - AI-powered intelligence service.",
     serviceType: data?.serviceType || "Professional Networking",
     provider: {
       "@type": "Organization",

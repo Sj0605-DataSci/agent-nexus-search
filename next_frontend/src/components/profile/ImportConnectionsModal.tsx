@@ -39,29 +39,28 @@ export default function ImportConnectionsModal({
   }, [countdown]);
 
   const validateAndSetFile = (selectedFile: File) => {
+    // Check if it's a zip file
+    if (selectedFile.type === "application/zip" || selectedFile.name.endsWith(".zip")) {
+      setErrorMessage(
+        "Please unzip the file first! You need to extract and upload only the connections.csv file from the zip archive."
+      );
+      setFile(null);
+      return;
+    }
 
-      // Check if it's a zip file
-      if (selectedFile.type === "application/zip" || selectedFile.name.endsWith(".zip")) {
-        setErrorMessage(
-          "Please unzip the file first! You need to extract and upload only the connections.csv file from the zip archive."
-        );
-        setFile(null);
-        return;
-      }
+    // Check if it's not a CSV file
+    if (selectedFile.type !== "text/csv" && !selectedFile.name.endsWith(".csv")) {
+      setErrorMessage("Please select a CSV file");
+      setFile(null);
+      return;
+    }
 
-      // Check if it's not a CSV file
-      if (selectedFile.type !== "text/csv" && !selectedFile.name.endsWith(".csv")) {
-        setErrorMessage("Please select a CSV file");
-        setFile(null);
-        return;
-      }
-
-      // Check if the file name is exactly connections.csv (case insensitive)
-      if (selectedFile.name.toLowerCase() !== "connections.csv") {
-        setErrorMessage("Please upload the connections.csv file from your LinkedIn data export");
-        setFile(null);
-        return;
-      }
+    // Check if the file name is exactly connections.csv (case insensitive)
+    if (selectedFile.name.toLowerCase() !== "connections.csv") {
+      setErrorMessage("Please upload the connections.csv file from your LinkedIn data export");
+      setFile(null);
+      return;
+    }
 
     setFile(selectedFile);
     setErrorMessage("");

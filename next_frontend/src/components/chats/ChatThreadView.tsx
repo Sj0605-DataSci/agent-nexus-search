@@ -722,7 +722,8 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
             </h1>
             {!messages.length && (
               <p className="text-gray-600 text-sm md:text-lg mt-6">
-                Your secret weapon for professional networking - turn your network into your competitive advantage,
+                Your secret weapon for professional networking - turn your network into your
+                competitive advantage,
                 <br />
                 connecting you through trusted warm introductions instead of ineffective cold
                 outreach.
