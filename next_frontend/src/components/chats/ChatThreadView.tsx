@@ -817,7 +817,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
 
                   {(!m.sources || m.sources.length === 0) && !isStreaming && (
                     <div className="text-gray-700  w-full ">
-                      {!isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
+                      {isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
                         <NoResultsFound
                           onTryAgain={() => textareaRef.current?.focus()}
                           onClearQuery={() => setQuery("")}
