@@ -1062,3 +1062,27 @@ class ChatService:
                             is_positive=is_positive,
                             comment=comment)
             raise
+    
+    async def process_tally_query(self, query: str):
+        """
+        Process a Tally product query using LangGraph with tool calling.
+        Streams responses back to the client.
+        """
+        try:
+            logger.info("process_tally_query_started", query=query)
+            
+            # Import the tally graph (we'll create this next)
+            from app.core.services.agent.graph_tally import process_tally_query_stream
+            
+            # Stream events from the tally graph
+            async for event in process_tally_query_stream(query):
+                yield json.dumps(event)
+            
+            logger.info("process_tally_query_completed", query=query)
+            
+        except Exception as e:
+            logger.exception("Error processing tally query",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           query=query)
+            raise

@@ -94,8 +94,7 @@ class EmailService:
             
             # Create secure connection and send
             context = ssl.create_default_context()
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls(context=context)
+            with smtplib.SMTP_SSL(self.smtp_server, 465, timeout=10) as server:
                 server.login(self.email_address, self.email_password)
                 server.send_message(msg)
             
