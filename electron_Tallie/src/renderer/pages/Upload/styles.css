@@ -1,0 +1,264 @@
+.document-upload-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3rem;
+}
+
+.upload-header h1 {
+  color: white;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.profile-button,
+.logout-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.profile-button:hover,
+.logout-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.upload-content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.upload-dropzone {
+  background: white;
+  border: 3px dashed #cbd5e0;
+  border-radius: 16px;
+  padding: 4rem 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.upload-dropzone.dragging {
+  border-color: #667eea;
+  background: #f7fafc;
+  transform: scale(1.02);
+}
+
+.upload-dropzone.has-file {
+  border-style: solid;
+  border-color: #48bb78;
+  background: #f0fff4;
+}
+
+.upload-icon {
+  color: #667eea;
+  margin-bottom: 1.5rem;
+}
+
+.upload-dropzone h2 {
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.upload-dropzone p {
+  color: #718096;
+  font-size: 1rem;
+  margin: 1rem 0;
+}
+
+.file-select-button {
+  display: inline-block;
+  background: #667eea;
+  color: white;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 1rem 0;
+}
+
+.file-select-button:hover {
+  background: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.file-types {
+  font-size: 0.875rem;
+  color: #a0aec0;
+  margin-top: 1.5rem;
+}
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+}
+
+.file-icon {
+  color: #48bb78;
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  text-align: left;
+}
+
+.file-info h3 {
+  color: #2d3748;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  word-break: break-word;
+}
+
+.file-info p {
+  color: #718096;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.remove-file-button {
+  background: #fed7d7;
+  color: #c53030;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-file-button:hover {
+  background: #fc8181;
+  color: white;
+}
+
+.upload-button {
+  width: 100%;
+  background: #48bb78;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1.5rem;
+}
+
+.upload-button:hover:not(:disabled) {
+  background: #38a169;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.upload-button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Error and Countdown Banners */
+.error-banner {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.error-banner p {
+  color: #c33;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.countdown-banner {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.countdown-banner p {
+  color: #856404;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Uploading State */
+.upload-dropzone.uploading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.uploading-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+}
+
+.uploading-status p {
+  color: #667eea;
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
