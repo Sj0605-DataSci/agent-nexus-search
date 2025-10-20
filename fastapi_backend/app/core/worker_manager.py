@@ -15,6 +15,7 @@ from app.core.connection_worker import ConnectionWorker
 from app.core.enrichment_worker import EnrichmentWorker
 from app.core.auto_enrichment_worker import AutoEnrichmentWorker
 from app.core.embedding_worker import EmbeddingWorker
+from app.core.stock_items_worker import StockItemsWorker
 from app.core.config import settings
 from app.core.structured_logger import get_structured_logger
 
@@ -36,6 +37,7 @@ class WorkerManager:
             cls._instance.enrichment_workers = []
             cls._instance.auto_enrichment_workers = []
             cls._instance.embedding_workers = []
+            cls._instance.stock_items_workers = []
             cls._instance._initialized = False
             cls._instance.start_time = time.time()
             cls._instance.worker_memory_threshold = 600  # MB per worker before restart
@@ -61,6 +63,7 @@ class WorkerManager:
             self.num_enrichment_workers = 1  # Only need 1 enrichment worker
             self.num_auto_enrichment_workers = 4  # Only need 1 auto enrichment worker
             self.num_embedding_workers = 4  # Use 3 embedding workers for parallel processing
+            self.num_stock_items_workers = 1  # Only need 1 stock items worker
             logger.info("Running as dedicated worker process")
         else:
             # Running alongside web process - use minimal resources
@@ -69,6 +72,7 @@ class WorkerManager:
             self.num_enrichment_workers = 2
             self.num_auto_enrichment_workers = 2
             self.num_embedding_workers = 2  # Use 2 embedding workers for web process
+            self.num_stock_items_workers = 1  # Only need 1 stock items worker
             logger.info("Running alongside web process")
         
         logger.info("Initializing worker manager",
@@ -77,6 +81,7 @@ class WorkerManager:
                    num_enrichment_workers=self.num_enrichment_workers,
                    num_auto_enrichment_workers=self.num_auto_enrichment_workers,
                    num_embedding_workers=self.num_embedding_workers,
+                   num_stock_items_workers=self.num_stock_items_workers,
                    cpu_count=cpu_count,
                    process_type=process_type)
         
@@ -100,6 +105,10 @@ class WorkerManager:
         for _ in range(self.num_embedding_workers):
             await self._start_embedding_worker()
             
+        # Create and start stock items workers
+        for _ in range(self.num_stock_items_workers):
+            await self._start_stock_items_worker()
+            
         # Start worker monitoring task
         self._monitor_task = asyncio.create_task(self._monitor_workers())
             
@@ -109,7 +118,8 @@ class WorkerManager:
                    connection_workers_started=len(self.connection_workers),
                    enrichment_workers_started=len(self.enrichment_workers),
                    auto_enrichment_workers_started=len(self.auto_enrichment_workers),
-                   embedding_workers_started=len(self.embedding_workers))
+                   embedding_workers_started=len(self.embedding_workers),
+                   stock_items_workers_started=len(self.stock_items_workers))
     
     async def _start_chat_worker(self):
         """Start a new chat worker"""
@@ -144,6 +154,13 @@ class WorkerManager:
         worker = EmbeddingWorker()
         task = asyncio.create_task(worker.start())
         self.embedding_workers.append({"worker": worker, "task": task, "type": "embedding"})
+        return worker, task
+        
+    async def _start_stock_items_worker(self):
+        """Start a new stock items worker"""
+        worker = StockItemsWorker()
+        task = asyncio.create_task(worker.start())
+        self.stock_items_workers.append({"worker": worker, "task": task, "type": "stock_items"})
         return worker, task
         
     async def _stop_chat_worker(self, worker_index):
@@ -260,6 +277,29 @@ class WorkerManager:
                 
         # Remove from workers list
         self.embedding_workers.pop(worker_index)
+        
+    async def _stop_stock_items_worker(self, worker_index):
+        """Stop a specific stock items worker by index"""
+        if worker_index >= len(self.stock_items_workers):
+            return
+            
+        worker_info = self.stock_items_workers[worker_index]
+        worker = worker_info["worker"]
+        task = worker_info["task"]
+        
+        # Stop the worker
+        await worker.stop()
+        
+        # Cancel the task if it's still running
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+                
+        # Remove from workers list
+        self.stock_items_workers.pop(worker_index)
     
     async def _monitor_workers(self):
         """Monitor workers and restart if needed"""
@@ -302,6 +342,12 @@ class WorkerManager:
                                   current_count=len(self.embedding_workers),
                                   target_count=self.num_embedding_workers)
                     await self._start_embedding_worker()
+                    
+                if len(self.stock_items_workers) < self.num_stock_items_workers:
+                    logger.warning("Stock items worker count below target, starting new worker",
+                                  current_count=len(self.stock_items_workers),
+                                  target_count=self.num_stock_items_workers)
+                    await self._start_stock_items_worker()
                 
                 # Check for dead workers and restart them
                 await self._check_dead_workers()
@@ -324,7 +370,8 @@ class WorkerManager:
                        connection_workers=len(self.connection_workers),
                        enrichment_workers=len(self.enrichment_workers),
                        auto_enrichment_workers=len(self.auto_enrichment_workers),
-                       embedding_workers=len(self.embedding_workers))
+                       embedding_workers=len(self.embedding_workers),
+                       stock_items_workers=len(self.stock_items_workers))
             
             # If total memory is high, restart workers to free memory
             if memory_mb > self.worker_memory_threshold:
@@ -380,6 +427,13 @@ class WorkerManager:
                 await self._stop_embedding_worker(0)
                 await asyncio.sleep(2)
                 await self._start_embedding_worker()
+                
+            # Restart stock items workers if needed
+            if len(self.stock_items_workers) > 0:
+                logger.info("Restarting stock items worker for memory cleanup")
+                await self._stop_stock_items_worker(0)
+                await asyncio.sleep(2)
+                await self._start_stock_items_worker()
                 
         except Exception as e:
             logger.error("Error restarting workers for memory", error=str(e))
@@ -445,6 +499,18 @@ class WorkerManager:
         for i in reversed(dead_embedding_workers):
             logger.warning("Found dead embedding worker, removing", worker_index=i)
             await self._stop_embedding_worker(i)
+            
+        # Check stock items workers
+        dead_stock_items_workers = []
+        for i, worker_info in enumerate(self.stock_items_workers):
+            task = worker_info["task"]
+            if task.done():
+                dead_stock_items_workers.append(i)
+        
+        # Remove dead workers (in reverse order to maintain indices)
+        for i in reversed(dead_stock_items_workers):
+            logger.warning("Found dead stock items worker, removing", worker_index=i)
+            await self._stop_stock_items_worker(i)
 
     async def shutdown(self):
         """Shutdown all workers"""
@@ -456,7 +522,8 @@ class WorkerManager:
                    connection_workers_count=len(self.connection_workers),
                    enrichment_workers_count=len(self.enrichment_workers),
                    auto_enrichment_workers_count=len(self.auto_enrichment_workers),
-                   embedding_workers_count=len(self.embedding_workers))
+                   embedding_workers_count=len(self.embedding_workers),
+                   stock_items_workers_count=len(self.stock_items_workers))
         
         # Cancel the monitor task
         if hasattr(self, '_monitor_task') and self._monitor_task:
@@ -485,19 +552,25 @@ class WorkerManager:
         # Stop all embedding workers
         for i in range(len(self.embedding_workers) - 1, -1, -1):
             await self._stop_embedding_worker(i)
+            
+        # Stop all stock items workers
+        for i in range(len(self.stock_items_workers) - 1, -1, -1):
+            await self._stop_stock_items_worker(i)
         
         self.chat_workers = []
         self.connection_workers = []
         self.enrichment_workers = []
         self.auto_enrichment_workers = []
         self.embedding_workers = []
+        self.stock_items_workers = []
         self._initialized = False
         logger.info("Worker manager shutdown complete",
                    final_chat_workers_count=len(self.chat_workers),
                    final_connection_workers_count=len(self.connection_workers),
                    final_enrichment_workers_count=len(self.enrichment_workers),
                    final_auto_enrichment_workers_count=len(self.auto_enrichment_workers),
-                   final_embedding_workers_count=len(self.embedding_workers))
+                   final_embedding_workers_count=len(self.embedding_workers),
+                   final_stock_items_workers_count=len(self.stock_items_workers))
     
     def get_status(self) -> Dict[str, Any]:
         """Get status information about workers"""
@@ -507,6 +580,7 @@ class WorkerManager:
             "connection_worker_count": len(self.connection_workers),
             "enrichment_worker_count": len(self.enrichment_workers),
             "auto_enrichment_worker_count": len(self.auto_enrichment_workers),
+            "stock_items_worker_count": len(self.stock_items_workers),
             "chat_workers": [
                 {
                     "id": w["worker"].worker_id,
@@ -538,6 +612,14 @@ class WorkerManager:
                     "current_task": w["worker"].current_task["task_id"] if w["worker"].current_task else None
                 }
                 for w in self.auto_enrichment_workers
+            ],
+            "stock_items_workers": [
+                {
+                    "id": w["worker"].worker_id,
+                    "running": w["worker"].running,
+                    "current_task": w["worker"].current_task["file_id"] if w["worker"].current_task else None
+                }
+                for w in self.stock_items_workers
             ]
         }
 
