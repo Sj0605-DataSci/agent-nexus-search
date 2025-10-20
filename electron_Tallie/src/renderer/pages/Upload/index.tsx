@@ -41,7 +41,7 @@ function Upload() {
     }
 
     // Check if the file name is exactly connections.csv (case insensitive)
-    if (file.name.toLowerCase() !== 'connections.csv') {
+    if (file.name.toLowerCase() !== 'stock_items_rows.csv') {
       setErrorMessage(
         'Please upload the connections.csv file from your LinkedIn data export',
       );
@@ -130,7 +130,7 @@ function Upload() {
 
       // Upload file to Supabase Storage
       const uploadResponse = await fetch(
-        `${supabaseUrl}/storage/v1/object/connection-files/${fileName}`,
+        `${supabaseUrl}/storage/v1/object/stock-items/${fileName}`,
         {
           method: 'POST',
           headers: {
@@ -150,7 +150,7 @@ function Upload() {
 
       // Get public URL
       const { data: urlData } = await supabase.storage
-        .from('connection-files')
+        .from('stock-items')
         .getPublicUrl(fileName);
 
       if (!urlData?.publicUrl) {
@@ -159,7 +159,7 @@ function Upload() {
 
       // Insert file record into database
       const { data: insertData, error: dbError } = await supabase
-        .from('connection_files' as any)
+        .from('stock_items_files' as any)
         .insert({
           user_id: userId,
           file_url: urlData.publicUrl,
@@ -173,7 +173,7 @@ function Upload() {
       const fileId = (insertData as any)?.[0]?.id;
       if (!fileId)
         throw new Error('Could not get file ID from database response');
-
+      await apiClient.processStockFile(fileId);
 
       toast.success('Upload successful! Processing your connections...');
       setSelectedFile(null);
