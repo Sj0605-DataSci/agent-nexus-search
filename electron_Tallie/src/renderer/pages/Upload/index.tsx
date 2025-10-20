@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { apiClient } from '../../../lib/api/apiClient';
 import { supabase } from '../../../lib/supabase/client';
 import { getSupabaseConfig } from '../../../config/supabase';
+import { generateUniqueId } from '../../../utils';
 import './styles.css';
 
 function Upload() {
@@ -118,8 +119,9 @@ function Upload() {
         throw new Error('No authentication token found');
       }
 
-      // Create file name with user ID and timestamp
-      const fileName = `${userId}/${Date.now()}_${selectedFile.name}`;
+      // Create file name with user ID and unique identifier
+      const uniqueId = generateUniqueId();
+      const fileName = `${userId}/${uniqueId}_${selectedFile.name}`;
 
       // Prepare form data
       const formData = new FormData();
@@ -160,12 +162,18 @@ function Upload() {
       // Insert file record into database
       const { data: insertData, error: dbError } = await supabase
         .from('stock_items_files' as any)
-        .insert({
-          user_id: userId,
-          file_url: urlData.publicUrl,
-          file_name: selectedFile.name,
-          status: 'pending',
-        })
+        .upsert(
+          {
+            user_id: userId,
+            file_url: urlData.publicUrl,
+            file_name: selectedFile.name,
+            status: 'pending',
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'file_url', // If file_url exists, update it
+          },
+        )
         .select();
 
       if (dbError) throw new Error(`Database entry failed: ${dbError.message}`);
