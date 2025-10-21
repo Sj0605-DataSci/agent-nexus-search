@@ -474,6 +474,7 @@ class StockItemResponse(StockItemBase):
     """Schema for stock item response"""
     id: UUID
     item_name_lower: str
+    user_id: Optional[UUID] = Field(None, description="ID of the user who owns this stock item")
     created_at: datetime
     updated_at: datetime
     

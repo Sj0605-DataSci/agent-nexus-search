@@ -7,7 +7,7 @@ import logging
 import uuid
 import traceback
 import csv
-import requests
+import aiohttp
 from datetime import datetime
 from typing import Dict, Any, List, Union, Optional
 from decimal import Decimal
@@ -136,8 +136,8 @@ class StockItemsWorker:
             
             logger.info(f"Found {len(stock_items)} stock items in file {file_id}")
             
-            # Insert or update stock items
-            success = await self._upsert_stock_items(supabase, stock_items)
+            # Insert or update stock items with user_id
+            success = await self._upsert_stock_items(supabase, stock_items, user_id)
             if not success:
                 await self._update_file_status(supabase, file_id, "failed", "Failed to insert stock items")
                 return
@@ -167,19 +167,42 @@ class StockItemsWorker:
                 logger.error(f"Error removing stock items task from processing: {str(e)}")
     
     async def _download_file(self, file_url: str) -> Optional[str]:
-        """Download file from URL and return its content"""
-        try:
-            response = requests.get(file_url, timeout=10)
-            response.raise_for_status()
-            return response.text
-        except requests.RequestException as e:
-            logger.error(f"Error downloading file: {e}")
-            return None
+        """Download file from URL and return its content (async)"""
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                timeout = aiohttp.ClientTimeout(total=30)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.get(file_url) as response:
+                        response.raise_for_status()
+                        # Check file size (max 50MB)
+                        content_length = response.headers.get('Content-Length')
+                        if content_length and int(content_length) > 50 * 1024 * 1024:
+                            logger.error(f"File too large: {content_length} bytes (max 50MB)")
+                            return None
+                        
+                        content = await response.text()
+                        logger.info(f"Downloaded file: {len(content)} bytes")
+                        return content
+                        
+            except aiohttp.ClientError as e:
+                logger.warning(f"Download attempt {attempt + 1}/{max_retries} failed: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error(f"Error downloading file after {max_retries} attempts: {e}")
+                    return None
+            except Exception as e:
+                logger.error(f"Unexpected error downloading file: {e}")
+                return None
     
     async def _parse_stock_items_csv(self, csv_content: str) -> List[Dict[str, Any]]:
         """Parse stock items CSV file with validation"""
         stock_items = []
         skipped_rows = 0
+        max_rows = 50000  # Limit to prevent memory issues
         
         try:
             # Split by lines
@@ -187,6 +210,11 @@ class StockItemsWorker:
             
             if not lines:
                 logger.error("CSV file is empty")
+                return []
+            
+            # Check row limit
+            if len(lines) > max_rows + 1:  # +1 for header
+                logger.error(f"CSV has too many rows: {len(lines)-1} (max {max_rows})")
                 return []
             
             # Parse CSV content
@@ -259,7 +287,7 @@ class StockItemsWorker:
         
         return stock_items
     
-    async def _upsert_stock_items(self, supabase, stock_items: List[Dict[str, Any]]) -> bool:
+    async def _upsert_stock_items(self, supabase, stock_items: List[Dict[str, Any]], user_id: str) -> bool:
         """Insert or update stock items in the stock_items table"""
         try:
             # Remove duplicates within the CSV itself (keep last occurrence)
@@ -280,6 +308,7 @@ class StockItemsWorker:
                     'item_name_lower': item['item_name_lower'],
                     'quantity': item['quantity'],
                     'rate': item['rate'],
+                    'user_id': user_id,
                     'created_at': datetime.now().isoformat(),
                     'updated_at': datetime.now().isoformat()
                 })
@@ -292,13 +321,14 @@ class StockItemsWorker:
             item_names_lower = [item['item_name_lower'] for item in data_to_upsert]
             
             # Query in batches to avoid URL length limits
+            # Filter by user_id to only check items belonging to this user
             existing_items_map = {}
             batch_size = 100
             for i in range(0, len(item_names_lower), batch_size):
                 batch_names = item_names_lower[i:i+batch_size]
                 existing_items_response = await supabase.table("stock_items").select(
                     "id, item_name_lower"
-                ).in_("item_name_lower", batch_names).execute()
+                ).in_("item_name_lower", batch_names).eq("user_id", user_id).execute()
                 
                 if existing_items_response.data:
                     for item in existing_items_response.data:
@@ -317,6 +347,7 @@ class StockItemsWorker:
                         'item_name': item['item_name'],  # Update name too in case of case changes
                         'quantity': item['quantity'],
                         'rate': item['rate'],
+                        'user_id': user_id,
                         'updated_at': item['updated_at']
                     })
                 else:
@@ -358,6 +389,7 @@ class StockItemsWorker:
                                 'item_name_lower': item['item_name'].lower(),
                                 'quantity': item['quantity'],
                                 'rate': item['rate'],
+                                'user_id': user_id,
                                 'updated_at': item['updated_at']
                             })
                         
