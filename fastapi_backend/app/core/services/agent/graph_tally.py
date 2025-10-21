@@ -227,12 +227,95 @@ def calculate_price_with_percentage(base_price: float, percentage_adjustment: fl
         })
 
 
+def send_whatsapp_message_sync(phone_number: str, message: str) -> str:
+    """
+    Synchronous wrapper for sending WhatsApp messages.
+    This is called by the tool system.
+    """
+    try:
+        from app.core.services.whatsapp_service import whatsapp_service
+        import httpx
+        import os
+        
+        logger.info(
+            "AI agent sending WhatsApp message",
+            phone_number=phone_number,
+            message_preview=message[:50] + "..." if len(message) > 50 else message
+        )
+        
+        # Use synchronous HTTP client instead
+        token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+        phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+        
+        if not token or not phone_number_id:
+            return "❌ WhatsApp credentials not configured"
+        
+        url = f"https://graph.facebook.com/v24.0/{phone_number_id}/messages"
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": phone_number.replace("+", "").strip(),
+            "type": "text",
+            "text": {
+                "preview_url": False,
+                "body": message
+            }
+        }
+        
+        # Use sync httpx client
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(url, json=payload, headers=headers)
+            response_data = response.json()
+            
+            if response.status_code == 200:
+                message_id = response_data.get("messages", [{}])[0].get("id")
+                logger.info("Message sent successfully", to=phone_number, message_id=message_id)
+                return f"✅ Message sent successfully to {phone_number}. Message ID: {message_id}"
+            else:
+                error = response_data.get("error", {}).get("message", "Unknown error")
+                logger.error("Failed to send message", status=response.status_code, error=error)
+                return f"❌ Failed to send message: {error}"
+    
+    except Exception as e:
+        logger.error("Error in WhatsApp tool", phone_number=phone_number, error=str(e), exc_info=True)
+        return f"❌ Error sending message: {str(e)}"
+
+
+@tool
+def send_whatsapp_message(phone_number: str, message: str) -> str:
+    """
+    Send a WhatsApp message to a user.
+    
+    Use this tool when you need to send a response or notification to a user via WhatsApp.
+    The phone number should include the country code without the + sign.
+    
+    Args:
+        phone_number: Recipient's phone number with country code (e.g., 919311626289 for India)
+        message: The text message to send
+    
+    Returns:
+        Success or error message
+    """
+    return send_whatsapp_message_sync(phone_number, message)
+
+
 # ============================================================================
 # LLM WITH TOOLS
 # ============================================================================
 
 # Define tools for LangChain
-langchain_tools = [search_product_by_name, search_party_by_name, calculate_price_with_percentage]
+langchain_tools = [
+    search_product_by_name, 
+    search_party_by_name, 
+    calculate_price_with_percentage,
+    send_whatsapp_message  # WhatsApp messaging tool
+]
 
 # Convert LangChain tools to OpenAI format for Groq
 def convert_langchain_tools_to_openai(tools):
@@ -265,6 +348,12 @@ Your role:
 - If a user mentions that he/she is from a party/customer, use the search_party_by_name tool to get party performance metric
 - If the user is just chatting casually, respond naturally without using tools
 - Always be polite and helpful
+
+WHATSAPP MESSAGING:
+- When you have a complete answer ready, use the send_whatsapp_message tool to send it to the user
+- The phone number will be provided in the context (from_number field)
+- After sending the WhatsApp message, confirm that the message was sent successfully
+- ALWAYS use the WhatsApp tool to send your final response - do NOT just return text
 
 IMPORTANT PRICING RULES:
 1. When a customer identifies themselves as being from a specific party/company:

@@ -21,7 +21,7 @@ from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monit
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.profiling import Timer, record_request_time
 
-from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections, friendships, stock_items
+from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections, friendships, stock_items, whatsapp
 from app.api.routes import emergency
 from app.core.config import settings
 from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
@@ -30,6 +30,11 @@ from app.core.memory import log_memory_usage, force_garbage_collection, take_mem
 from app.core.structured_logger import setup_structured_logging, get_structured_logger
 from app.core.config import settings
 from contextlib import asynccontextmanager
+
+# Ngrok support (optional) - COMMENTED OUT
+# ENABLE_NGROK = os.getenv("ENABLE_NGROK", "false").lower() == "true"
+# NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN", "")
+# NGROK_DOMAIN = os.getenv("NGROK_DOMAIN", "")  # Optional static domain
 
 
 # Setup structured logging based on environment
@@ -47,6 +52,33 @@ logger = get_structured_logger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("Starting application...")
+    
+    # Ngrok tunnel setup - COMMENTED OUT
+    # ngrok_listener = None
+    # if ENABLE_NGROK:
+    #     try:
+    #         import ngrok
+    #         logger.info("Setting up ngrok tunnel...")
+    #         ngrok.set_auth_token(NGROK_AUTH_TOKEN)
+    #         
+    #         # Use static domain if provided, otherwise use random URL
+    #         if NGROK_DOMAIN:
+    #             logger.info(f"Using static ngrok domain: {NGROK_DOMAIN}")
+    #             ngrok_listener = await ngrok.forward(8000, authtoken_from_env=True, domain=NGROK_DOMAIN)
+    #         else:
+    #             logger.info("Using random ngrok URL (will change on restart)")
+    #             ngrok_listener = await ngrok.forward(8000, authtoken_from_env=True)
+    #         
+    #         ngrok_url = ngrok_listener.url()
+    #         logger.info(f"🌐 Ngrok tunnel established: {ngrok_url}")
+    #         logger.info(f"📱 Use this URL for WhatsApp webhook: {ngrok_url}/api/whatsapp/webhook")
+    #         
+    #         if not NGROK_DOMAIN:
+    #             logger.warning("⚠️  URL will change on restart! Get a free static domain at: https://dashboard.ngrok.com/domains")
+    #     except ImportError:
+    #         logger.warning("ngrok package not installed. Install with: pip install ngrok")
+    #     except Exception as e:
+    #         logger.error(f"Failed to setup ngrok tunnel: {str(e)}")
     
     try:
         # Initialize Redis client
@@ -77,6 +109,15 @@ async def lifespan(app: FastAPI):
     finally:
         # Shutdown procedures
         logger.info("Shutting down application...")
+        
+        # Disconnect ngrok tunnel - COMMENTED OUT
+        # if ENABLE_NGROK and ngrok_listener:
+        #     try:
+        #         import ngrok
+        #         await ngrok.disconnect()
+        #         logger.info("Ngrok tunnel disconnected")
+        #     except Exception as e:
+        #         logger.error(f"Error disconnecting ngrok: {str(e)}")
         
         try:
             # Stop memory monitoring
@@ -355,6 +396,7 @@ app.include_router(profiling.router, prefix="/api", tags=["profiling"])
 app.include_router(enrichment_status.router, prefix="/api", tags=["enrichment_status"])  # Add enrichment status WebSocket router
 app.include_router(friendships.router, prefix="/api", tags=["friendships"])  # Add friendships router
 app.include_router(stock_items.router, prefix="/api/tally", tags=["stock_items"])  # Add stock items router
+app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["whatsapp"])  # WhatsApp Business API webhook
 app.include_router(emergency.router)  # Emergency memory cleanup
 
 @app.get("/")
