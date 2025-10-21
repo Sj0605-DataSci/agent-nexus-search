@@ -556,7 +556,7 @@ async def patch_feedback_for_thread_message(
 class TallyQueryRequest(BaseModel):
     query: str
 
-@router.post("/tally/chat")
+@router.post("/tally")
 async def tally_product_chat(
     request: TallyQueryRequest,
     chat_service: ChatService = Depends(get_chat_service)
