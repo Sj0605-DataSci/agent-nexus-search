@@ -1,21 +1,40 @@
 // Element references
 const loginSection = document.getElementById("loginSection");
-const profileContainer = document.getElementById("profileContainer");
+const profileSection = document.getElementById("profileSection");
+const connectingSection = document.getElementById("connectingSection");
 const profileName = document.getElementById("profileName");
 const profileImage = document.getElementById("profileImage");
-const spinner = document.getElementById("spinner");
 const signInBtn = document.getElementById("signinBtn");
 const syncButton = document.getElementById("syncButton");
-const signOutBtn = document.getElementById('signOutBtn');
-const reconnectButton = document.createElement('button');
-reconnectButton.id = 'reconnectButton';
-reconnectButton.className = 'primary-button';
-reconnectButton.textContent = 'Reconnect';
+const signOutBtn = document.getElementById("disconnectButton");
 
-const disconnectedBadge = document.createElement('div');
-disconnectedBadge.id = 'disconnectedBadge';
-disconnectedBadge.className = 'status-badge';
-disconnectedBadge.textContent = 'Disconnected';
+// UI State Management
+function showLogin() {
+  if (loginSection) loginSection.style.display = "block";
+  if (profileSection) profileSection.style.display = "none";
+  if (connectingSection) connectingSection.style.display = "none";
+}
+
+function showConnecting() {
+  if (loginSection) loginSection.style.display = "none";
+  if (profileSection) profileSection.style.display = "none";
+  if (connectingSection) connectingSection.style.display = "flex";
+}
+
+function showProfile() {
+  if (loginSection) loginSection.style.display = "none";
+  if (profileSection) profileSection.style.display = "block";
+  if (connectingSection) connectingSection.style.display = "none";
+}
+const reconnectButton = document.createElement("button");
+reconnectButton.id = "reconnectButton";
+reconnectButton.className = "primary-button";
+reconnectButton.textContent = "Reconnect";
+
+const disconnectedBadge = document.createElement("div");
+disconnectedBadge.id = "disconnectedBadge";
+disconnectedBadge.className = "status-badge";
+disconnectedBadge.textContent = "Disconnected";
 
 const logCookies = document.getElementById("logCookies");
 const resultsContainer = document.getElementById("resultsContainer");
@@ -113,34 +132,23 @@ async function getJSessionId() {
   if (_jsessionCache) return stripOuterQuotes(_jsessionCache);
   // Try to get from storage first
   const stored = await chrome.storage.local.get(JSESSION_STORAGE_KEY);
-  console.log("stored", stored);
-  _jsessionCache = stored[JSESSION_STORAGE_KEY] ?? null;
-
-  // If not found in storage, try to retrieve it automatically
+  if (stored.JSESSIONID_TOKEN) {
+    console.log("Found existing session in storage");
+    _jsessionCache = stored.JSESSIONID_TOKEN;
+    return _jsessionCache;
+  }
+  // If not found in storage, try to retrieve it from cookies
   if (!_jsessionCache) {
-    console.log(
-      "No JSESSIONID found in storage, attempting to retrieve automatically..."
-    );
+    console.log("No JSESSIONID found in storage, checking cookies...");
     try {
-      // Ask background script to retrieve JSESSIONID
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage(
-          { type: "linkedin-get-jsessionid" },
-          resolve
-        );
-      });
-
-      if (response?.ok && response.jsessionId) {
-        _jsessionCache = response.jsessionId;
-        console.log("Successfully retrieved JSESSIONID automatically");
+      _jsessionCache = await getJSessionFromCookies();
+      if (_jsessionCache) {
+        console.log("Retrieved JSESSIONID from cookies");
       } else {
-        console.log(
-          "Failed to retrieve JSESSIONID automatically",
-          response?.error || "Unknown error"
-        );
+        console.log("No valid JSESSIONID found in cookies");
       }
     } catch (error) {
-      console.error("Error retrieving JSESSIONID:", error);
+      console.error("Error retrieving JSESSIONID from cookies:", error);
     }
   }
 
@@ -184,116 +192,239 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Handle sign out
 async function signOutBtnClick(event) {
   const button = event.currentTarget;
   if (!button) return;
-  
+
   button.disabled = true;
-  
+
   try {
-    const { voyagerProfile } = await chrome.storage.local.get('voyagerProfile');
+    const { voyagerProfile } = await chrome.storage.local.get("voyagerProfile");
     showDisconnectedState(voyagerProfile);
   } catch (err) {
-    console.error('Sign out failed:', err);
+    console.error("Sign out failed:", err);
     button.disabled = false;
   }
 }
 
-async function initialize() {
-  // Show loading state
-  const profileContainer = document.getElementById("profileContainer");
-  const profileName = document.getElementById("profileName");
-  const profileImage = document.getElementById("profileImage");
+async function syncJSessionFromBrowser() {
+  try {
+    // Get all keys from browser's local storage
+    const keys = Object.keys(localStorage);
 
-  if (profileContainer && profileName && profileImage) {
-    profileName.textContent = "Loading profile...";
-    profileImage.src = "";
-    profileContainer.classList.remove("hidden");
-    document.getElementById("loginSection").hidden = true;
+    // Look for JSESSIONID key (case-insensitive)
+    const jsessionKey = keys.find((key) => key.toUpperCase() === "JSESSIONID");
+
+    if (jsessionKey) {
+      const browserSessionId = localStorage.getItem(jsessionKey);
+      if (browserSessionId && browserSessionId.startsWith("ajax:")) {
+        // Update extension's storage with the browser's JSESSIONID
+        await chrome.storage.local.set({ JSESSIONID_TOKEN: browserSessionId });
+        console.log("Synced JSESSIONID from browser to extension storage");
+        return browserSessionId;
+      }
+    }
+  } catch (error) {
+    console.error("Error syncing JSESSIONID from browser:", error);
+  }
+  return null;
+}
+
+async function getJSessionFromCookies() {
+  try {
+    // Get all cookies from LinkedIn domain
+    const cookies = await chrome.cookies.getAll({ domain: ".linkedin.com" });
+    console.log("cookies", cookies);
+    const jsessionCookie = cookies.find(
+      (cookie) => cookie.name === "JSESSIONID"
+    );
+
+    if (!jsessionCookie) return null;
+
+    // Remove any surrounding quotes from the cookie value
+    const cookieValue = jsessionCookie.value.replace(/^"|"$/g, "");
+    console.log("Processed cookie value:", cookieValue);
+
+    if (cookieValue.startsWith("ajax:")) {
+      await chrome.storage.local.set({ JSESSIONID_TOKEN: cookieValue });
+      console.log("Found and stored JSESSIONID from cookies");
+      return cookieValue;
+    }
+  } catch (error) {
+    console.error("Error getting JSESSIONID from cookies:", error);
+  }
+  return null;
+}
+
+async function initialize() {
+  try {
+    // Check for existing session first
+    const { JSESSIONID_TOKEN } = await chrome.storage.local.get("JSESSIONID_TOKEN");
+    
+    // If we have a session token, try to verify it and get fresh profile
+    if (JSESSIONID_TOKEN) {
+      showConnecting();
+      try {
+        const profileData = await verifyAndUpdateSession(JSESSIONID_TOKEN);
+        if (profileData) {
+          await showProfile(profileData);
+          return;
+        }
+      } catch (error) {
+        console.error("Session verification failed:", error);
+        // Continue to try with cached profile
+      }
+    }
+    
+    // If no valid session or verification failed, try to get JSESSIONID
+    const jsessionId = (await getJSessionFromCookies()) || (await syncJSessionFromBrowser());
+    if (jsessionId) {
+      showConnecting();
+      try {
+        const profileData = await verifyAndUpdateSession(jsessionId);
+        if (profileData) {
+          await showProfile(profileData);
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to verify session from cookies:", error);
+      }
+    }
+    
+    // If we get here, either no session or verification failed
+    // Check if we have cached profile data to show
+    const { voyagerProfile } = await chrome.storage.local.get("voyagerProfile");
+    if (voyagerProfile) {
+      await showProfile(voyagerProfile);
+      // Try to refresh profile in background if we have a session
+      if (JSESSIONID_TOKEN) {
+        fetchLatestProfile(JSESSIONID_TOKEN).catch(console.error);
+      }
+    } else {
+      showLogin();
+    }
+  } catch (error) {
+    console.error("Initialization error:", error);
+    showLogin();
+  }
+}
+
+async function verifyAndUpdateSession(sessionId) {
+  if (!sessionId) {
+    showLogin();
+    return false;
   }
 
+  showConnecting();
+
+  try {
+    // First try to get the profile using the session
+    const response = await fetch("https://www.linkedin.com/voyager/api/me", {
+      headers: {
+        "csrf-token": sessionId,
+        accept: "application/vnd.linkedin.normalized+json+2.1",
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Profile API request failed");
+    }
+
+    // If we get here, the session is valid
+    const profileData = await response.json();
+
+    // Update storage with the valid session and profile
+    await chrome.storage.local.set({
+      JSESSIONID_TOKEN: sessionId,
+      voyagerProfile: profileData,
+    });
+
+    // Update the UI with the profile data
+    await showProfile(profileData);
+    return profileData;
+  } catch (error) {
+    console.error("Error verifying session:", error);
+    // Clear invalid session data
+    await chrome.storage.local.remove([
+      "JSESSIONID_TOKEN",
+        "profile",
+        "voyagerProfile",
+      ]);
+      showLogin();
+      return false;
+    }
+  }
+
+  // Clean up any existing error messages
+  const existingError = document.querySelector(".error-message");
+  if (existingError) {
+    existingError.remove();
+  }
+
+  // Check if we have a valid session in storage
   const stored = await chrome.storage.local.get([
-    "profile",
-    "tokens",
-    "JSESSIONID_TOKEN",
     "voyagerProfile",
+    "JSESSIONID_TOKEN",
   ]);
 
-  // If voyagerProfile exists, show it immediately
-  if (stored.voyagerProfile) {
-    const loginSection = document.getElementById("loginSection");
-    const profileContainer = document.getElementById("profileContainer");
+  if (stored.voyagerProfile && stored.JSESSIONID_TOKEN) {
+    // If we have a valid session, show the profile
+    showProfile(stored.voyagerProfile);
+    if (loginSection) loginSection.hidden = true;
+    if (profileSection) profileSection.hidden = false;
 
-    if (loginSection && profileContainer) {
-      showProfile(stored.voyagerProfile);
-      loginSection.hidden = true;
-      profileContainer.classList.remove("hidden");
-      return;
-    }
-  }
+    // Load and display last sync time
+    loadLastSyncTime();
 
-  // If JSESSIONID exists (even if just "ajax:"), try to fetch profile
-  if (stored.JSESSIONID_TOKEN && stored.JSESSIONID_TOKEN.includes("ajax:")) {
-    try {
-      const voyagerProfile = await chrome.runtime.sendMessage({
-        type: "linkedin-get-voyager-profile",
-      });
-      if (voyagerProfile?.ok && voyagerProfile.profile) {
-        showProfile(voyagerProfile.profile);
-        loginSection.hidden = true;
-        profileSection.hidden = false;
-        return;
-      }
-    } catch (error) {
-      console.error("Voyager profile fetch failed:", error);
-    }
-  }
-
-  // Fallback to standard profile if available
-  if (stored.profile) {
-    showProfile(stored.profile);
-    loginSection.hidden = true;
-    profileSection.hidden = false;
+    // Check if we need to auto-sync
+    await autoSyncIfNeeded();
   } else {
-    loginSection.hidden = false;
-    profileSection.hidden = true;
+    // Otherwise show login
+    showLogin();
+    if (loginSection) loginSection.hidden = false;
+    if (profileSection) profileSection.hidden = true;
   }
 
-  // Bind sync button
-  const syncButton = document.getElementById("linkedinGetDataApiBtn");
-  console.log("syncButton 123", syncButton);
-  if (syncButton) {
-    syncButton.addEventListener("click", linkedinGetDataApiBtnClick);
+  // Initialize sync button event listener
+  const syncBtn = document.getElementById("linkedinGetDataApiBtn");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", linkedinGetDataApiBtnClick);
   }
 }
 
 // Update last sync time display
 function updateSyncTimes(lastSync) {
   if (!lastSync) return;
-  
-  const lastSyncTime = document.getElementById('lastSyncTime');
-  const nextSyncTime = document.getElementById('nextSyncTime');
-  
+
+  const lastSyncTime = document.getElementById("lastSyncTime");
+  const nextSyncTime = document.getElementById("nextSyncTime");
+
   if (lastSyncTime && nextSyncTime) {
     const options = {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     };
-    
+
     const lastSyncDate = new Date(lastSync);
     const nextSyncDate = new Date(lastSyncDate.getTime() + 60 * 60 * 1000);
-    
-    lastSyncTime.textContent = `Last sync: ${lastSyncDate.toLocaleString(undefined, options)}`;
-    nextSyncTime.textContent = `Next sync: ${nextSyncDate.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })}`;
+
+    lastSyncTime.textContent = `Last sync: ${lastSyncDate.toLocaleString(
+      undefined,
+      options
+    )}`;
+    nextSyncTime.textContent = `Next sync: ${nextSyncDate.toLocaleTimeString(
+      undefined,
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }
+    )}`;
   }
 }
 
@@ -375,50 +506,108 @@ async function updateUIWithExistingData() {
   }
 }
 
-function signinBtnClick() {
-  if (signInBtn.disabled) return;
+async function signinBtnClick() {
+  const button = document.getElementById("signinBtn");
+  if (!button || button.disabled) return;
 
-  signInBtn.disabled = true;
-  signInBtn.innerHTML = '<span class="spinner"></span> Checking...';
+  // Update button state
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span> Connecting...';
 
-  try {
-    spinner.hidden = false;
-    chrome.runtime.sendMessage({ type: "linkedin-signin" }, (res) => {
-      signInBtn.disabled = false;
-      spinner.hidden = true;
+  // Show connecting state
+  showConnecting();
 
-      if (res?.ok && res.profile) {
-        loginSection.hidden = true;
-        profileSection.hidden = false;
-        showProfile(res.profile);
-        updateConnectionCount();
-      } else {
-        const errorMsg = document.createElement("div");
-        errorMsg.textContent =
-          res?.error || "Sign in failed. Please try again.";
-        errorMsg.style.color = "#EF4444";
-        errorMsg.style.marginTop = "8px";
-        errorMsg.style.fontSize = "12px";
+  // Set up message listener for the response
+  const messageListener = (message) => {
+    if (message.type === "linkedin-signin-response") {
+      // Clean up the listener
+      chrome.runtime.onMessage.removeListener(messageListener);
 
-        // Clear any existing error messages
-        const existingError = signInBtn.nextElementSibling;
-        if (existingError && existingError.style.color === "#EF4444") {
-          signInBtn.parentNode.removeChild(existingError);
+      // Handle the response in the next tick to avoid potential race conditions
+      setTimeout(() => handleSignInResponse(message), 0);
+    }
+  };
+
+  // Add the message listener
+  chrome.runtime.onMessage.addListener(messageListener);
+
+  // Send the sign-in request
+  chrome.runtime.sendMessage({ type: "linkedin-signin" }).catch((error) => {
+    console.error("Failed to send sign-in message:", error);
+    handleSignInError("Failed to start sign-in process");
+  });
+
+  // Set a timeout to handle cases where we don't get a response
+  setTimeout(() => {
+    if (button.disabled) {
+      // If still waiting for response
+      chrome.runtime.onMessage.removeListener(messageListener);
+      handleSignInError("Sign-in timed out. Please try again.");
+    }
+  }, 60000); // 60 second timeout
+
+  async function handleSignInResponse(response) {
+    try {
+      if (response?.ok) {
+        // Success - show profile
+        if (response.voyagerProfile) {
+          await chrome.storage.local.set({
+            voyagerProfile: response.voyagerProfile,
+          });
+        }
+        if (response.profile) {
+          await chrome.storage.local.set({ profile: response.profile });
+        }
+        if (response.jsessionId) {
+          await chrome.storage.local.set({
+            JSESSIONID_TOKEN: response.jsessionId,
+          });
         }
 
-        signInBtn.parentNode.insertBefore(errorMsg, signInBtn.nextSibling);
-
-        setTimeout(() => {
-          if (errorMsg.parentNode) {
-            errorMsg.parentNode.removeChild(errorMsg);
-          }
-        }, 5000);
+        // Show the profile section
+        const profile = response.voyagerProfile || response.profile;
+        if (profile) {
+          showProfile(profile);
+          updateConnectionCount();
+        } else {
+          throw new Error("No profile data received");
+        }
+      } else {
+        throw new Error(response?.error || "Sign in failed. Please try again.");
       }
-    });
-  } catch (error) {
-    console.error("Error during sign-in:", error);
-    signInBtn.disabled = false;
-    spinner.hidden = true;
+    } catch (error) {
+      handleSignInError(error.message);
+    }
+  }
+
+  function handleSignInError(errorMessage) {
+    console.error("Sign-in error:", errorMessage);
+    showLogin();
+
+    // Reset button state
+    button.disabled = false;
+    button.textContent = "Sign in with LinkedIn";
+
+    // Show error message
+    const errorMsg = document.createElement("div");
+    errorMsg.textContent =
+      errorMessage || "An unexpected error occurred. Please try again.";
+    errorMsg.style.color = "#EF4444";
+    errorMsg.style.marginTop = "8px";
+    errorMsg.style.fontSize = "12px";
+
+    // Clear any existing error messages
+    const existingError = button.nextElementSibling;
+    if (existingError && existingError.style.color === "#EF4444") {
+      existingError.remove();
+    }
+
+    button.parentNode.insertBefore(errorMsg, button.nextSibling);
+    setTimeout(() => {
+      if (errorMsg.parentNode) {
+        errorMsg.remove();
+      }
+    }, 5000);
   }
 }
 
@@ -647,69 +836,127 @@ async function linkedinGetDataApiBtnClick() {
   }
 }
 
-function showProfile(profile) {
-  const profileContainer = document.getElementById("profileContainer");
+async function fetchLatestProfile(sessionId) {
+  try {
+    const response = await fetch("https://www.linkedin.com/voyager/api/me", {
+      headers: {
+        "csrf-token": sessionId,
+        accept: "application/vnd.linkedin.normalized+json+2.1",
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) throw new Error("Failed to fetch profile");
+
+    const profileData = await response.json();
+
+    // Update storage with the latest profile data
+    await chrome.storage.local.set({
+      voyagerProfile: profileData,
+      lastUpdated: new Date().toISOString(),
+    });
+
+    // Update the UI if we're still on the profile view
+    if (!document.getElementById("loginSection").hidden) {
+      showProfile(profileData);
+    }
+
+    return profileData;
+  } catch (error) {
+    console.error("Error fetching latest profile:", error);
+    throw error;
+  }
+}
+
+async function showProfile(profileData) {
   const profileImage = document.getElementById("profileImage");
   const profileName = document.getElementById("profileName");
+  const loginSection = document.getElementById("loginSection");
 
-  if (!profileContainer || !profileImage || !profileName) {
+  if (!profileImage || !profileName) {
     console.error("Profile elements not found");
     return;
   }
 
-  // Extract profile info from Voyager response
-  const miniProfile = profile?.included?.[0];
-  const fullName = miniProfile
-    ? `${miniProfile.firstName} ${miniProfile.lastName}`
-    : "Unknown";
+  // Show the profile immediately with the provided data
+  if (profileData) {
+    const miniProfile = profileData?.included?.[0];
+    const fullName = miniProfile
+      ? `${miniProfile.firstName} ${miniProfile.lastName}`
+      : "Unknown";
 
-  // Update profile display
-  profileImage.src = miniProfile?.picture || "";
-  profileName.textContent = fullName;
+    // Update the UI
+    profileImage.src = miniProfile?.picture || "";
+    profileName.textContent = fullName;
 
-  // Show profile container
-  profileContainer.classList.remove("hidden");
-  document.getElementById("loginSection").hidden = true;
+    // Show the profile section
+    if (loginSection) loginSection.hidden = true;
+
+    // In the background, check if we should refresh the profile
+    const { JSESSIONID_TOKEN } = await chrome.storage.local.get(
+      "JSESSIONID_TOKEN"
+    );
+    if (JSESSIONID_TOKEN) {
+      fetchLatestProfile(JSESSIONID_TOKEN).catch(console.error);
+    }
+  } else {
+    // If no profile data provided, try to load from storage
+    const { voyagerProfile } = await chrome.storage.local.get("voyagerProfile");
+    if (voyagerProfile) {
+      showProfile(voyagerProfile);
+    } else {
+      showLogin();
+    }
+  }
 }
 
 function showDisconnectedState(profile) {
   const miniProfile = profile?.included?.[0];
-  const profileContainer = document.getElementById('profileContainer');
+  const profileContainer = document.getElementById("profileContainer");
 
   if (!profileContainer) return;
 
   // Clear previous content and apply a class for styling
-  profileContainer.innerHTML = '';
-  profileContainer.className = 'disconnected-container'; // Add a specific class
+  profileContainer.innerHTML = "";
+  profileContainer.className = "disconnected-container"; // Add a specific class
 
-  const profileImage = document.createElement('img');
-  profileImage.src = miniProfile?.picture || '';
-  profileImage.alt = `${miniProfile?.firstName || ''} ${miniProfile?.lastName || ''}`;
-  profileImage.className = 'size-20 rounded-full';
+  const profileImage = document.createElement("img");
+  profileImage.src = miniProfile?.picture || "";
+  profileImage.alt = `${miniProfile?.firstName || ""} ${
+    miniProfile?.lastName || ""
+  }`;
+  profileImage.className = "size-20 rounded-full";
 
-  const profileName = document.createElement('h3');
-  profileName.className = 'text-center text-2xl font-medium';
-  profileName.textContent = `${miniProfile?.firstName || ''} ${miniProfile?.lastName || ''}`;
+  const profileName = document.createElement("h3");
+  profileName.className = "text-center text-2xl font-medium";
+  profileName.textContent = `${miniProfile?.firstName || ""} ${
+    miniProfile?.lastName || ""
+  }`;
 
-  const reconnectButton = document.createElement('button');
-  reconnectButton.id = 'reconnectButton';
-  reconnectButton.className = 'primary-button-green';
-  reconnectButton.textContent = 'Connect this account';
+  const reconnectButton = document.createElement("button");
+  reconnectButton.id = "reconnectButton";
+  reconnectButton.className = "primary-button-green";
+  reconnectButton.textContent = "Connect this account";
 
-  const differentAccountLink = document.createElement('a');
-  differentAccountLink.href = 'https://linkedin.com';
-  differentAccountLink.target = '_blank';
-  differentAccountLink.rel = 'noreferrer';
-  differentAccountLink.className = 'text-button';
+  const differentAccountLink = document.createElement("a");
+  differentAccountLink.href = "https://linkedin.com";
+  differentAccountLink.target = "_blank";
+  differentAccountLink.rel = "noreferrer";
+  differentAccountLink.className = "text-button";
   differentAccountLink.innerHTML = `Or log in to a different account <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 7h10v10M7 17 17 7'/%3E%3C/svg%3E" alt="Arrow up right" style="display: inline-block; vertical-align: middle; margin-left: 4px;">`;
 
-  profileContainer.append(profileImage, profileName, reconnectButton, differentAccountLink);
+  profileContainer.append(
+    profileImage,
+    profileName,
+    reconnectButton,
+    differentAccountLink
+  );
 
-  profileContainer.classList.remove('hidden');
-  document.getElementById('loginSection').hidden = true;
+  profileContainer.classList.remove("hidden");
+  document.getElementById("loginSection").hidden = true;
 
   // Add event listener for reconnect
-  reconnectButton.addEventListener('click', () => {
+  reconnectButton.addEventListener("click", () => {
     // Instead of hiding, let's trigger the sign-in flow again
     signinBtnClick();
   });

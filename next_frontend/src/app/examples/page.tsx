@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import HomeHeader from "@/components/Homepage/Header";
-import Footer from "@/components/Homepage/Footer";
+import Navbar from "@/components/Homepage/Navbar";
+import NewFooter from "@/components/Footer/NewFooter";
 
 export const metadata = {
   title: "Examples | DiscoverMinds.ai",
@@ -11,9 +11,8 @@ export const metadata = {
 export default function ExamplesPage() {
   return (
     <>
-      <HomeHeader />
+      <Navbar />
       <div className="min-h-screen bg-white">
-        {/* Hero Section */}
         <section className="pt-32 pb-20 px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-6xl md:text-8xl font-bold text-gray-900 mb-8 leading-tight">
@@ -27,7 +26,6 @@ export default function ExamplesPage() {
           </div>
         </section>
 
-        {/* Search Examples */}
         <section className="py-20 px-4">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-16 text-center">
@@ -35,7 +33,6 @@ export default function ExamplesPage() {
             </h2>
 
             <div className="space-y-16">
-              {/* Example 1 */}
               <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                   <div>
@@ -59,7 +56,6 @@ export default function ExamplesPage() {
                 </div>
               </div>
 
-              {/* Example 2 */}
               <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                   <div className="order-2 md:order-1 text-center">
@@ -85,7 +81,6 @@ export default function ExamplesPage() {
                 </div>
               </div>
 
-              {/* Example 3 */}
               <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                   <div>
@@ -109,7 +104,6 @@ export default function ExamplesPage() {
                 </div>
               </div>
 
-              {/* Example 4 */}
               <div className="bg-gray-50 rounded-2xl p-8 md:p-12">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                   <div className="order-2 md:order-1 text-center">
@@ -137,7 +131,6 @@ export default function ExamplesPage() {
           </div>
         </section>
 
-        {/* Stats Section */}
         <section className="py-20 px-4 bg-gray-900 text-white">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl md:text-6xl font-bold mb-16 text-center">
@@ -163,7 +156,6 @@ export default function ExamplesPage() {
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="py-20 px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8">
@@ -181,7 +173,7 @@ export default function ExamplesPage() {
           </div>
         </section>
       </div>
-      <Footer />
+      <NewFooter />
     </>
   );
 }

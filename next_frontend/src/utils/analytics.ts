@@ -1,4 +1,31 @@
 import posthog from "posthog-js";
+import { updatePostHogUserProperties } from "@/utils/posthog-helpers";
+
+// Define flow stages for tracking user journeys
+export type UserFlowStage =
+  | "landing_page_view"
+  | "signup_started"
+  | "signup_completed"
+  | "login_started"
+  | "login_completed"
+  | "profile_view"
+  | "search_started"
+  | "search_results_view"
+  | "connection_view"
+  | "connection_request_sent"
+  | "checkout_started"
+  | "checkout_completed"
+  | "feature_discovery"
+  | "settings_changed";
+
+// Define user flow types
+export type UserFlowType =
+  | "onboarding"
+  | "search"
+  | "connection"
+  | "profile_completion"
+  | "subscription"
+  | "feature_exploration";
 
 /**
  * Utility functions for tracking analytics events
@@ -99,7 +126,7 @@ export const Analytics = {
    * Set user properties that will persist
    */
   setUserProperties: (properties: Record<string, any>) => {
-    posthog.people.set(properties);
+    updatePostHogUserProperties(properties);
   },
 
   /**
@@ -117,6 +144,100 @@ export const Analytics = {
     // posthog.people.set({
     //   [property]: value // This sets the absolute value, not increments
     // });
+  },
+
+  /**
+   * Track a user flow stage
+   * This helps visualize the user journey through the application
+   */
+  trackUserFlow: (
+    flowType: UserFlowType,
+    stage: UserFlowStage,
+    properties?: Record<string, any>
+  ) => {
+    posthog.capture("user_flow_progression", {
+      flow_type: flowType,
+      flow_stage: stage,
+      timestamp: new Date().toISOString(),
+      ...properties,
+    });
+  },
+
+  /**
+   * Start tracking a user flow
+   * Call this at the beginning of a flow to mark its start
+   */
+  startUserFlow: (flowType: UserFlowType, properties?: Record<string, any>) => {
+    // Store the flow start time in session storage
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(`flow_start_${flowType}`, new Date().toISOString());
+    }
+
+    posthog.capture("user_flow_started", {
+      flow_type: flowType,
+      timestamp: new Date().toISOString(),
+      ...properties,
+    });
+  },
+
+  /**
+   * Complete a user flow
+   * Call this at the end of a flow to mark its completion and calculate duration
+   */
+  completeUserFlow: (flowType: UserFlowType, properties?: Record<string, any>) => {
+    let duration = 0;
+    let startTime = null;
+
+    // Retrieve the flow start time from session storage
+    if (typeof window !== "undefined") {
+      const storedStartTime = sessionStorage.getItem(`flow_start_${flowType}`);
+      if (storedStartTime) {
+        startTime = new Date(storedStartTime);
+        const endTime = new Date();
+        duration = endTime.getTime() - startTime.getTime();
+
+        // Clean up storage
+        sessionStorage.removeItem(`flow_start_${flowType}`);
+      }
+    }
+
+    posthog.capture("user_flow_completed", {
+      flow_type: flowType,
+      timestamp: new Date().toISOString(),
+      duration_ms: duration,
+      start_time: startTime ? startTime.toISOString() : null,
+      ...properties,
+    });
+  },
+
+  /**
+   * Track a page view with enhanced context
+   * This provides more context than the default page view tracking
+   */
+  trackPageView: (pageName: string, pageCategory?: string, properties?: Record<string, any>) => {
+    posthog.capture("$pageview", {
+      page_name: pageName,
+      page_category: pageCategory,
+      url: typeof window !== "undefined" ? window.location.href : null,
+      path: typeof window !== "undefined" ? window.location.pathname : null,
+      referrer: typeof document !== "undefined" ? document.referrer : null,
+      ...properties,
+    });
+  },
+
+  /**
+   * Track user engagement metrics
+   */
+  trackEngagement: (
+    engagementType: string,
+    duration?: number,
+    properties?: Record<string, any>
+  ) => {
+    posthog.capture("user_engagement", {
+      engagement_type: engagementType,
+      duration_seconds: duration,
+      ...properties,
+    });
   },
 };
 

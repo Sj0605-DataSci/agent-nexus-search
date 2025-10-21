@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { supabaseHandler } from "../../supabaseClient";
+import { supabaseHandler } from "@/integrations/supabase/client";
 import { setAuthToken } from "@/integrations/fastapi/client";
 
 type AuthErrorType =
@@ -18,8 +18,8 @@ type AuthErrorType =
 function AuthErrorContent() {
   const router = useRouter();
   const sp = useSearchParams();
-  const error = (sp.get("error") as AuthErrorType) ?? "auth_error";
-  const errorDescription = sp.get("error_description") ?? "";
+  const error = (sp?.get("error") as AuthErrorType) ?? "auth_error";
+  const errorDescription = sp?.get("error_description") ?? "";
   const [isProcessing, setIsProcessing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 

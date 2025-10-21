@@ -1,0 +1,71 @@
+/* Critical CSS for above-the-fold content - Inline this in production */
+/* This reduces FCP by ensuring critical styles load immediately */
+
+/* Font face declarations */
+@font-face {
+  font-family: "Inter-fallback";
+  src: local("Arial");
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+/* Base styles */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #0f1729;
+  font-family:
+    "Inter-fallback",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* Header styles for immediate render */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding-top: 1.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Hero section critical styles */
+.hero-section {
+  padding-top: 10rem;
+  padding-bottom: 0;
+}
+
+/* Button critical styles */
+.btn-primary {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  border-radius: 0.75rem;
+  color: white;
+  background-color: #0e3d15;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #1f3a21;
+}
+
+/* Prevent layout shift */
+img {
+  max-width: 100%;
+  height: auto;
+}

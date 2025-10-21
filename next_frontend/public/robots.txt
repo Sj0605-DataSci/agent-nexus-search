@@ -1,14 +1,6 @@
-User-agent: Googlebot
-Allow: /
+# Staging/Development robots.txt
+# This environment is not intended for search engine indexing
 
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Block all crawlers
 User-agent: *
-Allow: /
+Disallow: /

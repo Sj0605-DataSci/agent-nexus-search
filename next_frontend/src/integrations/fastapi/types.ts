@@ -9,9 +9,6 @@ export interface UsageStats {
   period_days: number;
   total_searches: number;
   basic_searches: number;
-  deep_searches: number;
-  total_credits_used: number;
-  total_credits_purchased: number;
 }
 
 // Agent Template types
@@ -86,10 +83,11 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
-  has_connections: boolean;
+  has_connections: "synced" | "syncing" | "no_data";
   hired_agents?: string[];
   linkedin_url?: string;
   email_subscription?: boolean;
+  founders_connection?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -121,6 +119,7 @@ export interface ProfileUpdate {
   full_name?: string;
   linkedin_url?: string;
   email_subscription?: boolean;
+  founders_connection?: boolean;
 }
 
 // Chat types
@@ -133,7 +132,7 @@ export interface Source {
 }
 
 export interface ChatRequest {
-  agent_id: string;
+  agent_id?: string;
   messages: string | Array<{ content: string; type: string }>;
   format?: string;
   search_mode?: string;
@@ -142,7 +141,7 @@ export interface ChatRequest {
 }
 
 export interface StreamingChatRequest extends ChatRequest {
-  stream: boolean;
+  stream?: boolean;
 }
 
 export interface ChatResponse {
@@ -161,7 +160,14 @@ export interface StreamingChatUpdate {
     | "done"
     | "error"
     | "token"
-    | "connected";
+    | "connected"
+    | "thread_id"
+    | "sql_search_results"
+    | "vector_search_results"
+    | "fusion_ranking"
+    | "query_analysis"
+    | "sql_query"
+    | "final_answer";
   content: any;
 }
 
@@ -173,3 +179,48 @@ export interface ChatThread {
   last_message_at: string;
   weave_url?: string;
 }
+
+// Friend invitation types
+export interface InvitedFriend {
+  email: string;
+  profile_id: string;
+  status: string;
+}
+
+export interface InviteFriendsData {
+  invited: InvitedFriend[];
+  existing_friends: any[];
+  errors: any[];
+}
+
+export interface InviteFriendsResponse extends ApiResponse<InviteFriendsData> {}
+
+// Friendship types
+export type FriendshipStatus = "accepted" | "pending" | "sent" | "rejected";
+
+export interface Friendship {
+  id: string;
+  user_id: string; // ID of the user who initiated the friendship
+  full_name: string;
+  email: string;
+  linkedin_url?: string;
+  headline?: string;
+  friendship_id: string;
+  status: FriendshipStatus;
+  linkedin_profile_photo?: string;
+  created_at: string;
+}
+
+export interface FriendshipsData {
+  accepted: Friendship[];
+  pending: Friendship[];
+  sent: Friendship[];
+  total_friends: number;
+  total_pending: number;
+  total_sent: number;
+}
+
+export interface FetchFriendshipsResponse extends ApiResponse<FriendshipsData> {}
+
+export interface FriendshipActionResponse
+  extends ApiResponse<{ friendship_id: string; status: FriendshipStatus }> {}

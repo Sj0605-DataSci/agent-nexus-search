@@ -3,51 +3,148 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  FiLogOut,
-  FiLogIn,
-  FiChevronLeft,
-  FiChevronRight,
-  FiMessageSquare,
-  FiShoppingBag,
-  FiUsers,
-  FiUser,
-  FiSmile,
-  FiZap,
-  FiPlus,
-  FiMenu,
-  FiX,
-  FiGlobe,
-  FiAlertTriangle,
-  FiSearch,
-} from "react-icons/fi";
-import React, { useEffect, useState, useRef, useCallback, Suspense, lazy } from "react";
+import { FiUsers, FiSmile, FiZap, FiMenu, FiX, FiGlobe, FiSearch } from "react-icons/fi";
+import { PiSidebarSimple } from "react-icons/pi";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  Suspense,
+  lazy,
+  useMemo,
+  memo,
+} from "react";
+import "@/styles/scrollbar-hide.css";
 import posthog from "posthog-js";
-
+import { apiClient } from "@/integrations/fastapi/client";
+import { useAppDispatch, useAppSelector } from "@/store";
+import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
+import { fetchChatThreads, loadMoreChatThreads } from "@/store/chatThreadsSlice";
+import { fetchFriendships } from "@/store/friendshipsSlice";
+import { clearProfile } from "@/store/profileSlice";
+import { Button } from "@/components/ui/button";
+import { ChatThread } from "@/integrations/fastapi/types";
+import { supabase, supabaseHandler } from "@/integrations/supabase/client";
+import ChatThreadsList from "./ChatThreadsList";
+import SidebarProfile from "./SidebarProfile";
+import { resetChatThreads } from "@/store/chatThreadsSlice";
+import { resetAgents } from "@/store/agentsSlice";
 const LogoutConfirmation = lazy(() =>
   import("@/components/ui/LogoutConfirmation").then(module => ({
     default: module.LogoutConfirmation,
   }))
 );
-import { apiClient } from "@/integrations/fastapi/client";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { toggleSidebar, selectSidebarCollapsed } from "@/store/uiSlice";
-import { fetchChatThreads, loadMoreChatThreads, setLoading } from "@/store/chatThreadsSlice";
-import { clearProfile } from "@/store/profileSlice";
-import { Button } from "@/components/ui/button";
-import ShimmerLoader from "./ShimmerLoader";
-import { ChatThread } from "@/integrations/fastapi/types";
-import { supabaseHandler } from "@/app/supabaseClient";
 
-const isAuthenticated = () => {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("discover_minds_access_token");
-};
+const NavigationItems = memo(
+  ({
+    navItems,
+    pathname,
+    collapsed,
+    isMobile,
+  }: {
+    navItems: Array<{ href: string; label: string; icon: React.ReactNode; notification?: boolean }>;
+    pathname: string | null;
+    collapsed: boolean;
+    isMobile: boolean;
+  }) => (
+    <ul className="space-y-[2px] mt-2 pb-3">
+      {navItems.map(({ href, label, icon, notification }) => (
+        <li key={href}>
+          <Link
+            prefetch={true}
+            href={href}
+            className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
+          ${collapsed && !isMobile ? "justify-center" : "gap-3 pl-2 pr-4"}
+          ${
+            pathname && pathname.startsWith(href)
+              ? "bg-indigo-100 text-indigo-700"
+              : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+          }
+        `}
+          >
+            <span className="relative group">
+              <span className="text-lg">{icon}</span>
+            </span>
+            {(!collapsed || isMobile) && (
+              <span className="flex items-center gap-2">
+                {label}
+                {notification && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
+              </span>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+);
+
+NavigationItems.displayName = "NavigationItems";
+
+const ThreadsSection = memo(
+  ({
+    recentThreads,
+    isInitialLoading,
+    loadingMoreThreads,
+    loadingThreads,
+    hasMoreThreads,
+    collapsed,
+    isMobile,
+    loadMoreThreads,
+    getThreadPreview,
+  }: {
+    recentThreads: ChatThread[];
+    isInitialLoading: boolean;
+    loadingMoreThreads: boolean;
+    loadingThreads: boolean;
+    hasMoreThreads: boolean;
+    collapsed: boolean;
+    isMobile: boolean;
+    loadMoreThreads: () => void;
+    getThreadPreview: (thread: ChatThread) => string;
+  }) => {
+    if (!recentThreads || recentThreads.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mb-4">
+        {(!collapsed || isMobile) && (
+          <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
+        )}
+        <div className="rounded-md mb-1">
+          <ChatThreadsList
+            threads={recentThreads}
+            initialLoading={isInitialLoading}
+            loadingMoreThreads={loadingMoreThreads}
+            loadingThreads={loadingThreads}
+            hasMoreThreads={hasMoreThreads}
+            collapsed={collapsed}
+            isMobile={isMobile}
+            loadMoreThreads={loadMoreThreads}
+            getThreadPreview={getThreadPreview}
+          />
+        </div>
+      </div>
+    );
+  }
+);
+
+ThreadsSection.displayName = "ThreadsSection";
 
 const Sidebar = () => {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const dispatch = useAppDispatch();
-  const profile = useAppSelector(state => state.profile.profile);
+
+  const { profile, loading: profileLoading } = useAppSelector(state => state.profile);
+
+  const [cachedProfile, setCachedProfile] = useState(profile);
+
+  useEffect(() => {
+    if (profile) {
+      setCachedProfile(profile);
+    }
+  }, [profile]);
   const router = useRouter();
   const pathname = usePathname();
   const [touchStartX, setTouchStartX] = useState(0);
@@ -62,45 +159,70 @@ const Sidebar = () => {
     hasMore: hasMoreThreads,
   } = useAppSelector(state => state.chatThreads);
   const [loadingMoreThreads, setLoadingMoreThreads] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const threadsFetchedRef = useRef(false);
+  const isUserQueryRoute = pathname?.includes("user-query");
+  const isInitialLoading = loadingThreads && recentThreads.length === 0;
 
-  const fetchThreads = () => {
-    if (!profile?.id) return;
+  const { data: friendshipsData } = useAppSelector(state => state.friendships);
 
-    setInitialLoading(true);
-    dispatch(fetchChatThreads()).finally(() => {
-      setInitialLoading(false);
-    });
-  };
+  const navItems = useMemo(() => {
+    const hasPendingFriendRequests =
+      friendshipsData.pending.some(f => f.user_id !== (cachedProfile || profile)?.id) &&
+      friendshipsData.total_pending > 0;
 
-  const loadMoreThreads = useCallback(() => {
-    if (!profile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+    const items = [
+      { href: "/connections", label: "Connections", icon: <FiGlobe /> },
+      {
+        href: "/friends",
+        label: "Friends",
+        icon: <FiSmile />,
+        notification: hasPendingFriendRequests,
+      },
+      { href: "/groups", label: "Groups", icon: <FiUsers /> },
+      { href: "/research-person", label: "Research a person", icon: <FiSearch /> },
+      { href: "/agents", label: "Agents", icon: <FiZap /> },
+    ];
 
-    setLoadingMoreThreads(true);
-    dispatch(setLoading(false));
-    dispatch(loadMoreChatThreads())
-      .then(() => {
-        console.log("Successfully loaded more threads");
-      })
-      .catch(error => {
-        console.error("Error loading more threads:", error);
-      })
-      .finally(() => {
-        setTimeout(() => {
-          setLoadingMoreThreads(false);
-        }, 300);
+    return items;
+  }, [profile?.id, cachedProfile, friendshipsData]);
+
+  const getThreadPreview = useCallback((thread: ChatThread) => {
+    if (thread.title) return thread.title;
+    return `Chat ${thread.id.substring(0, 8)}`;
+  }, []);
+
+  const fetchThreads = useCallback(() => {
+    const effectiveProfile = cachedProfile || profile;
+    if (!effectiveProfile?.id) return;
+    dispatch(fetchChatThreads());
+  }, [dispatch, profile?.id, cachedProfile]);
+
+  const loadMoreThreads = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+
+      const effectiveProfile = cachedProfile || profile;
+      if (!effectiveProfile?.id || !hasMoreThreads || loadingMoreThreads || loadingThreads) return;
+
+      setLoadingMoreThreads(true);
+      dispatch(loadMoreChatThreads()).finally(() => {
+        setLoadingMoreThreads(false);
       });
-  }, [hasMoreThreads, loadingMoreThreads, dispatch]);
+    },
+    [hasMoreThreads, loadingMoreThreads, dispatch, profile?.id, cachedProfile, loadingThreads]
+  );
 
   useEffect(() => {
-    if (profile?.id && !threadsFetchedRef.current) {
+    const effectiveProfile = cachedProfile || profile;
+    if (effectiveProfile?.id && !threadsFetchedRef.current) {
       fetchThreads();
+      dispatch(fetchFriendships("all"));
       threadsFetchedRef.current = true;
     }
-  }, [profile?.id]);
+  }, [profile?.id, cachedProfile, fetchThreads]);
 
   useEffect(() => {
     setIsMobileSidebarOpen(false);
@@ -126,37 +248,25 @@ const Sidebar = () => {
     };
   }, [isMobileSidebarOpen]);
 
-  const getThreadPreview = (thread: ChatThread) => {
-    if (thread.title) return thread.title;
-    return `Chat ${thread.id.substring(0, 8)}`;
-  };
-
-  const navItems = [
-    { href: "/agents", label: "Agents", icon: <FiZap /> },
-    { href: "/connections", label: "Connections", icon: <FiGlobe /> },
-    { href: "/friends", label: "Friends", icon: <FiSmile /> },
-    { href: "/groups", label: "Groups", icon: <FiUsers /> },
-  ];
-
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     setIsLoggingOut(true);
     try {
       await apiClient.logout();
-      // Clear local storage and state
-      localStorage.removeItem("discover_minds_access_token");
-      localStorage.removeItem("discover_minds_refresh_token");
+      await supabase.auth.signOut();
+      localStorage.clear();
+      dispatch(resetChatThreads());
+      dispatch(resetAgents());
       dispatch(clearProfile());
-      await supabaseHandler.auth.signOut();
       posthog.reset();
-      // Redirect to auth page
-      router.push("/user-auth");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      router.replace("/user-auth");
+      localStorage.clear();
       setIsLoggingOut(false);
       setShowLogoutConfirm(false);
     }
-  };
+  }, [dispatch, router]);
 
   const toggleMobileSidebar = useCallback(() => {
     if (isMobileSidebarOpen) {
@@ -172,29 +282,32 @@ const Sidebar = () => {
     }
   }, [isMobileSidebarOpen]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     setTouchStartX(e.targetTouches[0].clientX);
-  };
+  }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     setTouchEndX(e.targetTouches[0].clientX);
-  };
+  }, []);
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
     if (touchStartX - touchEndX > 50 && isMobileSidebarOpen) {
       toggleMobileSidebar();
     } else if (touchEndX - touchStartX > 50 && !isMobileSidebarOpen) {
       toggleMobileSidebar();
     }
-  };
+  }, [touchStartX, touchEndX, isMobileSidebarOpen, toggleMobileSidebar]);
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      toggleMobileSidebar();
-    }
-  };
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        toggleMobileSidebar();
+      }
+    },
+    [toggleMobileSidebar]
+  );
 
-  const MobileHeader = () => (
+  const MobileHeader = memo(() => (
     <header
       className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-sm border-b border-gray-200/80 shadow-sm"
       onTouchStart={handleTouchStart}
@@ -205,270 +318,134 @@ const Sidebar = () => {
         <Button
           onClick={toggleMobileSidebar}
           variant="ghost"
-          size="icon"
-          className="h-12 w-12 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100"
+          className="h-16 w-16 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-transparent active:bg-gray-100 flex items-center justify-center"
           aria-label={isMobileSidebarOpen ? "Close menu" : "Open menu"}
         >
-          {isMobileSidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          {isMobileSidebarOpen ? (
+            <FiX size={40} style={{ width: "40px", height: "40px" }} />
+          ) : (
+            <PiSidebarSimple size={26} style={{ width: "28px", height: "28px" }} />
+          )}
         </Button>
-        <Link
-          href="/chat/new"
-          className="flex items-center justify-center h-12 px-4 -mr-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 active:bg-indigo-50 rounded-lg transition-colors"
-        >
-          New Chat
-        </Link>
+        {profile?.id && (
+          <Link
+            href="/chat/new"
+            className="flex items-center justify-center h-12 px-4 -mr-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 active:bg-indigo-50 rounded-lg transition-colors"
+          >
+            New Chat
+          </Link>
+        )}
       </div>
     </header>
-  );
+  ));
+
+  MobileHeader.displayName = "MobileHeader";
 
   interface SidebarContentProps {
     isMobile?: boolean;
   }
 
-  const SidebarContent: React.FC<SidebarContentProps> = ({ isMobile = false }) => (
-    <div
-      className="flex flex-col h-full overflow-y-auto overscroll-contain"
-      style={{ WebkitOverflowScrolling: "touch" }}
-    >
+  const SidebarContent: React.FC<SidebarContentProps> = memo(({ isMobile = false }) => {
+    return (
       <div
-        className={`flex items-center justify-between pl-2 py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
+        className="flex flex-col h-full overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
-        <Link prefetch={true} href="/chat/new" className="flex items-center h-8 gap-2 group">
-          <Image
-            src="/icon.png"
-            alt="Logo"
-            width={32}
-            height={32}
-            className="w-8 h-8 object-contain rounded-md min-h-8 min-w-8"
-          />
-          {(!collapsed || isMobile) && (
-            <span className="text-lg font-bold tracking-tight group-hover:text-indigo-500">
-              DiscoverMinds.ai
-            </span>
-          )}
-        </Link>
-        {isMobile ? (
-          <Button
-            onClick={toggleMobileSidebar}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-500 hover:text-gray-700"
-          >
-            <FiX size={18} />
-          </Button>
-        ) : (
-          <button
-            onClick={() => dispatch(toggleSidebar())}
-            className="text-gray-500 mr-1 hover:text-gray-700"
-            title={collapsed ? "Expand" : "Collapse"}
-          >
-            {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
-          </button>
-        )}
-      </div>
-
-      {/* New Chat Button */}
-      <div className="px-3 py-2">
-        <Link
-          href="/chat/new"
-          prefetch={true}
-          className={`w-full flex items-center mt-1 ${collapsed && !isMobile ? "justify-center p-2" : "justify-between px-3 py-1.5"} 
-            bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200
-            border rounded-md transition-colors duration-200`}
+        <div
+          className={`flex ${collapsed && !isMobile ? "flex-col items-center" : "items-center justify-between"}  py-4 border-b border-gray-200/80 ${isMobile ? "pr-2" : ""}`}
         >
-          <div className="flex items-center gap-2">
-            <FiSearch className="h-4 w-4 text-indigo-600" />
-            {(!collapsed || isMobile) && <span>New search</span>}
-          </div>
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 ">
-        <ul className="space-y-[2px] pb-3">
-          {navItems.map(({ href, label, icon }) => (
-            <li key={href}>
-              <Link
-                prefetch={true}
-                href={href}
-                className={`group flex items-center rounded-lg py-2 text-sm font-medium transition-colors w-full
-                  ${collapsed && !isMobile ? "justify-center" : "gap-3 pl-2 pr-4"}
-                  ${
-                    pathname.startsWith(href)
-                      ? "bg-indigo-100 text-indigo-700"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }
-                `}
-              >
-                <span className="relative group">
-                  <span className="text-lg">{icon}</span>
+          <div className="flex items-center justify-center ml-1 md:ml-0 w-full">
+            <Link
+              prefetch={true}
+              href={profile?.id ? "/chat/new" : "/"}
+              className="flex items-center h-8 gap-2 group"
+            >
+              <Image
+                src="/icon.webp"
+                alt="Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain rounded-md min-h-8 min-w-8"
+              />
+              {(!collapsed || isMobile) && (
+                <span className="text-lg font-bold tracking-tight group-hover:text-indigo-500">
+                  DiscoverMinds.ai
                 </span>
-                {(!collapsed || isMobile) && <span>{label}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        {profile && (
-          <div className="mb-4">
-            {(!collapsed || isMobile) && (
-              <h3 className="text-xs font-semibold px-2 mb-2 text-gray-500">Recent chats</h3>
-            )}
-            <div className="rounded-md mb-1">
-              {initialLoading ? (
-                <ShimmerLoader collapsed={collapsed && !isMobile} count={10} darkMode={false} />
-              ) : recentThreads.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-4 px-2 text-gray-500">
-                  {!collapsed || isMobile ? (
-                    <>
-                      <FiMessageSquare className="text-xl mb-1 opacity-60" />
-                      <p className="text-xs text-center">No recent conversations</p>
-                      <Link
-                        prefetch={true}
-                        href="/chat/new"
-                        className="mt-2 text-xs px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
-                      >
-                        Start chatting
-                      </Link>
-                    </>
-                  ) : (
-                    <FiMessageSquare className="text-xl opacity-60" />
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col space-y-1">
-                  <ul className="space-y-0.5 py-1">
-                    {recentThreads.map(thread => {
-                      const isActive = pathname === `/chat/${thread?.id}`;
-                      return (
-                        <li key={thread.id} className="px-1 h-[34px]">
-                          <Link
-                            href={`/chat/${thread.id}?title=${encodeURIComponent(getThreadPreview(thread).substring(0, 40))}`}
-                            className={`group flex items-center py-2 rounded-md text-sm transition-colors ${
-                              collapsed && !isMobile ? "justify-center" : "gap-2 px-2"
-                            } ${
-                              isActive
-                                ? "bg-indigo-50 text-indigo-800 border-l-2 border-indigo-500"
-                                : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                            }`}
-                            title={collapsed && !isMobile ? getThreadPreview(thread) : undefined}
-                          >
-                            <div className={`flex-shrink-0 ${isActive ? "text-indigo-600" : ""}`}>
-                              <FiMessageSquare size={collapsed && !isMobile ? 18 : 16} />
-                            </div>
-                            {(!collapsed || isMobile) && (
-                              <div className="flex-1 truncate">
-                                <div className="flex justify-between items-center">
-                                  <div
-                                    className={`truncate font-medium ${isActive ? "text-indigo-700" : ""}`}
-                                  >
-                                    {getThreadPreview(thread)}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-
-                  {hasMoreThreads && (
-                    <div
-                      ref={el => {
-                        if (!el) return;
-                        const observer = new IntersectionObserver(
-                          entries => {
-                            if (
-                              entries[0].isIntersecting &&
-                              !loadingMoreThreads &&
-                              !loadingThreads
-                            ) {
-                              console.log("Intersection observed, loading more threads");
-                              loadMoreThreads();
-                            }
-                          },
-                          { threshold: 0.1, rootMargin: "100px" }
-                        );
-                        observer.observe(el);
-                        return () => observer.disconnect();
-                      }}
-                      className="h-10 flex items-center justify-center mt-2"
-                    >
-                      {loadingMoreThreads && (
-                        <div className="py-2 text-center w-full">
-                          <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
               )}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      <div className="mt-auto border-t border-gray-200/80">
-        <div className="p-2">
-          {useAppSelector(state => state.profile.loading) ? (
-            <div className="flex items-center justify-between">
-              <div
-                className={`flex items-center py-1 rounded-md ${collapsed && !isMobile ? "justify-center w-full" : "gap-2 flex-1"}`}
-              >
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center animate-pulse">
-                  <span className="sr-only">Loading profile</span>
-                </div>
-                {(!collapsed || isMobile) && (
-                  <div className="flex-1">
-                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <Link
-                href="/profile"
-                prefetch={true}
-                className={`flex items-center py-1 rounded-md ${collapsed && !isMobile ? "justify-center w-full" : "gap-2 flex-1"} 
-                hover:bg-gray-100/80 text-gray-700 transition-colors`}
-                title={
-                  collapsed && !isMobile
-                    ? profile?.full_name
-                      ? profile.full_name.substring(0, 10) +
-                        (profile.full_name.length > 10 ? "..." : "")
-                      : "User"
-                    : undefined
-                }
-              >
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium flex-shrink-0">
-                  {profile?.full_name?.charAt(0).toUpperCase() || "U"}
-                </div>
-                {(!collapsed || isMobile) && (
-                  <div className="flex-1 truncate">
-                    <div className="text-sm font-medium truncate text-gray-700">
-                      {profile?.full_name?.split("@")[0] || "User"}
-                    </div>
-                  </div>
-                )}
-              </Link>
-
+            </Link>
+            {isMobile && (
               <Button
-                onClick={() => setShowLogoutConfirm(true)}
+                onClick={toggleMobileSidebar}
                 variant="ghost"
                 size="icon"
-                className={`${collapsed && !isMobile ? "hidden" : "flex"} h-8 w-8 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100`}
-                title="Sign Out"
+                className="h-8 w-8 text-gray-500 hover:text-gray-700 ml-auto"
               >
-                <FiLogOut size={16} />
+                <PiSidebarSimple size={26} style={{ width: "26px", height: "26px" }} />
               </Button>
-            </div>
+            )}
+          </div>
+          {!isMobile && (
+            <button
+              onClick={() => dispatch(toggleSidebar())}
+              className={`text-gray-500 hover:text-gray-700 ${collapsed ? "mt-2" : "mr-1"}`}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              <PiSidebarSimple size={24} className={collapsed ? "rotate-180" : ""} />
+            </button>
           )}
         </div>
+
+        {profile?.id && (
+          <div className="px-3 py-2">
+            <Link
+              href="/chat/new"
+              prefetch={false}
+              className={`w-full flex items-center mt-1 ${collapsed && !isMobile ? "justify-center p-2" : "justify-between px-3 py-1.5"} 
+            bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200
+            border rounded-md transition-colors duration-200`}
+            >
+              <div className="flex items-center gap-2">
+                <FiSearch className="h-4 w-4 text-indigo-600" />
+                {(!collapsed || isMobile) && <span>New search</span>}
+              </div>
+            </Link>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-2 hide-scrollbar">
+          <NavigationItems
+            navItems={navItems}
+            pathname={pathname}
+            collapsed={collapsed}
+            isMobile={isMobile}
+          />
+
+          <ThreadsSection
+            recentThreads={recentThreads}
+            isInitialLoading={isInitialLoading}
+            loadingMoreThreads={loadingMoreThreads}
+            loadingThreads={loadingThreads}
+            hasMoreThreads={hasMoreThreads}
+            collapsed={collapsed}
+            isMobile={isMobile}
+            loadMoreThreads={loadMoreThreads}
+            getThreadPreview={getThreadPreview}
+          />
+        </nav>
+
+        <SidebarProfile
+          collapsed={collapsed}
+          isMobile={isMobile}
+          isUserQueryRoute={isUserQueryRoute}
+          onLogoutClick={() => setShowLogoutConfirm(true)}
+          profileId={(cachedProfile || profile)?.id}
+        />
       </div>
-    </div>
-  );
+    );
+  });
+
+  SidebarContent.displayName = "SidebarContent";
 
   return (
     <>
@@ -503,7 +480,7 @@ const Sidebar = () => {
       )}
 
       <aside
-        className={`hidden md:block fixed md:static overflow-y-auto max-h-screen inset-y-0 left-0 z-40 ${
+        className={`hidden md:block fixed md:static  max-h-screen inset-y-0 left-0 z-40 ${
           collapsed ? "w-16" : "w-64"
         } transition-all duration-200 flex-col
         border-r shadow-lg bg-white/95 backdrop-blur-sm border-gray-200/80 text-gray-900`}
@@ -530,4 +507,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default memo(Sidebar);

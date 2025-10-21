@@ -451,3 +451,50 @@ class FriendshipSummaryResponse(BaseModel):
     total_friends: int = Field(0, description="Total number of accepted friends")
     total_pending: int = Field(0, description="Total number of pending requests")
     total_sent: int = Field(0, description="Total number of sent requests")
+
+
+# Stock Items Schemas
+class StockItemBase(BaseModel):
+    """Base schema for stock items"""
+    item_name: str = Field(..., description="Name of the stock item")
+    quantity: int = Field(default=0, ge=0, description="Quantity in stock")
+    rate: float = Field(..., ge=0, description="Rate/price of the item")
+
+
+class StockItemCreate(StockItemBase):
+    """Schema for creating a new stock item"""
+    pass
+
+
+class StockItemUpdate(BaseModel):
+    """Schema for updating a stock item"""
+    item_name: Optional[str] = Field(None, description="Name of the stock item")
+    quantity: Optional[int] = Field(None, ge=0, description="Quantity in stock")
+    rate: Optional[float] = Field(None, ge=0, description="Rate/price of the item")
+
+
+class StockItemResponse(StockItemBase):
+    """Schema for stock item response"""
+    id: UUID
+    item_name_lower: str
+    user_id: Optional[UUID] = Field(None, description="ID of the user who owns this stock item")
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class StockItemsFileResponse(BaseModel):
+    """Schema for stock items file response"""
+    id: UUID
+    user_id: UUID
+    file_url: str
+    file_name: Optional[str] = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    error_message: Optional[str] = None
+    
+    class Config:
+        from_attributes = True

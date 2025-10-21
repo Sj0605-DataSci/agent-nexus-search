@@ -123,7 +123,7 @@ const parseSocialLinks = (socialLinks?: string | string[] | null): SocialLink[] 
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
           return parsed
-            .filter((link: any) => typeof link === 'string' && link.trim())
+            .filter((link: any) => typeof link === "string" && link.trim())
             .map((link: string) => ({
               url: link.startsWith("http") ? link : `https://${link}`,
               label: getDomain(link),
@@ -136,7 +136,7 @@ const parseSocialLinks = (socialLinks?: string | string[] | null): SocialLink[] 
           .split(",")
           .map(link => link.trim().replace(/^['"]|['"]$/g, ""))
           .filter(Boolean);
-          
+
         return links.map(link => ({
           url: link.startsWith("http") ? link : `https://${link}`,
           label: getDomain(link),
@@ -146,7 +146,7 @@ const parseSocialLinks = (socialLinks?: string | string[] | null): SocialLink[] 
 
     // Handle comma-separated string (fallback)
     return socialLinks
-      .split(",")
+      ?.split(",")
       .map(link => link.trim().replace(/^['"]|['"]$/g, ""))
       .filter(Boolean)
       .map(link => ({
@@ -169,7 +169,6 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
   showTooltip = true,
   showLabels = true,
 }) => {
-  console.log("SocialLinks 123", socialLinks);
   const parsedEmail = email && email !== "NULL" && email !== "null" ? email : null;
   const links = parseSocialLinks(socialLinks).slice(0, maxLinks);
 
@@ -236,7 +235,10 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
           <TooltipTrigger asChild>
             <div className="inline-flex">{emailContent}</div>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="bg-white rounded-lg shadow-md border border-gray-100 p-0">
+          <TooltipContent
+            side="bottom"
+            className="bg-white rounded-lg shadow-md border border-gray-100 p-0"
+          >
             <div className="p-2 max-w-xs">
               <p className="text-sm text-gray-800 break-all">{parsedEmail}</p>
             </div>
@@ -249,7 +251,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
   };
 
   return (
-    <div className={`flex ${showLabels ? 'flex-col' : 'flex-row'} gap-1 ${className}`}>
+    <div className={`flex ${showLabels ? "flex-col" : "flex-row"} gap-1 ${className}`}>
       {renderEmail()}
       {links.map((link, index) => renderLink(link, index))}
     </div>

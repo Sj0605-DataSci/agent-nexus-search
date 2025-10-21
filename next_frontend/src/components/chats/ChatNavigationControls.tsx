@@ -29,7 +29,7 @@ export function ChatNavigationControls({
         size="icon"
         onClick={onPrevious}
         disabled={currentIndex === 0 || isStreaming}
-        className="rounded-full transition-colors text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="rounded-full transition-colors text-gray-500 hover:enabled:bg-gray-200 hover:enabled:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
       >
         <FiChevronLeft className="h-5 w-5" />
       </Button>
@@ -41,7 +41,7 @@ export function ChatNavigationControls({
         size="icon"
         onClick={onNext}
         disabled={currentIndex === totalItems - 1 || isStreaming}
-        className="rounded-full transition-colors text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="rounded-full transition-colors text-gray-500 hover:enabled:bg-gray-200 hover:enabled:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
       >
         <FiChevronRight className="h-5 w-5" />
       </Button>
@@ -50,7 +50,7 @@ export function ChatNavigationControls({
         size="icon"
         onClick={onRefresh}
         disabled={isStreaming}
-        className="ml-2 rounded-full transition-colors text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+        className="ml-2 rounded-full transition-colors text-gray-500 hover:enabled:bg-gray-200 hover:enabled:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         title="Refresh thread"
       >
         <FiRefreshCw className="h-4 w-4" />

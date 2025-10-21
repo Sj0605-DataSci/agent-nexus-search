@@ -48,11 +48,11 @@ export const loadMoreChatThreads = createAsyncThunk(
     if (!hasMore) return null;
 
     try {
-      // Always use 10 for page size in pagination as per API requirements
       const nextPage = currentPage + 1;
-      const response = await apiClient.getChatThreads(10, nextPage);
+      const response = await apiClient.getChatThreads(pageSize, nextPage);
       return response;
     } catch (error) {
+      console.error("Error loading more threads:", error);
       return rejectWithValue("Failed to load more chat threads");
     }
   }
@@ -62,13 +62,8 @@ const chatThreadsSlice = createSlice({
   name: "chatThreads",
   initialState,
   reducers: {
-    resetChatThreads: state => {
-      state.threads = [];
-      state.currentPage = 1;
-      state.hasMore = true;
-      state.totalThreads = 0;
-      state.totalPages = 0;
-      state.loading = false;
+    resetChatThreads: () => {
+      return { ...initialState };
     },
     setPageSize: (state, action: PayloadAction<number>) => {
       state.pageSize = action.payload;
@@ -121,8 +116,8 @@ const chatThreadsSlice = createSlice({
         if (!action.payload) return;
 
         // Filter out duplicates
-        const existingIds = new Set(state.threads.map(thread => thread.id));
-        const newThreads = action.payload.threads.filter(thread => !existingIds.has(thread.id));
+        const existingIds = new Set(state.threads?.map(thread => thread.id));
+        const newThreads = action.payload.threads?.filter(thread => !existingIds.has(thread.id));
 
         // Properly concatenate new threads to existing threads
         state.threads = [...state.threads, ...newThreads];
@@ -138,7 +133,6 @@ const chatThreadsSlice = createSlice({
       });
   },
 });
-
-export const { resetChatThreads, setPageSize, setLoading, addChatThread } =
+export const { setPageSize, setLoading, addChatThread, resetChatThreads } =
   chatThreadsSlice.actions;
 export default chatThreadsSlice.reducer;

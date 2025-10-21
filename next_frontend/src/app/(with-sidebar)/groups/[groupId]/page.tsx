@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Users, List, Puzzle, Settings, Copy } from "lucide-react";
 import { TabNavigation } from "@/components/groups/TabNavigation";
+import { copyToClipboard } from "@/utils/shareUtils";
 
 interface GroupDetailPageProps {
   params: {
@@ -15,12 +16,12 @@ interface GroupDetailPageProps {
 export default function GroupDetailPage({ params }: GroupDetailPageProps) {
   const { groupId } = params;
   const [emailInput, setEmailInput] = useState("");
-  const [copied, setCopied] = useState(false);
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://discoverminds.ai/invite/${groupId}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyLink = async () => {
+    await copyToClipboard(
+      `https://discoverminds.ai/invite/${groupId}`,
+      "Invite link copied to clipboard!"
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {

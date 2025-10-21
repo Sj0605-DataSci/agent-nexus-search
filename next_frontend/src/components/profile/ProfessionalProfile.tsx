@@ -1,20 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Mail } from "lucide-react";
+import { Mail, Users } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
 import { updateUserProfile } from "@/store/profileSlice";
-import { useToast } from "@/components/ui/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
 import { FiLinkedin } from "react-icons/fi";
 import { ExternalLink, Edit2, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/integrations/fastapi/types";
-import LinkedInUrlModal from "@/components/profile/LinkedInUrlModal";
+import LinkedInUrlModal from "../Connections/LinkedInUrlModal";
 import toast from "react-hot-toast";
 import { LinkedInSection } from "./LinkedInSection";
+import { getNormalizedConnectionsStatus } from "@/utils/profile";
+import { showDevFeatureToast } from "@/utils/toast";
 
 interface ProfessionalProfileProps {
   onConnectionsClick: () => void;
@@ -23,6 +24,16 @@ interface ProfessionalProfileProps {
 const ProfileSkeleton = () => (
   <div className="space-y-4 animate-pulse">
     <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+    <div className="p-4 rounded-lg border bg-white border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gray-200"></div>
+          <div className="h-6 bg-gray-200 rounded w-32"></div>
+        </div>
+        <div className="h-6 w-11 bg-gray-200 rounded-full"></div>
+      </div>
+      <div className="mt-2 h-4 bg-gray-200 rounded w-3/4 ml-12"></div>
+    </div>
     <div className="p-4 rounded-lg border bg-white border-gray-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -58,10 +69,11 @@ const ProfileSkeleton = () => (
   </div>
 );
 
-export default function ProfessionalProfile({ onConnectionsClick }: ProfessionalProfileProps) {
+const ProfessionalProfile = ({ onConnectionsClick }: ProfessionalProfileProps) => {
   const { profile, loading } = useSelector((state: RootState) => state.profile);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [isUpdatingFounders, setIsUpdatingFounders] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const { capture } = useAnalytics();
 
@@ -74,7 +86,7 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
   }
 
   const handleSubscriptionChange = async (checked: boolean) => {
-    setIsUpdating(true);
+    setIsUpdatingEmail(true);
     try {
       await dispatch(updateUserProfile({ email_subscription: checked })).unwrap();
       dispatch({ type: "profile/updateSubscriptionOptimistic", payload: checked });
@@ -88,7 +100,31 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
       toast.error("Failed to update preferences. Please try again.");
       capture("email_subscription_update_failed", { subscribed: checked });
     } finally {
-      setIsUpdating(false);
+      setIsUpdatingEmail(false);
+    }
+  };
+
+  const handleFoundersConnectionChange = async (checked: boolean) => {
+    if (profile?.has_connections !== "synced") {
+      toast.dismiss();
+      showDevFeatureToast("Please upload LinkedIn connections to disable this feature");
+      return;
+    }
+    setIsUpdatingFounders(true);
+    try {
+      await dispatch(updateUserProfile({ founders_connection: checked })).unwrap();
+      dispatch({ type: "profile/updateFoundersConnectionOptimistic", payload: checked });
+      if (checked) {
+        toast.success("Founders connection enabled successfully.");
+      } else {
+        toast.success("Founders connection disabled successfully.");
+      }
+      capture("founders_connection_updated", { enabled: checked });
+    } catch (error) {
+      toast.error("Failed to update preferences. Please try again.");
+      capture("founders_connection_update_failed", { enabled: checked });
+    } finally {
+      setIsUpdatingFounders(false);
     }
   };
 
@@ -116,7 +152,7 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
               </div>
             </div>
             <div className="relative w-11 h-6">
-              {isUpdating ? (
+              {isUpdatingEmail ? (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <svg
                     className="animate-spin h-5 w-5 text-blue-600"
@@ -146,7 +182,7 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
                     className="sr-only peer"
                     checked={profile?.email_subscription ?? false}
                     onChange={e => handleSubscriptionChange(e.target.checked)}
-                    disabled={isUpdating}
+                    disabled={isUpdatingEmail}
                   />
                   <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:outline-none peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
                 </label>
@@ -156,15 +192,75 @@ export default function ProfessionalProfile({ onConnectionsClick }: Professional
         </div>
       </div>
 
-      <h2 className="text-xl font-semibold text-gray-900">Professional Profile</h2>
+      <div className="p-4 rounded-lg border bg-white border-gray-200 transition-all hover:shadow-md">
+        <div>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 p-2 h-9 w-9 rounded-full bg-purple-100">
+                <Users className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="flex flex-col">
+                <label
+                  htmlFor="founders-connection"
+                  className="font-medium text-gray-800 cursor-pointer"
+                >
+                  Founders Connection Search
+                </label>
+                <p className=" text-sm -mt-1 text-gray-500">
+                  Enable search across founders connection.
+                </p>
+              </div>
+            </div>
+            <div className="relative w-11 h-6">
+              {isUpdatingFounders ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg
+                    className="animate-spin h-5 w-5 text-blue-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                </div>
+              ) : (
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={profile?.founders_connection ?? false}
+                    onChange={e => handleFoundersConnectionChange(e.target.checked)}
+                    disabled={isUpdatingFounders}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:outline-none peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+                </label>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <LinkedInSection
         linkedinUrl={profile?.linkedin_url}
-        hasConnections={profile?.has_connections || false}
+        hasConnections={getNormalizedConnectionsStatus(profile?.has_connections)}
         onEditClick={() => setLinkedinModalOpen(true)}
         onConnectionsClick={onConnectionsClick}
       />
       <LinkedInUrlModal open={linkedinModalOpen} onOpenChange={setLinkedinModalOpen} />
     </div>
   );
-}
+};
+
+export default memo(ProfessionalProfile);

@@ -13,7 +13,7 @@ const PlaceholderDesktopRow = () => (
     </td>
     <td className="p-3 min-w-40 py-3">
       <div className="flex items-center justify-center">
-        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
+        <div className="h-7 w-7 -ml-7 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
       </div>
     </td>
     <td className="p-3 w-full  py-3">
@@ -52,13 +52,17 @@ const PlaceholderMobileCard = () => (
   </div>
 );
 
-const MessagePlaceholder = () => {
+interface MessagePlaceholderProps {
+  message?: string;
+}
+
+const MessagePlaceholder = ({ message }: MessagePlaceholderProps) => {
   return (
-    <div className="w-full md:px-20 animate-pulse">
+    <div className="w-full  animate-pulse">
       <div className="rounded-xl bg-white">
         <div className="flex items-start">
           <div className="flex-1">
-            <div className="mb-4 flex space-x-4 border-b flex-row justify-between p-2 border-gray-200">
+            <div className="mb-4 flex space-x-4 border-b flex-row justify-between border-gray-200">
               <div className="h-8 w-24 bg-gray-200 rounded mb-2"></div>
               <div className="h-8 w-8 bg-gray-200 rounded mb-2"></div>
             </div>
@@ -91,11 +95,17 @@ const MessagePlaceholder = () => {
             </div>
 
             <div className="mt-6 flex justify-between items-center">
-              <div className="h-4 mb-3 w-28 bg-gray-200 rounded"></div>
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-              </div>
+              {message ? (
+                <div className="text-gray-500 text-center w-full py-4">{message}</div>
+              ) : (
+                <>
+                  <div className="h-4 mb-3 w-28 bg-gray-200 rounded"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                    <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

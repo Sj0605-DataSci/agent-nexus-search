@@ -1,16 +1,10 @@
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 import { handleAxiosError } from "@/lib/api/handleAxiosError";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getDeviceInfo } from "@/utils/deviceInfo";
+import toast from "react-hot-toast";
+import { getStoredToken } from "@/utils/tokenManagement";
 
-// Add setAuthToken to axios instance
-export const setAuthToken = (token: string) => {
-  if (token) {
-    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  } else {
-    delete axiosInstance.defaults.headers.common["Authorization"];
-  }
-};
 import {
   AgentTemplate,
   AgentTemplateCreate,
@@ -27,7 +21,20 @@ import {
   UserProfile,
   UsageStats,
   SignUpResponse,
+  InviteFriendsResponse,
+  FetchFriendshipsResponse,
+  FriendshipActionResponse,
+  FriendshipStatus,
 } from "./types";
+
+// Add setAuthToken to axios instance
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete axiosInstance.defaults.headers.common["Authorization"];
+  }
+};
 
 export const apiClient = {
   async fetchAgentTemplates() {
@@ -154,15 +161,6 @@ export const apiClient = {
     }
   },
 
-  async fetchProfileFromAPI(): Promise<UserProfile> {
-    try {
-      const res = await axiosInstance.get("/profiles");
-      return res.data;
-    } catch (error) {
-      throw new Error(handleAxiosError(error as any));
-    }
-  },
-
   async updateProfile(data: ProfileUpdate): Promise<UserProfile> {
     try {
       const res = await axiosInstance.put("/profiles", data);
@@ -190,8 +188,8 @@ export const apiClient = {
     phoneNumber: string
   ): Promise<SignUpResponse> {
     try {
-      const { supabaseHandler } = await import("@/app/supabaseClient");
-      
+      const { supabaseHandler } = await import("@/integrations/supabase/client");
+
       const { data, error } = await supabaseHandler.auth.signUp({
         email,
         password,
@@ -216,7 +214,7 @@ export const apiClient = {
           session: data.session,
           access_token: data.session?.access_token,
           refresh_token: data.session?.refresh_token,
-        }
+        },
       };
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
@@ -274,7 +272,7 @@ export const apiClient = {
     try {
       const res = await axiosInstance.post("/auth/reset-password", {
         email,
-        redirect_url: redirectUrl,
+        redirect_url: redirectUrl ? `${redirectUrl}/update-password` : undefined,
       });
       return res.data;
     } catch (error) {
@@ -297,7 +295,7 @@ export const apiClient = {
 
   async handleLoginWithStorage(email: string, password: string) {
     try {
-      const { supabaseHandler } = await import("@/app/supabaseClient");
+      const { supabaseHandler } = await import("@/integrations/supabase/client");
 
       const { data, error } = await supabaseHandler.auth.signInWithPassword({
         email,
@@ -342,6 +340,38 @@ export const apiClient = {
   async fetchProfile() {
     try {
       const res = await axiosInstance.get("/profiles");
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async inviteFriends(emails: string[]): Promise<InviteFriendsResponse> {
+    try {
+      const res = await axiosInstance.post("/friendships/invite", { emails });
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async fetchFriendships(
+    type: FriendshipStatus | "all" = "all"
+  ): Promise<FetchFriendshipsResponse> {
+    try {
+      const res = await axiosInstance.get(`/friendships/?type=${type}`);
+      return res.data;
+    } catch (error) {
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async respondToFriendRequest(
+    friendshipId: string,
+    status: "accepted" | "rejected"
+  ): Promise<FriendshipActionResponse> {
+    try {
+      const res = await axiosInstance.patch(`/friendships/${friendshipId}`, { status });
       return res.data;
     } catch (error) {
       throw new Error(handleAxiosError(error as any));
@@ -477,83 +507,193 @@ export const apiClient = {
     }
   },
 
+  async joinWaitlistEmail(email: string): Promise<{
+    success: boolean;
+    status_code: number;
+    message: string;
+    data: { invitee_id?: string } | null;
+  }> {
+    try {
+      const data = {
+        email,
+      };
+      const res = await axiosInstance.post("/auth/join_waitlist", data);
+      return res.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 409) {
+          return error.response.data;
+        }
+        throw new Error(handleAxiosError(error));
+      }
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
+  async submitGuestSearchQuery(
+    email: string,
+    searchQuery: string
+  ): Promise<{
+    success: boolean;
+    status_code: number;
+    message: string;
+    data: { invitee_id?: string } | null;
+  }> {
+    try {
+      const data = {
+        email,
+        message: searchQuery,
+      };
+      const res = await axiosInstance.post("/auth/join_waitlist", data);
+      return res.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 409) {
+          return error.response.data;
+        }
+        throw new Error(handleAxiosError(error));
+      }
+      throw new Error(handleAxiosError(error as any));
+    }
+  },
+
   async sendStreamingChatRequest(
     agentId: string,
     message: string,
-    format: string = "table",
-    searchMode: string = "basic",
-    worldConnectionsMode: string = "connections",
     threadId: string = "",
     onUpdate: (update: StreamingChatUpdate) => void
   ): Promise<void> {
+    const { deviceId, ipAddress, deviceType } = await getDeviceInfo({ skipIpLookup: false });
+
+    const accessToken = await Promise.resolve(getStoredToken());
     const payload: StreamingChatRequest = {
-      agent_id: agentId,
       messages: message,
-      stream: true,
-      format: format,
-      search_mode: searchMode,
-      world_connections: worldConnectionsMode,
-      thread_id: threadId,
+      ...(!accessToken
+        ? {}
+        : {
+            stream: true,
+            agent_id: agentId,
+            format: "table",
+            search_mode: "basic",
+            world_connections: "connections",
+            thread_id: threadId,
+          }),
     };
+    const endpoint = accessToken ? "/chat/stream" : "/chat/public/stream";
 
-    // Use fetch directly for SSE support
-    const response = await fetch(`${axiosInstance.defaults.baseURL}/chat/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          (axiosInstance.defaults.headers.common["Authorization"] as string) ||
-          `Bearer ${localStorage.getItem("discover_minds_access_token")}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch(`${axiosInstance.defaults.baseURL}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          "X-Device-ID": deviceId,
+          "X-Device-Type": deviceType,
+          ...(ipAddress ? { "X-Client-IP": ipAddress } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} ${response.statusText}`);
-    }
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
 
-    // Handle the SSE stream
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) {
-      throw new Error("No reader available");
-    }
-
-    // Process the stream
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        break;
-      }
-
-      const text = decoder.decode(value);
-      const events = text.split("\n\n");
-
-      for (const event of events) {
-        if (event.trim() === "") continue;
-
-        // Parse the SSE event
-        const eventLines = event.split("\n");
-        let eventData = "";
-
-        for (const line of eventLines) {
-          if (line.startsWith("data: ")) {
-            eventData = line.slice(6); // Remove 'data: ' prefix
+          if (response.status === 429 || response.status === 499) {
+            const errorMessage =
+              errorData?.message ||
+              "You've reached the maximum number of free searches. Please try again later or sign up for more.";
+            toast.error(errorMessage, { id: "rate-limit-error", duration: 5000 });
+            throw new Error(errorMessage);
+          } else {
+            const errorMessage =
+              errorData?.message || "Something went wrong. Please try again later.";
+            toast.error(errorMessage);
+            throw new Error(`Error: ${response.status} ${response.statusText} - ${errorMessage}`);
           }
-        }
-
-        if (eventData) {
-          try {
-            const update = JSON.parse(eventData) as StreamingChatUpdate;
-            onUpdate(update);
-            console.log("Received SSE update:", update);
-          } catch (e) {
-            console.error("Error parsing SSE message:", e);
-          }
+        } catch (parseError) {
+          // toast.error("Something went wrong. Please try again later.");
+          throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No reader available");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        const text = decoder.decode(value);
+        const events = text.split("\n\n");
+
+        for (const event of events) {
+          if (event.trim() === "") continue;
+
+          // Parse the SSE event
+          const eventLines = event.split("\n");
+          let eventData = "";
+
+          for (const line of eventLines) {
+            if (line.startsWith("data: ")) {
+              eventData = line.slice(6); // Remove 'data: ' prefix
+            }
+          }
+
+          if (eventData) {
+            try {
+              const update = JSON.parse(eventData) as StreamingChatUpdate;
+              onUpdate(update);
+              console.log("Received SSE update:", update);
+            } catch (e) {
+              console.error("Error parsing SSE message:", e);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Error in streaming chat request:", error);
+      toast.dismiss();
+      if (
+        error.message &&
+        (error.message.includes("429") ||
+          error.message.includes("rate limit") ||
+          error.message.includes("maximum number of free searches"))
+      ) {
+        const errorMessage = error.message.includes("Error:")
+          ? error.message.split(" - ")[1]
+          : error.message;
+        toast.error(
+          errorMessage ||
+            "You've reached the maximum number of free searches. Please try again later.",
+          {
+            id: "rate-limit-error",
+            duration: 5000,
+          }
+        );
+      } else {
+        toast.error("Connection error. Please try again later.", {
+          id: "connection-error",
+          duration: 3000,
+        });
+      }
+
+      return Promise.reject({
+        error: true,
+        message: error.message || "Connection error",
+        isRateLimit:
+          error.message &&
+          (error.message.includes("429") ||
+            error.message.includes("rate limit") ||
+            error.message.includes("maximum number of free searches")),
+        originalError: error,
+      });
     }
   },
 };

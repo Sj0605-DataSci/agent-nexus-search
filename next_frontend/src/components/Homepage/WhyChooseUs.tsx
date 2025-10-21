@@ -1,9 +1,23 @@
+"use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { getUserCountry, getPricingConfig, formatPrice } from "@/utils/locationUtils";
 
 const WhyChooseUs = () => {
+  const [priceDisplay, setPriceDisplay] = useState("₹225/mo");
+
+  useEffect(() => {
+    const loadPrice = async () => {
+      const country = await getUserCountry();
+      const config = getPricingConfig(country);
+      setPriceDisplay(`${formatPrice(config.yearlyPrice, config)}/mo`);
+    };
+    loadPrice();
+  }, []);
+
   return (
     <section className="py-20 bg-gray-50">
-      <div className="mx-auto max-w-7xl px-5">
+      <div className="mx-auto max-w-6xl px-5">
         <div className="flex flex-col items-center justify-center mb-16">
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#80A9F9]/20 text-[#3B7DDD] text-sm font-medium mb-4">
             ⚔️ Why Choose Arya
@@ -23,7 +37,7 @@ const WhyChooseUs = () => {
                 <th className="p-4 px-3 text-left min-w-[220px]">Features</th>
                 <th className="p-4 px-2 text-center bg-[#EEF3FB] rounded-tl-lg min-w-[180px]">
                   <span className="block font-bold text-[#3B7DDD]">⚔️ Arya</span>
-                  <span className="text-sm font-normal">Professional $15/mo</span>
+                  <span className="text-sm font-normal">Professional {priceDisplay}</span>
                   <p className="text-xs mt-1 text-gray-600">
                     Best for precision people hunting & learning
                   </p>
@@ -216,7 +230,7 @@ const WhyChooseUs = () => {
               <tr>
                 <td className="p-4 px-2"></td>
                 <td className="p-4 px-2 text-center bg-[#F8FAFF]">
-                  <Link href="/signup?plan=professional">
+                  <Link href="/user-auth?plan=professional">
                     <button className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#5D9CEC] via-[#4A89DC] to-[#3B7DDD] text-white hover:opacity-90 transition-colors duration-200 text-sm font-medium">
                       ⚔️ Unleash Arya
                     </button>

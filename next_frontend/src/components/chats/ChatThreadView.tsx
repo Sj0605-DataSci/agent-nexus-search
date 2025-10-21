@@ -1,76 +1,99 @@
 "use client";
-import React, { useState, useRef, useEffect, useCallback, FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { formatTimestamp, getFullTimestamp } from "@/utils/timeUtils";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import Image from "next/image";
+import { formatTimestamp, getFullTimestamp, getTimeBasedGreeting } from "@/utils/timeUtils";
+import { throttle } from "@/utils/throttle";
 import { ChatNavigationControls } from "./ChatNavigationControls";
-import { showSuccessToast, showErrorToast } from "@/utils/toastManager";
-import { FiClock, FiThumbsUp, FiThumbsDown, FiLink } from "react-icons/fi";
-import { BsTextParagraph } from "react-icons/bs";
-import { SearchQueryDisplay } from "./SearchQueryDisplay";
-import SourcesList from "./SourcesList";
-import { getTimeBasedGreeting } from "../../utils/timeUtils";
+import { createUserFriendlyErrorMessage } from "@/utils/errorUtils";
+import { showDevFeatureToast } from "@/utils/toast";
+import toast from "react-hot-toast";
+import { FiClock } from "react-icons/fi";
 import posthog from "posthog-js";
-import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
+import { playNotificationSound } from "@/utils/audioUtils";
 import SearchInputField from "./SearchInputField";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { selectSidebarCollapsed } from "@/store/uiSlice";
 import { addChatThread } from "@/store/chatThreadsSlice";
 import { apiClient } from "@/integrations/fastapi/client";
-import { loadAgents, selectAgentCards, selectAgentsStatus } from "@/store/agentsSlice";
+import { selectHired } from "@/store/agentsSlice";
 import TagCarousel, { TagCategories } from "./TagCarousel";
-import { parseStructuredData, renderAsTable } from "./StructuredDataUtils";
-import dynamic from "next/dynamic";
+import { renderAsTable } from "./StructuredDataUtils";
 import StyledMarkdown from "../common/StyledMarkdown";
-import EnhancedProfileRenderer from "./EnhancedProfileRenderer";
 import MessagePlaceholder from "./MessagePlaceholder";
+import FeedbackModule from "./FeedbackModule";
+import NoResultsFound from "./NoResultsFound";
 
-const FeedbackModal = dynamic(() => import("./FeedbackModal"));
-const LinkedInUrlModal = dynamic(() => import("../profile/LinkedInUrlModal"), { ssr: false });
+const LinkedInUrlModal = dynamic(() => import("../Connections/LinkedInUrlModal"), { ssr: false });
+const SearchQueryDisplay = dynamic(() => import("@/components/chats/SearchQueryDisplay"), {
+  ssr: false,
+});
+const GuestEmailModal = dynamic(() => import("./GuestEmailModal"), { ssr: false });
 
-import {
-  ChatSource,
-  SearchMode,
-  FormatType,
-  WorldConnectionsMode,
-  FeedbackType,
-  MessageType,
-} from "@/types/chat";
+import { ChatSource, MessageType } from "@/types/chat";
 import { WorkerMessage } from "@/types/api";
 import { ChatPair, CachedThread, ChatThreadViewProps } from "@/types/chatThreadView";
+import { getStoredToken } from "@/utils/tokenManagement";
+import { boolean } from "yup";
 
-const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
+const isEmptyOrErrorMessage = (content: string | null | undefined): boolean => {
+  if (!content) return true;
+
+  const errorMessages = [
+    "null",
+    "No matching connections found for your query.",
+    "⚠️ An error occurred while searching. Please try again later.",
+    "⏳ Searching for information...",
+    "Failed to generate JSON.",
+  ];
+
+  return errorMessages.includes(content);
+};
+
+const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery = "" }) => {
   const chatWorkerRef = useRef<Worker | null>(null);
-  const router = useRouter();
-  const toggleBtnRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const userAccessToken = getStoredToken();
 
-  const [query, setQuery] = useState<string>("");
-  const [selectedAgent, setSelectedAgent] = useState<string>(
-    "00000000-0000-4000-a000-000000000000"
-  );
-  const [format, setFormat] = useState<FormatType>("table");
-  const [searchMode, setSearchMode] = useState<SearchMode>("basic");
-  const [worldConnectionsMode, setWorldConnectionsMode] =
-    useState<WorldConnectionsMode>("connections");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const initWorker = async () => {
+          if (!chatWorkerRef.current) {
+            chatWorkerRef.current = new Worker(
+              new URL("/workers/chat.worker.js", window.location.origin)
+            );
+          }
+        };
+
+        initWorker().catch(err => {
+          console.error("Worker initialization error:", err);
+        });
+      } catch (error) {
+        console.error("Failed to initialize chat worker:", error);
+      }
+    }
+
+    return () => {
+      if (chatWorkerRef.current) {
+        chatWorkerRef.current.terminate();
+        chatWorkerRef.current = null;
+      }
+    };
+  }, []);
+
+  const [query, setQuery] = useState<string>(initialQuery ? initialQuery : "");
   const [messages, setMessages] = useState<MessageType[]>([]);
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
   const [linkedinModalOpen, setLinkedinModalOpen] = useState<boolean>(false);
-  const [currentFeedback, setCurrentFeedback] = useState<FeedbackType | null>(null);
-  const [activeTab, setActiveTab] = useState<"content" | "sources">("content");
+  const [guestEmailModalOpen, setGuestEmailModalOpen] = useState<boolean>(false);
   const [chatPairs, setChatPairs] = useState<ChatPair[]>([]);
-  const [messagesOffset, setMessagesOffset] = useState<number>(0);
-  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
   const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(threadId != "new");
   const [cachedThreads, setCachedThreads] = useState<Record<string, CachedThread>>({});
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [streamingSearchQueries, setStreamingSearchQueries] = useState<string[]>([]);
-  const [showSearchQueries, setShowSearchQueries] = useState<boolean>(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState<Record<string, boolean>>({});
 
-  const MESSAGES_PER_PAGE = 50;
+  const hiredRaw = useAppSelector(selectHired);
+  const hiredIds = hiredRaw.map(h => h.id);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -87,93 +110,16 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   }, []);
   const { profile } = useAppSelector(state => state.profile);
 
-  const userId = profile?.id;
-
-  const loadMoreMessages = async () => {
-    if (!threadId || !hasMoreMessages) return;
-
-    setIsLoading(true);
-    try {
-      const messagesResponse = await apiClient.getChatMessages(threadId);
-
-      if (messagesResponse.messages && messagesResponse.messages.length > 0) {
-        setChatPairs(prev => [...messagesResponse.messages, ...prev]);
-        setMessagesOffset(prev => prev + MESSAGES_PER_PAGE);
-        setHasMoreMessages(messagesOffset + MESSAGES_PER_PAGE < messagesResponse.total);
-      } else {
-        setHasMoreMessages(false);
-      }
-    } catch (error) {
-      console.error("Error loading more messages:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const [showAgentDropdown, setShowAgentDropdown] = useState(false);
-
-  const sidebarCollapsed = useAppSelector(selectSidebarCollapsed);
-
   const dispatch = useAppDispatch();
-  const agentsStatus = useAppSelector(selectAgentsStatus);
-  const agentCards = useAppSelector(selectAgentCards);
-
   useEffect(() => {
-    if (agentsStatus === "idle") dispatch(loadAgents());
-
     posthog.capture("chat_thread_viewed", {
       thread_id: threadId,
       is_new_thread: threadId === "new",
     });
-
-    if (typeof window !== "undefined") {
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then(registration => {
-            console.log("Service Worker registered with scope:", registration.scope);
-          })
-          .catch(error => {
-            console.error("Service Worker registration failed:", error);
-          });
-      }
-
-      if (window.Worker) {
-        chatWorkerRef.current = new Worker("/chatWorker.js");
-
-        chatWorkerRef.current.onmessage = event => {
-          const { type, data } = event.data;
-
-          switch (type) {
-            case "processed_message":
-              setMessages(prevMessages =>
-                prevMessages.map(msg =>
-                  msg.id === data.id ? { ...msg, content: data.content } : msg
-                )
-              );
-              break;
-
-            case "processed_search_results":
-              console.log("Processed search results:", data.sources);
-              break;
-
-            case "query_analysis":
-              console.log("Query analysis:", data);
-              break;
-          }
-        };
-      }
-    }
-
-    return () => {
-      if (chatWorkerRef.current) {
-        chatWorkerRef.current.terminate();
-      }
-    };
-  }, [agentsStatus, dispatch, threadId]);
+  }, [dispatch, threadId]);
 
   const fetchMessages = async (forceRefresh = false) => {
-    if (!threadId) return;
+    if (!threadId || threadId === "new") return;
 
     if (cachedThreads[threadId] && initialLoadComplete && !forceRefresh) {
       const { messages: cachedMessages, timestamp } = cachedThreads[threadId];
@@ -189,8 +135,6 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     setIsLoading(true);
     try {
       const messagesResponse = await apiClient.getChatMessages(threadId);
-      setMessagesOffset(MESSAGES_PER_PAGE);
-      setHasMoreMessages(messagesResponse.total > MESSAGES_PER_PAGE);
 
       if (messagesResponse.messages?.length > 0) {
         setChatPairs(messagesResponse.messages);
@@ -233,7 +177,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         message = "You're offline. Please check your internet connection.";
       }
 
-      showErrorToast("Load Failed", message);
+      toast.error(`Load Failed: ${message}`);
       setChatPairs([]);
       setCurrentMessageIndex(0);
     } finally {
@@ -242,16 +186,28 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   };
 
   useEffect(() => {
-    if (threadId && threadId !== "new") {
-      setIsLoading(true);
-      setTimeout(() => {
-        fetchMessages();
-      }, 100);
-    }
+    let isMounted = true;
+
+    const loadMessages = async () => {
+      if (threadId && threadId !== "new" && userAccessToken) {
+        setIsLoading(true);
+        try {
+          if (isMounted) {
+            await fetchMessages();
+          }
+        } catch (error) {
+          console.error("Error loading messages:", error);
+        }
+      }
+    };
+
+    loadMessages();
+
     return () => {
+      isMounted = false;
       setInitialLoadComplete(false);
     };
-  }, [threadId]);
+  }, [threadId, userAccessToken]);
 
   useEffect(() => {
     if (profile && !profile.linkedin_url) {
@@ -260,9 +216,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   }, [profile]);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (chatPairs.length > 0 && currentMessageIndex < chatPairs.length) {
       const currentPair = chatPairs[currentMessageIndex];
-      if (currentPair.main_query) {
+      if (currentPair.main_query && isMounted) {
         setQuery(String(currentPair.main_query));
       }
 
@@ -278,7 +236,12 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         ? currentPair.sources_gathered
         : [];
 
-      if (chatWorkerRef.current && typeof messageContent === "object" && messageContent !== null) {
+      if (
+        chatWorkerRef.current &&
+        typeof messageContent === "object" &&
+        messageContent !== null &&
+        isMounted
+      ) {
         const agentMessage: MessageType = {
           id: String(currentPair.id),
           type: "agent",
@@ -297,8 +260,11 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           },
         };
 
-        chatWorkerRef.current.postMessage(workerMessage);
-      } else {
+        // Only post message if worker exists and component is mounted
+        if (chatWorkerRef.current && isMounted) {
+          chatWorkerRef.current.postMessage(workerMessage);
+        }
+      } else if (isMounted) {
         const content =
           typeof messageContent === "object"
             ? JSON.stringify(messageContent, null, 2)
@@ -315,76 +281,42 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         setMessages([userMessage, agentMessage]);
       }
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [currentMessageIndex, chatPairs]);
-
-  useEffect(() => {
-    function handleClickAway(e: MouseEvent) {
-      if (!showAgentDropdown) return;
-
-      const target = e.target as Node;
-
-      const clickedOutside =
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target) &&
-        toggleBtnRef.current &&
-        !toggleBtnRef.current.contains(target);
-
-      if (clickedOutside) setShowAgentDropdown(false);
-    }
-
-    document.addEventListener("mousedown", handleClickAway);
-    return () => document.removeEventListener("mousedown", handleClickAway);
-  }, [showAgentDropdown]);
-
-  const handleTagClick = (tag: string) => {
-    if (!isStreaming) {
-      // Only update query if not streaming
-      setQuery(tag);
-    }
-  };
-
-  const handleAgentSelect = (
-    e: React.MouseEvent<HTMLButtonElement>,
-    id: string,
-    hired: boolean
-  ) => {
-    e.stopPropagation();
-
-    if (!hired) {
-      posthog.capture("agent_marketplace_redirect", { agent_id: id });
-      router.push(`/marketplace?agent=${id}`);
-      return;
-    }
-
-    posthog.capture("agent_selected", {
-      agent_id: id,
-      thread_id: threadId,
-    });
-
-    setSelectedAgent(id);
-    setShowAgentDropdown(false);
-  };
-  const agentData = agentCards.find(a => a.id === selectedAgent) || agentCards[0];
 
   const handleSearch = async (incoming?: string) => {
     if (isStreaming) return;
 
+    if (!!profile && profile?.has_connections !== "synced") {
+      toast.dismiss();
+      showDevFeatureToast(
+        "We would recommend to add your connections too to search across your connections"
+      );
+    }
+
+    setIsStreaming(true);
+
     const q = incoming ?? query;
     if (!q.trim()) return;
 
-    if (threadId !== "new") {
+    if (threadId && threadId !== "new") {
       const newChatPair: ChatPair = {
         id: `temp-${Date.now()}`,
         main_query: q,
         message: "⏳ Searching for information...",
         created_at: new Date(),
         updated_at: new Date(),
-        world_connections: worldConnectionsMode,
+        world_connections: "connections",
       };
-      setChatPairs(prev => [...prev, newChatPair]);
-      setCurrentMessageIndex(chatPairs.length);
+      setChatPairs(prev => {
+        const updated = [...prev, newChatPair];
+        setCurrentMessageIndex(updated.length - 1);
+        return updated;
+      });
     }
-    setIsStreaming(true);
     setIsLoading(true);
 
     if (chatWorkerRef.current) {
@@ -396,10 +328,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
 
     posthog.capture("search_initiated", {
       query: q,
-      agent_id: selectedAgent,
-      search_mode: searchMode,
-      world_connections_mode: worldConnectionsMode,
-      format: format,
+      agent_id: "arya",
+      search_mode: "basic",
+      world_connections_mode: "connections",
+      format: "table",
       thread_id: threadId,
     });
 
@@ -421,28 +353,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     setMessages([userMessage, agentMessage]);
 
     try {
-      if (!userId) {
-        console.error("No user ID found. User might not be authenticated.");
-        setMessages(m =>
-          m.map(msg =>
-            msg.id === newLoadingMessageId
-              ? {
-                  ...msg,
-                  content: "Error: You need to be logged in to use this feature.",
-                }
-              : msg
-          )
-        );
-        return;
-      }
-
       let currentContent = "⏳ Searching for information...";
-      let fullContent = "";
       let sources: ChatSource[] = [];
       let searchQueries: string[] = [];
       setStreamingSearchQueries([]);
-      setShowSearchQueries(false);
-      let hasExtractedFinalAnswer = false;
       let lastUpdateTime = Date.now();
       let updateDebounceMs = 100;
 
@@ -452,7 +366,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         const now = Date.now();
         if (now - lastUpdateTime > updateDebounceMs) {
           setMessages(m =>
-            m.map(msg => {
+            m?.map(msg => {
               if (msg.id === newLoadingMessageId) {
                 return { ...msg, content };
               }
@@ -462,261 +376,249 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           lastUpdateTime = now;
         }
       };
+      const accessToken = await Promise.resolve(getStoredToken());
+      let agentId = hiredIds[0] ?? null;
+      if (accessToken && hiredIds && !hiredIds[0]) {
+        updateMessageContent("⏳ Initializing agent...");
 
-      await apiClient.sendStreamingChatRequest(
-        agentData.id,
-        q,
-        format,
-        searchMode,
-        worldConnectionsMode,
-        threadId,
-        (update: any) => {
-          switch (update.type) {
-            case "thread_id":
-              if (update.content && update.content.thread_id) {
-                const newThreadId = update.content.thread_id;
-                if (newThreadId !== threadId) {
-                  const newUrl = `/chat/${newThreadId}`;
-                  window.history.replaceState({ path: newUrl }, "", newUrl);
+        let attempts = 0;
+        const maxAttempts = 10; // 10 attempts * 500ms = 5 seconds max wait time
+        while (!agentId && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          agentId = hiredIds[0] ?? null;
+          attempts++;
+        }
 
-                  dispatch(
-                    addChatThread({
-                      id: newThreadId,
-                      query: q,
-                    })
-                  );
-                } else if (threadId && update.content.messages) {
-                  setChatPairs(prev => {
-                    const newMessages = Array.isArray(update.content.messages)
-                      ? update.content.messages
-                      : [];
-                    return [...newMessages, ...prev];
-                  });
-                  setCurrentMessageIndex(prev => prev + 1);
-                }
+        if (!agentId) {
+          console.warn("Could not get agent ID after waiting");
+        }
+      }
+
+      await apiClient.sendStreamingChatRequest(agentId, q, threadId ?? null, (update: any) => {
+        switch (update.type) {
+          case "thread_id":
+            if (update.content && update.content.thread_id) {
+              const newThreadId = update.content.thread_id;
+              if (userAccessToken && newThreadId !== threadId) {
+                const newUrl = `/chat/${newThreadId}`;
+                window.history.replaceState({ path: newUrl }, "", newUrl);
+
+                dispatch(
+                  addChatThread({
+                    id: newThreadId,
+                    query: q,
+                  })
+                );
+              } else if (threadId && update.content.messages) {
+                setChatPairs(prev => {
+                  const newMessages = Array.isArray(update.content.messages)
+                    ? update.content.messages
+                    : [];
+                  return [...newMessages, ...prev];
+                });
+                setCurrentMessageIndex(prev => prev + 1);
               }
-              break;
+            }
+            break;
 
-            case "thinking":
-              currentContent = "🧠 Thinking...";
-              updateMessageContent(currentContent);
-              break;
+          case "thinking":
+            currentContent = "🧠 Thinking...";
+            updateMessageContent(currentContent);
+            break;
 
-            case "token":
-              const tokenContent =
-                typeof update.content === "string"
-                  ? update.content
-                  : update.content && update.content.text
-                    ? update.content.text
-                    : "";
+          case "sql_search_results":
+            if (update.content && update.content.message) {
+              searchQueries.push(update.content.message);
+              setStreamingSearchQueries(prev => [...prev, update.content.message]);
+            }
+            break;
 
-              if (tokenContent) {
-                if (update.content && update.content.text) {
-                  fullContent = tokenContent;
-                  currentContent = fullContent;
-                  hasExtractedFinalAnswer = true;
-                  setShowSearchQueries(false);
-                }
+          case "vector_search_results":
+            if (update.content && update.content.message) {
+              searchQueries.push(update.content.message);
+              setStreamingSearchQueries(prev => [...prev, update.content.message]);
+            }
+            break;
 
-                if (format === "chat" || format === "table") {
-                  if (chatWorkerRef.current) {
-                    chatWorkerRef.current.postMessage({
-                      type: "process_message",
-                      data: {
-                        id:
-                          update.content.chat_thread_id ||
-                          update.content.thread_id ||
-                          newLoadingMessageId,
-                        content: currentContent,
-                      },
-                    });
-                  } else {
-                    updateMessageContent(currentContent);
-                  }
-                }
+          case "fusion_ranking":
+            if (update.content && update.content.message) {
+              searchQueries.push(update.content.message);
+              setStreamingSearchQueries(prev => [...prev, update.content.message]);
+            }
+            break;
+
+          case "query_analysis":
+            if (update.content) {
+              searchQueries.push(update.content);
+              setStreamingSearchQueries(prev => [...prev, update.content]);
+            }
+            break;
+          case "sql_query":
+            if (update.content) {
+              if (update.content.query) {
+                const sqlQuery = update.content.query;
+                searchQueries.push(sqlQuery);
+                setStreamingSearchQueries(prev => [...prev, sqlQuery]);
               }
-              break;
+            }
+            break;
+          case "final_answer":
+            if (update.content) {
+              let answerContent = "";
 
-            case "search_query":
-              if (update.content && update.content.query) {
-                searchQueries.push(update.content.query);
-                setStreamingSearchQueries(prev => [...prev, update.content.query]);
-                setShowSearchQueries(true);
-                if (!hasExtractedFinalAnswer) {
-                  currentContent = `🔍 Searching: ${searchQueries.join(", ")}...`;
-                  updateMessageContent(currentContent);
+              if (update.content.message && Array.isArray(update.content.message)) {
+                if (update.content.message[0]?.content) {
+                  answerContent = update.content.message[0].content;
                 }
+              } else if (typeof update.content.message === "string") {
+                answerContent = update.content.message;
+              } else if (update.content.content) {
+                answerContent = update.content.content;
               }
-              break;
 
-            case "source":
-              if (update.content) {
-                if (Array.isArray(update.content.sources)) {
-                  sources.push(...update.content.sources);
-                } else {
-                  sources.push(update.content);
-                }
-
-                if (!hasExtractedFinalAnswer) {
-                  currentContent = `📚 Found ${sources.length} source${sources.length > 1 ? "s" : ""}...`;
-                  updateMessageContent(currentContent);
-                }
-
-                if (sources.length > 0 && sources.length % 5 === 0 && chatWorkerRef.current) {
-                  chatWorkerRef.current.postMessage({
-                    type: "process_search_results",
-                    data: { sources },
-                  });
-                }
-              }
-              break;
-
-            case "message":
-              if (update.content && update.content.content) {
-                currentContent = update.content.content;
+              if (answerContent) {
+                currentContent = answerContent;
                 updateMessageContent(currentContent);
-              }
-              if (update.thread_id && threadId === "new") {
-                router.replace(`/chat/${update.thread_id}`);
-              }
-              break;
 
-            case "error":
-              const errorMessage =
-                update.content && update.content.message
-                  ? update.content.message
-                  : "Something went wrong. Please try again.";
-
-              currentContent = `❌ Error: ${errorMessage}`;
-              updateMessageContent(currentContent);
-
-              posthog.capture("stream_error", {
-                query: q,
-                agent_id: selectedAgent,
-                error: errorMessage,
-              });
-              break;
-
-            case "finalize_answer":
-              if (fullContent) {
-                updateMessageContent(fullContent);
-                if (update.content?.query) {
-                  setQuery(update.content.query);
-                }
-                if (chatWorkerRef.current) {
-                  chatWorkerRef.current.postMessage({
-                    type: "process_message",
-                    data: {
-                      id:
-                        update.content?.chat_thread_id ||
-                        update.content?.thread_id ||
-                        newLoadingMessageId,
-                      content: fullContent,
-                    },
-                  });
-                }
-              }
-
-              setMessages(m => {
-                if (m.length === 0) return m;
-                const lastIndex = m.length - 1;
-                const updatedMessages = [...m];
-                updatedMessages[lastIndex] = {
-                  ...updatedMessages[lastIndex],
-                  id: update.content.message_id || updatedMessages[lastIndex].id,
-                  ...(sources.length > 0 && { sources }),
-                };
-                return updatedMessages;
-              });
-
-              setShowSearchQueries(false);
-
-              posthog.capture("search_completed", {
-                query: q,
-                agent_id: selectedAgent,
-                search_mode: searchMode,
-                world_connections_mode: worldConnectionsMode,
-                format: format,
-                thread_id: threadId,
-                duration_ms: Date.now() - searchStartTime,
-                sources_count: sources.length,
-                search_queries_count: searchQueries.length,
-                has_answer: hasExtractedFinalAnswer,
-              });
-              break;
-
-            case "web_research_result":
-              if (update.content?.web_research_result?.length > 0) {
-                const researchContent = update.content.web_research_result.join("\n");
-                currentContent = researchContent;
-                updateMessageContent(currentContent);
-              }
-              break;
-
-            case "reflection":
-              if (update.content) {
-                const { is_sufficient, follow_up_queries = [], knowledge_gap } = update.content;
-
-                // Add reflection to the current message
-                const reflectionContent = [
-                  "## Research Reflection",
-                  `**Status:** ${is_sufficient ? "✅ Sufficient Information" : "⚠️ Additional Research Needed"}`,
-                  "",
-                  "### Knowledge Gaps",
-                  knowledge_gap,
-                  "",
-                  "### Follow-up Queries",
-                  ...follow_up_queries.map((q: string, i: number) => `- ${i + 1}. ${q}`),
-                ].join("\n");
-
-                // Update the message with reflection
                 setMessages(m => {
                   if (m.length === 0) return m;
                   const lastIndex = m.length - 1;
                   const updatedMessages = [...m];
                   updatedMessages[lastIndex] = {
                     ...updatedMessages[lastIndex],
-                    content: updatedMessages[lastIndex].content + "\n\n" + reflectionContent,
+                    id: update.content.message_id || updatedMessages[lastIndex].id,
                   };
                   return updatedMessages;
                 });
 
-                // Store follow-up queries for potential use
-                if (follow_up_queries.length > 0) {
-                  setStreamingSearchQueries(prev => [...prev, ...follow_up_queries]);
+                // Update the temporary ChatPair with final answer
+                if (threadId && threadId !== "new") {
+                  setChatPairs(prev => {
+                    if (prev.length === 0) return prev;
+                    const lastIndex = prev.length - 1;
+                    const updatedPairs = [...prev];
+                    updatedPairs[lastIndex] = {
+                      ...updatedPairs[lastIndex],
+                      message: answerContent,
+                      id: update.content.message_id || updatedPairs[lastIndex].id,
+                      updated_at: new Date(),
+                    };
+                    return updatedPairs;
+                  });
                 }
+
+                setIsStreaming(false);
               }
-              break;
+            }
 
-            case "connected":
-              console.log("Stream connected");
-              break;
-            case "done":
-              setIsStreaming(false);
-              break;
+            posthog.capture("search_completed", {
+              query: q,
+              search_mode: "basic",
+              world_connections_mode: "connections",
+              format: "table",
+              thread_id: threadId,
+              duration_ms: Date.now() - searchStartTime,
+              sources_count: sources.length,
+              search_queries_count: searchQueries.length,
+              has_answer: true,
+            });
+            try {
+              playNotificationSound();
+            } catch (error) {
+              console.warn("Couldn't play notification sound:", error);
+            }
+            break;
 
-            default:
-              console.warn("Unknown update type:", update.type);
-              break;
-          }
+          case "connected":
+            console.log("Stream connected");
+            break;
+          case "error":
+            const rawErrorMessage =
+              update.content && update.content.message
+                ? update.content.message
+                : "Something went wrong. Please try again.";
+
+            currentContent = createUserFriendlyErrorMessage(rawErrorMessage);
+            updateMessageContent(currentContent);
+
+            posthog.capture("stream_error", {
+              query: q,
+              agent_id: "arya",
+              error: rawErrorMessage,
+            });
+            break;
+
+          case "done":
+            setIsStreaming(false);
+            setIsLoading(false);
+
+            if (update.content?.message_id) {
+              setMessages(m => {
+                if (m.length === 0) return m;
+                const lastIndex = m.length - 1;
+                const updatedMessages = [...m];
+                updatedMessages[lastIndex] = {
+                  ...updatedMessages[lastIndex],
+                  id: update.content.message_id,
+                };
+                return updatedMessages;
+              });
+
+              // Update ChatPair with final message_id if not already updated
+              if (threadId && threadId !== "new") {
+                setChatPairs(prev => {
+                  if (prev.length === 0) return prev;
+                  const lastIndex = prev.length - 1;
+                  const lastPair = prev[lastIndex];
+                  const lastPairId = String(lastPair.id);
+                  // Only update if it's still a temp ID or doesn't have the message_id
+                  if (lastPairId.startsWith("temp-") || lastPairId !== update.content.message_id) {
+                    const updatedPairs = [...prev];
+                    updatedPairs[lastIndex] = {
+                      ...lastPair,
+                      id: update.content.message_id,
+                      message: currentContent || lastPair.message,
+                      updated_at: new Date(),
+                    };
+                    return updatedPairs;
+                  }
+                  return prev;
+                });
+              }
+            }
+            break;
+
+          default:
+            console.warn("Unknown update type:", update.type);
+            break;
         }
-      );
-    } catch (error) {
+      });
+    } catch (error: any) {
       console.error("Error sending chat request:", error);
+
+      const isRateLimitError =
+        error?.isRateLimit ||
+        (error?.message &&
+          (error.message.includes("429") ||
+            error.message.includes("rate limit") ||
+            error.message.includes("maximum number of free searches")));
 
       posthog.capture("search_error", {
         query: q,
-        agent_id: selectedAgent,
+        agent_id: "arya",
         error: error instanceof Error ? error.message : String(error),
+        isRateLimit: isRateLimitError,
       });
 
       setMessages(m =>
-        m.map(msg =>
+        m?.map(msg =>
           msg.id === newLoadingMessageId
             ? {
                 ...msg,
-                content:
-                  "Sorry, there was an error processing your request. Please try again later.",
+                content: isRateLimitError
+                  ? "⚠️ Search limit reached. Please try again later or upgrade your plan."
+                  : "⚠️ An error occurred while searching. Please try again later.",
+                error: true,
               }
             : msg
         )
@@ -724,28 +626,63 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
     } finally {
       setIsStreaming(false);
       setIsLoading(false);
-      setShowSearchQueries(false);
+    }
+  };
+
+  const handleTagClick = (tag: string) => {
+    if (!isStreaming) {
+      setQuery(tag);
+
+      // Track tag click with analytics
+      posthog.capture("tag_clicked", {
+        tag: tag,
+        location: "chat_thread",
+        thread_id: threadId,
+        is_new_thread: threadId === "new",
+      });
+      handleSearch(tag);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as any);
+      if (query?.trim() && !isStreaming) {
+        posthog.capture("search_keyboard_shortcut", {
+          key: "enter",
+          location: "chat_thread",
+          query_length: query.trim().length,
+          thread_id: threadId,
+          input_method: "keyboard",
+        });
+        handleSearch();
+      }
     }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (query.trim() && !isStreaming) {
-      console.log("Submitting query:", query);
-      // Add your submission logic here
+    if (query?.trim() && !isStreaming) {
+      posthog.capture("search_form_submitted", {
+        location: "chat_thread",
+        query_length: query.trim().length,
+        thread_id: threadId,
+        input_method: "form",
+      });
+      handleSearch();
     }
   };
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setQuery(suggestion);
-  };
+    if (initialQuery && query?.trim() && !isStreaming && isMounted) {
+      handleSearch();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialQuery]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -759,87 +696,19 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
   }, [profile?.full_name]);
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 120;
-      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
-    }
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    textarea.style.height = "auto";
+    const scrollHeight = textarea.scrollHeight;
+    const maxHeight = 120;
+    textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
   }, [query]);
-
-  const handleFeedback = useCallback(
-    (messageId: string, isPositive: boolean) => {
-      if (!messageId || feedbackSubmitted[messageId]) return;
-
-      posthog.capture("feedback_given", {
-        message_id: messageId,
-        thread_id: threadId,
-        feedback: isPositive ? "positive" : "negative",
-      });
-
-      setFeedbackSubmitted(prev => ({ ...prev, [messageId]: true }));
-
-      if (isPositive) {
-        handleFeedbackSubmit({
-          messageId,
-          isPositive,
-          comment: "",
-        });
-      } else {
-        setCurrentFeedback({
-          messageId,
-          isPositive,
-          comment: "",
-        });
-        setFeedbackModalOpen(true);
-      }
-    },
-    [threadId, feedbackSubmitted]
-  );
-
-  const handleFeedbackSubmit = async (feedback: FeedbackType) => {
-    try {
-      try {
-        const response = await apiClient.sendFeedback({
-          message_id: feedback.messageId,
-          is_positive: feedback.isPositive,
-          comment: feedback.comment || "",
-        });
-
-        if (response?.success) {
-          showSuccessToast("Feedback submitted successfully");
-          setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: true }));
-        }
-
-        posthog.capture("feedback_submitted", {
-          message_id: feedback.messageId,
-          thread_id: threadId,
-          is_positive: feedback.isPositive,
-          has_comment: !!feedback.comment,
-        });
-      } catch (error) {
-        console.error("Error submitting feedback:", error);
-        showErrorToast("Failed to submit feedback. Please try again.");
-        setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
-      }
-    } catch (error: any) {
-      const statusCode = error?.response?.status || 500;
-      showErrorToast("Failed to submit feedback", `Status: ${statusCode}`);
-      posthog.capture("feedback_submission_failed", {
-        message_id: feedback.messageId,
-        thread_id: threadId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      setFeedbackSubmitted(prev => ({ ...prev, [feedback.messageId]: false }));
-    }
-  };
 
   return (
     <div>
-      <div
-        className={` relative z-10 ${sidebarCollapsed ? "md:ml-5" : "md:ml-12"} md:px-4 pt-8 flex flex-col`}
-      >
-        {threadId === "new" && messages.length === 0 && !isStreaming && (
+      <div className={` relative z-10 md:pt-4 flex flex-col`}>
+        {threadId === "new" && messages?.length === 0 && !isStreaming && (
           <div className={`transition-all duration-500 text-center mb-8`}>
             <div className="items-center justify-center h-20 "></div>
             <h1 className={`font-bold -mt-3 mb-2 text-gray-900 text-2xl md:text-4xl`}>
@@ -853,7 +722,8 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             </h1>
             {!messages.length && (
               <p className="text-gray-600 text-sm md:text-lg mt-6">
-                Our AI-powered smart search unlocks hidden opportunities in your extended network,
+                Your secret weapon for professional networking - turn your network into your
+                competitive advantage,
                 <br />
                 connecting you through trusted warm introductions instead of ineffective cold
                 outreach.
@@ -862,7 +732,7 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
           </div>
         )}
         <div
-          className={`max-w-4xl mx-auto w-full ${messages.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
+          className={`max-w-4xl mx-auto w-full ${messages?.length ? "mb-2" : "mb-8 "} mt-5 md:mt-0  duration-200`}
         >
           <SearchInputField
             query={query}
@@ -871,6 +741,9 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
             onKey={handleKeyDown}
             onSubmit={handleSubmit}
             isStreaming={isStreaming}
+            hideGroupOption={false}
+            loading={false}
+            defaultSearchButton={true}
           />
           {threadId === "new" && !(messages.length > 0) && (
             <div className="flex  flex-col w-full z-[5] mt-3">
@@ -888,118 +761,109 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
               ))}
             </div>
           )}
-          <ChatNavigationControls
-            currentIndex={currentMessageIndex}
-            totalItems={chatPairs.length}
-            isStreaming={isStreaming || isLoading}
-            onPrevious={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
-            onNext={() => setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))}
-            onRefresh={() => {
-              if (isStreaming || isLoading) return;
-              setInitialLoadComplete(false);
-              setIsLoading(true);
-              fetchMessages(true);
-            }}
-            canNavigateNext={false}
-            canNavigatePrevious={false}
-          />
+          {messages?.length > 0 && (
+            <ChatNavigationControls
+              currentIndex={currentMessageIndex}
+              totalItems={chatPairs.length}
+              isStreaming={isStreaming || isLoading}
+              onPrevious={() => setCurrentMessageIndex(prev => Math.max(0, prev - 1))}
+              onNext={() =>
+                setCurrentMessageIndex(prev => Math.min(chatPairs.length - 1, prev + 1))
+              }
+              onRefresh={() => {
+                if (isStreaming || isLoading) return;
+                setInitialLoadComplete(false);
+                setIsLoading(true);
+                fetchMessages(true);
+              }}
+              canNavigateNext={false}
+              canNavigatePrevious={false}
+            />
+          )}
         </div>
       </div>
-      {!(threadId === "new" || isStreaming) && messages.length === 0 ? (
-        <div className="flex w-full h-full">
-          <MessagePlaceholder />
+      {!(threadId === "new" || isStreaming) && messages.length === 0 && isLoading ? (
+        <div className="flex w-full  max-w-4xl mx-auto h-full">
+          <MessagePlaceholder
+            message={
+              isLoading
+                ? undefined
+                : threadId !== "new" && initialLoadComplete
+                  ? "No messages found for this conversation. Please try another search."
+                  : undefined
+            }
+          />
         </div>
       ) : (
         <></>
       )}
-      {messages && messages.length > 0 && (
-        <div className="w-full md:px-20 overflow-y-scroll">
-          <div className="space-y-6">
-            {messages.map(m => {
-              return (
-                m.type === "agent" && (
-                  <>
-                    <div key={m.id} className="rounded-xl bg-white">
-                      <div className="flex items-start">
-                        <div className="flex-1 ">
-                          {isStreaming && (
-                            <SearchQueryDisplay
-                              showSearchQueries={showSearchQueries}
-                              streamingSearchQueries={streamingSearchQueries}
-                              isStreaming={isStreaming}
-                            />
+      {messages &&
+        messages?.length > 0 &&
+        messages?.map(m => {
+          return (
+            m?.type === "agent" && (
+              <div className="max-w-4xl mx-auto px-2 w-full  md:px-0 overflow-y-scroll scrollbar-hide">
+                <div
+                  key={m?.id || 1}
+                  className="rounded-md flex-col flex-1 h-full w-full space-y-4 overflow-hidden flex items-start bg-white"
+                >
+                  {isStreaming && (
+                    <SearchQueryDisplay
+                      isUserLoggedIn={Boolean(profile?.id)}
+                      streamingSearchQueries={streamingSearchQueries}
+                      isStreaming={isStreaming}
+                      showDefaultOpenDropdown={Boolean(initialQuery?.trim())}
+                    />
+                  )}
+
+                  {(!m.sources || m.sources.length === 0) && !isStreaming && (
+                    <div className="text-gray-700  w-full ">
+                      {isEmptyOrErrorMessage(m?.content) || m?.content === "" ? (
+                        <NoResultsFound
+                          onTryAgain={() => textareaRef.current?.focus()}
+                          onClearQuery={() => setQuery("")}
+                          onGetResultsByEmail={() => setGuestEmailModalOpen(true)}
+                          isGuest={!userAccessToken}
+                        />
+                      ) : /(first_name|last_name)/i.test(m.content) ||
+                        (typeof m.content === "string" &&
+                          (m.content.startsWith("[{") || m.content.startsWith("{"))) ? (
+                        <div className="flex  w-full">
+                          {renderAsTable(
+                            m.content,
+                            profile?.full_name ? profile.full_name : "Ashish Gupta"
                           )}
-
-                          {(!m.sources || m.sources.length === 0 || activeTab === "content") &&
-                            !isStreaming && (
-                              <div className="text-gray-700">
-                                {m.content === null ? (
-                                  <div className="flex items-center">
-                                    <div className="mr-2">
-                                      <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                                    </div>
-                                    <p className="italic">
-                                      Query seems empty, Please Search again.
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <EnhancedProfileRenderer
-                                    content={m.content}
-                                    sources={m.sources || m.sources_gathered}
-                                    onProfileSelect={(profile) => {
-                                      console.log("Selected profile:", profile);
-                                      // You can add additional profile selection logic here
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            )}
-
-                          {activeTab === "sources" && (
-                            <SourcesList sources={m.sources} sourcesGathered={m.sources_gathered} />
-                          )}
-
-                          <div className="mt-3 pb-4 px-3 flex justify-between items-center">
-                            <span
-                              title={getFullTimestamp(m.timestamp)}
-                              className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"
-                            >
-                              <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
-                              {formatTimestamp(m.timestamp)}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              {!isLoading && m.type === "agent" && !feedbackSubmitted[m.id] && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-full h-8 w-8 hover:bg-gray-100"
-                                    onClick={() => handleFeedback(m.id, true)}
-                                  >
-                                    <FiThumbsUp className="h-4 w-4 text-gray-500 hover:text-green-500" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-full h-8 w-8 hover:bg-gray-100"
-                                    onClick={() => handleFeedback(m.id, false)}
-                                  >
-                                    <FiThumbsDown className="h-4 w-4 text-gray-500 hover:text-red-500" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <StyledMarkdown
+                          content={m.content}
+                          sources={m.sources || m.sources_gathered}
+                        />
+                      )}
                     </div>
-                  </>
-                )
-              );
-            })}
-          </div>
-        </div>
-      )}
+                  )}
+
+                  <div className="mt-3 pb-4 flex w-full justify-between items-center">
+                    <span
+                      title={getFullTimestamp(m.timestamp)}
+                      className="text-sm text-gray-500 hover:text-gray-600 transition-colors cursor-default flex items-center"
+                    >
+                      <FiClock className="h-3.5 w-3.5 mr-1.5 inline-block" />
+                      {formatTimestamp(m.timestamp)}
+                    </span>
+                    {!isLoading && m.type === "agent" && userAccessToken && (
+                      <FeedbackModule
+                        messageId={m.id}
+                        threadId={threadId}
+                        setMessages={setMessages}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          );
+        })}
 
       {linkedinModalOpen && (
         <LinkedInUrlModal
@@ -1014,14 +878,10 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId }) => {
         />
       )}
 
-      <FeedbackModal
-        open={feedbackModalOpen}
-        onOpenChange={setFeedbackModalOpen}
-        initialFeedback={currentFeedback}
-        onSubmit={feedback => {
-          handleFeedbackSubmit(feedback);
-          setCurrentFeedback(null);
-        }}
+      <GuestEmailModal
+        isOpen={guestEmailModalOpen}
+        onClose={() => setGuestEmailModalOpen(false)}
+        searchQuery={query}
       />
     </div>
   );

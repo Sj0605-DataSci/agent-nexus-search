@@ -1,18 +1,20 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import HomeHeader from "@/components/Homepage/Header";
-import Footer from "@/components/Homepage/Footer";
+import Navbar from "@/components/Homepage/Navbar";
+import Footer from "@/components/Footer/Footer";
+import NewFooter from "@/components/Footer/NewFooter";
 
 const baseMetadata = {
   title: "About Us | DiscoverMinds.ai",
-  description: "Learn about our mission to unlock human potential through a mutual network-sharing platform.",
+  description:
+    "Learn about our mission to turn your network into your competitive advantage through AI-powered professional networking.",
 };
 
 const productionMetadata = {
-  title: "About Us | DiscoverMinds.ai - Our Mission to Unlock Human Potential",
+  title: "About Us | DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
   description:
-    "Learn about the mission and team behind DiscoverMinds.ai, a mutual network-sharing platform dedicated to unlocking hidden opportunities through meaningful, warm introductions.",
+    "Learn about the mission and team behind DiscoverMinds.ai, your secret weapon for professional networking that turns connections into competitive advantages through AI-powered search.",
   keywords: [
     "professional networking",
     "warm introductions",
@@ -24,9 +26,9 @@ const productionMetadata = {
     "our mission",
   ],
   openGraph: {
-    title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
+    title: "About DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
     description:
-      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
+      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai turns your network into your competitive advantage.",
     url: "https://discoverminds.ai/about",
     siteName: "DiscoverMinds.ai",
     images: [
@@ -34,7 +36,7 @@ const productionMetadata = {
         url: "/Logo.png",
         width: 512,
         height: 512,
-        alt: "DiscoverMinds.ai - Unlocking opportunities through warm introductions",
+        alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
       },
     ],
     locale: "en_US",
@@ -42,8 +44,9 @@ const productionMetadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "About DiscoverMinds.ai | Our Mission to Unlock Human Potential",
-    description: "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai is making it happen through our mutual network-sharing platform.",
+    title: "About DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
+    description:
+      "We believe in a world where the right connections are accessible to everyone. Learn how DiscoverMinds.ai turns your network into your competitive advantage.",
     images: ["/Logo.png"],
   },
   alternates: {
@@ -56,7 +59,7 @@ export const metadata = process.env.NODE_ENV === "production" ? productionMetada
 export default function AboutPage() {
   return (
     <>
-      <HomeHeader />
+      <Navbar />
       <div className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="pt-32 pb-20 px-4">
@@ -65,13 +68,13 @@ export default function AboutPage() {
               DiscoverMinds.ai
             </h1>
             <div className="max-w-3xl mx-auto">
-              <p className="text-xl md:text-2xl text-gray-600 leading-relaxed mb-8">
+              <p className="text-xl md:text-2xl text-gray-600 leading-relaxed mb-6">
                 We're building for a world where finding the right people shouldn't feel like
                 searching for a needle in a haystack.
               </p>
-              <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
-                What separates great companies from good ones is how precisely they can connect with
-                the right people at the right time.
+              <p className="text-md md:text-xl text-gray-600 leading-relaxed">
+                What separates great people and companies from average ones is how efficiently they
+                can connect with the right people at the right time.
               </p>
             </div>
           </div>
@@ -86,7 +89,7 @@ export default function AboutPage() {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
-                  Arya isn't just another search tool. She's your relentless tracker—sharp,
+                  Arya isn't just another search tool. She's your relentless tracker-sharp,
                   adaptive, and always learning.
                 </p>
                 <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
@@ -99,9 +102,7 @@ export default function AboutPage() {
               </div>
               <div className="text-center">
                 <div className="text-8xl mb-4">⚔️</div>
-                <p className="text-lg text-gray-500 italic">
-                  "A search agent that evolves with you"
-                </p>
+                <p className="text-lg text-gray-500 italic">A search agent that evolves with you</p>
               </div>
             </div>
           </div>
@@ -204,35 +205,8 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-
-        {/* CTA Section */}
-        <section className="py-20 px-4 bg-gray-900 text-white">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl md:text-6xl font-bold mb-8">
-              Experience the Future of People Search
-            </h2>
-            <p className="text-xl text-indigo-100 mb-12 max-w-2xl mx-auto">
-              Join professionals who trust DiscoverMinds.ai to find the right connections, faster
-              and smarter.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/user-auth"
-                className="px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full text-lg hover:bg-gray-100 transition-colors"
-              >
-                Get Started Free
-              </Link>
-              <Link
-                href="/#features"
-                className="px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-full text-lg hover:bg-white/10 transition-colors"
-              >
-                Learn More
-              </Link>
-            </div>
-          </div>
-        </section>
       </div>
-      <Footer />
+      <NewFooter />
     </>
   );
 }
