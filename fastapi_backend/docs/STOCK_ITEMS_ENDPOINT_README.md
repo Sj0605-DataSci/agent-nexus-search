@@ -11,7 +11,7 @@ The stock items processing system provides a complete solution for managing inve
 
 The system provides multiple endpoints for complete stock item management:
 
-#### POST /api/process-stock-items-file
+#### POST /api/tally/process-stock-items-file
 Trigger processing of uploaded CSV files
 
 **Request Body**:
@@ -41,7 +41,7 @@ Trigger processing of uploaded CSV files
 - ✅ StandardResponse format for consistency
 - ✅ Comprehensive error handling
 
-#### GET /api/stock-items
+#### GET /api/tally/stock-items
 Retrieve stock items with search and pagination
 
 **Query Parameters**:
@@ -75,14 +75,14 @@ Retrieve stock items with search and pagination
 }
 ```
 
-#### GET /api/stock-items/{item_id}
+#### GET /api/tally/stock-items/{item_id}
 Retrieve a single stock item by ID
 
 **Features**:
 - User ownership verification
 - Returns 404 if item not found or doesn't belong to user
 
-#### DELETE /api/stock-items/{item_id}
+#### DELETE /api/tally/stock-items/{item_id}
 Delete a stock item by ID
 
 **Features**:
@@ -196,7 +196,7 @@ Added schemas:
    - Record created in `stock_items_files` table with status `pending`
 
 2. **Processing Trigger**:
-   - Frontend calls `POST /api/process-stock-items-file` with `file_id`
+   - Frontend calls `POST /api/tally/process-stock-items-file` with `file_id`
    - Endpoint validates file belongs to user
    - Task enqueued to Redis queue `stock_items:queue`
 
@@ -251,7 +251,7 @@ The stock items worker is integrated into the `WorkerManager` singleton:
 ### Upload and Process CSV File
 ```typescript
 // After file upload to Supabase
-const response = await fetch(`${API_URL}/api/process-stock-items-file`, {
+const response = await fetch(`${API_URL}/api/tally/process-stock-items-file`, {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${token}`,
@@ -269,7 +269,7 @@ const result = await response.json();
 ### List Stock Items with Search
 ```typescript
 const response = await fetch(
-  `${API_URL}/api/stock-items?search=button&limit=50&offset=0`,
+  `${API_URL}/api/tally/stock-items?search=button&limit=50&offset=0`,
   {
     headers: { 'Authorization': `Bearer ${token}` }
   }
@@ -281,7 +281,7 @@ const result = await response.json();
 
 ### Get Single Item
 ```typescript
-const response = await fetch(`${API_URL}/api/stock-items/${itemId}`, {
+const response = await fetch(`${API_URL}/api/tally/stock-items/${itemId}`, {
   headers: { 'Authorization': `Bearer ${token}` }
 });
 
@@ -291,7 +291,7 @@ const result = await response.json();
 
 ### Delete Item
 ```typescript
-const response = await fetch(`${API_URL}/api/stock-items/${itemId}`, {
+const response = await fetch(`${API_URL}/api/tally/stock-items/${itemId}`, {
   method: 'DELETE',
   headers: { 'Authorization': `Bearer ${token}` }
 });
@@ -412,25 +412,25 @@ aiohttp>=3.9.0  # Async HTTP client for file downloads
 
 1. **UPDATE Endpoint**
    ```python
-   PUT /api/stock-items/{item_id}
+   PUT /api/tally/stock-items/{item_id}
    # Update quantity, rate, or item_name
    ```
 
 2. **Bulk Operations**
    ```python
-   POST /api/stock-items/bulk-delete
+   POST /api/tally/stock-items/bulk-delete
    # Delete multiple items at once
    ```
 
 3. **Export Functionality**
    ```python
-   GET /api/stock-items/export
+   GET /api/tally/stock-items/export
    # Export user's stock items to CSV
    ```
 
 4. **Statistics Endpoint**
    ```python
-   GET /api/stock-items/stats
+   GET /api/tally/stock-items/stats
    # Return: total items, total value, low stock alerts
    ```
 
@@ -444,7 +444,7 @@ aiohttp>=3.9.0  # Async HTTP client for file downloads
 
 7. **WebSocket Updates**
    ```python
-   WS /ws/stock-items
+   WS /ws/tally/stock-items
    # Real-time updates when items change
    ```
 

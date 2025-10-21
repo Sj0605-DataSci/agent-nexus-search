@@ -88,14 +88,14 @@ class ApiClient {
   }
   async processStockFile(fileId: string): Promise<any> {
     try {
-      const res = await axiosInstance.post('/process-stock-items-file', {
+      const res = await axiosInstance.post('/tally/process-stock-items-file', {
         file_id: fileId,
       });
       return res.data?.data;
     } catch (error) {
       const axiosError = error as AxiosError;
       throw new Error(
-        axiosError.message || 'Failed to process connection file',
+        axiosError.message || 'Failed to process stock file',
       );
     }
   }
