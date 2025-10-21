@@ -227,82 +227,82 @@ def calculate_price_with_percentage(base_price: float, percentage_adjustment: fl
         })
 
 
-def send_whatsapp_message_sync(phone_number: str, message: str) -> str:
-    """
-    Synchronous wrapper for sending WhatsApp messages.
-    This is called by the tool system.
-    """
-    try:
-        from app.core.services.whatsapp_service import whatsapp_service
-        import httpx
-        import os
+# def send_whatsapp_message_sync(phone_number: str, message: str) -> str:
+#     """
+#     Synchronous wrapper for sending WhatsApp messages.
+#     This is called by the tool system.
+#     """
+#     try:
+#         from app.core.services.whatsapp_service import whatsapp_service
+#         import httpx
+#         import os
         
-        logger.info(
-            "AI agent sending WhatsApp message",
-            phone_number=phone_number,
-            message_preview=message[:50] + "..." if len(message) > 50 else message
-        )
+#         logger.info(
+#             "AI agent sending WhatsApp message",
+#             phone_number=phone_number,
+#             message_preview=message[:50] + "..." if len(message) > 50 else message
+#         )
         
-        # Use synchronous HTTP client instead
-        token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-        phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+#         # Use synchronous HTTP client instead
+#         token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+#         phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
         
-        if not token or not phone_number_id:
-            return "❌ WhatsApp credentials not configured"
+#         if not token or not phone_number_id:
+#             return "❌ WhatsApp credentials not configured"
         
-        url = f"https://graph.facebook.com/v24.0/{phone_number_id}/messages"
+#         url = f"https://graph.facebook.com/v24.0/{phone_number_id}/messages"
         
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+#         headers = {
+#             "Authorization": f"Bearer {token}",
+#             "Content-Type": "application/json"
+#         }
         
-        payload = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": phone_number.replace("+", "").strip(),
-            "type": "text",
-            "text": {
-                "preview_url": False,
-                "body": message
-            }
-        }
+#         payload = {
+#             "messaging_product": "whatsapp",
+#             "recipient_type": "individual",
+#             "to": phone_number.replace("+", "").strip(),
+#             "type": "text",
+#             "text": {
+#                 "preview_url": False,
+#                 "body": message
+#             }
+#         }
         
-        # Use sync httpx client
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(url, json=payload, headers=headers)
-            response_data = response.json()
+#         # Use sync httpx client
+#         with httpx.Client(timeout=30.0) as client:
+#             response = client.post(url, json=payload, headers=headers)
+#             response_data = response.json()
             
-            if response.status_code == 200:
-                message_id = response_data.get("messages", [{}])[0].get("id")
-                logger.info("Message sent successfully", to=phone_number, message_id=message_id)
-                return f"✅ Message sent successfully to {phone_number}. Message ID: {message_id}"
-            else:
-                error = response_data.get("error", {}).get("message", "Unknown error")
-                logger.error("Failed to send message", status=response.status_code, error=error)
-                return f"❌ Failed to send message: {error}"
+#             if response.status_code == 200:
+#                 message_id = response_data.get("messages", [{}])[0].get("id")
+#                 logger.info("Message sent successfully", to=phone_number, message_id=message_id)
+#                 return f"✅ Message sent successfully to {phone_number}. Message ID: {message_id}"
+#             else:
+#                 error = response_data.get("error", {}).get("message", "Unknown error")
+#                 logger.error("Failed to send message", status=response.status_code, error=error)
+#                 return f"❌ Failed to send message: {error}"
     
-    except Exception as e:
-        logger.error("Error in WhatsApp tool", phone_number=phone_number, error=str(e), exc_info=True)
-        return f"❌ Error sending message: {str(e)}"
+#     except Exception as e:
+#         logger.error("Error in WhatsApp tool", phone_number=phone_number, error=str(e), exc_info=True)
+#         return f"❌ Error sending message: {str(e)}"
 
 
-@tool
-def send_whatsapp_message(phone_number: str, message: str) -> str:
-    """
-    Send a WhatsApp message to a user.
+# @tool
+# def send_whatsapp_message(phone_number: str, message: str) -> str:
+#     """
+#     Send a WhatsApp message to a user.
     
-    Use this tool when you need to send a response or notification to a user via WhatsApp.
-    The phone number should include the country code without the + sign.
+#     Use this tool when you need to send a response or notification to a user via WhatsApp.
+#     The phone number should include the country code without the + sign.
     
-    Args:
-        phone_number: Recipient's phone number with country code (e.g., 919311626289 for India)
-        message: The text message to send
+#     Args:
+#         phone_number: Recipient's phone number with country code (e.g., 919311626289 for India)
+#         message: The text message to send
     
-    Returns:
-        Success or error message
-    """
-    return send_whatsapp_message_sync(phone_number, message)
+#     Returns:
+#         Success or error message
+#     """
+#     return send_whatsapp_message_sync(phone_number, message)
 
 
 # ============================================================================
@@ -313,8 +313,8 @@ def send_whatsapp_message(phone_number: str, message: str) -> str:
 langchain_tools = [
     search_product_by_name, 
     search_party_by_name, 
-    calculate_price_with_percentage,
-    send_whatsapp_message  # WhatsApp messaging tool
+    calculate_price_with_percentage
+    # send_whatsapp_message  # WhatsApp messaging tool
 ]
 
 # Convert LangChain tools to OpenAI format for Groq
@@ -349,12 +349,6 @@ Your role:
 - If the user is just chatting casually, respond naturally without using tools
 - Always be polite and helpful
 
-WHATSAPP MESSAGING:
-- When you have a complete answer ready, use the send_whatsapp_message tool to send it to the user
-- The phone number will be provided in the context (from_number field)
-- After sending the WhatsApp message, confirm that the message was sent successfully
-- ALWAYS use the WhatsApp tool to send your final response - do NOT just return text
-
 IMPORTANT PRICING RULES:
 1. When a customer identifies themselves as being from a specific party/company:
    - First, search for the party using search_party_by_name tool
@@ -371,6 +365,7 @@ IMPORTANT PRICING RULES:
 3. NEVER mention to customers:
    - Party performance metrics
    - Payment performance days
+   - Quantity of the item / stock
    - Why prices are being adjusted
    - That you're adding percentage due to payment history
    - Any internal business logic
@@ -378,7 +373,6 @@ IMPORTANT PRICING RULES:
 When presenting product information:
 - Show the product name clearly
 - Display the final price prominently (in ₹ Rupees)
-- Mention available quantity
 - If multiple products match, show all of them
 - Present adjusted prices as if they are the normal prices
 
@@ -631,7 +625,8 @@ async def process_tally_query_stream(query: str):
         # Run the graph and stream events
         final_state = None
         async for event in tally_graph.astream(initial_state):
-            logger.info("graph_event", event=event)
+            # Log only the event keys, not the full event (contains non-serializable objects)
+            logger.info("graph_event", event_keys=list(event.keys()))
             
             # Stream intermediate steps
             if "agent" in event:

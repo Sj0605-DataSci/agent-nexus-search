@@ -396,7 +396,7 @@ app.include_router(profiling.router, prefix="/api", tags=["profiling"])
 app.include_router(enrichment_status.router, prefix="/api", tags=["enrichment_status"])  # Add enrichment status WebSocket router
 app.include_router(friendships.router, prefix="/api", tags=["friendships"])  # Add friendships router
 app.include_router(stock_items.router, prefix="/api/tally", tags=["stock_items"])  # Add stock items router
-app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["whatsapp"])  # WhatsApp Business API webhook
+# app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["whatsapp"])  # WhatsApp Business API webhook
 app.include_router(emergency.router)  # Emergency memory cleanup
 
 @app.get("/")
