@@ -10,10 +10,13 @@ import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
 import { merge } from 'webpack-merge';
 import TerserPlugin from 'terser-webpack-plugin';
+import dotenv from 'dotenv';
 import baseConfig from './webpack.config.base';
 import webpackPaths from './webpack.paths';
 import checkNodeEnv from '../scripts/check-node-env';
 import deleteSourceMaps from '../scripts/delete-source-maps';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 checkNodeEnv('production');
 deleteSourceMaps();
@@ -109,8 +112,17 @@ const configuration: webpack.Configuration = {
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'production',
       DEBUG_PROD: false,
-      SUPABASE_URL: '',
-      SUPABASE_ANON_KEY: '',
+      // API URLs - Read from process.env (loaded by dotenv)
+      API_BASE_URL:
+        process.env.API_BASE_URL || 'https://staging-apis.discoverminds.ai/api',
+      STAGING_API_BASE_URL:
+        process.env.STAGING_API_BASE_URL ||
+        'https://staging-apis.discoverminds.ai/api',
+      // Supabase Configuration
+      SUPABASE_URL: process.env.SUPABASE_URL || '',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+      SUPABASE_STAGING_URL: process.env.SUPABASE_STAGING_URL || '',
+      SUPABASE_STAGING_ANON_KEY: process.env.SUPABASE_STAGING_ANON_KEY || '',
     }),
 
     new MiniCssExtractPlugin({

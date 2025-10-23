@@ -39,6 +39,7 @@
 **Tallie** is a modern desktop application built with Electron, React, and TypeScript. It provides an AI-powered interface for managing professional connections, uploading documents, and interacting with a FastAPI backend service.
 
 The application features:
+
 - 🔐 Secure authentication system
 - 📤 File upload and processing capabilities
 - 👤 User profile management
@@ -50,6 +51,7 @@ The application features:
 ## ✨ Features
 
 ### Core Features
+
 - **User Authentication**: Secure login system integrated with FastAPI backend
 - **Profile Management**: View and manage user profiles with connection statistics
 - **Document Upload**: Upload and process CSV files (LinkedIn connections)
@@ -57,6 +59,7 @@ The application features:
 - **Cross-Platform**: Runs on macOS, Windows, and Linux
 
 ### Technical Features
+
 - Hot Module Replacement (HMR) for fast development
 - TypeScript for type safety
 - Modern React with hooks
@@ -69,6 +72,7 @@ The application features:
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **Electron** 35.0.2 - Desktop application framework
 - **React** 19.0.0 - UI library
 - **TypeScript** 5.8.2 - Type-safe JavaScript
@@ -78,6 +82,7 @@ The application features:
 - **React Hot Toast** - Toast notifications
 
 ### Build Tools
+
 - **Webpack** 5.98.0 - Module bundler
 - **Electron Builder** - Application packager
 - **ts-node** - TypeScript execution
@@ -85,10 +90,12 @@ The application features:
 - **Prettier** - Code formatting
 
 ### Backend Integration
+
 - **Axios** - HTTP client
 - **Supabase** - File storage and database
 
 ### Testing
+
 - **Jest** 29.7.0 - Testing framework
 - **React Testing Library** - Component testing
 
@@ -103,6 +110,7 @@ Before you begin, ensure you have the following installed:
 - **Git** (for cloning the repository)
 
 ### System Requirements
+
 - **macOS**: 10.13 or later
 - **Windows**: Windows 7 or later
 - **Linux**: Ubuntu 18.04 or later (or equivalent)
@@ -125,6 +133,7 @@ npm install
 ```
 
 This will:
+
 - Install all required npm packages
 - Run post-install scripts
 - Build development DLL files
@@ -157,12 +166,15 @@ SUPABASE_ANON_KEY=your-anon-key-here
 The application requires Supabase for file storage. Follow these steps:
 
 #### 1. Create Supabase Project
+
 - Go to [supabase.com](https://supabase.com)
 - Create a new project
 - Note your project URL and anon key
 
 #### 2. Set Up Storage Bucket
+
 Create a storage bucket named `connection-files`:
+
 ```sql
 -- In Supabase SQL Editor
 INSERT INTO storage.buckets (id, name, public)
@@ -170,6 +182,7 @@ VALUES ('connection-files', 'connection-files', false);
 ```
 
 Set bucket permissions:
+
 ```sql
 -- Allow authenticated users to upload
 CREATE POLICY "Authenticated users can upload"
@@ -179,6 +192,7 @@ WITH CHECK (bucket_id = 'connection-files');
 ```
 
 #### 3. Create Database Table
+
 ```sql
 CREATE TABLE connection_files (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -195,6 +209,7 @@ CREATE TABLE connection_files (
 The app expects a FastAPI backend running at `http://localhost:8000` (configurable in `src/lib/api/axiosInstance.ts`).
 
 Required endpoints:
+
 - `POST /auth/login` - User authentication
 - `GET /users/profile` - Fetch user profile
 - `POST /connections/process` - Process uploaded files
@@ -212,11 +227,13 @@ npm start
 ```
 
 This will:
+
 1. Start the Webpack dev server (renderer process)
 2. Compile the main process
 3. Launch the Electron application with hot reload
 
 The app will automatically reload when you make changes to:
+
 - Renderer process files (React components)
 - Main process files (Electron main)
 
@@ -245,16 +262,19 @@ This creates optimized builds for both main and renderer processes in the `dist`
 ### Package for Distribution
 
 #### All Platforms (Current OS)
+
 ```bash
 npm run package
 ```
 
 #### Windows (x64)
+
 ```bash
 npm run package:win
 ```
 
 #### macOS (Universal)
+
 ```bash
 npm run package
 ```
@@ -264,6 +284,7 @@ The packaged application will be in `release/build/`.
 ### Build Configuration
 
 Edit `package.json` under the `build` section to customize:
+
 - App name and ID
 - Icons and assets
 - Target platforms
@@ -322,6 +343,7 @@ electron_Tallie/
 ## 📜 Available Scripts
 
 ### Development
+
 ```bash
 npm start              # Start development server
 npm run start:main     # Start only main process
@@ -329,6 +351,7 @@ npm run start:renderer # Start only renderer process
 ```
 
 ### Building
+
 ```bash
 npm run build          # Build for production
 npm run build:main     # Build main process only
@@ -337,12 +360,14 @@ npm run build:dll      # Build development DLL
 ```
 
 ### Packaging
+
 ```bash
 npm run package        # Package for current platform
 npm run package:win    # Package for Windows
 ```
 
 ### Code Quality
+
 ```bash
 npm run lint           # Run ESLint
 npm run lint:fix       # Fix ESLint errors
@@ -350,6 +375,7 @@ npm test               # Run tests
 ```
 
 ### Utilities
+
 ```bash
 npm run postinstall    # Run after npm install
 npm run rebuild        # Rebuild native modules
@@ -382,6 +408,7 @@ npm test -- --coverage
 Tests are located in `src/__tests__/` and use Jest with React Testing Library.
 
 Example test:
+
 ```typescript
 import { render, screen } from '@testing-library/react';
 import App from '../renderer/App';
@@ -401,32 +428,41 @@ describe('App', () => {
 ### Common Issues
 
 #### 1. **Port Already in Use**
+
 ```bash
 Error: Port 1212 is already in use
 ```
+
 **Solution**: Kill the process using port 1212 or change the port in `.erb/configs/webpack.config.renderer.dev.ts`
 
 #### 2. **Native Module Errors**
+
 ```bash
 Error: Module did not self-register
 ```
+
 **Solution**: Rebuild native modules
+
 ```bash
 npm run rebuild
 ```
 
 #### 3. **Supabase Connection Errors**
+
 ```bash
 Error: Invalid Supabase URL
 ```
+
 **Solution**: Check your `.env` file and ensure credentials are correct
 
 #### 4. **Build Errors After npm install**
+
 ```bash
 npm run build:dll
 ```
 
 #### 5. **TypeScript Errors**
+
 ```bash
 npm run lint:fix
 ```
@@ -434,11 +470,13 @@ npm run lint:fix
 ### Debug Logs
 
 Enable verbose logging:
+
 ```bash
 DEBUG=* npm start
 ```
 
 Check Electron logs:
+
 - **macOS**: `~/Library/Logs/Tallie/`
 - **Windows**: `%USERPROFILE%\AppData\Roaming\Tallie\logs\`
 - **Linux**: `~/.config/Tallie/logs/`
