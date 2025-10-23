@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useAuth } from './contexts/AuthContext';
 import './DocumentUpload.css';
 
 function DocumentUpload() {
@@ -8,6 +9,7 @@ function DocumentUpload() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -64,11 +66,19 @@ function DocumentUpload() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('discover_minds_access_token');
-    localStorage.removeItem('discover_minds_refresh_token');
-    toast.success('Logged out successfully');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      const result = await signOut();
+      if (result.success) {
+        toast.success('Logged out successfully');
+        navigate('/');
+      } else {
+        toast.error(result.error || 'Logout failed');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed');
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
