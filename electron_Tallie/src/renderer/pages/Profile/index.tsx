@@ -4,12 +4,14 @@ import toast from 'react-hot-toast';
 import { apiClient } from '../../../lib/api/apiClient';
 import { UserProfile } from '../../../types/profile';
 import { User, Mail, ArrowLeft, LogOut } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import './styles.css';
 
 function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   useEffect(() => {
     fetchProfile();
@@ -27,10 +29,19 @@ function Profile() {
     }
   };
 
-  const handleLogout = () => {
-    apiClient.logout();
-    toast.success('Logged out successfully');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      const result = await signOut();
+      if (result.success) {
+        toast.success('Logged out successfully');
+        navigate('/');
+      } else {
+        toast.error(result.error || 'Logout failed');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed');
+    }
   };
 
   const handleBack = () => {

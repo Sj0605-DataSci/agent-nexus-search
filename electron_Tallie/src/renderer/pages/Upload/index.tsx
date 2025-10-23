@@ -5,6 +5,7 @@ import { apiClient } from '../../../lib/api/apiClient';
 import { supabase } from '../../../lib/supabase/client';
 import { getSupabaseConfig } from '../../../config/supabase';
 import { generateUniqueId } from '../../../utils';
+import { useAuth } from '../../contexts/AuthContext';
 import './styles.css';
 
 function Upload() {
@@ -14,6 +15,7 @@ function Upload() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   useEffect(() => {
     if (countdown === 0) {
@@ -26,7 +28,7 @@ function Upload() {
     // Check if it's a zip file
     if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
       setErrorMessage(
-        'Please unzip the file first! You need to extract and upload only the connections.csv file from the zip archive.',
+        'Please unzip the file first! You need to extract and upload only the stock_items_rows.csv file from the zip archive.',
       );
       setSelectedFile(null);
       toast.error('Please unzip the file first');
@@ -41,13 +43,13 @@ function Upload() {
       return;
     }
 
-    // Check if the file name is exactly connections.csv (case insensitive)
+    // Check if the file name is exactly stock_items_rows.csv (case insensitive)
     if (file.name.toLowerCase() !== 'stock_items_rows.csv') {
       setErrorMessage(
-        'Please upload the connections.csv file from your LinkedIn data export',
+        'Please upload the stock_items_rows.csv file from your Tally data export',
       );
       setSelectedFile(null);
-      toast.error('File must be named connections.csv');
+      toast.error('File must be named stock_items_rows.csv');
       return;
     }
 
@@ -183,7 +185,7 @@ function Upload() {
         throw new Error('Could not get file ID from database response');
       await apiClient.processStockFile(fileId);
 
-      toast.success('Upload successful! Processing your connections...');
+      toast.success('Upload successful! Processing your stock items...');
       setSelectedFile(null);
       setCountdown(null);
 
@@ -201,11 +203,19 @@ function Upload() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('discover_minds_access_token');
-    localStorage.removeItem('discover_minds_refresh_token');
-    toast.success('Logged out successfully');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      const result = await signOut();
+      if (result.success) {
+        toast.success('Logged out successfully');
+        navigate('/');
+      } else {
+        toast.error(result.error || 'Logout failed');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed');
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -289,7 +299,7 @@ function Upload() {
                 disabled={uploading || countdown !== null}
               />
               <p className="file-types">
-                Please upload connections.csv from your LinkedIn data export
+                Please upload stock_items_rows.csv from your Tally data export
               </p>
             </>
           ) : (

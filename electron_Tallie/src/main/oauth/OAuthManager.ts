@@ -46,7 +46,11 @@ export class OAuthManager {
   private mainWindow: BrowserWindow | null = null;
 
   private constructor() {
-    log.info('[OAuthManager] Initialized');
+    log.info('[OAuthManager] Initialized', {
+      platform: process.platform,
+      arch: process.arch,
+      protocolScheme: this.PROTOCOL_SCHEME,
+    });
   }
 
   static getInstance(): OAuthManager {
@@ -69,6 +73,31 @@ export class OAuthManager {
    */
   private generateState(): string {
     return randomBytes(32).toString('hex');
+  }
+
+  /**
+   * Get platform-specific error message
+   */
+  private getPlatformSpecificError(error: Error): string {
+    const message = error.message.toLowerCase();
+    
+    if (process.platform === 'win32') {
+      if (message.includes('protocol') || message.includes('scheme')) {
+        return 'Protocol handler not registered. Please reinstall the application or contact support.';
+      }
+      if (message.includes('enoent') || message.includes('not found')) {
+        return 'Default browser not found. Please set a default browser in Windows settings.';
+      }
+      if (message.includes('access') || message.includes('permission')) {
+        return 'Permission denied. Please run the application with appropriate permissions.';
+      }
+    } else if (process.platform === 'darwin') {
+      if (message.includes('protocol')) {
+        return 'Protocol handler not registered. Please reinstall the application.';
+      }
+    }
+    
+    return error.message;
   }
 
   /**
@@ -121,10 +150,18 @@ export class OAuthManager {
 
       return { success: true };
     } catch (error) {
-      log.error('[OAuthManager] Failed to start OAuth flow', error);
+      log.error('[OAuthManager] Failed to start OAuth flow', {
+        error,
+        platform: process.platform,
+      });
+      
+      const errorMessage = error instanceof Error 
+        ? this.getPlatformSpecificError(error)
+        : 'Unknown error occurred while starting OAuth flow';
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       };
     }
   }
