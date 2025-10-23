@@ -7,9 +7,12 @@ import chalk from 'chalk';
 import { merge } from 'webpack-merge';
 import { execSync, spawn } from 'child_process';
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
+import dotenv from 'dotenv';
 import baseConfig from './webpack.config.base';
 import webpackPaths from './webpack.paths';
 import checkNodeEnv from '../scripts/check-node-env';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // When an ESLint server is running, we can't set the NODE_ENV so we'll check if it's
 // at the dev webpack config is not accidentally run in a production environment
@@ -141,8 +144,17 @@ const configuration: webpack.Configuration = {
      */
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'development',
-      SUPABASE_URL: '',
-      SUPABASE_ANON_KEY: '',
+      // API URLs - Read from process.env (loaded by dotenv)
+      API_BASE_URL:
+        process.env.API_BASE_URL || 'https://staging-apis.discoverminds.ai/api',
+      STAGING_API_BASE_URL:
+        process.env.STAGING_API_BASE_URL ||
+        'https://staging-apis.discoverminds.ai/api',
+      // Supabase Configuration
+      SUPABASE_URL: process.env.SUPABASE_URL || '',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+      SUPABASE_STAGING_URL: process.env.SUPABASE_STAGING_URL || '',
+      SUPABASE_STAGING_ANON_KEY: process.env.SUPABASE_STAGING_ANON_KEY || '',
     }),
 
     new webpack.LoaderOptionsPlugin({
