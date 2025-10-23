@@ -26,9 +26,9 @@ function Login() {
         console.log('Login successful:', response);
         toast.success('Login successful!');
 
-        // Navigate to document upload page
+        // Navigate to chat page
         setTimeout(() => {
-          navigate('/upload');
+          navigate('/chat');
         }, 1000);
       } else {
         toast.error(

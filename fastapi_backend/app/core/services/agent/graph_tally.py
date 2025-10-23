@@ -27,6 +27,7 @@ class TallyState(TypedDict):
     query: str
     product_info: dict | None
     final_answer: str | None
+    user_id: str | None
 
 
 # ============================================================================
@@ -34,13 +35,14 @@ class TallyState(TypedDict):
 # ============================================================================
 
 @tool
-def search_product_by_name(product_name: str) -> str:
+def search_product_by_name(product_name: str, user_id: str) -> str:
     """
     Search for a product in the stock_items table by name.
     Returns product information including name, quantity, and rate.
     
     Args:
         product_name: The name of the product to search for (case-insensitive)
+        user_id: The ID of the user making the request
     
     Returns:
         JSON string with product information or error message
@@ -54,12 +56,43 @@ def search_product_by_name(product_name: str) -> str:
         # Search for product (case-insensitive using the lowercase column)
         product_name_lower = product_name.lower().strip()
         
-        # Use ILIKE for partial matching
+        # Extract keywords from search query
+        import re
+        keywords = re.findall(r'\w+', product_name_lower)
+        # Remove very short words (less than 2 chars) and common words
+        keywords = [k for k in keywords if len(k) >= 2 and k not in ['the', 'and', 'or', 'for', 'with', 'mtr', 'meter', 'mtrs']]
+        
+        logger.info("search_keywords_extracted", 
+                   original=product_name,
+                   keywords=keywords)
+        
+        # Try exact/partial match first (fast path)
         response = supabase.table('stock_items') \
             .select('item_name, quantity, rate') \
             .ilike('item_name_lower', f'%{product_name_lower}%') \
+            .eq('user_id', user_id) \
             .limit(20) \
             .execute()
+        
+        # If no results and we have multiple keywords, use SQL AND conditions
+        if (not response.data or len(response.data) == 0) and len(keywords) > 1:
+            logger.info("trying_keyword_sql_search", keywords=keywords)
+            
+            # Build SQL query with AND conditions for each keyword
+            # All keywords must be present in the product name
+            query = supabase.table('stock_items') \
+                .select('item_name, quantity, rate') \
+                .eq('user_id', user_id)
+            
+            # Chain multiple ILIKE conditions (AND logic)
+            for keyword in keywords:
+                query = query.ilike('item_name_lower', f'%{keyword}%')
+            
+            response = query.limit(50).execute()
+            
+            logger.info("keyword_sql_search_results",
+                       keywords=keywords,
+                       results_count=len(response.data) if response.data else 0)
         
         if response.data and len(response.data) > 0:
             logger.info("search_product_found", 
@@ -88,13 +121,14 @@ def search_product_by_name(product_name: str) -> str:
 
 
 @tool
-def search_party_by_name(party_name: str) -> str:
+def search_party_by_name(party_name: str, user_id: str) -> str:
     """
     Search for a party/customer in the party_performance table by name.
     Returns party information including payment performance.
     
     Args:
         party_name: The name of the party/customer to search for (case-insensitive)
+        user_id: The ID of the user making the request
     
     Returns:
         JSON string with party information or error message
@@ -113,6 +147,7 @@ def search_party_by_name(party_name: str) -> str:
             .select('party_name, payment_performance_days, payment_performance_text') \
             .ilike('party_name_lower', f'%{party_name_lower}%') \
             .limit(20) \
+            .eq('user_id', user_id) \
             .execute()
         
         if response.data and len(response.data) > 0:
@@ -338,8 +373,24 @@ def convert_langchain_tools_to_openai(tools):
 
 openai_tools = convert_langchain_tools_to_openai(langchain_tools)
 
-# System prompt for the agent
-system_prompt = """You are a helpful customer support assistant of PADAMSHREE INFOTECH for product queries related to pricing and quantity.
+
+# ============================================================================
+# GRAPH NODES
+# ============================================================================
+
+async def agent_node(state: TallyState) -> TallyState:
+    """
+    Main agent node that decides whether to use tools or respond directly.
+    """
+    try:
+        logger.info("agent_node_started")
+        
+        messages = state["messages"]
+        trace_id = state.get("trace_id", "unknown")
+        user_id = state.get("user_id", "unknown")
+
+        # System prompt for the agent
+        system_prompt = """You are a helpful customer support assistant of PADAMSHREE INFOTECH for product queries related to pricing and quantity.
 
 Your role:
 - Help users find product information (name, quantity, rate/price)
@@ -348,6 +399,8 @@ Your role:
 - If a user mentions that he/she is from a party/customer, use the search_party_by_name tool to get party performance metric
 - If the user is just chatting casually, respond naturally without using tools
 - Always be polite and helpful
+
+Use user id: {user_id} when calling tools.
 
 IMPORTANT PRICING RULES:
 1. When a customer identifies themselves as being from a specific party/company:
@@ -385,20 +438,7 @@ Examples:
 
 Remember: Be conversational and friendly, not robotic! Never reveal internal pricing logic."""
 
-
-# ============================================================================
-# GRAPH NODES
-# ============================================================================
-
-async def agent_node(state: TallyState) -> TallyState:
-    """
-    Main agent node that decides whether to use tools or respond directly.
-    """
-    try:
-        logger.info("agent_node_started")
-        
-        messages = state["messages"]
-        trace_id = state.get("trace_id", "unknown")
+        system_prompt = system_prompt.format(user_id=user_id)
         
         # Create LLM instance with trace_id for this specific call
         llm = GroqChatModel(
@@ -587,7 +627,7 @@ tally_graph = create_tally_graph()
 # STREAMING FUNCTION
 # ============================================================================
 
-async def process_tally_query_stream(query: str):
+async def process_tally_query_stream(query: str, user_id: str):
     """
     Process a tally query and stream responses.
     
@@ -617,6 +657,7 @@ async def process_tally_query_stream(query: str):
         initial_state = {
             "messages": [HumanMessage(content=query)],
             "query": query,
+            "user_id": user_id,
             "trace_id": trace_id,  # Pass trace_id through state
             "product_info": None,
             "final_answer": None

@@ -1063,7 +1063,7 @@ class ChatService:
                             comment=comment)
             raise
     
-    async def process_tally_query(self, query: str):
+    async def process_tally_query(self, query: str, user_id: str):
         """
         Process a Tally product query using LangGraph with tool calling.
         Streams responses back to the client.
@@ -1075,7 +1075,7 @@ class ChatService:
             from app.core.services.agent.graph_tally import process_tally_query_stream
             
             # Stream events from the tally graph
-            async for event in process_tally_query_stream(query):
+            async for event in process_tally_query_stream(query, user_id):
                 yield json.dumps(event)
             
             logger.info("process_tally_query_completed", query=query)

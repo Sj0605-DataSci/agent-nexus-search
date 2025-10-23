@@ -225,6 +225,9 @@ function Upload() {
       <div className="upload-header">
         <h1>Upload Document</h1>
         <div className="header-actions">
+          <button onClick={() => navigate('/chat')} className="chat-button">
+            Chat
+          </button>
           <button onClick={handleProfileClick} className="profile-button">
             Profile
           </button>

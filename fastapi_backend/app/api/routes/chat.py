@@ -559,6 +559,7 @@ class TallyQueryRequest(BaseModel):
 @router.post("/tally")
 async def tally_product_chat(
     request: TallyQueryRequest,
+    current_user: Profile = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service)
 ) -> StreamingResponse:
     """
@@ -572,7 +573,7 @@ async def tally_product_chat(
         # Stream the response from the product query agent
         async def event_generator():
             try:
-                async for event in chat_service.process_tally_query(request.query):
+                async for event in chat_service.process_tally_query(request.query, current_user.id):
                     yield f"data: {event}\n\n"
             except Exception as e:
                 logger.error("tally_product_chat_error",

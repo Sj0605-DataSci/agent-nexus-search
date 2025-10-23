@@ -1,7 +1,10 @@
 .document-upload-container {
   min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 2rem;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .upload-header {
@@ -23,6 +26,7 @@
   gap: 0.75rem;
 }
 
+.chat-button,
 .profile-button,
 .logout-button {
   background: rgba(255, 255, 255, 0.2);
@@ -36,6 +40,7 @@
   transition: all 0.3s ease;
 }
 
+.chat-button:hover,
 .profile-button:hover,
 .logout-button:hover {
   background: rgba(255, 255, 255, 0.3);

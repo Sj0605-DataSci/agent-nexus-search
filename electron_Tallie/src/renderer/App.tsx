@@ -3,6 +3,8 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
+import Chat from './pages/Chat';
+import Settings from './pages/Settings';
 import './styles/global.css';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -12,7 +14,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('discover_minds_access_token');
-  return isAuthenticated ? <Navigate to="/upload" replace /> : <>{children}</>;
+  return isAuthenticated ? <Navigate to="/chat" replace /> : <>{children}</>;
 }
 
 export default function App() {
@@ -67,6 +69,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />
