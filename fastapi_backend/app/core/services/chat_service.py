@@ -1086,3 +1086,38 @@ class ChatService:
                            error_message=str(e),
                            query=query)
             raise
+    
+    async def process_tally_query_websocket(self, query: str, user_id: str, websocket):
+        """
+        Process a Tally query using WebSocket for bidirectional communication.
+        This allows the backend to request XML execution from Electron.
+        
+        Args:
+            query: User's query
+            user_id: User ID
+            websocket: WebSocket connection to Electron
+        """
+        try:
+            logger.info("process_tally_query_websocket_started",
+                       query=query,
+                       user_id=user_id)
+            
+            # Import here to avoid circular dependency
+            from app.core.services.agent.graph_tally import process_tally_query_websocket_stream
+            
+            # Stream events from the tally graph with WebSocket support
+            async for event in process_tally_query_websocket_stream(query, user_id, websocket):
+                # Events are sent directly through websocket in graph_tally
+                yield event
+            
+            logger.info("process_tally_query_websocket_completed",
+                       query=query,
+                       user_id=user_id)
+            
+        except Exception as e:
+            logger.exception("Error processing tally query via websocket",
+                           exception_type=type(e).__name__,
+                           error_message=str(e),
+                           query=query,
+                           user_id=user_id)
+            raise

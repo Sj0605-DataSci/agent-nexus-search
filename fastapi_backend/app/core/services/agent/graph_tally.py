@@ -725,3 +725,49 @@ async def process_tally_query_stream(query: str, user_id: str):
             "type": "error",
             "content": {"message": f"Error processing query: {str(e)}"}
         }
+
+
+# ============================================================================
+# WEBSOCKET STREAMING FUNCTION (For bidirectional communication with Electron)
+# ============================================================================
+
+async def process_tally_query_websocket_stream(query: str, user_id: str, websocket):
+    """
+    Process a tally query with WebSocket support for bidirectional communication.
+    This allows the backend to request XML execution from Electron.
+    
+    Args:
+        query: The user's query
+        user_id: User ID for data filtering
+        websocket: WebSocket connection to Electron
+        
+    Yields:
+        Events sent through WebSocket
+    """
+    try:
+        logger.info("process_tally_query_websocket_stream_started",
+                   query=query,
+                   user_id=user_id)
+        
+        # For now, use the existing SSE-based flow
+        # In future, this can be enhanced to request XML execution from Electron
+        async for event in process_tally_query_stream(query, user_id):
+            # Send event through WebSocket
+            await websocket.send_json(event)
+            yield event
+        
+        logger.info("process_tally_query_websocket_stream_completed",
+                   query=query,
+                   user_id=user_id)
+        
+    except Exception as e:
+        logger.error("process_tally_query_websocket_stream_error",
+                    query=query,
+                    user_id=user_id,
+                    error=str(e))
+        error_event = {
+            "type": "error",
+            "content": {"message": f"Error processing query: {str(e)}"}
+        }
+        await websocket.send_json(error_event)
+        yield error_event

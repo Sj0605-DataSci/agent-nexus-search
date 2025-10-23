@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Path, Query, Body, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Query, Body, Header, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from app.models.chat import ChatRequest, ChatResponse, StreamingChatRequest, StreamingChatUpdate, StreamingPublicChatRequest
 from app.models.models import Profile
@@ -598,3 +598,80 @@ async def tally_product_chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing Tally query: {str(e)}"
         )
+
+
+@router.websocket("/tally/ws/{user_id}")
+async def tally_websocket(
+    websocket: WebSocket,
+    user_id: str,
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """
+    WebSocket endpoint for Tally chat with bidirectional communication.
+    Allows backend to request XML execution on Electron's local Tally.
+    """
+    await websocket.accept()
+    logger.info("tally_websocket_connected", user_id=user_id)
+    
+    try:
+        while True:
+            # Receive message from Electron
+            data = await websocket.receive_json()
+            message_type = data.get("type")
+            
+            logger.info("tally_websocket_message_received",
+                       user_id=user_id,
+                       message_type=message_type)
+            
+            if message_type == "query":
+                # User query received from Electron
+                query = data.get("message", "")
+                
+                logger.info("tally_websocket_query",
+                           user_id=user_id,
+                           query=query)
+                
+                # Send thinking status
+                await websocket.send_json({
+                    "type": "thinking",
+                    "content": "Processing your query..."
+                })
+                
+                try:
+                    # Process query with LangGraph agent
+                    # This will stream events including XML requests
+                    async for event in chat_service.process_tally_query_websocket(query, user_id, websocket):
+                        # Events are sent directly through websocket in the service
+                        pass
+                        
+                except Exception as e:
+                    logger.error("tally_websocket_query_error",
+                               user_id=user_id,
+                               error=str(e))
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": f"Error processing query: {str(e)}"
+                    })
+            
+            elif message_type == "tally_result":
+                # Tally execution result received from Electron
+                # This is handled within the process_tally_query_websocket flow
+                logger.info("tally_websocket_result_received",
+                           user_id=user_id,
+                           success=data.get("success", False))
+            
+            else:
+                logger.warning("tally_websocket_unknown_message_type",
+                             user_id=user_id,
+                             message_type=message_type)
+    
+    except WebSocketDisconnect:
+        logger.info("tally_websocket_disconnected", user_id=user_id)
+    except Exception as e:
+        logger.error("tally_websocket_error",
+                    user_id=user_id,
+                    error=str(e))
+        try:
+            await websocket.close()
+        except:
+            pass

@@ -266,7 +266,7 @@ class DBConnectionProfilingMiddleware(BaseHTTPMiddleware):
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://www.test-web.discoverminds.ai", "https://www.test-web.discoverminds.ai/", "https://test-web.discoverminds.ai", "https://test-web.discoverminds.ai/"],  # Include localhost development URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:1212", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://www.test-web.discoverminds.ai", "https://www.test-web.discoverminds.ai/", "https://test-web.discoverminds.ai", "https://test-web.discoverminds.ai/"],  # Include localhost development URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -306,7 +306,8 @@ async def cors_debug_middleware(request: Request, call_next):
         # Log if origin is not in allowed origins
         allowed_origins = [
             "http://localhost:3000", 
-            "http://localhost:3001", 
+            "http://localhost:3001",
+            "http://localhost:1212",
             "https://www.discoverminds.ai", 
             "https://www.discoverminds.ai/", 
             "https://discoverminds.ai", 
