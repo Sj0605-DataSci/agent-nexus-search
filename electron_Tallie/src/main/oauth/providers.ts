@@ -6,7 +6,7 @@ import { getSupabaseConfig } from '../../config/supabase';
  * Centralized configuration for all OAuth providers
  */
 export class OAuthProviders {
-  private static readonly REDIRECT_PROTOCOL = 'tallie://oauth/callback';
+  private static readonly REDIRECT_PROTOCOL = 'tara://oauth/callback';
 
   /**
    * Get Google OAuth provider configuration

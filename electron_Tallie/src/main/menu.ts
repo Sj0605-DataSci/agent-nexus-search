@@ -54,17 +54,17 @@ export default class MenuBuilder {
 
   buildDarwinTemplate(): MenuItemConstructorOptions[] {
     const subMenuAbout: DarwinMenuItemConstructorOptions = {
-      label: 'Electron',
+      label: 'Tara',
       submenu: [
         {
-          label: 'About ElectronReact',
+          label: 'About Tara',
           selector: 'orderFrontStandardAboutPanel:',
         },
         { type: 'separator' },
         { label: 'Services', submenu: [] },
         { type: 'separator' },
         {
-          label: 'Hide ElectronReact',
+          label: 'Hide Tara',
           accelerator: 'Command+H',
           selector: 'hide:',
         },
@@ -155,29 +155,27 @@ export default class MenuBuilder {
       label: 'Help',
       submenu: [
         {
-          label: 'Learn More',
+          label: 'Visit Tara Website',
           click() {
-            shell.openExternal('https://electronjs.org');
+            shell.openExternal('https://discoverminds.ai');
           },
         },
         {
           label: 'Documentation',
           click() {
-            shell.openExternal(
-              'https://github.com/electron/electron/tree/main/docs#readme',
-            );
+            shell.openExternal('https://docs.discoverminds.ai');
           },
         },
         {
-          label: 'Community Discussions',
+          label: 'Support',
           click() {
-            shell.openExternal('https://www.electronjs.org/community');
+            shell.openExternal('https://support.discoverminds.ai');
           },
         },
         {
-          label: 'Search Issues',
+          label: 'Report Issue',
           click() {
-            shell.openExternal('https://github.com/electron/electron/issues');
+            shell.openExternal('https://github.com/discoverminds/tara/issues');
           },
         },
       ],

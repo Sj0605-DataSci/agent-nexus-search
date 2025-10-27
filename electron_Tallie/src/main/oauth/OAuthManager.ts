@@ -42,7 +42,7 @@ export class OAuthManager {
   private static instance: OAuthManager;
   private pendingFlows: Map<string, OAuthState> = new Map();
   private readonly FLOW_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-  private readonly PROTOCOL_SCHEME = 'tallie';
+  private readonly PROTOCOL_SCHEME = 'tara';
   private mainWindow: BrowserWindow | null = null;
 
   private constructor() {

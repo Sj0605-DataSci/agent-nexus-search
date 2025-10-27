@@ -12,19 +12,19 @@
     "hot",
     "reload"
   ],
-  "homepage": "https://github.com/yourusername/Tallie#readme",
+  "homepage": "https://discoverminds.ai",
   "bugs": {
-    "url": "https://github.com/yourusername/Tallie/issues"
+    "url": "https://github.com/discoverminds/tara/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/Tallie.git"
+    "url": "git+https://github.com/discoverminds/tara.git"
   },
   "license": "MIT",
   "author": {
-    "name": "Tallie Team",
-    "email": "support@tallie.app",
-    "url": "https://tallie.app"
+    "name": "DiscoverMinds Team",
+    "email": "support@discoverminds.ai",
+    "url": "https://discoverminds.ai"
   },
   "contributors": [],
   "main": "./main.js",
@@ -269,8 +269,8 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "yourusername",
-      "repo": "Tallie"
+      "owner": "discoverminds",
+      "repo": "tara"
     }
   },
   "devEngines": {

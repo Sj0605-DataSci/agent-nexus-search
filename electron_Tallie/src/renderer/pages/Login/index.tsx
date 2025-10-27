@@ -182,7 +182,7 @@ function Login() {
     <div className="login-container">
       <div className="login-card">
         <h1 className="login-title">
-          {isRegister ? 'Register to Tallie' : 'Login to Tallie'}
+          {isRegister ? 'Register to Tara' : 'Login to Tara'}
         </h1>
 
         <form onSubmit={handleSubmit} className="login-form">

@@ -1,12 +1,12 @@
 {
-  "name": "tallie",
+  "name": "tara",
   "version": "4.6.0",
-  "description": "Your Tally Prime with AI-powered assistance.",
+  "description": "Tara - AI-powered Tally Prime assistant.",
   "license": "MIT",
   "author": {
-    "name": "Tallie Team",
-    "email": "support@tallie.app",
-    "url": "https://tallie.app"
+    "name": "DiscoverMinds Team",
+    "email": "support@discoverminds.ai",
+    "url": "https://discoverminds.ai"
   },
   "main": "./dist/main/main.js",
   "scripts": {
