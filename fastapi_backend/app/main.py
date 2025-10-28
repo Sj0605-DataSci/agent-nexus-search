@@ -31,7 +31,7 @@ from app.core.structured_logger import setup_structured_logging, get_structured_
 from app.core.config import settings
 from contextlib import asynccontextmanager
 
-# Ngrok support (optional) - COMMENTED OUT
+# # Ngrok support (optional)
 # ENABLE_NGROK = os.getenv("ENABLE_NGROK", "false").lower() == "true"
 # NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN", "")
 # NGROK_DOMAIN = os.getenv("NGROK_DOMAIN", "")  # Optional static domain
@@ -53,14 +53,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("Starting application...")
     
-    # Ngrok tunnel setup - COMMENTED OUT
+    # # Ngrok tunnel setup
     # ngrok_listener = None
     # if ENABLE_NGROK:
     #     try:
     #         import ngrok
     #         logger.info("Setting up ngrok tunnel...")
     #         ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-    #         
+            
     #         # Use static domain if provided, otherwise use random URL
     #         if NGROK_DOMAIN:
     #             logger.info(f"Using static ngrok domain: {NGROK_DOMAIN}")
@@ -68,11 +68,11 @@ async def lifespan(app: FastAPI):
     #         else:
     #             logger.info("Using random ngrok URL (will change on restart)")
     #             ngrok_listener = await ngrok.forward(8000, authtoken_from_env=True)
-    #         
+            
     #         ngrok_url = ngrok_listener.url()
     #         logger.info(f"🌐 Ngrok tunnel established: {ngrok_url}")
     #         logger.info(f"📱 Use this URL for WhatsApp webhook: {ngrok_url}/api/whatsapp/webhook")
-    #         
+            
     #         if not NGROK_DOMAIN:
     #             logger.warning("⚠️  URL will change on restart! Get a free static domain at: https://dashboard.ngrok.com/domains")
     #     except ImportError:
@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI):
         # Shutdown procedures
         logger.info("Shutting down application...")
         
-        # Disconnect ngrok tunnel - COMMENTED OUT
+        # # Disconnect ngrok tunnel
         # if ENABLE_NGROK and ngrok_listener:
         #     try:
         #         import ngrok
@@ -264,14 +264,39 @@ class DBConnectionProfilingMiddleware(BaseHTTPMiddleware):
         return response
 
 # Set up CORS middleware
+# For Electron apps, we need to allow custom protocols and null origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:1212", "https://www.discoverminds.ai", "https://www.discoverminds.ai/", "https://discoverminds.ai", "https://discoverminds.ai/", "https://www.test-web.discoverminds.ai", "https://www.test-web.discoverminds.ai/", "https://test-web.discoverminds.ai", "https://test-web.discoverminds.ai/"],  # Include localhost development URLs
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:3001", 
+        "http://localhost:1212",
+        "https://www.discoverminds.ai", 
+        "https://discoverminds.ai", 
+        "https://www.test-web.discoverminds.ai", 
+        "https://test-web.discoverminds.ai",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Custom middleware to handle Electron app CORS (null origin)
+@app.middleware("http")
+async def handle_electron_cors(request: Request, call_next):
+    origin = request.headers.get("origin")
+    
+    # Allow requests from Electron apps (null origin or file://)
+    if origin in [None, "null"] or (origin and origin.startswith("file://")):
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Credentials"] = "false"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+    
+    return await call_next(request)
 
 # Add profiling middleware in reverse order (first added = last executed)
 app.add_middleware(DetailedProfilingMiddleware)
@@ -397,7 +422,7 @@ app.include_router(profiling.router, prefix="/api", tags=["profiling"])
 app.include_router(enrichment_status.router, prefix="/api", tags=["enrichment_status"])  # Add enrichment status WebSocket router
 app.include_router(friendships.router, prefix="/api", tags=["friendships"])  # Add friendships router
 app.include_router(stock_items.router, prefix="/api/tally", tags=["stock_items"])  # Add stock items router
-# app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["whatsapp"])  # WhatsApp Business API webhook
+app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["whatsapp"])  # WhatsApp Business API webhook
 app.include_router(emergency.router)  # Emergency memory cleanup
 
 @app.get("/")

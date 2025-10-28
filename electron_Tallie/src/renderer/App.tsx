@@ -10,6 +10,7 @@ import Upload from './pages/Upload';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
+import TallyTesting from './pages/TallyTesting';
 import { AuthProvider, useIsAuthenticated } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/global.css';
@@ -92,6 +93,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tally-testing"
+          element={
+            <ProtectedRoute>
+              <TallyTesting />
             </ProtectedRoute>
           }
         />

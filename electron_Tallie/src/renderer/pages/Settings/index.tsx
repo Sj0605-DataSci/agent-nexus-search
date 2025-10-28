@@ -132,13 +132,21 @@ export default function Settings() {
                 </p>
               )}
 
-              <button
-                className="btn btn-secondary"
-                onClick={handleFetchMetadata}
-                disabled={isLoadingMetadata}
-              >
-                {isLoadingMetadata ? 'Fetching...' : 'Fetch Tally Metadata'}
-              </button>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleFetchMetadata}
+                  disabled={isLoadingMetadata}
+                >
+                  {isLoadingMetadata ? 'Fetching...' : 'Fetch Tally Metadata'}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate('/tally-testing')}
+                >
+                  Test XML & SQL Queries →
+                </button>
+              </div>
             </div>
           )}
 

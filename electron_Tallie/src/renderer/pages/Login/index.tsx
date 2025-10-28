@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../../lib/api/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { saveUserId } from '../../../lib/localStorage';
 import './styles.css';
 
 function Login() {
@@ -20,6 +21,7 @@ function Login() {
     isAuthenticated,
     signInWithGoogle,
     setSessionFromTokens,
+    user,
     error: authError,
   } = useAuth();
 
@@ -152,10 +154,33 @@ function Login() {
           
           if (sessionResult.success) {
             toast.success('Login successful!');
-            // Navigate to chat page after successful login
+            
+            // Wait a bit for auth state to update, then save user ID
             setTimeout(() => {
+              // Get user from AuthContext (should be updated by now)
+              const authUser = user;
+              if (authUser?.id) {
+                saveUserId(authUser.id);
+                console.log('User ID saved from AuthContext:', authUser.id);
+              } else {
+                // Fallback: try to get from Supabase localStorage
+                try {
+                  const supabaseKeys = Object.keys(localStorage).filter(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+                  if (supabaseKeys.length > 0) {
+                    const supabaseSession = JSON.parse(localStorage.getItem(supabaseKeys[0]) || '{}');
+                    const userId = supabaseSession?.user?.id;
+                    if (userId) {
+                      saveUserId(userId);
+                      console.log('User ID saved from Supabase session:', userId);
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error extracting user ID:', error);
+                }
+              }
+              
               navigate('/chat');
-            }, 1000);
+            }, 500);
           } else {
             console.error('Failed to set session:', sessionResult.error);
             toast.error('Login successful but session setup failed. Please try again.');

@@ -11,16 +11,19 @@ import {
 } from '../../utils/tokenManagement';
 import { getDeviceInfo } from '../../utils/deviceInfo';
 
+// Use NODE_ENV to determine which backend to use
+// IMPORTANT: When building (npm run package:*), NODE_ENV is set to 'production'
+// So make sure your .env has the correct API_BASE_URL for production builds
 const baseURL =
   process.env.NODE_ENV === 'production'
-    ? process.env.API_BASE_URL || 'https://apis.discoverminds.ai/api'
-    : process.env.STAGING_API_BASE_URL ||
-      'https://staging-apis.discoverminds.ai/api';
+    ? process.env.API_BASE_URL || 'https://staging-apis.discoverminds.ai/api'
+    : process.env.STAGING_API_BASE_URL || 'http://localhost:8000/api';
 
 const axiosInstance = axios.create({
   baseURL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // Required for CORS with credentials
 });
 
 let isRefreshing = false;

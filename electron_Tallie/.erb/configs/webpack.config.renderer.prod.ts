@@ -113,11 +113,8 @@ const configuration: webpack.Configuration = {
       NODE_ENV: 'production',
       DEBUG_PROD: false,
       // API URLs - Read from process.env (loaded by dotenv)
-      API_BASE_URL:
-        process.env.API_BASE_URL || 'https://staging-apis.discoverminds.ai/api',
-      STAGING_API_BASE_URL:
-        process.env.STAGING_API_BASE_URL ||
-        'https://staging-apis.discoverminds.ai/api',
+      API_BASE_URL: process.env.API_BASE_URL || 'https://staging-apis.discoverminds.ai/api',
+      STAGING_API_BASE_URL: process.env.STAGING_API_BASE_URL || 'http://localhost:8000/api',
       // Supabase Configuration
       SUPABASE_URL: process.env.SUPABASE_URL || '',
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',

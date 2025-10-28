@@ -46,6 +46,127 @@ ipcMain.on('ipc-example', async (event, arg) => {
 });
 
 /**
+ * Handle ODBC SQL query execution
+ * Native modules like 'odbc' only work in main process
+ */
+ipcMain.handle('execute-odbc-query', async (event, sqlQuery: string, port: number = 9000) => {
+  let connection: any = null;
+  const logs: string[] = []; // Collect logs to send to renderer
+  
+  // Helper to log both to main and collect for renderer
+  const logInfo = (message: string, data?: any) => {
+    const logMsg = data ? `${message} ${JSON.stringify(data)}` : message;
+    log.info(logMsg);
+    logs.push(`[MAIN] ${logMsg}`);
+  };
+  
+  const logWarn = (message: string, data?: any) => {
+    const logMsg = data ? `${message} ${JSON.stringify(data)}` : message;
+    log.warn(logMsg);
+    logs.push(`[MAIN WARN] ${logMsg}`);
+  };
+  
+  const logError = (message: string, data?: any) => {
+    const logMsg = data ? `${message} ${JSON.stringify(data)}` : message;
+    log.error(logMsg);
+    logs.push(`[MAIN ERROR] ${logMsg}`);
+  };
+  
+  try {
+    logInfo('ODBC Query Request:', { sqlQuery, port });
+    
+    // Import odbc module (only works in main process)
+    const odbc = require('odbc');
+    logInfo('ODBC module loaded successfully');
+    logInfo('ODBC methods available:', Object.keys(odbc).filter((k: string) => typeof odbc[k] === 'function'));
+    
+    // Try multiple connection string formats
+    const dsnLessConnectionString = `DRIVER={Tally ODBC Driver};SERVER=localhost;PORT=${port}`;
+    const dsnConnectionString = `DSN=TallyODBC64_${port}`;
+    
+    const connectStrings = [dsnLessConnectionString, dsnConnectionString];
+    let lastError: any = null;
+    
+    // Try each connection string
+    for (const connStr of connectStrings) {
+      try {
+        logInfo('Attempting ODBC connection:', connStr);
+        
+        // Use connect method (more reliable than pool for single queries)
+        if (typeof odbc.connect === 'function') {
+          connection = await odbc.connect(connStr);
+          logInfo('Connected successfully with:', connStr);
+          break;
+        } else if (typeof odbc.pool === 'function') {
+          connection = await odbc.pool(connStr);
+          logInfo('Connected via pool with:', connStr);
+          break;
+        } else {
+          throw new Error('No connect or pool method found in ODBC module');
+        }
+      } catch (connError: any) {
+        logWarn('Connection failed:', `${connStr} - ${connError.message}`);
+        lastError = connError;
+        connection = null;
+      }
+    }
+    
+    if (!connection) {
+      throw lastError || new Error('Failed to connect with any connection string');
+    }
+    
+    // Execute query
+    logInfo('Executing SQL query...');
+    const result = await connection.query(sqlQuery);
+    logInfo('Query executed successfully, rows:', result?.length);
+    
+    // Extract columns and rows
+    const columns = result.columns?.map((col: any) => col.name) || [];
+    
+    // If no columns metadata, get from first row
+    if (columns.length === 0 && result.length > 0) {
+      columns.push(...Object.keys(result[0]));
+    }
+    
+    // Extract rows
+    const rows = result.map((row: any) => {
+      return columns.map((col: string) => row[col] !== undefined ? row[col] : null);
+    });
+    
+    // Close connection
+    await connection.close();
+    logInfo('Connection closed');
+    
+    return {
+      success: true,
+      columns,
+      rows,
+      logs // Send logs to renderer
+    };
+    
+  } catch (error: any) {
+    logError('ODBC Query Error:', error.message);
+    
+    // Close connection if open
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        logError('Error closing connection:', closeError);
+      }
+    }
+    
+    // Return error details with logs
+    return {
+      success: false,
+      error: error.message || 'Unknown ODBC error',
+      details: error.stack,
+      logs // Send logs even on error
+    };
+  }
+});
+
+/**
  * Handle OAuth sign-in request
  * Supports multiple providers (google, github, etc.)
  */

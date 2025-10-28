@@ -10,6 +10,8 @@ const STORAGE_KEYS = {
   CHAT_STATE: 'tally_chat_state',
   TALLY_CONFIG: 'tally_config',
   DEVICE_INFO: 'device_info',
+  ACCESS_TOKEN: 'discover_minds_access_token',
+  USER_ID: 'discover_minds_user_id',
 };
 
 // ============================================
@@ -194,4 +196,20 @@ export const saveDeviceInfo = (info: DeviceInfo): void => {
 
 export const clearDeviceInfo = (): void => {
   localStorage.removeItem(STORAGE_KEYS.DEVICE_INFO);
+};
+
+// ============================================
+// User ID Management
+// ============================================
+
+export const getStoredUserId = (): string | null => {
+  return localStorage.getItem(STORAGE_KEYS.USER_ID);
+};
+
+export const saveUserId = (userId: string): void => {
+  localStorage.setItem(STORAGE_KEYS.USER_ID, userId);
+};
+
+export const clearUserId = (): void => {
+  localStorage.removeItem(STORAGE_KEYS.USER_ID);
 };

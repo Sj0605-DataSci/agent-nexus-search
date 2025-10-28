@@ -9,7 +9,8 @@ export type Channels =
 
 export type InvokeChannels = 
   | 'oauth:signin'
-  | 'oauth:providers';
+  | 'oauth:providers'
+  | 'execute-odbc-query';
 
 const electronHandler = {
   ipcRenderer: {

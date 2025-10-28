@@ -9,13 +9,17 @@ import {
   getMessages,
   addMessage,
   updateThread,
+  getStoredUserId,
+  clearUserId,
 } from '../../../lib/localStorage';
 import { ChatThread, ChatMessage } from '../../../types/chat';
-import { chatService, StreamingUpdate } from '../../../lib/ChatService';
+import { tallyChatService } from '../../../lib/TallyChatService';
+import { useAuth } from '../../contexts/AuthContext';
 import './styles.css';
 
 export default function Chat() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadIdState] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -31,6 +35,84 @@ export default function Chat() {
     loadThreads();
   }, []);
 
+  // Connect to WebSocket on mount or when user ID becomes available
+  useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 5;
+    const retryDelay = 500;
+
+    const attemptConnection = () => {
+      const userId = getStoredUserId();
+      
+      if (!userId) {
+        if (retryCount < maxRetries) {
+          console.log(`No user ID found, retrying in ${retryDelay}ms... (${retryCount + 1}/${maxRetries})`);
+          retryCount++;
+          setTimeout(attemptConnection, retryDelay);
+          return;
+        } else {
+          console.error('No user ID found after max retries');
+          return;
+        }
+      }
+
+      console.log('Connecting to Tally WebSocket with user ID:', userId);
+
+      // Connect to Tally WebSocket
+      tallyChatService.connect(userId, {
+        onThinking: (message) => {
+          setToolStatus(message);
+        },
+        onAnswer: (message) => {
+          setCurrentAssistantMessage(message);
+          currentAssistantMessageRef.current = message;
+        },
+        onError: (message) => {
+          console.error('Tally chat error:', message);
+          setToolStatus('');
+          setIsLoading(false);
+          
+          // Add error message to chat
+          if (activeThreadId) {
+            const errorMessage = addMessage(activeThreadId, {
+              threadId: activeThreadId,
+              role: 'assistant',
+              content: `Error: ${message}`,
+            });
+            setMessages(prev => [...prev, errorMessage]);
+          }
+        },
+        onDone: () => {
+          // Save final assistant message
+          const finalMessage = currentAssistantMessageRef.current.trim();
+          
+          if (finalMessage && activeThreadId) {
+            const assistantMessage = addMessage(activeThreadId, {
+              threadId: activeThreadId,
+              role: 'assistant',
+              content: finalMessage,
+            });
+            setMessages(prev => [...prev, assistantMessage]);
+            loadThreads(); // Refresh to update message count
+          }
+          
+          setIsLoading(false);
+          setToolStatus('');
+          setCurrentAssistantMessage('');
+          currentAssistantMessageRef.current = '';
+        }
+      });
+    };
+
+    // Start connection attempt
+    attemptConnection();
+
+    // Cleanup on unmount
+    return () => {
+      tallyChatService.disconnect();
+    };
+  }, [activeThreadId, navigate]);
+
   // Load messages when active thread changes
   useEffect(() => {
     if (activeThreadId) {
@@ -43,7 +125,7 @@ export default function Chat() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, currentAssistantMessage]);
 
   const loadThreads = () => {
     const loadedThreads = getThreads();
@@ -86,6 +168,13 @@ export default function Chat() {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !activeThreadId || isLoading) return;
 
+    // Check if WebSocket is connected
+    if (!tallyChatService.isConnected()) {
+      console.error('WebSocket not connected');
+      alert('Not connected to server. Please refresh the page.');
+      return;
+    }
+
     const userMessageContent = inputMessage.trim();
     setInputMessage('');
     setIsLoading(true);
@@ -110,101 +199,8 @@ export default function Chat() {
       loadThreads();
     }
 
-    // Call backend API
-    try {
-      await chatService.sendMessage(userMessageContent, (update: StreamingUpdate) => {
-        handleStreamUpdate(update);
-      });
-    } catch (error: any) {
-      console.error('Send message error:', error);
-      setToolStatus('');
-      setIsLoading(false);
-      
-      // Add error message
-      const errorMessage = addMessage(activeThreadId, {
-        threadId: activeThreadId,
-        role: 'assistant',
-        content: `Error: ${error.message || 'Failed to get response'}`,
-      });
-      setMessages(prev => [...prev, errorMessage]);
-    }
-  };
-
-  const handleStreamUpdate = (update: StreamingUpdate) => {
-    console.log('handleStreamUpdate called:', update); // Debug log
-    
-    // Extract message from nested content structure
-    const getMessage = (content: any): string => {
-      if (typeof content === 'string') return content;
-      if (content?.message) return content.message;
-      return JSON.stringify(content);
-    };
-
-    switch (update.type) {
-      case 'thinking':
-        const thinkingMsg = getMessage(update.content);
-        setToolStatus(`🤔 ${thinkingMsg}`);
-        break;
-
-      case 'tool_call':
-        setToolStatus(`🔧 Executing tool: ${update.tool}...`);
-        break;
-
-      case 'tool_result':
-        setToolStatus(`✅ Tool completed, processing results...`);
-        setTimeout(() => setToolStatus(''), 1500);
-        break;
-
-      case 'token':
-        // Accumulate assistant message
-        const tokenContent = getMessage(update.content);
-        currentAssistantMessageRef.current += tokenContent;
-        setCurrentAssistantMessage(currentAssistantMessageRef.current);
-        break;
-
-      case 'answer':
-        // Handle answer type (same as token but complete message)
-        const answerContent = getMessage(update.content);
-        currentAssistantMessageRef.current = answerContent;
-        setCurrentAssistantMessage(answerContent);
-        break;
-
-      case 'done':
-        // Save final assistant message using ref (has latest value)
-        const finalMessage = currentAssistantMessageRef.current.trim();
-        console.log('Done event - saving message:', finalMessage); // Debug
-        
-        if (finalMessage && activeThreadId) {
-          const assistantMessage = addMessage(activeThreadId, {
-            threadId: activeThreadId,
-            role: 'assistant',
-            content: finalMessage,
-          });
-          setMessages(prev => [...prev, assistantMessage]);
-          loadThreads(); // Refresh to update message count
-        }
-        
-        setIsLoading(false);
-        setToolStatus('');
-        setCurrentAssistantMessage('');
-        currentAssistantMessageRef.current = '';
-        break;
-
-      case 'error':
-        setToolStatus('');
-        setIsLoading(false);
-        
-        if (activeThreadId) {
-          const errorMsg = getMessage(update.content);
-          const errorMessage = addMessage(activeThreadId, {
-            threadId: activeThreadId,
-            role: 'assistant',
-            content: `Error: ${errorMsg}`,
-          });
-          setMessages(prev => [...prev, errorMessage]);
-        }
-        break;
-    }
+    // Send query through WebSocket
+    tallyChatService.sendQuery(userMessageContent);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -214,11 +210,25 @@ export default function Chat() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('Are you sure you want to logout?')) {
-      localStorage.removeItem('discover_minds_access_token');
-      localStorage.removeItem('discover_minds_user');
-      navigate('/');
+      try {
+        // Disconnect WebSocket
+        tallyChatService.disconnect();
+        
+        // Sign out from Supabase
+        await signOut();
+        
+        // Clear all auth data
+        localStorage.removeItem('discover_minds_access_token');
+        localStorage.removeItem('discover_minds_user');
+        clearUserId();
+        
+        // Navigate to login
+        navigate('/');
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
     }
   };
 
