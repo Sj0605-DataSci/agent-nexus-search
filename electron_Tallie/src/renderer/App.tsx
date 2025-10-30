@@ -12,6 +12,7 @@ import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import TallyTesting from './pages/TallyTesting';
 import WhatsAppDashboard from './pages/WhatsAppDashboard';
+import MasterDataSync from './pages/MasterDataSync';
 import { AuthProvider, useIsAuthenticated } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/global.css';
@@ -110,6 +111,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <WhatsAppDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-sync"
+          element={
+            <ProtectedRoute>
+              <MasterDataSync />
             </ProtectedRoute>
           }
         />

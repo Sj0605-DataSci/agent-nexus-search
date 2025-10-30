@@ -5,12 +5,22 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels = 
   | 'ipc-example'
   | 'oauth:success'
-  | 'oauth:error';
+  | 'oauth:error'
+  | 'tally-sync:progress';
 
 export type InvokeChannels = 
   | 'oauth:signin'
   | 'oauth:providers'
-  | 'execute-odbc-query';
+  | 'execute-odbc-query'
+  | 'tally-sync:initialize'
+  | 'tally-sync:get-master-tables'
+  | 'tally-sync:sync-table'
+  | 'tally-sync:sync-all'
+  | 'tally-sync:sync-accounting'
+  | 'tally-sync:sync-inventory'
+  | 'tally-sync:get-status'
+  | 'tally-sync:query'
+  | 'tally-sync:get-db-info';
 
 const electronHandler = {
   ipcRenderer: {

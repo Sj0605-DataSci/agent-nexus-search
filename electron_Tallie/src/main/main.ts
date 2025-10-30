@@ -17,6 +17,7 @@ import { resolveHtmlPath } from './util';
 import dotenv from 'dotenv';
 import { OAuthManager } from './oauth/OAuthManager';
 import { OAuthProviders } from './oauth/providers';
+import { tallyMasterSync } from '../lib/TallyMasterSync';
 
 dotenv.config();
 
@@ -213,6 +214,239 @@ ipcMain.handle('oauth:providers', async () => {
   }
 });
 
+// ============================================================================
+// Tally Master Data Sync IPC Handlers
+// ============================================================================
+
+/**
+ * Initialize Tally Master Sync service
+ */
+ipcMain.handle('tally-sync:initialize', async () => {
+  try {
+    await tallyMasterSync.initialize();
+    log.info('[TallySync] Service initialized successfully');
+    return { success: true };
+  } catch (error) {
+    log.error('[TallySync] Initialization failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+});
+
+/**
+ * Get list of all master tables
+ */
+ipcMain.handle('tally-sync:get-master-tables', async () => {
+  try {
+    const tables = tallyMasterSync.getAllMasterTables();
+    return tables;
+  } catch (error) {
+    log.error('[TallySync] Error getting master tables:', error);
+    throw error;
+  }
+});
+
+/**
+ * Sync a single master table
+ */
+ipcMain.handle('tally-sync:sync-table', async (_event, tableName: string) => {
+  try {
+    log.info(`[TallySync] Syncing table: ${tableName}`);
+    
+    // Initialize database if not already initialized
+    await tallyMasterSync.initialize();
+    log.info(`[TallySync] Database initialized`);
+    
+    // Get ODBC connection
+    const odbc = require('odbc');
+    const port = 9000; // Default Tally ODBC port
+    
+    // Find the master table config
+    const masterTable = tallyMasterSync.getAllMasterTables().find(t => t.name === tableName);
+    if (!masterTable) {
+      throw new Error(`Master table not found: ${tableName}`);
+    }
+    
+    // Sync the table
+    await tallyMasterSync.syncMasterTable(odbc, masterTable, port);
+    
+    // Get sync status
+    const status = tallyMasterSync.getSyncStatus().get(tableName);
+    
+    log.info(`[TallySync] Table synced successfully: ${tableName}`, status);
+    
+    return {
+      success: true,
+      totalRecords: status?.totalRecords || 0,
+    };
+  } catch (error) {
+    log.error(`[TallySync] Error syncing table ${tableName}:`, error);
+    throw error;
+  }
+});
+
+/**
+ * Sync all master tables with progress updates
+ */
+ipcMain.handle('tally-sync:sync-all', async (event) => {
+  try {
+    log.info('[TallySync] Starting full sync of all masters');
+    
+    // Initialize database if not already initialized
+    await tallyMasterSync.initialize();
+    log.info(`[TallySync] Database initialized`);
+    
+    const odbc = require('odbc');
+    const port = 9000;
+    
+    // Sync with progress callback
+    const result = await tallyMasterSync.syncAllMasters(odbc, port, (progress) => {
+      // Send progress update to renderer
+      event.sender.send('tally-sync:progress', progress);
+      log.info(`[TallySync] Progress: ${progress.percentage}% (${progress.current}/${progress.total}) - ${progress.tableName}`);
+    });
+    
+    log.info('[TallySync] Full sync completed', result);
+    
+    if (result.failureCount > 0) {
+      log.warn('[TallySync] Some tables failed to sync:', result.errors);
+    }
+    
+    return { 
+      success: result.successCount > 0,
+      successCount: result.successCount,
+      failureCount: result.failureCount,
+      errors: result.errors
+    };
+  } catch (error) {
+    log.error('[TallySync] Error syncing all masters:', error);
+    throw error;
+  }
+});
+
+/**
+ * Sync only accounting masters
+ */
+ipcMain.handle('tally-sync:sync-accounting', async () => {
+  try {
+    log.info('[TallySync] Starting accounting masters sync');
+    
+    // Initialize database if not already initialized
+    await tallyMasterSync.initialize();
+    log.info(`[TallySync] Database initialized`);
+    
+    const odbc = require('odbc');
+    const port = 9000;
+    
+    await tallyMasterSync.syncAccountingMasters(odbc, port);
+    
+    log.info('[TallySync] Accounting masters sync completed');
+    
+    return { success: true };
+  } catch (error) {
+    log.error('[TallySync] Error syncing accounting masters:', error);
+    throw error;
+  }
+});
+
+/**
+ * Sync only inventory masters
+ */
+ipcMain.handle('tally-sync:sync-inventory', async () => {
+  try {
+    log.info('[TallySync] Starting inventory masters sync');
+    
+    // Initialize database if not already initialized
+    await tallyMasterSync.initialize();
+    log.info(`[TallySync] Database initialized`);
+    
+    const odbc = require('odbc');
+    const port = 9000;
+    
+    await tallyMasterSync.syncInventoryMasters(odbc, port);
+    
+    log.info('[TallySync] Inventory masters sync completed');
+    
+    return { success: true };
+  } catch (error) {
+    log.error('[TallySync] Error syncing inventory masters:', error);
+    throw error;
+  }
+});
+
+/**
+ * Get sync status for all tables
+ */
+ipcMain.handle('tally-sync:get-status', async () => {
+  try {
+    log.info('[TallySync] Getting sync status...');
+    
+    // Ensure database is initialized
+    await tallyMasterSync.initialize();
+    
+    const statusMap = tallyMasterSync.getSyncStatus();
+    log.info('[TallySync] Status map size:', statusMap.size);
+    
+    const statusObj: Record<string, any> = {};
+    
+    statusMap.forEach((value, key) => {
+      statusObj[key] = value;
+      log.info(`[TallySync] Status for ${key}:`, value);
+    });
+    
+    log.info('[TallySync] Returning status object with keys:', Object.keys(statusObj));
+    
+    return statusObj;
+  } catch (error) {
+    log.error('[TallySync] Error getting sync status:', error);
+    throw error;
+  }
+});
+
+/**
+ * Query synced master data
+ */
+ipcMain.handle('tally-sync:query', async (_event, tableName: string, limit: number = 100, offset: number = 0) => {
+  try {
+    const records = tallyMasterSync.getMasterRecords(tableName, limit, offset);
+    return records;
+  } catch (error) {
+    log.error(`[TallySync] Error querying ${tableName}:`, error);
+    throw error;
+  }
+});
+
+/**
+ * Get database path and info
+ */
+ipcMain.handle('tally-sync:get-db-info', async () => {
+  try {
+    const dbPath = tallyMasterSync.getDbPath();
+    const fs = require('fs');
+    const exists = fs.existsSync(dbPath);
+    
+    let size = 0;
+    if (exists) {
+      const stats = fs.statSync(dbPath);
+      size = stats.size;
+    }
+    
+    log.info('[TallySync] Database info:', { dbPath, exists, size });
+    
+    return {
+      dbPath,
+      exists,
+      size,
+      sizeFormatted: `${(size / 1024).toFixed(2)} KB`
+    };
+  } catch (error) {
+    log.error('[TallySync] Error getting DB info:', error);
+    throw error;
+  }
+});
+
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
@@ -262,6 +496,7 @@ const createWindow = async () => {
     show: false,
     width: 1024,
     height: 728,
+    title: 'Tallie - AI-Powered Tally Assistant',
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: preloadPath,
@@ -472,6 +707,13 @@ app.on('before-quit', () => {
 app
   .whenReady()
   .then(() => {
+    log.info('[App] App is ready');
+    
+    // Set app name for macOS dock
+    if (process.platform === 'darwin') {
+      app.setName('Tallie');
+    }
+    
     createWindow();
     
     // Check if app was launched with a protocol URL (macOS/Linux)
