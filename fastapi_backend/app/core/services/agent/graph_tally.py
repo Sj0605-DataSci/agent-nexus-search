@@ -13,8 +13,129 @@ from langchain_core.tools import tool
 from app.db.clients import get_supabase_client
 from app.core.utils.llm_utils import GroqChatModel
 from app.core.structured_logger import get_structured_logger
+from datetime import datetime
 
 logger = get_structured_logger(__name__)
+
+
+# ============================================================================
+# HELPER FUNCTIONS - Thread Management & History
+# ============================================================================
+
+def generate_thread_id(phone_number: str, date: datetime = None) -> str:
+    """
+    Generate a unique thread_id (UUID v5) based on phone_number and date.
+    Thread ID format: UUID (proper format for database schema)
+    
+    This ensures that:
+    - Each unique phone number + date combination gets its own thread
+    - Conversations are grouped by day (like WhatsApp)
+    - Thread IDs are deterministic and can be regenerated
+    - Returns proper UUID format matching database schema
+    
+    Args:
+        phone_number: The WhatsApp phone number (e.g., "919876543210")
+        date: The date for the thread (defaults to today)
+    
+    Returns:
+        A UUID string in proper format (e.g., "550e8400-e29b-41d4-a716-446655440000")
+    
+    Example:
+        generate_thread_id("919876543210", datetime(2024, 1, 15))
+        -> "a1b2c3d4-e5f6-5789-a1b2-c3d4e5f67890" (UUID v5)
+    """
+    import uuid
+    
+    if date is None:
+        date = datetime.now()
+    
+    # Format: phone_number + date (YYYY-MM-DD)
+    date_str = date.strftime("%Y-%m-%d")
+    thread_key = f"whatsapp_tally_{phone_number}_{date_str}"
+    
+    # Generate UUID v5 (deterministic based on namespace + name)
+    # Using DNS namespace as base, but any namespace works
+    thread_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, thread_key)
+    
+    return str(thread_uuid)
+
+
+async def get_conversation_history(
+    supabase_client,
+    thread_id: str,
+    limit: int = 10
+) -> list:
+    """
+    Retrieve conversation history for a thread from chat_messages table.
+    
+    Returns messages in chronological order (oldest first) to provide context.
+    
+    Args:
+        supabase_client: Supabase client instance
+        thread_id: The thread ID to retrieve messages for
+        limit: Maximum number of previous messages to retrieve (default: 10)
+    
+    Returns:
+        List of message dictionaries with 'role', 'content', 'timestamp', and 'order' keys
+        Format: [{"role": "user", "content": "...", "timestamp": "...", "order": 1}]
+    """
+    try:
+        logger.info("get_conversation_history", thread_id=thread_id, limit=limit)
+        
+        # Query chat_messages table for this thread
+        # Select only required fields: main_query (user question) and created_at (timestamp)
+        # Order by created_at descending to get most recent first, then limit, then reverse
+        # This ensures we get the last N messages efficiently
+        response = await supabase_client.table("chat_messages") \
+            .select("main_query, created_at") \
+            .eq("chat_thread_id", thread_id) \
+            .order("created_at", desc=True) \
+            .limit(limit) \
+            .execute()
+        
+        if not response.data:
+            logger.info("no_conversation_history_found", thread_id=thread_id)
+            return []
+        
+        # Reverse to get chronological order (oldest first)
+        messages = list(reversed(response.data))
+        
+        # Convert to conversation format - ONLY user questions (not AI answers)
+        # AI answers can be very long and consume too many tokens
+        conversation = []
+        for idx, msg in enumerate(messages, 1):
+            # Only add user questions with date/order context
+            if msg.get("main_query"):
+                created_at = msg.get("created_at", "")
+                # Format: "2024-01-15 14:30" or just the date
+                if created_at:
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        date_str = dt.strftime("%b %d, %I:%M %p")  # "Jan 15, 02:30 PM"
+                    except:
+                        date_str = created_at[:16]  # Fallback to first 16 chars
+                else:
+                    date_str = "earlier"
+                
+                conversation.append({
+                    "role": "user",
+                    "content": msg["main_query"],
+                    "timestamp": date_str,
+                    "order": idx
+                })
+        
+        logger.info("conversation_history_retrieved",
+                   thread_id=thread_id,
+                   messages_count=len(conversation))
+        
+        return conversation
+        
+    except Exception as e:
+        logger.error("get_conversation_history_error",
+                    thread_id=thread_id,
+                    error=str(e))
+        return []
 
 # ============================================================================
 # STATE DEFINITION
@@ -28,6 +149,8 @@ class TallyState(TypedDict):
     product_info: dict | None
     final_answer: str | None
     user_id: str | None
+    thread_id: str | None  # Thread ID for conversation tracking
+    conversation_history: list | None  # Previous messages in this thread
 
 
 # ============================================================================
@@ -390,6 +513,28 @@ async def agent_node(state: TallyState) -> TallyState:
         messages = state["messages"]
         trace_id = state.get("trace_id", "unknown")
         user_id = state.get("user_id", "unknown")
+        conversation_history = state.get("conversation_history", [])
+        
+        logger.info("agent_node_context",
+                   trace_id=trace_id,
+                   messages_count=len(messages),
+                   has_conversation_history=bool(conversation_history))
+        
+        # Build conversation history context for the prompt
+        history_context = ""
+        if conversation_history and len(conversation_history) > 0:
+            history_context = "\n\n📋 PREVIOUS CONVERSATION CONTEXT:\n"
+            history_context += "Here are the customer's recent questions from this conversation (in chronological order):\n\n"
+            for msg in conversation_history[-10:]:  # Last 10 user questions max
+                order = msg.get("order", "")
+                timestamp = msg.get("timestamp", "")
+                content = msg.get("content", "")
+                history_context += f"[{order}] {timestamp} - Customer asked: \"{content}\"\n"
+            history_context += "\n💡 Use this context to:\n"
+            history_context += "- Understand what the customer has already asked about\n"
+            history_context += "- Provide continuity and avoid repeating information\n"
+            history_context += "- Reference previous questions when relevant (e.g., 'As you asked earlier about...')\n"
+            history_context += "- Build on the conversation naturally\n"
 
         # System prompt for the agent
         system_prompt = """You are a helpful customer support assistant of PADAMSHREE INFOTECH for product queries related to pricing and quantity.
@@ -443,9 +588,9 @@ Examples:
 - Customer asks "What is the price of RAM?"
   → If no party mentioned, show original prices
 
-Remember: Be conversational and friendly, not robotic! Never reveal internal pricing logic."""
+Remember: Be conversational and friendly, not robotic! Never reveal internal pricing logic.{history_context}"""
 
-        system_prompt = system_prompt.format(user_id=user_id)
+        system_prompt = system_prompt.format(user_id=user_id, history_context=history_context)
         
         # Create LLM instance with trace_id for this specific call
         llm = GroqChatModel(

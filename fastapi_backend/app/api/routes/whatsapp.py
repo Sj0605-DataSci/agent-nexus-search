@@ -11,6 +11,8 @@ import asyncio
 
 from app.core.config import settings
 from app.core.services.whatsapp_service import whatsapp_service
+from app.db.clients import get_async_supabase_client
+from datetime import datetime
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -412,7 +414,11 @@ async def process_with_ai_agent(
         contact_name: Sender's name (if available)
     """
     try:
-        from app.core.services.agent.graph_tally import tally_graph
+        from app.core.services.agent.graph_tally import (
+            tally_graph, 
+            generate_thread_id, 
+            get_conversation_history
+        )
         from langchain_core.messages import HumanMessage, AIMessage
         import uuid
         
@@ -420,14 +426,64 @@ async def process_with_ai_agent(
             "Invoking AI agent",
             from_number=from_number,
             message=message_text,
-            contact_name=contact_name
+            contact_name=contact_name,
+            whatsapp_configured=whatsapp_service.is_configured()
+        )
+        
+        # Get Supabase client
+        supabase = await get_async_supabase_client()
+        
+        # Map WhatsApp phone numbers to actual user IDs from database
+        # For now, use Ashish's user ID for WhatsApp queries (environment-aware)
+        whatsapp_user_id = settings.ASHISH_USERID
+        whatsapp_agent_id = settings.FOUNDERS_AGENTID  # Tally agent ID
+        
+        # Generate thread_id based on phone_number + today's date
+        current_date = datetime.now()
+        thread_id = generate_thread_id(from_number, current_date)
+        
+        logger.info(
+            "Thread ID generated",
+            from_number=from_number,
+            thread_id=thread_id,
+            date=current_date.strftime("%Y-%m-%d")
+        )
+        
+        # Check if thread exists, create if not
+        existing_thread = await supabase.table("chat_threads").select("id").eq("id", thread_id).execute()
+        
+        if not existing_thread.data:
+            # Create new thread
+            thread_title = f"WhatsApp: {contact_name or from_number}"
+            await supabase.table("chat_threads").insert({
+                "id": thread_id,
+                "user_id": whatsapp_user_id,
+                "title": thread_title,
+                "device_type": "whatsapp",
+                "device_id": from_number
+            }).execute()
+            
+            logger.info(
+                "Created new WhatsApp thread",
+                thread_id=thread_id,
+                from_number=from_number,
+                title=thread_title
+            )
+        
+        # Retrieve conversation history for this thread
+        conversation_history = await get_conversation_history(
+            supabase,
+            thread_id,
+            limit=10  # Last 10 messages for context
+        )
+        
+        logger.info(
+            "Conversation history retrieved",
+            thread_id=thread_id,
+            history_count=len(conversation_history)
         )
         
         # Prepare initial state matching TallyState structure
-        # TODO: Map WhatsApp phone numbers to actual user IDs from database
-        # For now, use Ashish's user ID for WhatsApp queries (environment-aware)
-        whatsapp_user_id = settings.ASHISH_USERID
-        
         initial_state = {
             "messages": [
                 HumanMessage(
@@ -438,7 +494,9 @@ async def process_with_ai_agent(
             "query": message_text,
             "product_info": None,
             "final_answer": None,
-            "user_id": whatsapp_user_id
+            "user_id": whatsapp_user_id,
+            "thread_id": thread_id,
+            "conversation_history": conversation_history
         }
         
         # Invoke the agent graph
@@ -470,7 +528,54 @@ async def process_with_ai_agent(
                 from_number=from_number,
                 response_preview=formatted_response[:100]
             )
-            await whatsapp_service.send_text_message(from_number, formatted_response)
+            
+            # Store the conversation in database
+            try:
+                # Get thread_id and agent_id from initial_state
+                thread_id = initial_state.get("thread_id")
+                user_id = initial_state.get("user_id")
+                agent_id = whatsapp_agent_id
+                
+                # Store message in chat_messages table (matching schema)
+                await supabase.table("chat_messages").insert({
+                    "user_id": user_id,
+                    "agent_id": agent_id,  # Required field
+                    "chat_thread_id": thread_id,
+                    "main_query": message_text,
+                    "message": {"content": final_response},  # JSONB format
+                    "device_type": "whatsapp",
+                    "device_id": from_number,
+                    "endpoint": "whatsapp_webhook"
+                }).execute()
+                
+                logger.info(
+                    "Message stored in database",
+                    thread_id=thread_id,
+                    from_number=from_number
+                )
+            except Exception as db_error:
+                logger.error(
+                    "Failed to store message in database",
+                    error=str(db_error),
+                    thread_id=thread_id
+                )
+            
+            # Send message and log the result
+            send_result = await whatsapp_service.send_text_message(from_number, formatted_response)
+            
+            if send_result.get("success"):
+                logger.info(
+                    "WhatsApp message sent successfully",
+                    from_number=from_number,
+                    message_id=send_result.get("message_id")
+                )
+            else:
+                logger.error(
+                    "Failed to send WhatsApp message",
+                    from_number=from_number,
+                    error=send_result.get("error"),
+                    status_code=send_result.get("status_code")
+                )
         else:
             logger.warning(
                 "No final response generated by agent",
