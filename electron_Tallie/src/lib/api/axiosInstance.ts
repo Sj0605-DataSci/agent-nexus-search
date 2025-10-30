@@ -10,14 +10,10 @@ import {
   getRefreshToken,
 } from '../../utils/tokenManagement';
 import { getDeviceInfo } from '../../utils/deviceInfo';
+import { getAPIBaseURL } from '../../config/environment';
 
-// Use NODE_ENV to determine which backend to use
-// IMPORTANT: When building (npm run package:*), NODE_ENV is set to 'production'
-// So make sure your .env has the correct API_BASE_URL for production builds
-const baseURL =
-  process.env.NODE_ENV === 'production'
-    ? process.env.API_BASE_URL || 'https://staging-apis.discoverminds.ai/api'
-    : process.env.STAGING_API_BASE_URL || 'http://localhost:8000/api';
+// Get base URL from environment config
+const baseURL = getAPIBaseURL();
 
 const axiosInstance = axios.create({
   baseURL,

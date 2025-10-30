@@ -936,7 +936,7 @@ class ChatService:
             
             # Query Supabase for chat threads where the user is a participant
             response = await self.client.table("chat_threads") \
-                .select("id, created_at, updated_at, title", count="exact") \
+                .select("id, created_at, updated_at, title, device_type, device_id, weave_url", count="exact") \
                 .eq("user_id", user_id) \
                 .order("updated_at", desc=True) \
                 .range(offset, offset + limit - 1) \

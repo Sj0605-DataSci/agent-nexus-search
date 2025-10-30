@@ -442,10 +442,16 @@ async def process_with_ai_agent(
         current_date = datetime.now()
         thread_id = generate_thread_id(from_number, current_date)
         
+        # Generate trace_id for tracking (similar to chat_service)
+        trace_id = str(uuid.uuid4())
+        weave_url = f"whatsapp:{thread_id}:msg:{trace_id}"
+        
         logger.info(
             "Thread ID generated",
             from_number=from_number,
             thread_id=thread_id,
+            trace_id=trace_id,
+            weave_url=weave_url,
             date=current_date.strftime("%Y-%m-%d")
         )
         
@@ -459,6 +465,7 @@ async def process_with_ai_agent(
                 "id": thread_id,
                 "user_id": whatsapp_user_id,
                 "title": thread_title,
+                "weave_url": weave_url,  # Add tracing URL
                 "device_type": "whatsapp",
                 "device_id": from_number
             }).execute()
@@ -496,7 +503,8 @@ async def process_with_ai_agent(
             "final_answer": None,
             "user_id": whatsapp_user_id,
             "thread_id": thread_id,
-            "conversation_history": conversation_history
+            "conversation_history": conversation_history,
+            "weave_url": weave_url  # Pass trace URL to agent
         }
         
         # Invoke the agent graph
@@ -543,6 +551,7 @@ async def process_with_ai_agent(
                     "chat_thread_id": thread_id,
                     "main_query": message_text,
                     "message": {"content": final_response},  # JSONB format
+                    "weave_url": weave_url,  # Tracing URL for debugging
                     "device_type": "whatsapp",
                     "device_id": from_number,
                     "endpoint": "whatsapp_webhook"

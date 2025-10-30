@@ -2,6 +2,8 @@
  * Chat Service - Handles communication with Tally Chat API
  */
 
+import { getEnvironmentConfig } from '../config/environment';
+
 export interface StreamingUpdate {
   type: 'thinking' | 'tool_call' | 'tool_result' | 'token' | 'answer' | 'done' | 'error';
   content?: any;
@@ -11,7 +13,13 @@ export interface StreamingUpdate {
 }
 
 class ChatService {
-  private baseUrl = 'http://localhost:8000';
+  private baseUrl: string;
+  
+  constructor() {
+    // Get base URL from environment config (without /api suffix)
+    const config = getEnvironmentConfig();
+    this.baseUrl = config.httpBaseURL.replace('/api', '');
+  }
 
   /**
    * Send a message to Tally Chat and receive streaming responses

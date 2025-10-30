@@ -4,6 +4,7 @@
  */
 
 import { TallyService } from './TallyService';
+import { getWSBaseURL } from '../config/environment';
 
 export interface TallyMessage {
   type: 'query' | 'tally_xml' | 'tally_result' | 'thinking' | 'answer' | 'error' | 'done';
@@ -26,10 +27,11 @@ class TallyChatService {
   private ws: WebSocket | null = null;
   private tallyService: TallyService;
   private callbacks: TallyChatCallbacks = {};
-  private baseUrl = 'ws://localhost:8000'; // WebSocket URL
+  private baseUrl = getWSBaseURL(); // WebSocket URL from environment config
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
+  private shouldReconnect = true; // Flag to control reconnection
 
   constructor() {
     this.tallyService = new TallyService();
@@ -40,9 +42,11 @@ class TallyChatService {
    */
   connect(userId: string, callbacks: TallyChatCallbacks) {
     this.callbacks = callbacks;
+    this.shouldReconnect = true; // Enable reconnection when explicitly connecting
     
     // Close existing connection if any
     if (this.ws) {
+      this.shouldReconnect = false; // Don't reconnect the old connection
       this.ws.close();
     }
 
@@ -54,6 +58,16 @@ class TallyChatService {
     this.ws.onopen = () => {
       console.log('Tally WebSocket connected');
       this.reconnectAttempts = 0;
+      this.shouldReconnect = true; // Re-enable after successful connection
+      
+      // Send a ready/ping message to keep connection alive
+      // Backend expects messages, so send a ping to prevent immediate disconnect
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'ping',
+          message: 'Client connected and ready'
+        }));
+      }
     };
 
     this.ws.onmessage = async (event) => {
@@ -73,17 +87,18 @@ class TallyChatService {
     this.ws.onclose = () => {
       console.log('Tally WebSocket disconnected');
       
-      // Attempt to reconnect
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      // Only attempt to reconnect if shouldReconnect is true
+      if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
         console.log(`Reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
           this.connect(userId, callbacks);
         }, this.reconnectDelay);
-      } else {
+      } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         this.callbacks.onError?.('Connection lost. Please refresh the page.');
       }
+      // If shouldReconnect is false, just close without reconnecting
     };
   }
 
@@ -186,10 +201,12 @@ class TallyChatService {
    * Disconnect from WebSocket
    */
   disconnect() {
+    this.shouldReconnect = false; // Disable reconnection on intentional disconnect
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
+    this.reconnectAttempts = 0; // Reset reconnect attempts
   }
 
   /**

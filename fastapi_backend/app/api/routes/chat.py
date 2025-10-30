@@ -660,6 +660,15 @@ async def tally_websocket(
                            user_id=user_id,
                            success=data.get("success", False))
             
+            elif message_type == "ping":
+                # Ping/keepalive message from client
+                logger.debug("tally_websocket_ping_received", user_id=user_id)
+                # Send pong back
+                await websocket.send_json({
+                    "type": "pong",
+                    "message": "Server ready"
+                })
+            
             else:
                 logger.warning("tally_websocket_unknown_message_type",
                              user_id=user_id,

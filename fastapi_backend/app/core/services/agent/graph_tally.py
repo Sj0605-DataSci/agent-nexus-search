@@ -151,6 +151,7 @@ class TallyState(TypedDict):
     user_id: str | None
     thread_id: str | None  # Thread ID for conversation tracking
     conversation_history: list | None  # Previous messages in this thread
+    weave_url: str | None  # Weave/tracing URL for debugging and monitoring
 
 
 # ============================================================================

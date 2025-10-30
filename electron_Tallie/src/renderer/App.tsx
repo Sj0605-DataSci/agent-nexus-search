@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import TallyTesting from './pages/TallyTesting';
+import WhatsAppDashboard from './pages/WhatsAppDashboard';
 import { AuthProvider, useIsAuthenticated } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/global.css';
@@ -101,6 +102,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <TallyTesting />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/whatsapp-dashboard"
+          element={
+            <ProtectedRoute>
+              <WhatsAppDashboard />
             </ProtectedRoute>
           }
         />
