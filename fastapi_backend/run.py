@@ -4,6 +4,7 @@ import signal
 import sys
 import logging
 import traceback
+import argparse
 from logging.handlers import RotatingFileHandler
 
 def setup_logging():
@@ -56,12 +57,14 @@ def run_development():
     try:
         logger.info("Starting development server...")
         
+        # Get worker count from environment or default to 4
+        num_workers = os.environ.get("WEB_CONCURRENCY", "4")
+        
         # Set environment variables for memory optimization
         os.environ.setdefault("MALLOC_ARENA_MAX", "2")
         os.environ.setdefault("PYTHONUNBUFFERED", "1")
         os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
         os.environ.setdefault("PYTHONHASHSEED", "random")
-        os.environ.setdefault("WEB_CONCURRENCY", "4")  # 4 workers
         
         # Gunicorn command with memory leak prevention
         cmd = [
@@ -71,7 +74,7 @@ def run_development():
             "--enable-stdio-inheritance",
             "--preload",          # Preload the application before forking workers
             "--worker-class", "uvicorn.workers.UvicornWorker",
-            "--workers", "4",     # 4 workers to match Docker
+            "--workers", num_workers,  # Configurable worker count
             "--bind", "0.0.0.0:8000",
             "--timeout", "1200",  # 20 minutes timeout
             "--graceful-timeout", "30",
@@ -112,26 +115,93 @@ def run_development():
         sys.exit(1)
 
 def run_simple():
-    """Run simple uvicorn server (fallback)"""
-    import uvicorn
-    uvicorn.run(
-        "app.main:app", 
-        host="0.0.0.0", 
-        port=8000, 
-        reload=True,
-        loop="uvloop",
-        http="httptools"
-    )
+    """Run simple uvicorn server with single worker (ideal for ngrok)"""
+    try:
+        import uvicorn
+        logger.info("Starting simple uvicorn server (single worker)...")
+        logger.info("This mode is ideal for ngrok tunneling")
+        logger.info("Server will be available at: http://0.0.0.0:8000")
+        logger.info("Press Ctrl+C to stop the server")
+        
+        uvicorn.run(
+            "app.main:app", 
+            host="0.0.0.0", 
+            port=8000, 
+            reload=True,
+            loop="uvloop",
+            http="httptools",
+            log_level="info"
+        )
+    except KeyboardInterrupt:
+        logger.info("\nServer stopped by user")
+    except Exception as e:
+        logger.error(f"Error running simple server: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
 
 if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description='Run FastAPI development server',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python run.py                    # Auto-detect (gunicorn if available, else uvicorn)
+  python run.py --simple           # Single worker with uvicorn (for ngrok)
+  python run.py --gunicorn         # Multi-worker with gunicorn (production-like)
+  python run.py --workers 2        # Custom number of workers
+        """
+    )
+    
+    parser.add_argument(
+        '--simple',
+        action='store_true',
+        help='Run with single worker using uvicorn (ideal for ngrok testing)'
+    )
+    
+    parser.add_argument(
+        '--gunicorn',
+        action='store_true',
+        help='Force use of gunicorn with multiple workers'
+    )
+    
+    parser.add_argument(
+        '--workers',
+        type=int,
+        default=4,
+        help='Number of gunicorn workers (default: 4)'
+    )
+    
+    args = parser.parse_args()
+    
     try:
-        # Check if gunicorn is available
-        try:
-            import gunicorn
-            run_development()
-        except ImportError:
-            logger.info("Gunicorn not found, falling back to simple uvicorn server...")
+        if args.simple:
+            # User explicitly wants simple single-worker mode
+            logger.info("Running in SIMPLE mode (single worker)")
             run_simple()
+        elif args.gunicorn:
+            # User explicitly wants gunicorn
+            try:
+                import gunicorn
+                logger.info(f"Running in GUNICORN mode ({args.workers} workers)")
+                # Update worker count if custom value provided
+                if args.workers != 4:
+                    os.environ["WEB_CONCURRENCY"] = str(args.workers)
+                run_development()
+            except ImportError:
+                logger.error("Gunicorn not installed. Install with: pip install gunicorn")
+                logger.info("Falling back to simple uvicorn server...")
+                run_simple()
+        else:
+            # Auto-detect mode (default behavior)
+            try:
+                import gunicorn
+                logger.info(f"Auto-detected gunicorn. Running with {args.workers} workers")
+                logger.info("Tip: Use --simple flag for single worker mode (better for ngrok)")
+                run_development()
+            except ImportError:
+                logger.info("Gunicorn not found, using simple uvicorn server...")
+                run_simple()
     except Exception as e:
         logger.critical(f"Unhandled exception in main: {str(e)}")
         logger.critical(traceback.format_exc())

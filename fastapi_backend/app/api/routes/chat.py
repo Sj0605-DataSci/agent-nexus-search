@@ -547,3 +547,54 @@ async def patch_feedback_for_thread_message(
             message=f"Error submitting feedback: {str(e)}",
             data=None
         ))
+
+
+# ============================================================================
+# TALLY PRODUCT QUERY ENDPOINT
+# ============================================================================
+
+class TallyQueryRequest(BaseModel):
+    query: str
+
+@router.post("/tally")
+async def tally_product_chat(
+    request: TallyQueryRequest,
+    current_user: Profile = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+) -> StreamingResponse:
+    """
+    Chat endpoint for Tally product queries.
+    Uses LangGraph with tool calling to search products and answer questions.
+    """
+    try:
+        logger.info("tally_product_chat_request",
+                   query=request.query)
+        
+        # Stream the response from the product query agent
+        async def event_generator():
+            try:
+                async for event in chat_service.process_tally_query(request.query, current_user.id):
+                    yield f"data: {event}\n\n"
+            except Exception as e:
+                logger.error("tally_product_chat_error",
+                           exception_type=type(e).__name__,
+                           error_message=str(e))
+                error_event = {
+                    "type": "error",
+                    "content": {"message": f"Error processing query: {str(e)}"}
+                }
+                yield f"data: {error_event}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream"
+        )
+        
+    except Exception as e:
+        logger.error("tally_product_chat_error",
+                   exception_type=type(e).__name__,
+                   error_message=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing Tally query: {str(e)}"
+        )

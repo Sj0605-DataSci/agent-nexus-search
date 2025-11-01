@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from typing import Dict, Optional, List
 import uuid
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,18 +22,34 @@ target_supabase: Client = create_client(TARGET_URL, TARGET_KEY)
 
 def migrate_connections_data(source_user_id, target_user_id):
     # 1. Get all connections for the source user with pagination
-    page_size = 1000
+    page_size = 100  # Reduced from 1000 to avoid timeout
     start = 0
     all_source_connections = []
+    max_retries = 3
     
     while True:
-        source_connections = source_supabase.table("connections") \
-            .select("*") \
-            .eq("user_id", source_user_id) \
-            .not_.is_("enriched_at", "null") \
-            .not_.is_("embedding_generated_at", "null") \
-            .range(start, start + page_size - 1) \
-            .execute()
+        retry_count = 0
+        success = False
+        
+        while retry_count < max_retries and not success:
+            try:
+                print(f"Fetching connections {start} to {start + page_size - 1}...")
+                source_connections = source_supabase.table("connections") \
+                    .select("*") \
+                    .eq("user_id", source_user_id) \
+                    .not_.is_("enriched_at", "null") \
+                    .not_.is_("embedding_generated_at", "null") \
+                    .range(start, start + page_size - 1) \
+                    .execute()
+                
+                success = True
+            except Exception as e:
+                retry_count += 1
+                print(f"Error fetching connections (attempt {retry_count}/{max_retries}): {str(e)}")
+                if retry_count < max_retries:
+                    time.sleep(2)  # Wait before retry
+                else:
+                    raise
         
         if len(source_connections.data) == 0:
             break
@@ -44,6 +61,7 @@ def migrate_connections_data(source_user_id, target_user_id):
             break
             
         start += page_size
+        time.sleep(0.5)  # Small delay between pages to avoid overwhelming the database
     
     if len(all_source_connections) == 0:
         print(f"No connections found for source user {source_user_id}")
@@ -77,11 +95,11 @@ def migrate_connections_data(source_user_id, target_user_id):
     
     # Continue with the rest of your function using all_source_connections instead of source_connections.data
     
-    # 3. Process each source connection
+    # 3. Process each source connection one by one
     updates = 0
     new_connections = 0
     
-    for source_conn in all_source_connections:
+    for i, source_conn in enumerate(all_source_connections):
         if not source_conn.get("linkedin_url"):
             continue
             
@@ -100,7 +118,8 @@ def migrate_connections_data(source_user_id, target_user_id):
                 "about_section", "experience_json", "education_json", 
                 "skills", "location", "profile_photo_url", 
                 "enriched_at", "enrichment_source", "embedding_generated_at",
-                "basic_info_embedding", "experience_embedding", "updated_at"
+                "basic_info_embedding", "experience_embedding", "updated_at",
+                "about_tsv","education_tsv","experience_tsv"
             ]
             
             for field in fields_to_copy:
@@ -111,24 +130,35 @@ def migrate_connections_data(source_user_id, target_user_id):
                     update_data[field] = source_conn[field]
             
             if update_data:
-                # Update the target connection with enriched data
-                target_supabase.table("connections").update(update_data).eq("id", target_conn["id"]).execute()
-                updates += 1
-                print(f"Updated connection: {linkedin_url}")
+                try:
+                    # Update the target connection with enriched data
+                    target_supabase.table("connections").update(update_data).eq("id", target_conn["id"]).execute()
+                    updates += 1
+                    if updates % 10 == 0:
+                        print(f"Updated {updates} connections so far...")
+                except Exception as e:
+                    print(f"Error updating connection {linkedin_url}: {str(e)}")
         else:
-            # Create new connection in target project
+            # Insert new connection one by one
             new_conn_data = {k: v for k, v in source_conn.items() if k != "id" and k != "user_id"}
             new_conn_data["user_id"] = target_user_id
             
-            target_supabase.table("connections").insert(new_conn_data).execute()
-            new_connections += 1
-            print(f"Created new connection: {linkedin_url}")
+            try:
+                target_supabase.table("connections").insert(new_conn_data).execute()
+                new_connections += 1
+                if new_connections % 10 == 0:
+                    print(f"Inserted {new_connections} new connections so far...")
+                time.sleep(0.1)  # Small delay between inserts
+            except Exception as e:
+                print(f"Error inserting connection {linkedin_url}: {str(e)}")
     
+    print(f"\n=== Migration Complete ===")
     print(f"Updated {updates} connections for user {target_user_id}")
     print(f"Created {new_connections} new connections for user {target_user_id}")
+    print(f"Total processed: {updates + new_connections} connections")
 
 if __name__ == "__main__":
-    source_user_id="06f7e3ea-162c-46a4-a494-4459dd4bea10"
-    target_user_id="06f7e3ea-162c-46a4-a494-4459dd4bea10"
+    source_user_id="a5ee6e12-5c5b-4912-9207-8529ecdb8575"
+    target_user_id="54fe4f63-bfc8-4cf0-a882-d4e76d9fb1a5"
     
     migrate_connections_data(source_user_id, target_user_id)

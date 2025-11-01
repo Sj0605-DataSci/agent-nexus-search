@@ -98,6 +98,11 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        float: {
+          "0%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-20px)" },
+          "100%": { transform: "translateY(0px)" },
+        },
       },
       animation: {
         "shiny-text": "shiny-text 2s linear infinite",
@@ -106,6 +111,10 @@ export default {
         "fade-in": "fade-in 0.5s ease-in forwards",
         "pulse-slow": "pulse-slow 2s ease-in-out infinite",
         fadeIn: "fadeIn 0.5s ease-out forwards",
+        float: "float 6s ease-in-out infinite",
+        "float-delay-1": "float 7s ease-in-out infinite 1s",
+        "float-delay-2": "float 8s ease-in-out infinite 0.5s",
+        "float-delay-3": "float 6.5s ease-in-out infinite 1.5s",
       },
     },
   },

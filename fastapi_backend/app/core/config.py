@@ -122,6 +122,12 @@ class Settings(BaseSettings):
     LANGSMITH_WORKSPACE_ID: str = os.getenv("LANGSMITH_WORKSPACE_ID","")
     # MAXIM_API_KEY: str = os.getenv("MAXIM_API_KEY","")
     # MAXIM_LOGGER_ID: str = os.getenv("MAXIM_LOGGER_ID","")
+    
+    # # WhatsApp Business API settings
+    # WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+    # WHATSAPP_ACCESS_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    # WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    
     # Logging settings
     ENABLE_STRUCTURED_LOGGING: bool = os.getenv("ENABLE_STRUCTURED_LOGGING", "true").lower() == "true"
 
