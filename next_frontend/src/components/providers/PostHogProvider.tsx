@@ -111,23 +111,6 @@ function ProductionPostHogProvider({ children }: PostHogProviderProps) {
             // Start session recording
             ph.startSessionRecording();
 
-            // Attempt to get location data (will be limited by browser permissions)
-            try {
-              if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                  position => {
-                    ph.register({
-                      latitude: position.coords.latitude,
-                      longitude: position.coords.longitude,
-                    });
-                  },
-                  () => {}, // Silent error
-                  { timeout: 10000, enableHighAccuracy: false }
-                );
-              }
-            } catch (e) {
-              console.log("Geolocation not available or permitted");
-            }
           },
         });
       } else {
