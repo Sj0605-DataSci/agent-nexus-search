@@ -57,8 +57,8 @@ def run_development():
     try:
         logger.info("Starting development server...")
         
-        # Get worker count from environment or default to 4
-        num_workers = os.environ.get("WEB_CONCURRENCY", "4")
+        # Hardcoded to 1 worker for minimal memory usage
+        num_workers = "1"
         
         # Set environment variables for memory optimization
         os.environ.setdefault("MALLOC_ARENA_MAX", "2")
@@ -69,19 +69,18 @@ def run_development():
         # Gunicorn command with memory leak prevention
         cmd = [
             "gunicorn",
-            "--log-level=debug",  # Enable debug logging
+            "--log-level=info",   # Reduced from debug to info for less overhead
             "--capture-output",   # Capture stdout/stderr in logs
             "--enable-stdio-inheritance",
-            "--preload",          # Preload the application before forking workers
             "--worker-class", "uvicorn.workers.UvicornWorker",
             "--workers", num_workers,  # Configurable worker count
             "--bind", "0.0.0.0:8000",
             "--timeout", "1200",  # 20 minutes timeout
             "--graceful-timeout", "30",
             "--worker-tmp-dir", "/tmp",      # Use /tmp on macOS
-            "--max-requests", "1000",        # Allow 1000 requests before restart
-            "--max-requests-jitter", "100",  # Jitter for restart timing
-            "--worker-connections", "1000",  # Limit connections per worker
+            "--max-requests", "500",         # Allow 500 requests before restart (reduced for memory)
+            "--max-requests-jitter", "50",   # Jitter for restart timing
+            "--worker-connections", "500",   # Limit connections per worker (reduced for memory)
             "--reload",
             "--access-logfile", "-",
             "--error-logfile", "-",
@@ -148,8 +147,8 @@ if __name__ == "__main__":
 Examples:
   python run.py                    # Auto-detect (gunicorn if available, else uvicorn)
   python run.py --simple           # Single worker with uvicorn (for ngrok)
-  python run.py --gunicorn         # Multi-worker with gunicorn (production-like)
-  python run.py --workers 2        # Custom number of workers
+  python run.py --gunicorn         # Single worker with gunicorn (minimal memory)
+  python run.py --workers 1        # Custom number of workers (default: 1)
         """
     )
     
@@ -168,8 +167,8 @@ Examples:
     parser.add_argument(
         '--workers',
         type=int,
-        default=4,
-        help='Number of gunicorn workers (default: 4)'
+        default=1,
+        help='Number of gunicorn workers (default: 1)'
     )
     
     args = parser.parse_args()
@@ -185,7 +184,7 @@ Examples:
                 import gunicorn
                 logger.info(f"Running in GUNICORN mode ({args.workers} workers)")
                 # Update worker count if custom value provided
-                if args.workers != 4:
+                if args.workers != 1:
                     os.environ["WEB_CONCURRENCY"] = str(args.workers)
                 run_development()
             except ImportError:
@@ -196,7 +195,7 @@ Examples:
             # Auto-detect mode (default behavior)
             try:
                 import gunicorn
-                logger.info(f"Auto-detected gunicorn. Running with {args.workers} workers")
+                logger.info(f"Auto-detected gunicorn. Running with 1 worker for minimal memory")
                 logger.info("Tip: Use --simple flag for single worker mode (better for ngrok)")
                 run_development()
             except ImportError:

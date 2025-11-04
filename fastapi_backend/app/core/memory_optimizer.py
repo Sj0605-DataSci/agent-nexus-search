@@ -1,6 +1,10 @@
 """
 Memory optimization module for Railway deployment
 Addresses multiple memory leak sources and provides proactive cleanup
+
+⚠️ IMPORTANT: Memory monitoring is DISABLED to reduce memory usage.
+The start_monitoring() function will return immediately without starting the monitoring loop.
+This prevents the periodic aggressive cleanup logs from appearing.
 """
 import asyncio
 import gc
@@ -158,7 +162,10 @@ class MemoryOptimizer:
         return None
     
     async def start_monitoring(self):
-        """Start continuous memory monitoring"""
+        """Start continuous memory monitoring - DISABLED FOR MEMORY OPTIMIZATION"""
+        print("Memory monitoring is disabled - skipping initialization")
+        return  # Exit immediately without starting monitoring
+        
         if self.monitoring_active:
             return
         
