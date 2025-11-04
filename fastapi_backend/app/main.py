@@ -16,7 +16,8 @@ from app.db.clients import get_async_supabase_client
 from fastapi.responses import JSONResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from app.db.redis_client import redis_client
-from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monitoring
+# Memory optimizer imports removed - monitoring disabled for memory optimization
+# from app.core.memory_optimizer import start_memory_monitoring, stop_memory_monitoring
 
 from app.models.schemas import StandardResponse, StandardJSONResponse
 from app.core.profiling import Timer, record_request_time
@@ -24,7 +25,8 @@ from app.core.profiling import Timer, record_request_time
 from app.api.routes import agent_templates, hired_agents, profiles, auth, chat, worker_status, connections_processing, profiling, linkedin_enrichment, enrichment_status, auto_enrichment, connections, friendships, stock_items, whatsapp
 from app.api.routes import emergency
 from app.core.config import settings
-from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
+# Memory profiling imports removed - monitoring disabled for memory optimization
+# from app.core.memory import log_memory_usage, force_garbage_collection, take_memory_snapshot
 
 # Set up structured logging
 from app.core.structured_logger import setup_structured_logging, get_structured_logger
@@ -90,14 +92,15 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Redis client initialized")
         
-        # Start memory monitoring
-        await start_memory_monitoring()
-        logger.info("Memory monitoring started")
+        # Memory monitoring and worker manager disabled to reduce memory usage
+        # await start_memory_monitoring()
+        # logger.info("Memory monitoring started")
         
-        from app.core.worker_manager import WorkerManager
-        worker_manager = WorkerManager()
-        await worker_manager.initialize()
-        logger.info("Worker manager initialized")
+        # from app.core.worker_manager import WorkerManager
+        # worker_manager = WorkerManager()
+        # await worker_manager.initialize()
+        # logger.info("Worker manager initialized")
+        logger.info("Memory monitoring and worker manager disabled for reduced memory footprint")
         
         yield
         
@@ -120,14 +123,14 @@ async def lifespan(app: FastAPI):
         #         logger.error(f"Error disconnecting ngrok: {str(e)}")
         
         try:
-            # Stop memory monitoring
-            await stop_memory_monitoring()
-            logger.info("Memory monitoring stopped")
+            # Memory monitoring and worker manager disabled
+            # await stop_memory_monitoring()
+            # logger.info("Memory monitoring stopped")
             
-            from app.core.worker_manager import WorkerManager
-            worker_manager = WorkerManager()
-            await worker_manager.shutdown()
-            logger.info("Worker manager shutdown")
+            # from app.core.worker_manager import WorkerManager
+            # worker_manager = WorkerManager()
+            # await worker_manager.shutdown()
+            # logger.info("Worker manager shutdown")
             
             # Close Redis connection pool
             await redis_client.close()
@@ -298,10 +301,10 @@ async def handle_electron_cors(request: Request, call_next):
     
     return await call_next(request)
 
-# Add profiling middleware in reverse order (first added = last executed)
-app.add_middleware(DetailedProfilingMiddleware)
-app.add_middleware(AuthProfilingMiddleware)
-app.add_middleware(DBConnectionProfilingMiddleware)
+# Profiling middleware disabled to reduce memory and CPU overhead
+# app.add_middleware(DetailedProfilingMiddleware)
+# app.add_middleware(AuthProfilingMiddleware)
+# app.add_middleware(DBConnectionProfilingMiddleware)
 
 # Add CORS debugging middleware - must be added AFTER the CORS middleware
 @app.middleware("http")
@@ -429,91 +432,8 @@ app.include_router(emergency.router)  # Emergency memory cleanup
 async def root():
     return {"message": "Welcome to Agent Search API"}
 
-# Redis client initialization
-@app.on_event("startup")
-async def startup_db_client():
-    """Initialize database client on startup"""
-    try:
-        # Log initial memory state
-        logger.info("Application starting up - Initial memory state:")
-        log_memory_usage("Startup memory")
-        take_memory_snapshot("startup")
-        
-        # Set garbage collection thresholds for more aggressive collection
-        # Default is (700, 10, 10) - lower numbers mean more frequent collection
-        old_thresholds = gc.get_threshold()
-        gc.set_threshold(500, 10, 10)
-        logger.info(f"GC thresholds changed from {old_thresholds} to {gc.get_threshold()}")
-        
-        # Initialize the Supabase client
-        client = await get_async_supabase_client()
-        logger.info("Supabase client initialized")
-        
-        # Initialize Redis client
-        await redis_client.initialize(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,
-            url=settings.REDIS_URL if settings.REDIS_URL else None
-        )
-        logger.info("Redis client initialized")
-        
-        # Warm up caches for better performance
-        try:
-            from app.core.utils.cache import CACHE_CONFIG
-            
-            # Only warm caches that are configured for startup warming
-            warm_tasks = []
-            for cache_type, config in CACHE_CONFIG.items():
-                if config.get("warm_on_startup", False):
-                    logger.info(f"Cache warming enabled for {cache_type}")
-                    # Add specific warming logic per cache type if needed
-            
-            # Pre-compile regex patterns and other expensive operations
-            import re
-            # Pre-compile common patterns used in your app
-            logger.info("Pre-compiled regex patterns and expensive operations")
-            
-        except Exception as cache_error:
-            logger.warning(f"Cache warming failed: {str(cache_error)}")
-        
-        # Initialize worker manager for background tasks
-        from app.core.worker_manager import WorkerManager
-        worker_manager = WorkerManager()
-        await worker_manager.initialize()
-        logger.info("Worker manager initialized")
-        
-        # Log memory after initialization
-        log_memory_usage("After client initialization")
-    except Exception as e:
-        logger.error(f"Error initializing database client: {str(e)}")
-        # Don't crash the app, but log the error allow app to start even if Redis is not available
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    """Cleanup on shutdown"""
-    try:
-        # Log memory state before shutdown
-        logger.info("Application shutting down - Memory state:")
-        log_memory_usage("Shutdown memory")
-        take_memory_snapshot("shutdown")
-        
-        # Shutdown worker manager
-        try:
-            from app.core.worker_manager import WorkerManager
-            worker_manager = WorkerManager()
-            await worker_manager.shutdown()
-            logger.info("Worker manager shutdown complete")
-        except Exception as worker_error:
-            logger.error(f"Error shutting down worker manager: {str(worker_error)}")
-        
-        # Force garbage collection to free up memory
-        force_garbage_collection()
-        
-        # Log memory after garbage collection
-        log_memory_usage("After garbage collection")
-    except Exception as e:
-        logger.error(f"Error during shutdown: {str(e)}")
+# Startup/shutdown events removed - using lifespan context manager instead
+# This prevents duplicate initialization that was causing memory monitoring to run
 
 @app.get("/health")
 async def health():
