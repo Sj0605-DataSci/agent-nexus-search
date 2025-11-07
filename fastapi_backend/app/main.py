@@ -55,6 +55,11 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("Starting application...")
     
+    # Configure garbage collection for better memory management
+    gc.set_threshold(700, 10, 10)  # More aggressive GC
+    gc.enable()
+    logger.info("Garbage collection configured for memory optimization")
+    
     # # Ngrok tunnel setup
     # ngrok_listener = None
     # if ENABLE_NGROK:
@@ -135,6 +140,10 @@ async def lifespan(app: FastAPI):
             # Close Redis connection pool
             await redis_client.close()
             logger.info("Redis client closed")
+            
+            # Force garbage collection on shutdown
+            gc.collect()
+            logger.info("Final garbage collection completed")
             
         except Exception as e:
             logger.error("Error during application shutdown", error=str(e))
@@ -301,12 +310,7 @@ async def handle_electron_cors(request: Request, call_next):
     
     return await call_next(request)
 
-# Profiling middleware disabled to reduce memory and CPU overhead
-# app.add_middleware(DetailedProfilingMiddleware)
-# app.add_middleware(AuthProfilingMiddleware)
-# app.add_middleware(DBConnectionProfilingMiddleware)
-
-# Add CORS debugging middleware - must be added AFTER the CORS middleware
+# CORS debugging middleware simplified to reduce overhead
 @app.middleware("http")
 async def cors_debug_middleware(request: Request, call_next):
     # Log detailed information about incoming requests
@@ -323,12 +327,12 @@ async def cors_debug_middleware(request: Request, call_next):
     # Process the request
     response = await call_next(request)
     
-    # Log response details for debugging
-    if is_options or response.status_code >= 400:
-        cors_headers = {k: v for k, v in response.headers.items() if k.lower().startswith("access-control")}
-        logger.info("CORS response sent",
-                   response_status=response.status_code,
-                   request_url=str(request.url),
+    # Only log if there's an error
+    if response.status_code >= 400:
+        origin = request.headers.get("origin", "No Origin")
+        logger.warning("Request error",
+                      status_code=response.status_code,
+                      request_url=str(request.url),
                    cors_headers=cors_headers)
         
         # Log if origin is not in allowed origins

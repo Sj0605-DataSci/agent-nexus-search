@@ -47,64 +47,64 @@ _usage_stats_cache: Dict[str, Tuple[Any, float]] = OrderedDict()  # User usage s
 CACHE_CONFIG = {
     "profile": {
         "ttl": 300,  # 5 minutes
-        "max_size": 1000,
-        "cleanup_size": 100,
-        "warm_on_startup": True,  # Pre-load frequently accessed profiles
+        "max_size": 100,  # Reduced from 1000 to save memory
+        "cleanup_size": 20,  # Reduced from 100
+        "warm_on_startup": False,  # Disabled to reduce startup memory
         "lru_eviction": True      # Use LRU instead of random eviction
     },
     "agent": {
         "ttl": 900,  # Increased to 15 minutes (agents change less frequently)
-        "max_size": 500,
-        "cleanup_size": 50,
-        "warm_on_startup": True,
+        "max_size": 50,  # Reduced from 500 to save memory
+        "cleanup_size": 10,  # Reduced from 50
+        "warm_on_startup": False,  # Disabled to reduce startup memory
         "lru_eviction": True
     },
     "user_agents": {
         "ttl": 300,  # 5 minutes
-        "max_size": 200,
-        "cleanup_size": 20,
+        "max_size": 50,  # Reduced from 200 to save memory
+        "cleanup_size": 10,  # Reduced from 20
         "warm_on_startup": False,  # User-specific, don't pre-warm
         "lru_eviction": True
     },
     "generic": {
         "ttl": 300,  # 5 minutes
-        "max_size": 1000,
-        "cleanup_size": 100,
+        "max_size": 100,  # Reduced from 1000 to save memory
+        "cleanup_size": 20,  # Reduced from 100
         "warm_on_startup": False,
         "lru_eviction": True
     },
     "chat_threads": {
         "ttl": 900,  # Increased to 15 minutes (threads don't change often)
-        "max_size": 300,
-        "cleanup_size": 30,
+        "max_size": 50,  # Reduced from 300 to save memory
+        "cleanup_size": 10,  # Reduced from 30
         "warm_on_startup": False,
         "lru_eviction": True
     },
     "chat_messages": {
         "ttl": 600,  # Increased to 10 minutes (messages are immutable)
-        "max_size": 500,
-        "cleanup_size": 50,
+        "max_size": 100,  # Reduced from 500 to save memory
+        "cleanup_size": 20,  # Reduced from 50
         "warm_on_startup": False,
         "lru_eviction": True
     },
     "message_feedback": {
         "ttl": 600,  # 10 minutes (feedback doesn't change often)
-        "max_size": 200,
-        "cleanup_size": 20,
+        "max_size": 50,  # Reduced from 200 to save memory
+        "cleanup_size": 10,  # Reduced from 20
         "warm_on_startup": False,
         "lru_eviction": True
     },
     "subscription": {
         "ttl": 600,  # 10 minutes (subscriptions change less frequently)
-        "max_size": 1000,
-        "cleanup_size": 100,
+        "max_size": 100,  # Reduced from 1000 to save memory
+        "cleanup_size": 20,  # Reduced from 100
         "warm_on_startup": False,
         "lru_eviction": True
     },
     "usage_stats": {
         "ttl": 300,  # 5 minutes (usage stats change more frequently)
-        "max_size": 500,
-        "cleanup_size": 50,
+        "max_size": 50,  # Reduced from 500 to save memory
+        "cleanup_size": 10,  # Reduced from 50
         "warm_on_startup": False,
         "lru_eviction": True
     }
@@ -114,7 +114,7 @@ CACHE_CONFIG = {
 _cache_cleanup_lock = threading.Lock()
 _last_memory_check = 0
 MEMORY_CHECK_INTERVAL = 30  # Check memory every 30 seconds
-MEMORY_CLEANUP_THRESHOLD_MB = 500  # Cleanup caches if process uses > 500MB
+MEMORY_CLEANUP_THRESHOLD_MB = 300  # Reduced from 500MB - cleanup caches if process uses > 300MB
 
 def _get_process_memory_mb() -> float:
     """Get current process memory usage in MB"""

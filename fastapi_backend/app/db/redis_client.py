@@ -48,7 +48,7 @@ class RedisClient:
                 self._pool = redis.ConnectionPool.from_url(
                     url,
                     decode_responses=True,
-                    max_connections=20,
+                    max_connections=5,  # Reduced from 20 to save memory
                     retry_on_timeout=True,
                     socket_keepalive=True,
                     socket_keepalive_options={},
@@ -61,7 +61,7 @@ class RedisClient:
                     db=db,
                     password=password,
                     decode_responses=True,
-                    max_connections=20,
+                    max_connections=5,  # Reduced from 20 to save memory
                     retry_on_timeout=True,
                     socket_keepalive=True,
                     socket_keepalive_options={},

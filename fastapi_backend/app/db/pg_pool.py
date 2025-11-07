@@ -31,8 +31,8 @@ async def init_pg_pool() -> asyncpg.Pool:
             password=settings.SUPABASE_PASSWORD,
             database=settings.SUPABASE_DBNAME,
             # Connection pool settings
-            min_size=2,  # Minimum connections to keep open
-            max_size=10,  # Maximum connections in pool
+            min_size=1,  # Reduced from 2 - minimum connections to keep open
+            max_size=5,  # Reduced from 10 - maximum connections in pool
             # Timeout settings (in seconds)
             command_timeout=1200.0,  # 20 minutes for long-running queries
             timeout=30.0,  # Connection timeout
