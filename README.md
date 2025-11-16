@@ -1,6 +1,6 @@
 # Tara – AI Copilot for TallyPrime
 
-## 1. Product Narrative
+## 1. Product Narrativee
 
 ### 1.1 Vision
 Tara is the always-on finance copilot that sits on top of TallyPrime. Just as the star "Tara" guides travellers, Tara guides businesses through accounting operations with a conversational AI assistant that understands Tally primitives, business workflows, and compliance rules.
