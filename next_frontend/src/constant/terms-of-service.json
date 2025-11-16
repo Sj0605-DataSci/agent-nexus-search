@@ -1,9 +1,9 @@
 {
-  "lastUpdated": "August 12, 2025",
+  "lastUpdated": "November 16, 2025",
   "title": "Terms of Service",
-  "introduction": "Welcome to DiscoverMinds ('we', 'us', 'our'). By accessing or using our website, Chrome extension, and related services ('Services'), you agree to be bound by these Terms of Service. Please read them carefully before using our Services.",
+  "introduction": "Welcome to Tara by DiscoverMinds ('we', 'us', 'our', 'Tara'). By accessing or using our website, desktop application (Tallie), WhatsApp bot, and related services ('Services'), you agree to be bound by these Terms of Service. Please read them carefully before using our Services.",
   "contact": {
-    "sendto": "founders@discoverminds.ai",
+    "sendto": "support@discoverminds.ai",
     "address": "Indiranagar, Bangalore, India"
   },
   "sections": [
@@ -11,14 +11,14 @@
       "title": "1. Acceptance of Terms",
       "content": [
         "By accessing or using our Services, you agree to these Terms and our Privacy Policy. If you do not agree, please do not use our Services.",
-        "You must be at least 18 years old to use our Services. By using our Services, you represent that you are at least 18."
+        "You must be at least 18 years old or have permission from a business owner to use our Services. By using our Services, you represent that you meet these requirements."
       ]
     },
     {
       "title": "2. Description of Services",
       "content": [
-        "DiscoverMinds provides a context-aware, agent-powered search engine for people, enabling users to find and connect with professionals globally and within their networks.",
-        "We may modify, suspend, or discontinue any aspect of the Services at any time, including the availability of any feature or content."
+        "Tara provides an AI-powered accounting copilot for TallyPrime, including features such as WhatsApp integration, invoice automation, inventory management, ledger updates, and business intelligence. The Services include the Tallie desktop connector application that bridges your local TallyPrime with Tara's cloud platform.",
+        "We may modify, suspend, or discontinue any aspect of the Services at any time, including the availability of any feature or content. We will provide reasonable notice of material changes."
       ]
     },
     {
@@ -29,64 +29,103 @@
       ]
     },
     {
-      "title": "4. User Conduct",
+      "title": "4. User Conduct and Data Responsibilities",
       "content": [
         "You agree not to use the Services to:",
-        "- Violate any laws or regulations",
+        "- Violate any laws or regulations, including accounting and tax laws",
         "- Infringe on intellectual property rights",
         "- Transmit harmful or malicious code",
         "- Interfere with the Services' security features",
-        "- Collect information about other users without their consent"
+        "- Share your TallyPrime data with unauthorized third parties",
+        "- Use the Services to process data you do not have rights to",
+        "- Attempt to reverse engineer or compromise the Tallie connector"
       ]
     },
     {
-      "title": "5. Intellectual Property",
+      "title": "5. Data Security and TallyPrime Integration",
       "content": [
-        "All content and materials available through the Services, including but not limited to text, graphics, logos, and software, are our property or the property of our licensors and are protected by copyright and other intellectual property laws.",
-        "You may not reproduce, distribute, or create derivative works without our express written permission."
+        "You are responsible for maintaining the security of your TallyPrime installation and the computer where Tallie is installed. We recommend keeping your system updated and secure.",
+        "Tara processes your TallyPrime data to provide automation services. By using our Services, you grant us permission to access, process, and store your accounting data as necessary to deliver the Services.",
+        "We implement industry-standard security measures to protect your data. However, you acknowledge that no system is completely secure, and you use the Services at your own risk.",
+        "You are responsible for ensuring you have appropriate backups of your TallyPrime data. We recommend regular backups before using automation features."
       ]
     },
     {
-      "title": "6. Privacy",
+      "title": "6. Intellectual Property",
       "content": [
-        "Your use of the Services is also governed by our Privacy Policy, which explains how we collect, use, and protect your information."
+        "All content and materials available through the Services, including but not limited to text, graphics, logos, software (including Tallie), and AI models, are our property or the property of our licensors and are protected by copyright and other intellectual property laws.",
+        "You may not reproduce, distribute, or create derivative works without our express written permission. TallyPrime is a trademark of Tally Solutions Pvt. Ltd., and we are not affiliated with or endorsed by Tally Solutions."
       ]
     },
     {
-      "title": "7. Termination",
+      "title": "7. AI-Generated Content and Accuracy",
       "content": [
-        "We may terminate or suspend your account and access to the Services at our sole discretion, without notice, for conduct that we believe violates these Terms or is harmful to other users, us, or third parties, or for any other reason."
+        "Tara uses artificial intelligence to automate accounting tasks. While we strive for accuracy, AI-generated entries and suggestions should be reviewed by qualified accounting professionals before being finalized.",
+        "You acknowledge that Tara is an assistive tool and does not replace professional accounting judgment. You are responsible for verifying all automated entries and ensuring compliance with applicable accounting standards and tax regulations.",
+        "We recommend enabling human review for all critical transactions, especially those involving GST, tax calculations, and financial reporting."
       ]
     },
     {
-      "title": "8. Disclaimers",
+      "title": "8. Privacy",
+      "content": [
+        "Your use of the Services is also governed by our Privacy Policy, which explains how we collect, use, and protect your information, including your TallyPrime accounting data."
+      ]
+    },
+    {
+      "title": "9. Subscription and Payment Terms",
+      "content": [
+        "Certain features of Tara require a paid subscription. Subscription fees are billed in advance on a recurring basis (monthly or annually) and are non-refundable except as required by law.",
+        "You authorize us to charge your payment method for all fees. If payment fails, we may suspend your access to paid features.",
+        "We reserve the right to change subscription prices with 30 days' notice. Continued use after price changes constitutes acceptance of the new pricing."
+      ]
+    },
+    {
+      "title": "10. Termination",
+      "content": [
+        "We may terminate or suspend your account and access to the Services at our sole discretion, without notice, for conduct that we believe violates these Terms or is harmful to other users, us, or third parties, or for any other reason.",
+        "Upon termination, you must immediately uninstall Tallie and cease all use of the Services. We will provide you with a reasonable opportunity to export your data."
+      ]
+    },
+    {
+      "title": "11. Disclaimers",
       "content": [
         "The Services are provided 'as is' without warranties of any kind, either express or implied. We do not guarantee that the Services will be uninterrupted or error-free.",
-        "We are not responsible for the accuracy, completeness, or usefulness of any information provided through the Services."
+        "We are not responsible for the accuracy, completeness, or usefulness of any AI-generated accounting entries. You are solely responsible for reviewing and verifying all automated entries before finalizing them in TallyPrime.",
+        "We do not provide accounting, tax, or legal advice. Consult with qualified professionals for such matters."
       ]
     },
     {
-      "title": "9. Limitation of Liability",
+      "title": "12. Limitation of Liability",
       "content": [
-        "To the fullest extent permitted by law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly."
+        "To the fullest extent permitted by law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.",
+        "Our total liability for any claims arising from your use of the Services shall not exceed the amount you paid us in the 12 months preceding the claim.",
+        "We are not liable for any data loss, accounting errors, tax penalties, or financial losses resulting from your use of the Services. You are responsible for maintaining backups and verifying all automated entries."
       ]
     },
     {
-      "title": "10. Changes to Terms",
+      "title": "13. Indemnification",
       "content": [
-        "We reserve the right to modify these Terms at any time. We will provide notice of material changes through the Services or by other means. Your continued use of the Services after such changes constitutes acceptance of the new Terms."
+        "You agree to indemnify and hold harmless DiscoverMinds, its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the Services, your violation of these Terms, or your violation of any rights of another party."
       ]
     },
     {
-      "title": "11. Governing Law",
+      "title": "14. Changes to Terms",
       "content": [
-        "These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions."
+        "We reserve the right to modify these Terms at any time. We will provide notice of material changes through the Services, email, or by other means. Your continued use of the Services after such changes constitutes acceptance of the new Terms.",
+        "We recommend reviewing these Terms periodically to stay informed of any updates."
       ]
     },
     {
-      "title": "12. Contact Us",
+      "title": "15. Governing Law and Dispute Resolution",
       "content": [
-        "If you have any questions about these Terms, please contact us at founders@discoverminds.ai."
+        "These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions.",
+        "Any disputes arising from these Terms or your use of the Services shall be resolved through binding arbitration in Bangalore, India, in accordance with the Arbitration and Conciliation Act, 1996."
+      ]
+    },
+    {
+      "title": "16. Contact Us",
+      "content": [
+        "If you have any questions about these Terms, please contact us at support@discoverminds.ai or visit our contact page at https://discoverminds.ai/contact."
       ]
     }
   ]

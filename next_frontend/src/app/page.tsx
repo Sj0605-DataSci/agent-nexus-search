@@ -1,79 +1,76 @@
-import Header from "@/components/Homepage/Navbar";
-import { Metadata } from "next";
-import NewHeroSection from "@/components/Homepage/NewHeroSection";
 import React from "react";
-import dynamicImporter from "next/dynamic";
-const Offerings = dynamicImporter(() => import("@/components/Homepage/Offerings"), {
-  loading: () => <div className="min-h-[600px] bg-[#B2DC8A]" />,
-  ssr: false,
-});
+import { Metadata } from "next";
 
-// Lazy load below-the-fold components - client-side only for optimal performance
-const HowItWorks = dynamicImporter(() => import("@/components/Homepage/HowItWorks"), {
-  loading: () => <div className="min-h-[400px] bg-gray-50" />,
-  ssr: false,
-});
-const WhyDiscoverMinds = dynamicImporter(() => import("@/components/Homepage/WhyDiscoverMinds"), {
-  loading: () => <div className="min-h-[500px] bg-white" />,
-  ssr: false,
-});
-const FaqSection = dynamicImporter(() => import("@/components/Pricing/FaqSection"), {
-  loading: () => <div className="min-h-[300px] bg-white" />,
-  ssr: false,
-});
-const NewFooter = dynamicImporter(() => import("@/components/Footer/NewFooter"), {
-  loading: () => <div className="min-h-[200px] bg-gray-900" />,
-  ssr: false,
-});
+import Navbar from "./tara/components/Navbar";
+import HeroSection from "./tara/components/HeroSection";
+import FeaturePillars from "./tara/components/FeaturePillars";
+import Pricing from "./tara/components/Pricing";
+import ProductModules from "./tara/components/ProductModules";
+import CTABanner from "./tara/components/CTABanner";
+import HowItWorks from "./tara/components/HowItWorks";
+import Testimonials from "./tara/components/Testimonials";
+import FAQ from "./tara/components/FAQ";
+import TaraFooter from "./tara/components/TaraFooter";
 
 export const dynamic = "force-static";
 
 const baseMetadata = {
-  title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
+  title: "Tara - AI Copilot for TallyPrime | Automate Your Accounting",
   description:
-    "A mutual network-sharing platform that turns your network into your competitive advantage through AI-powered search and warm introductions.",
+    "Automate Tally with Tara—your conversational accounting copilot. Upload invoices via WhatsApp, chat 24/7, and keep ledgers accurate with AI-powered automation.",
 };
 
 const productionMetadata: Metadata = {
-  title: "Home | Your Secret Weapon for Professional Networking",
+  title: "Tara - AI Copilot for TallyPrime | Automate Your Accounting",
   description:
-    "DiscoverMinds.ai is your secret weapon for professional networking. Find the right connections instantly through AI-powered search and turn your network into your competitive advantage.",
+    "Automate Tally with Tara—your conversational accounting copilot. Upload invoices via WhatsApp, chat 24/7, and keep ledgers accurate with AI-powered automation. Save 80% time on data entry.",
+  keywords: [
+    "Tally automation",
+    "TallyPrime AI",
+    "accounting automation",
+    "invoice automation",
+    "WhatsApp accounting",
+    "Tally chatbot",
+    "GST automation",
+    "inventory management",
+    "AI accounting assistant",
+  ],
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
+    title: "Tara - AI Copilot for TallyPrime | Automate Your Accounting",
     description:
-      "Turn your network into your competitive advantage. Find the right connections instantly with AI-powered search and warm introductions.",
-    url: "https://discoverminds.ai",
-    siteName: "DiscoverMinds.ai",
+      "Automate your Tally workflow with AI. Upload invoices via WhatsApp, get instant insights, and save 80% time on data entry. Your 24/7 accounting copilot.",
+    url: "https://hellotara.in",
+    siteName: "Tara - AI Copilot for TallyPrime",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "https://discoverminds.ai/Images/og-image.png",
+        url: "https://hellotara.in/Images/tara-og-image.png",
         width: 1200,
         height: 630,
-        alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
+        alt: "Tara - AI Copilot for TallyPrime",
         type: "image/png",
-        secureUrl: "https://discoverminds.ai/Images/og-image.png",
+        secureUrl: "https://hellotara.in/Images/tara-og-image.png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "DiscoverMinds.ai | Your Secret Weapon for Professional Networking",
+    title: "Tara - AI Copilot for TallyPrime",
     description:
-      "Turn your network into your competitive advantage. Find the right connections instantly with AI-powered search and warm introductions.",
+      "Automate your Tally workflow with AI. Upload invoices via WhatsApp, get instant insights, and save 80% time on data entry.",
     images: [
       {
-        url: "https://discoverminds.ai/Images/og-image.png",
+        url: "https://hellotara.in/Images/tara-og-image.png",
         width: 1200,
         height: 630,
-        alt: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
+        alt: "Tara - AI Copilot for TallyPrime",
       },
     ],
-    creator: "@discovermindsai",
+    creator: "@TaraAI",
   },
 };
 
@@ -84,35 +81,54 @@ function addStructuredData() {
   return {
     __html: JSON.stringify({
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: "DiscoverMinds.ai",
-      url: "https://discoverminds.ai",
-      potentialAction: {
-        "@type": "SearchAction",
-        target: "https://discoverminds.ai/search?q={search_term_string}",
-        "query-input": "required name=search_term_string",
+      "@type": "SoftwareApplication",
+      name: "Tara",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web, WhatsApp",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "INR",
+        description: "Free trial available",
       },
+      description:
+        "AI-powered accounting copilot for TallyPrime. Automate invoices, inventory, and ledgers via WhatsApp.",
+      url: "https://hellotara.in",
+      provider: {
+        "@type": "Organization",
+        name: "Tara",
+        url: "https://hellotara.in",
+      },
+      featureList: [
+        "WhatsApp Integration",
+        "Invoice Automation",
+        "Inventory Management",
+        "GST Compliance",
+        "Real-time Analytics",
+        "Voice Commands",
+      ],
     }),
   };
 }
 
-export default function Home() {
+export default function TaraHomePage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main className="">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={addStructuredData()}
         key="structured-data"
       />
-      <Header />
-      <main>
-        <NewHeroSection />
-        <Offerings />
-        <HowItWorks />
-        <WhyDiscoverMinds />
-        <FaqSection />
-        <NewFooter />
-      </main>
-    </div>
+      <Navbar />
+      <HeroSection />
+      <FeaturePillars />
+      <HowItWorks />
+      <ProductModules />
+      <Testimonials />
+      <Pricing />
+      <FAQ />
+      <CTABanner />
+      <TaraFooter />
+    </main>
   );
 }

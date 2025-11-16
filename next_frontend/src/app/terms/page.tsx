@@ -2,45 +2,45 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import termsOfService from "@/constant/terms-of-service.json";
-import Footer from "@/components/Footer/Footer";
-import NewFooter from "@/components/Footer/NewFooter";
+import TaraFooter from "@/app/tara/components/TaraFooter";
 
 const baseMetadata = {
-  title: "Terms of Service | DiscoverMinds.ai",
+  title: "Terms of Service | Tara - AI Copilot for TallyPrime",
   description:
-    "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
+    "Review the terms and conditions for using Tara, your AI-powered accounting copilot for TallyPrime.",
 };
 
 const productionMetadata: Metadata = {
-  title: "Terms of Service | DiscoverMinds.ai",
+  title: "Terms of Service | Tara - AI Copilot for TallyPrime",
   description:
-    "Please read our Terms of Service. By using DiscoverMinds.ai, you agree to these terms, which govern your use of our mutual network-sharing platform for unlocking professional opportunities.",
+    "Please read our Terms of Service. By using Tara, you agree to these terms, which govern your use of our AI-powered accounting automation platform for TallyPrime.",
   keywords: [
     "terms of service",
     "terms and conditions",
     "user agreement",
-    "community guidelines",
-    "network sharing policy",
-    "professional networking terms",
-    "DiscoverMinds user terms",
+    "Tara terms",
+    "TallyPrime terms",
+    "accounting software terms",
+    "AI copilot terms",
+    "Tara user agreement",
   ],
   openGraph: {
-    title: "Terms of Service | DiscoverMinds.ai",
+    title: "Terms of Service | Tara - AI Copilot for TallyPrime",
     description:
-      "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
-    url: "https://discoverminds.ai/terms",
-    siteName: "DiscoverMinds.ai",
+      "Review the terms and conditions for using Tara, your AI-powered accounting copilot for TallyPrime.",
+    url: "https://hellotara.in/terms",
+    siteName: "Tara - AI Copilot for TallyPrime",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Terms of Service | DiscoverMinds.ai",
+    title: "Terms of Service | Tara - AI Copilot for TallyPrime",
     description:
-      "Review the terms and conditions for using the DiscoverMinds.ai mutual network-sharing platform.",
+      "Review the terms and conditions for using Tara, your AI-powered accounting copilot for TallyPrime.",
   },
   alternates: {
-    canonical: "https://discoverminds.ai/terms",
+    canonical: "https://hellotara.in/terms",
   },
 };
 
@@ -59,7 +59,7 @@ function addBreadcrumbList() {
           "@type": "ListItem",
           position: 1,
           name: "Home",
-          item: "https://discoverminds.ai",
+          item: "https://hellotara.in",
         },
         {
           "@type": "ListItem",
@@ -164,7 +164,7 @@ export default function TermsOfServicePage() {
           </div>
         </div>
       </div>
-      <NewFooter />
+      <TaraFooter />
     </div>
   );
 }

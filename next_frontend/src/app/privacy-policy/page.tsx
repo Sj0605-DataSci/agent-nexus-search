@@ -2,52 +2,51 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import privacyPolicy from "@/constant/privacy-policy.json";
-import Footer from "@/components/Footer/Footer";
-import NewFooter from "@/components/Footer/NewFooter";
-
-export const revalidate = 60 * 60 * 24; // Revalidate every 24 hours
+import TaraFooter from "@/app/tara/components/TaraFooter";
 
 const baseMetadata = {
-  title: "Privacy Policy | DiscoverMinds.ai",
-  description: "Learn how we protect your data on our mutual network-sharing platform.",
+  title: "Privacy Policy | Tara - AI Copilot for TallyPrime",
+  description:
+    "Learn how Tara protects your TallyPrime data and respects your privacy. Our comprehensive privacy policy explains data collection, usage, and security measures.",
 };
 
 const productionMetadata: Metadata = {
-  title: `Privacy Policy | DiscoverMinds.ai`,
+  title: "Privacy Policy | Tara - AI Copilot for TallyPrime",
   description:
-    "Your privacy is fundamental to building a trusted network. Learn how DiscoverMinds.ai protects your data on our mutual network-sharing platform.",
+    "Learn how Tara protects your TallyPrime accounting data and respects your privacy. Our comprehensive privacy policy explains data collection, usage, security measures, and your rights.",
   keywords: [
     "privacy policy",
     "data protection",
-    "network sharing privacy",
-    "warm introductions",
+    "Tara privacy",
+    "TallyPrime data security",
+    "accounting data privacy",
     "GDPR compliance",
-    "CCPA compliance",
-    "data privacy",
-    "user data protection",
+    "data security",
+    "Tara data protection",
   ],
   openGraph: {
-    title: "Privacy Policy | DiscoverMinds.ai",
+    title: "Privacy Policy | Tara - AI Copilot for TallyPrime",
     description:
-      "Your privacy is fundamental to building a trusted network. Learn how DiscoverMinds.ai protects your data on our mutual network-sharing platform.",
-    url: "https://discoverminds.ai/privacy-policy",
-    siteName: "DiscoverMinds.ai",
+      "Learn how Tara protects your TallyPrime data and respects your privacy. Comprehensive privacy policy for our AI accounting copilot.",
+    url: "https://hellotara.in/privacy-policy",
+    siteName: "Tara - AI Copilot for TallyPrime",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Privacy Policy | DiscoverMinds.ai",
-    description:
-      "Your privacy is fundamental to building a trusted network. Learn how DiscoverMinds.ai protects your data on our mutual network-sharing platform.",
+    title: "Privacy Policy | Tara - AI Copilot for TallyPrime",
+    description: "Learn how Tara protects your TallyPrime data and respects your privacy.",
   },
   alternates: {
-    canonical: "https://discoverminds.ai/privacy-policy",
+    canonical: "https://hellotara.in/privacy-policy",
   },
 };
 
 export const metadata: Metadata =
   process.env.NODE_ENV === "production" ? productionMetadata : baseMetadata;
+
+export const revalidate = 60 * 60 * 24; // Revalidate every 24 hours
 
 function addBreadcrumbList() {
   return {
@@ -59,7 +58,7 @@ function addBreadcrumbList() {
           "@type": "ListItem",
           position: 1,
           name: "Home",
-          item: "https://discoverminds.ai",
+          item: "https://hellotara.in",
         },
         {
           "@type": "ListItem",
@@ -77,8 +76,8 @@ export default function PrivacyPolicyPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={addBreadcrumbList()} />
       <div
         itemScope
-        itemType="https://schema.org/PrivacyPolicy"
-        className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8"
+        itemType="https://schema.org/WebPage"
+        className="max-w-4xl mx-auto px-4 py-8 sm:px-6"
       >
         {/* Back Navigation */}
         <nav className="mb-8">
@@ -97,7 +96,7 @@ export default function PrivacyPolicyPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2" itemProp="headline">
             {privacyPolicy.title}
           </h1>
-          <p className="text-gray-600" itemProp="about">
+          <p className="text-gray-600" itemProp="description">
             {privacyPolicy.introduction}
           </p>
           <p className="text-sm text-gray-500 mt-2" itemProp="dateModified">
@@ -106,7 +105,7 @@ export default function PrivacyPolicyPage() {
         </header>
 
         {/* Main Content */}
-        <div className=" p-6 md:p-0">
+        <div className="p-6 md:p-0">
           <div className="prose prose-gray max-w-none">
             {privacyPolicy.sections.map((section, idx) => (
               <section key={idx} className="mb-10 last:mb-0">
@@ -118,13 +117,13 @@ export default function PrivacyPolicyPage() {
                 >
                   <span itemProp="name">{section.title}</span>
                 </h2>
-                <ul className="space-y-2">
+                <div className="space-y-3">
                   {section.content.map((point, jdx) => (
-                    <li key={jdx} className="text-gray-700 leading-relaxed" itemProp="text">
+                    <p key={jdx} className="text-gray-700" itemProp="text">
                       {point}
-                    </li>
+                    </p>
                   ))}
-                </ul>
+                </div>
               </section>
             ))}
           </div>
@@ -149,7 +148,7 @@ export default function PrivacyPolicyPage() {
           </div>
         </div>
       </div>
-      <NewFooter />
+      <TaraFooter />
     </div>
   );
 }

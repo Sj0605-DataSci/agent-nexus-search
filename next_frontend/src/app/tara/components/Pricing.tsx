@@ -21,7 +21,7 @@ const pricingPlans = [
     name: "Starter",
     price: "₹999",
     description: "For individuals and small teams getting started with Tally automation.",
-    features: ["100 WhatsApp Queries/mo", "50 Invoice Scans/mo", "Email Support"],
+    features: ["1000 WhatsApp Queries/mo", "50 Invoice Scans/mo", "Email Support"],
     cta: "Start 7-Day Free Trial",
   },
   {

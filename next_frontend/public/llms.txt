@@ -1,29 +1,45 @@
-# DiscoverMinds.ai
+# Tara - AI Copilot for TallyPrime
 
-> DiscoverMinds.ai is your secret weapon for professional networking. This mutual network-sharing platform uses AI-powered search to help you find the right connections instantly, turning your network into your competitive advantage.
+> Tara is your AI-powered accounting copilot for TallyPrime. Automate invoices, inventory, and ledgers via WhatsApp. Save 80% time on data entry with 95% fewer errors.
 
-DiscoverMinds.ai leverages advanced AI technology to analyze professional networks and deliver targeted search results. The platform transforms how you discover talent, opportunities, and partnerships by making your extended network searchable and actionable. Key features include:
+Tara leverages advanced AI technology to transform how you work with TallyPrime. Connect your local Tally through our desktop connector (Tallie), and access your accounting data 24/7 via WhatsApp, web, or mobile. Key features include:
 
-- AI-powered search for finding professionals based on detailed criteria
-- Network mapping to visualize connections
-- Warm introduction facilitation
-- Privacy-focused approach to network sharing
+- **WhatsApp Integration**: Answer customer price queries automatically, upload invoices via photo
+- **Smart Invoice Entry**: 95% reduction in typing errors, 80% time savings on data entry
+- **Automatic Inventory & Ledger Updates**: Real-time stock management and auto-balanced ledgers
+- **AI-Powered Insights**: Instant business intelligence and performance reports
+- **GST Compliance**: Automated GST return preparation and validation
+- **Voice Commands**: Talk to your Tally data naturally
+
 ## Main Pages
 
-- [Homepage](https://discoverminds.ai/): Overview of the platform's capabilities and value proposition
-- [About](https://discoverminds.ai/about): Information about the company, team, and mission
-- [Pricing](https://discoverminds.ai/pricing): Subscription plans and pricing details
+- [Homepage](https://hellotara.in/): Tara landing page with features and pricing
+- [Contact](https://hellotara.in/contact): Get in touch for demos and trials
+- [Pricing](https://hellotara.in/pricing): Subscription plans for businesses of all sizes
 
-## Features
+## Product Features
 
-- [Search Interface](https://discoverminds.ai/user-query): AI-powered search interface for finding professional connections
-- [User Authentication](https://discoverminds.ai/user-auth): User login and registration system
+- **Tallie Desktop Connector**: Secure bridge between TallyPrime and Tara cloud
+- **WhatsApp Bot**: 24/7 customer query handling and invoice processing
+- **Invoice Automation**: Photo/PDF/Voice to Tally entry in seconds
+- **Multi-Location Management**: Stock transfers across warehouses via WhatsApp
+- **Payment Reminders**: Automated follow-ups to customers
+- **Bank Reconciliation**: Auto-match bank statements with Tally entries
+
+## Target Users
+
+- Small business owners and shopkeepers
+- Accountants and finance managers
+- CA/CPA professionals
+- Manufacturers and distributors
+- Anyone using TallyPrime who wants to save time
 
 ## Legal
 
-- [Terms of Service](https://discoverminds.ai/terms): User agreement and platform terms
-- [Privacy Policy](https://discoverminds.ai/privacy-policy): Data handling practices and user privacy information
+- [Terms of Service](https://hellotara.in/terms): User agreement and platform terms
+- [Privacy Policy](https://hellotara.in/privacy-policy): Data handling practices and user privacy information
 
-## Optional
+## Technical
 
-- [Sitemap](https://discoverminds.ai/sitemap.xml): Complete site structure in XML format
+- [Sitemap](https://hellotara.in/sitemap.xml): Complete site structure in XML format
+- Desktop App: Tallie (Electron-based connector for Windows/Mac/Linux)

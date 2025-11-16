@@ -123,9 +123,9 @@ export default function TaraFooter() {
             {/* Left: Copyright */}
             <div className="text-center md:text-left">
               <p className="text-sm text-gray-600">
-                &copy; {new Date().getFullYear()} DiscoverMinds. All rights reserved.
+                &copy; {new Date().getFullYear()} Tara. All rights reserved.
               </p>
-              <p className="text-xs text-gray-500 mt-1">Tara - AI Copilot for TallyPrime</p>
+              <p className="text-xs text-gray-500 mt-1">AI Copilot for TallyPrime</p>
             </div>
 
             {/* Center: Legal Links */}
@@ -148,7 +148,7 @@ export default function TaraFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Follow DiscoverMinds on Twitter"
+                aria-label="Follow Tara on Twitter"
                 onClick={() =>
                   Analytics.trackButtonClick("social_link", {
                     platform: "twitter",
@@ -163,7 +163,7 @@ export default function TaraFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Visit DiscoverMinds on LinkedIn"
+                aria-label="Visit Tara on LinkedIn"
                 onClick={() =>
                   Analytics.trackButtonClick("social_link", {
                     platform: "linkedin",

@@ -1,6 +1,20 @@
-# Staging/Development robots.txt
-# This environment is not intended for search engine indexing
+# Tara - AI Copilot for TallyPrime
+# Production robots.txt
 
-# Block all crawlers
 User-agent: *
-Disallow: /
+Allow: /
+Allow: /contact
+Allow: /pricing
+Allow: /sitemap.xml
+
+# Disallow admin and internal pages
+Disallow: /api/
+Disallow: /(with-sidebar)/
+Disallow: /user-auth
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /update-password
+
+# Sitemap location
+Sitemap: https://hellotara.in/sitemap.xml

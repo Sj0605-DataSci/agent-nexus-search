@@ -1,108 +1,158 @@
 {
-  "lastUpdated": "July 8, 2025",
+  "lastUpdated": "November 16, 2025",
   "title": "Privacy Policy",
-  "introduction": "This Privacy Policy explains how Discoverminds ('we', 'us', 'our') collects, uses, discloses, and protects your information when you use our website, Chrome extension, and related services ('Services'). It applies to all users, including agents, customers, and visitors. By using our Services, you agree to the terms described in this policy.",
+  "introduction": "This Privacy Policy explains how Tara by DiscoverMinds ('we', 'us', 'our', 'Tara') collects, uses, discloses, and protects your information when you use our website, Tallie desktop application, WhatsApp bot, and related services ('Services'). This policy is especially important as we handle sensitive accounting and financial data from your TallyPrime installation. By using our Services, you agree to the terms described in this policy.",
   "contact": {
-    "sendto": "founders@discoverminds.ai",
+    "sendto": "support@discoverminds.ai",
     "address": "Indiranagar, Bangalore, India"
   },
   "sections": [
     {
       "title": "What Information We Collect",
       "content": [
-        "Personal Information: Name, email address, phone number, profile photo, payment details, and other identifiers you provide.",
-        "Professional Data: Work history, education, skills, and information from uploaded connections (such as LinkedIn profiles).",
-        "Usage Information: Search queries, interaction logs, device information (IP address, browser type, operating system), and extension usage statistics.",
-        "Payment Information: Transaction details, billing address, and payment method (processed securely via third-party providers).",
-        "Communications: Messages sent to agents or support, feedback, and correspondence.",
+        "Personal Information: Name, email address, phone number, business name, WhatsApp number, payment details, and other identifiers you provide.",
+        "TallyPrime Accounting Data: This is the most sensitive data we collect and includes: stock items, inventory records, ledger entries, vouchers, party information (customers and vendors), GST details, invoice data, sales and purchase records, financial reports, and other accounting information from your TallyPrime installation.",
+        "Business Information: Company name, address, GST number, business type, number of employees, and industry sector.",
+        "Usage Information: Search queries, automation requests, WhatsApp messages, device information (IP address, browser type, operating system), Tallie desktop app usage statistics, and feature usage patterns.",
+        "Payment Information: Subscription details, transaction history, billing address, and payment method (processed securely via third-party payment providers).",
+        "Communications: WhatsApp messages, support tickets, feedback, and correspondence with our team.",
+        "Technical Data from Tallie: System information, TallyPrime version, connection logs, sync status, and error reports.",
         "We may also collect any other information you choose to provide while using our Services."
       ]
     },
     {
       "title": "How We Collect Information",
       "content": [
-        "Directly from You: When you register, fill out forms, upload connections, make payments, or communicate with us.",
-        "Automatically: Through cookies, web beacons, and similar technologies when you use our website or Chrome extension.",
-        "From Third Parties: If you connect your LinkedIn or other professional accounts, we collect data as authorized by you."
+        "Directly from You: When you register, create an account, configure Tallie, send WhatsApp messages, make payments, or communicate with our support team.",
+        "From Tallie Desktop App: The Tallie connector installed on your computer securely transmits your TallyPrime data to our cloud servers. This connection is encrypted and authenticated.",
+        "Automatically: Through cookies, web beacons, and similar technologies when you use our website or Tallie application.",
+        "From WhatsApp: When you interact with our WhatsApp bot, we collect message content, timestamps, and phone numbers.",
+        "From TallyPrime: Via the XML API connection established by Tallie, we access your accounting data as needed to provide automation services."
       ]
     },
     {
       "title": "How We Use Your Information",
       "content": [
-        "Provide, operate, and improve our Services and features.",
-        "Enable global and connection-based searches.",
-        "Facilitate agent hiring, onboarding, and payment processing.",
-        "Personalize your experience and deliver relevant search results.",
-        "Communicate updates, offers, and support information.",
-        "Analyze usage trends and improve our offerings.",
-        "Detect, prevent, and address fraud, abuse, or security issues.",
-        "Comply with legal obligations."
+        "Provide Core Services: Process invoices, automate data entry, update inventory and ledgers, generate reports, and provide AI-powered accounting assistance.",
+        "WhatsApp Integration: Answer customer queries about prices, process invoice uploads, send payment reminders, and provide business insights via WhatsApp.",
+        "AI Processing: Train and improve our AI models to better understand invoices, automate entries, and provide accurate suggestions. Note: We may use anonymized data for AI training.",
+        "Personalization: Customize automation rules, learn your business patterns, and adapt to your accounting practices.",
+        "Communication: Send service updates, feature announcements, subscription reminders, and support information.",
+        "Analytics: Analyze usage patterns to improve features, identify bugs, and optimize performance.",
+        "Security: Detect fraud, prevent unauthorized access, monitor for suspicious activity, and protect your data.",
+        "Compliance: Meet legal obligations, respond to legal requests, and maintain audit trails.",
+        "Payment Processing: Handle subscriptions, process payments, and manage billing."
       ]
     },
     {
-      "title": "Legal Bases for Processing",
+      "title": "Legal Bases for Processing (GDPR Compliance)",
       "content": [
-        "Your consent (e.g., for marketing or uploading connections).",
-        "Contractual necessity (to deliver our Services).",
-        "Legitimate interests (improving and securing our Services).",
-        "Legal obligations (complying with applicable laws)."
+        "Your Consent: When you explicitly agree to data processing, such as for marketing communications or optional features.",
+        "Contractual Necessity: To deliver our Services as agreed in our Terms of Service, including processing your TallyPrime data for automation.",
+        "Legitimate Interests: Improving our Services, ensuring security, preventing fraud, and conducting business analytics.",
+        "Legal Obligations: Complying with applicable laws, regulations, tax requirements, and legal processes."
       ]
     },
     {
       "title": "How We Share and Disclose Information",
       "content": [
-        "Other Users: As necessary for searches and agent interactions, according to your privacy settings.",
-        "Service Providers: For hosting, analytics, payment processing, customer support, and technical services.",
-        "Third Parties: For legal compliance, fraud prevention, or business transfers (e.g., merger or acquisition).",
-        "With Your Consent: As directed or authorized by you.",
-        "We do not sell your personal information to third parties."
+        "We Do NOT Sell Your Data: We never sell your personal information or TallyPrime accounting data to third parties.",
+        "Service Providers: We share data with trusted third-party providers who help us deliver our Services, including: Cloud hosting providers (AWS, Google Cloud), AI/ML service providers (for invoice processing), Payment processors (for subscriptions), WhatsApp Business API providers, Analytics services (for usage insights), and Customer support tools. All providers are contractually bound to protect your data.",
+        "AI Model Training: We may use anonymized and aggregated data (with all personally identifiable information removed) to improve our AI models. Your specific accounting data is never shared in identifiable form.",
+        "Legal Requirements: We may disclose information when required by law, court order, government request, or to protect our legal rights and safety.",
+        "Business Transfers: In the event of a merger, acquisition, or sale of assets, your data may be transferred to the new entity. We will notify you of any such change.",
+        "With Your Consent: We may share data with third parties when you explicitly authorize us to do so.",
+        "Your Customers (Limited): When you use our WhatsApp features to respond to customer queries, we facilitate that communication, but we do not share your internal accounting data with your customers."
       ]
     },
     {
       "title": "Cookies and Tracking Technologies",
       "content": [
-        "We use cookies and similar technologies to:",
-        "Authenticate users and maintain sessions.",
-        "Analyze site and extension usage.",
-        "Personalize content and remember preferences.",
-        "You can manage cookie preferences through your browser settings. Disabling cookies may affect your experience."
+        "We use cookies and similar technologies to: Authenticate users and maintain secure sessions, Remember your preferences and settings, Analyze website and Tallie app usage, Track feature adoption and user behavior, Provide personalized experiences.",
+        "Types of Cookies: Essential cookies (required for login and core functionality), Analytics cookies (to understand usage patterns), Preference cookies (to remember your settings).",
+        "You can manage cookie preferences through your browser settings. Disabling cookies may affect your experience and some features may not work properly."
       ]
     },
     {
       "title": "Data Storage, Security, and Retention",
       "content": [
-        "Storage: Data is stored securely on servers operated by trusted third-party providers.",
-        "Security: We use industry-standard measures (encryption, access controls, regular audits) to protect your information.",
-        "Retention: We retain your data as long as your account is active or as needed for legal, business, or security purposes. Data may be deleted upon request, subject to legal requirements."
+        "Storage Location: Your TallyPrime data is stored on secure cloud servers (AWS/Google Cloud) with data centers in India and other regions. We use encrypted storage and secure transmission protocols.",
+        "Security Measures: We implement multiple layers of security including: End-to-end encryption for data transmission from Tallie to our servers, AES-256 encryption for data at rest, Role-based access controls (only authorized personnel can access data), Regular security audits and penetration testing, Automated backup systems, Intrusion detection and prevention systems, Secure API authentication, and Regular security updates and patches.",
+        "Data Retention: Active Account: We retain your data as long as your account is active and you continue using our Services. Inactive Account: If you stop using Tara, we may retain data for up to 12 months for recovery purposes. Deleted Account: Upon account deletion, we will delete your data within 90 days, except where retention is required by law (e.g., tax records, audit trails). Backups: Deleted data may persist in backup systems for up to 180 days before permanent deletion.",
+        "Legal Retention: We may retain certain data longer if required by law, such as financial records for tax purposes (typically 7 years in India)."
       ]
     },
     {
       "title": "Your Data Rights and Choices",
       "content": [
-        "Access, correct, or delete your personal information.",
-        "Restrict or object to certain processing.",
-        "Download a copy of your data (data portability).",
-        "Withdraw consent at any time (where processing is based on consent).",
-        "Opt out of cookies and marketing communications.",
-        "To exercise your rights, contact us at support@discoverminds.com."
+        "You have the following rights regarding your data:",
+        "Right to Access: Request a copy of all personal and accounting data we hold about you.",
+        "Right to Correction: Update or correct inaccurate information in your account or TallyPrime data.",
+        "Right to Deletion: Request deletion of your account and associated data (subject to legal retention requirements).",
+        "Right to Data Portability: Download your data in a machine-readable format (JSON, CSV, or Excel).",
+        "Right to Restrict Processing: Limit how we use your data for certain purposes.",
+        "Right to Object: Object to processing based on legitimate interests.",
+        "Right to Withdraw Consent: Withdraw consent for marketing or optional features at any time.",
+        "Right to Opt-Out: Unsubscribe from marketing emails, disable non-essential cookies, or turn off certain automation features.",
+        "To exercise your rights, contact us at support@discoverminds.ai. We will respond within 30 days. Some requests may require identity verification to protect your data."
       ]
     },
     {
       "title": "International Data Transfers",
       "content": [
-        "Your information may be processed and stored in countries outside your own. We take steps to ensure appropriate safeguards are in place for such transfers, as required by law."
+        "Your TallyPrime data may be processed and stored in countries outside India, including in data centers operated by our cloud providers (AWS, Google Cloud).",
+        "We ensure appropriate safeguards are in place for such transfers, including: Standard Contractual Clauses (SCCs) approved by regulatory authorities, Data Processing Agreements with all service providers, Encryption during transmission and storage, and Compliance with applicable data protection laws.",
+        "If you are located in the European Union, we comply with GDPR requirements for international data transfers."
       ]
     },
     {
-      "title": "Children’s Privacy",
+      "title": "Children's Privacy",
       "content": [
-        "Discoverminds is not intended for individuals under 18. We do not knowingly collect data from children. If you believe a child has provided us with personal information, contact us to have it removed."
+        "Tara is a business accounting tool and is not intended for individuals under 18 years of age. We do not knowingly collect data from children.",
+        "If you believe a child has provided us with personal information, please contact us immediately at support@discoverminds.ai, and we will take steps to remove such information."
+      ]
+    },
+    {
+      "title": "Data Breach Notification",
+      "content": [
+        "In the unlikely event of a data breach that affects your personal or accounting data, we will:",
+        "Notify you within 72 hours of becoming aware of the breach (as required by applicable law).",
+        "Provide details about what data was affected and what steps we are taking to address the breach.",
+        "Offer guidance on steps you can take to protect yourself.",
+        "Report the breach to relevant authorities as required by law.",
+        "We maintain an incident response plan and conduct regular security drills to minimize the risk and impact of any potential breach."
+      ]
+    },
+    {
+      "title": "Third-Party Services and Integrations",
+      "content": [
+        "WhatsApp: We use WhatsApp Business API to provide messaging services. WhatsApp's privacy policy applies to messages sent through their platform.",
+        "Payment Processors: We use third-party payment processors (Stripe, Razorpay) to handle subscriptions. They have their own privacy policies.",
+        "Cloud Providers: We use AWS and Google Cloud for hosting. They provide infrastructure security but do not access your data.",
+        "AI Services: We may use third-party AI services for invoice processing. Data sent to these services is encrypted and anonymized where possible.",
+        "Analytics: We use analytics tools (Google Analytics, Mixpanel) to understand usage patterns. You can opt out of analytics tracking."
+      ]
+    },
+    {
+      "title": "Your Responsibilities",
+      "content": [
+        "As a user of Tara, you are responsible for:",
+        "Keeping your account credentials secure and not sharing them with unauthorized persons.",
+        "Ensuring you have the right to upload and process the TallyPrime data you provide to us.",
+        "Maintaining appropriate backups of your TallyPrime data.",
+        "Complying with applicable laws when using our Services, including data protection and accounting regulations.",
+        "Reviewing and verifying all AI-generated entries before finalizing them in TallyPrime.",
+        "Notifying us immediately if you suspect unauthorized access to your account."
       ]
     },
     {
       "title": "Changes to This Policy",
       "content": [
-        "We may update this Privacy Policy as our practices or legal requirements change. We will notify you of significant changes via email or through the Service. Continued use after changes constitutes acceptance of the new policy."
+        "We may update this Privacy Policy as our practices, features, or legal requirements change.",
+        "We will notify you of significant changes via: Email to your registered address, In-app notification in Tallie, Notice on our website, and WhatsApp message (if you use that feature).",
+        "We will provide at least 30 days' notice for material changes that affect how we handle your TallyPrime data.",
+        "Continued use of our Services after changes take effect constitutes acceptance of the updated policy.",
+        "We recommend reviewing this policy periodically to stay informed about how we protect your data."
       ]
     },
     {
@@ -110,7 +160,9 @@
       "content": [
         "For questions or concerns regarding this Privacy Policy or your personal data, contact:",
         "Email: founders@discoverminds.ai",
-        "Address: Indiranagar, Bangalore, India"
+        "Address: Indiranagar, Bangalore, India",
+        "Data Protection Officer: You can reach our DPO at founders@discoverminds.ai for privacy-specific concerns.",
+        "We aim to respond to all privacy inquiries within 30 days."
       ]
     }
   ]

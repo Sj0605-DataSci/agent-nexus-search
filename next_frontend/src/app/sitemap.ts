@@ -9,65 +9,36 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://discoverminds.ai";
   const currentDate = new Date().toISOString();
 
-  // Core pages with high priority
+  // Core pages with high priority - Tara focused
   const corePages = [
     {
       url: baseUrl,
       lastModified: currentDate,
-      changeFrequency: "daily" as const, // Increased from weekly to daily for homepage
+      changeFrequency: "daily" as const,
       priority: 1,
-    },
-    {
-      url: `${baseUrl}/user-query`,
-      lastModified: currentDate,
-      changeFrequency: "daily" as const, // Increased from weekly to daily for main feature
-      priority: 0.9,
-    },
-  ];
-
-  // Marketing and informational pages
-  const marketingPages = [
-    {
-      url: `${baseUrl}/about`,
-      lastModified: currentDate,
-      changeFrequency: "weekly" as const, // Increased from monthly to weekly
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/pricing`,
-      lastModified: currentDate,
-      changeFrequency: "weekly" as const, // Increased from monthly to weekly
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/features`,
-      lastModified: currentDate,
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/use-cases`,
-      lastModified: currentDate,
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
     },
     {
       url: `${baseUrl}/contact`,
       lastModified: currentDate,
       changeFrequency: "weekly" as const,
-      priority: 0.7,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/pricing`,
+      lastModified: currentDate,
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
     },
   ];
 
+  // Marketing and informational pages - Tara specific
+  const marketingPages: MetadataRoute.Sitemap = [
+    // Tara pages are now at root, no need for /tara prefix
+  ];
+
   // Blog pages (if they exist)
-  const blogPages = [
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: currentDate,
-      changeFrequency: "daily" as const,
-      priority: 0.8,
-    },
-    // Add individual blog posts here if available
+  const blogPages: MetadataRoute.Sitemap = [
+    // Add blog posts here when available
   ];
 
   // Legal and utility pages (lower priority)
@@ -83,12 +54,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: currentDate,
       changeFrequency: "monthly" as const,
       priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/user-auth`,
-      lastModified: currentDate,
-      changeFrequency: "monthly" as const,
-      priority: 0.6, // Slightly increased from 0.5
     },
   ];
 

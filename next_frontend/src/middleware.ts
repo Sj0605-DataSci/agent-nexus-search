@@ -7,6 +7,12 @@ export function middleware(request: NextRequest) {
   const isRobotsTxt = url.pathname === "/robots.txt";
   const isSitemapXml = url.pathname === "/sitemap.xml";
 
+  // Redirect /tara to root (/) - Tara is now the main site
+  if (url.pathname.startsWith("/tara")) {
+    url.pathname = url.pathname.replace("/tara", "") || "/";
+    return NextResponse.redirect(url, 301); // Permanent redirect
+  }
+
   // Handle robots.txt requests
   if (isRobotsTxt) {
     if (isProd) {
