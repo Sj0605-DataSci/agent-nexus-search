@@ -96,11 +96,19 @@ const metadataConfig = {
       },
     },
     icons: {
-      icon: "https://hellotara.in/Logo.webp",
-      shortcut:
-        "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
-      apple:
-        "https://wznveojncixcptajnjom.supabase.co/storage/v1/object/public/public-files/icon.png",
+      icon: [
+        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+        { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      ],
+      shortcut: "/favicon.ico",
+      apple: "/apple-touch-icon.png",
+      other: [
+        {
+          rel: "icon",
+          url: "/favicon.ico",
+        },
+      ],
     },
     openGraph: {
       type: "website",
@@ -235,6 +243,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
         <link rel="dns-prefetch" href="https://apis.discoverminds.ai" />
         <link rel="dns-prefetch" href="https://staging-apis.discoverminds.ai" />
+        {/* Explicit favicon links for better browser compatibility */}
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         {/* Preload only critical above-the-fold logos */}
         <link
           rel="preload"

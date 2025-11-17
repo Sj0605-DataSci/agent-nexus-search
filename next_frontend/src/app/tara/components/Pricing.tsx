@@ -19,14 +19,14 @@ const CheckIcon = () => (
 const pricingPlans = [
   {
     name: "Starter",
-    price: "₹999",
+    price: "₹99",
     description: "For individuals and small teams getting started with Tally automation.",
     features: ["1000 WhatsApp Queries/mo", "50 Invoice Scans/mo", "Email Support"],
     cta: "Start 7-Day Free Trial",
   },
   {
     name: "Pro",
-    price: "₹2,499",
+    price: "₹249",
     description:
       "A comprehensive solution for growing businesses that need more power and automation.",
     features: [
