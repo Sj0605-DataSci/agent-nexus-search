@@ -4,6 +4,32 @@ import { handleAxiosError } from "@/lib/api/handleAxiosError";
 import { getDeviceInfo } from "@/utils/deviceInfo";
 import toast from "react-hot-toast";
 import { getStoredToken } from "@/utils/tokenManagement";
+import { logger } from "@/utils/logger";
+
+interface ChatThread {
+  id: string;
+  title?: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  role: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface PaginationInfo {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
 
 import {
   AgentTemplate,
@@ -87,7 +113,7 @@ export const apiClient = {
       const res = await axiosInstance.get("/hired_agents");
       return res.data?.data;
     } catch (error) {
-      console.error("Error in getHiredAgents:", error);
+      logger.error("Error in getHiredAgents", error);
       return [];
     }
   },
@@ -97,7 +123,7 @@ export const apiClient = {
       const res = await axiosInstance.get("/hired_agents");
       return res.data;
     } catch (error) {
-      console.error("Error in fetchHiredAgents:", error);
+      logger.error("Error in fetchHiredAgents", error);
       throw new Error(handleAxiosError(error as any));
     }
   },
@@ -389,7 +415,7 @@ export const apiClient = {
       const res = await axiosInstance.post("/chat", chatRequest);
       return res.data.data; // Return the data field from StandardResponse
     } catch (error) {
-      console.error("Error in sendChatRequest:", error);
+      logger.error("Error in sendChatRequest", error);
       throw new Error(handleAxiosError(error as any));
     }
   },
@@ -400,7 +426,7 @@ export const apiClient = {
       const res = await axiosInstance.post("/process-connection-file", { file_id: fileId });
       return res.data?.data;
     } catch (error) {
-      console.error("Error processing connection file:", error);
+      logger.error("Error processing connection file", error);
       throw new Error(handleAxiosError(error as any));
     }
   },
@@ -410,15 +436,8 @@ export const apiClient = {
     page_size: number = 20,
     page: number = 1
   ): Promise<{
-    threads: any[];
-    pagination: {
-      total: number;
-      page: number;
-      page_size: number;
-      total_pages: number;
-      has_next: boolean;
-      has_previous: boolean;
-    };
+    threads: ChatThread[];
+    pagination: PaginationInfo;
   }> {
     try {
       const res = await axiosInstance.get(`/chat/threads`, {
@@ -440,7 +459,7 @@ export const apiClient = {
         },
       };
     } catch (error) {
-      console.error("Error fetching chat threads:", error);
+      logger.error("Error fetching chat threads", error);
       return {
         threads: [],
         pagination: {
@@ -455,12 +474,12 @@ export const apiClient = {
     }
   },
 
-  async getChatMessages(chatThreadId: string): Promise<{ total: number; messages: any[] }> {
+  async getChatMessages(chatThreadId: string): Promise<{ total: number; messages: ChatMessage[] }> {
     try {
       const res = await axiosInstance.get(`/chat/messages/${chatThreadId}`);
       return res.data?.data || { total: 0, messages: [] };
     } catch (error) {
-      console.error("Error fetching chat messages:", error);
+      logger.error("Error fetching chat messages", error);
       return { total: 0, messages: [] };
     }
   },
@@ -477,7 +496,7 @@ export const apiClient = {
       });
       return res.data?.data;
     } catch (error) {
-      console.error("Error sending feedback:", error);
+      logger.error("Error sending feedback", error);
       throw new Error(handleAxiosError(error as any));
     }
   },
@@ -650,27 +669,29 @@ export const apiClient = {
             try {
               const update = JSON.parse(eventData) as StreamingChatUpdate;
               onUpdate(update);
-              console.log("Received SSE update:", update);
+              logger.debug("Received SSE update", { update });
             } catch (e) {
-              console.error("Error parsing SSE message:", e);
+              logger.error("Error parsing SSE message", e);
             }
           }
         }
       }
-    } catch (error: any) {
-      console.error("Error in streaming chat request:", error);
+    } catch (error: unknown) {
+      logger.error("Error in streaming chat request", error);
       toast.dismiss();
-      if (
-        error.message &&
-        (error.message.includes("429") ||
-          error.message.includes("rate limit") ||
-          error.message.includes("maximum number of free searches"))
-      ) {
-        const errorMessage = error.message.includes("Error:")
-          ? error.message.split(" - ")[1]
-          : error.message;
+
+      const errorMessage = error instanceof Error ? error.message : "Connection error";
+      const isRateLimitError =
+        errorMessage.includes("429") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("maximum number of free searches");
+
+      if (isRateLimitError) {
+        const displayMessage = errorMessage.includes("Error:")
+          ? errorMessage.split(" - ")[1] || errorMessage
+          : errorMessage;
         toast.error(
-          errorMessage ||
+          displayMessage ||
             "You've reached the maximum number of free searches. Please try again later.",
           {
             id: "rate-limit-error",
@@ -686,12 +707,8 @@ export const apiClient = {
 
       return Promise.reject({
         error: true,
-        message: error.message || "Connection error",
-        isRateLimit:
-          error.message &&
-          (error.message.includes("429") ||
-            error.message.includes("rate limit") ||
-            error.message.includes("maximum number of free searches")),
+        message: errorMessage,
+        isRateLimit: isRateLimitError,
         originalError: error,
       });
     }

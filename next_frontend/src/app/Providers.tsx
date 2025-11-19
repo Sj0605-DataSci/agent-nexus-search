@@ -24,6 +24,7 @@ import { ErrorFallback } from "@/components/ErrorHandling/ErrorFallback";
 import { logError } from "@/utils/errorLogging";
 import { identifyPostHogUser, setPostHogGuest } from "@/utils/posthog-helpers";
 import posthog from "posthog-js";
+import { logger } from "@/utils/logger";
 
 const PostHogProvider = dynamic(
   () =>
@@ -69,7 +70,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
         const { data, error } = await supabaseHandler.auth.getSession();
 
         if (error) {
-          console.error("Error getting session:", error);
+          logger.error("Error getting session", error);
           return;
         }
 
@@ -81,7 +82,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error("Failed to initialize session:", error);
+        logger.error("Failed to initialize session", error);
       } finally {
         if (isMounted) {
           setIsInitialized(true);
@@ -168,13 +169,13 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
               dispatch(fetchFriendships("all")).unwrap(),
             ]);
           } catch (agentError) {
-            console.error("Error fetching agent data:", agentError);
+            logger.error("Error fetching agent data", agentError);
           }
         } else {
           throw new Error(profileResult.message || "Failed to fetch profile");
         }
       } catch (error) {
-        console.error("Profile fetch error:", error);
+        logger.error("Profile fetch error", error);
         posthog.capture("profile_fetch_error", {
           error: error instanceof Error ? error.message : String(error),
         });
@@ -203,7 +204,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
         try {
           await Promise.all(promisesToAwait);
         } catch (error) {
-          console.error("Error fetching data after refresh:", error);
+          logger.error("Error fetching data after refresh", error);
         }
       }
     }
@@ -258,7 +259,7 @@ function ProfileDataFetcher({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error("Error handling OAuth redirect:", error);
+        logger.error("Error handling OAuth redirect", error);
       }
     };
   }, [dispatch, profile]);
@@ -286,7 +287,7 @@ export function Providers({ children }: { children: ReactNode }) {
     setIsMounted(true);
 
     const handleError = (event: ErrorEvent) => {
-      console.error("Unhandled error:", event.error);
+      logger.error("Unhandled error", event.error);
     };
 
     if (typeof window !== "undefined") {

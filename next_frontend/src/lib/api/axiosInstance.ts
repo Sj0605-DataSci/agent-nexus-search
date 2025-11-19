@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStoredToken, saveTokens, clearTokens, getRefreshToken } from "@/utils/tokenManagement";
 import { getDeviceInfo } from "@/utils/deviceInfo";
 import toast from "react-hot-toast";
+import { logger } from "@/utils/logger";
+
+interface QueueItem {
+  resolve: (value?: unknown) => void;
+  reject: (reason?: Error) => void;
+}
 
 const baseURL =
   process.env.NODE_ENV === "production"
@@ -16,12 +22,9 @@ const axiosInstance = axios.create({
 });
 
 let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
-}> = [];
+let failedQueue: QueueItem[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
@@ -54,7 +57,7 @@ axiosInstance.interceptors.request.use(
               }
             }
           } catch (supabaseError) {
-            console.error("Failed to get Supabase session:", supabaseError);
+            logger.error("Failed to get Supabase session", supabaseError);
           }
         }
 
@@ -66,16 +69,14 @@ axiosInstance.interceptors.request.use(
             config.headers["X-Client-IP"] = info.ipAddress;
           }
         } catch (err) {
-          console.warn("Could not get device info:", err);
+          logger.warn("Could not get device info", { error: err });
         }
       }
 
-      if (process.env.NODE_ENV === "development") {
-        console.debug("➡️ Request:", config.method?.toUpperCase(), config.url);
-      }
+      logger.apiRequest(config.method || "GET", config.url || "");
       return config;
     } catch (error) {
-      console.error("Error in request interceptor:", error);
+      logger.error("Error in request interceptor", error);
       return config;
     }
   },
@@ -85,33 +86,36 @@ axiosInstance.interceptors.request.use(
 // Response interceptor
 axiosInstance.interceptors.response.use(
   response => {
-    if (process.env.NODE_ENV === "development") {
-      console.debug("✅ Response:", response.config.url, response.status);
-    }
+    logger.apiResponse(response.config.method || "GET", response.config.url || "", response.status);
     return response;
   },
   async (error: AxiosError) => {
     if (!error.config) {
-      console.error("Axios error without config:", error);
+      logger.error("Axios error without config", error);
       return Promise.reject(error);
     }
 
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
     if (!error.response) {
-      console.error("Network error or timeout:", error.message);
+      logger.error("Network error or timeout", error, { message: error.message });
       return Promise.reject(error);
     }
 
     if (error.response?.status === 429) {
-      console.error("Rate limit exceeded (429):", error.response.data);
+      logger.error("Rate limit exceeded (429)", error, { data: error.response.data });
 
       try {
         if (typeof window !== "undefined") {
           let errorMessage = "You've reached the maximum number of free searches.";
 
-          const responseData = error.response.data as any;
-          if (responseData && typeof responseData === "object" && responseData.message) {
+          const responseData = error.response.data as Record<string, unknown>;
+          if (
+            responseData &&
+            typeof responseData === "object" &&
+            responseData.message &&
+            typeof responseData.message === "string"
+          ) {
             errorMessage = responseData.message;
           }
 
@@ -121,14 +125,14 @@ axiosInstance.interceptors.response.use(
           });
         }
       } catch (toastError) {
-        console.error("Error showing toast notification:", toastError);
+        logger.error("Error showing toast notification", toastError);
       }
 
       return Promise.reject(error);
     }
 
     if (error.response?.status === 403) {
-      console.error("Access forbidden (403):", error.response.data);
+      logger.error("Access forbidden (403)", error, { data: error.response.data });
       if (typeof window !== "undefined") {
         clearTokens();
         setTimeout(() => {
@@ -202,7 +206,7 @@ axiosInstance.interceptors.response.use(
             refresh_token: newRefreshToken,
           });
         } catch (supabaseError) {
-          console.error("Failed to update Supabase session:", supabaseError);
+          logger.error("Failed to update Supabase session", supabaseError);
         }
 
         axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
@@ -215,8 +219,8 @@ axiosInstance.interceptors.response.use(
 
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
-        processQueue(refreshError, null);
+        logger.error("Token refresh failed", refreshError);
+        processQueue(refreshError as Error, null);
 
         if (typeof window !== "undefined") {
           clearTokens();
@@ -230,9 +234,7 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.debug("❌ Error:", error.response?.status, error.response?.data);
-    }
+    logger.apiError(originalRequest.method || "GET", originalRequest.url || "", error);
 
     return Promise.reject(error);
   }
