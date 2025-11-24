@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     return [];
   }
 
-  const baseUrl = "https://discoverminds.ai";
+  const baseUrl = "https://hellotara.in";
   const currentDate = new Date().toISOString();
 
   // Core pages with high priority - Tara focused
@@ -19,12 +19,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${baseUrl}/contact`,
-      lastModified: currentDate,
-      changeFrequency: "weekly" as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/pricing`,
       lastModified: currentDate,
       changeFrequency: "weekly" as const,
       priority: 0.9,

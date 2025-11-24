@@ -1,8 +1,26 @@
-import TaraFooter from "../tara/components/TaraFooter";
+import { Metadata } from "next";
+import TaraFooter from "../../components/tara/TaraFooter";
 import ContactHero from "./components/ContactHero";
 import ContactForm from "./components/ContactForm";
 import ContactInfo from "./components/ContactInfo";
-import Navbar from "../tara/components/Navbar";
+import Navbar from "../../components/tara/Navbar";
+
+export const metadata: Metadata = {
+  title: "Contact Us - Tara AI Copilot for TallyPrime",
+  description:
+    "Get in touch with Tara team. Start your 7-day free trial or contact sales for enterprise solutions. Transform your TallyPrime experience with AI automation.",
+  alternates: {
+    canonical: "/contact",
+  },
+  openGraph: {
+    title: "Contact Us - Tara AI Copilot for TallyPrime",
+    description:
+      "Get in touch with Tara team. Start your 7-day free trial or contact sales for enterprise solutions.",
+    url: "https://hellotara.in/contact",
+    siteName: "Tara - AI Copilot for TallyPrime",
+    type: "website",
+  },
+};
 
 const ContactPage = () => {
   return (

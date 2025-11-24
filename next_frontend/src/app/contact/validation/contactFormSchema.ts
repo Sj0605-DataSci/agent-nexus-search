@@ -40,10 +40,7 @@ export const contactFormSchema = yup.object().shape({
   country: yup
     .string()
     .required("Country is required")
-    .oneOf(
-      ["India", "USA", "UK", "Canada", "Australia", "Other"],
-      "Please select a valid country"
-    ),
+    .oneOf(["India", "USA", "UK", "Canada", "Australia", "Other"], "Please select a valid country"),
 
   role: yup
     .string()

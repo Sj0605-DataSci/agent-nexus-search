@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Send, CheckCircle, AlertCircle } from "lucide-react";
@@ -37,18 +37,17 @@ export default function ContactForm() {
 
   useEffect(() => {
     if (searchParams) {
-      const focusField = searchParams.get('focus');
-      if (focusField === 'firstName') {
-        setFocus('firstName');
+      const focusField = searchParams.get("focus");
+      if (focusField === "firstName") {
+        setFocus("firstName");
       }
     }
   }, [searchParams, setFocus]);
 
   const onSubmit = async (data: ContactFormData) => {
     try {
-      const { error } = await supabase
-        .from("contact_submissions")
-        .insert([{
+      const { error } = await supabase.from("contact_submissions").insert([
+        {
           first_name: data.firstName,
           last_name: data.lastName,
           email: data.email.toLowerCase().trim(),
@@ -56,7 +55,8 @@ export default function ContactForm() {
           country: data.country,
           role: data.role,
           message: data.message.trim(),
-        }]);
+        },
+      ]);
 
       if (error) {
         console.error("Error submitting form:", error);
@@ -66,8 +66,10 @@ export default function ContactForm() {
 
       toast.success("Thank you! We'll get back to you within 24 hours.");
       setIsSubmitted(true);
-      setTimeout(() => { setIsSubmitted(false); reset(); }, 3000);
-
+      setTimeout(() => {
+        setIsSubmitted(false);
+        reset();
+      }, 3000);
     } catch (error: any) {
       console.error("Supabase submission error:", error);
       toast.error(error.message || "Failed to submit form.");
@@ -168,7 +170,13 @@ export default function ContactForm() {
                     <option value="Other">🌍 Other</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <svg
+                      className="fill-current h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
                   </div>
                 </div>
                 {errors.country && (
@@ -213,7 +221,9 @@ export default function ContactForm() {
                     errors.role ? "border-red-500" : "border-gray-200"
                   }`}
                 >
-                  <option value="" disabled>Select your role</option>
+                  <option value="" disabled>
+                    Select your role
+                  </option>
                   <option value="Business Owner">Business Owner</option>
                   <option value="Accountant">Accountant</option>
                   <option value="Finance Manager">Finance Manager</option>
@@ -221,7 +231,13 @@ export default function ContactForm() {
                   <option value="Other">Other</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  <svg
+                    className="fill-current h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
                 </div>
               </div>
               {errors.role && (
@@ -253,7 +269,6 @@ export default function ContactForm() {
                 </p>
               )}
             </div>
-
 
             {/* Submit Button */}
             <button
