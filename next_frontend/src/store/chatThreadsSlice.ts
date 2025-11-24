@@ -97,7 +97,7 @@ const chatThreadsSlice = createSlice({
       .addCase(fetchChatThreads.fulfilled, (state, action) => {
         if (!action.payload) return;
 
-        state.threads = action.payload.threads;
+        state.threads = action.payload.threads as any;
         state.totalThreads = action.payload.pagination.total;
         state.currentPage = action.payload.pagination.page;
         state.totalPages = action.payload.pagination.total_pages;
@@ -120,7 +120,7 @@ const chatThreadsSlice = createSlice({
         const newThreads = action.payload.threads?.filter(thread => !existingIds.has(thread.id));
 
         // Properly concatenate new threads to existing threads
-        state.threads = [...state.threads, ...newThreads];
+        state.threads = [...state.threads, ...newThreads] as any;
         state.totalThreads = action.payload.pagination.total;
         state.currentPage = action.payload.pagination.page;
         state.totalPages = action.payload.pagination.total_pages;
