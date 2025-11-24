@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import privacyPolicy from "@/constant/privacy-policy.json";
-import TaraFooter from "@/app/tara/components/TaraFooter";
+import TaraFooter from "@/components/tara/TaraFooter";
 
 const baseMetadata = {
   title: "Privacy Policy | Tara - AI Copilot for TallyPrime",

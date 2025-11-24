@@ -4,7 +4,6 @@
 User-agent: *
 Allow: /
 Allow: /contact
-Allow: /pricing
 Allow: /sitemap.xml
 
 # Disallow admin and internal pages
