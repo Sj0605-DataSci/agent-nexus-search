@@ -1,4 +1,3 @@
-
 import { CheckCircle } from "lucide-react";
 
 export default function ContactHero() {
@@ -21,8 +20,8 @@ export default function ContactHero() {
         </h1>
 
         <p className="text-xl text-gray-600 leading-relaxed mb-8">
-          Join hundreds of businesses already using Tara to automate their accounting, get
-          instant answers via WhatsApp, and save hours every week on manual data entry.
+          Join hundreds of businesses already using Tara to automate their accounting, get instant
+          answers via WhatsApp, and save hours every week on manual data entry.
         </p>
 
         <div className="space-y-4">
@@ -57,8 +56,8 @@ export default function ContactHero() {
           </div>
           <div>
             <p className="text-gray-600 italic mb-2">
-              "Tara has saved us 5 hours every week. Now I just WhatsApp my invoices and
-              they're automatically entered into Tally!"
+              "Tara has saved us 5 hours every week. Now I just WhatsApp my invoices and they're
+              automatically entered into Tally!"
             </p>
             <p className="text-sm text-gray-500">- Rajesh, CA Practice</p>
           </div>
@@ -72,8 +71,8 @@ export default function ContactHero() {
           </div>
           <div>
             <p className="text-gray-600 italic mb-2">
-              "The WhatsApp integration is a game-changer. My team can get stock levels and
-              pricing instantly, even when they're on the field."
+              "The WhatsApp integration is a game-changer. My team can get stock levels and pricing
+              instantly, even when they're on the field."
             </p>
             <p className="text-sm text-gray-500">- Suresh, Retail Business</p>
           </div>

@@ -1,16 +1,16 @@
 import React from "react";
 import { Metadata } from "next";
 
-import Navbar from "./tara/components/Navbar";
-import HeroSection from "./tara/components/HeroSection";
-import FeaturePillars from "./tara/components/FeaturePillars";
-import Pricing from "./tara/components/Pricing";
-import ProductModules from "./tara/components/ProductModules";
-import CTABanner from "./tara/components/CTABanner";
-import HowItWorks from "./tara/components/HowItWorks";
-import Testimonials from "./tara/components/Testimonials";
-import FAQ from "./tara/components/FAQ";
-import TaraFooter from "./tara/components/TaraFooter";
+import Navbar from "../components/tara/Navbar";
+import HeroSection from "../components/tara/HeroSection";
+import FeaturePillars from "../components/tara/FeaturePillars";
+import Pricing from "../components/tara/Pricing";
+import ProductModules from "../components/tara/ProductModules";
+import CTABanner from "../components/tara/CTABanner";
+import HowItWorks from "../components/tara/HowItWorks";
+import Testimonials from "../components/tara/Testimonials";
+import FAQ from "../components/tara/FAQ";
+import TaraFooter from "../components/tara/TaraFooter";
 
 export const dynamic = "force-static";
 

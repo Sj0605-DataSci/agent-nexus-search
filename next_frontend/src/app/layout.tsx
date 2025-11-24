@@ -165,14 +165,11 @@ const metadataConfig = {
       },
     },
     verification: {
-      google: "your-google-verification-code",
+      // Add your actual Google Search Console verification code here
+      google: "7jq0iu4o2D1m4h_SQ8c76b0LFj6jDHUbRXxNtX4FFCA",
       yandex: "1be636ef641bd072",
-      bing: "your-bing-verification-code",
-      yahoo: "your-yahoo-verification-code",
-      other: {
-        "msvalidate.01": "your-bing-verification-code",
-        "baidu-site-verification": "your-baidu-verification-code",
-      },
+      // bing: "your-bing-verification-code",
+      // yahoo: "your-yahoo-verification-code",
     },
     manifest: "/manifest.json",
     appleWebApp: {
@@ -187,10 +184,11 @@ const metadataConfig = {
   },
   default: {
     title: {
-      default: "DiscoverMinds.ai - Your Secret Weapon for Professional Networking",
-      template: "%s | DiscoverMinds.ai",
+      default: "Tara - AI Copilot for TallyPrime | Automate Your Accounting",
+      template: "%s | Tara - AI Copilot for TallyPrime",
     },
-    description: "",
+    description:
+      "Automate Tally with Tara—your conversational accounting copilot. Upload invoices via WhatsApp, chat 24/7, and keep ledgers accurate with AI-powered automation.",
     robots: {
       index: false,
       follow: false,
