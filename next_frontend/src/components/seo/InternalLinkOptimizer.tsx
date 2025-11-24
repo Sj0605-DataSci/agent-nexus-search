@@ -63,8 +63,8 @@ const InternalLinkOptimizer: React.FC<InternalLinkOptimizerProps> = ({
         onClick={e => {
           // Track external link click
           try {
-            if (typeof window !== "undefined" && window.posthog) {
-              window.posthog.capture("external_link_click", {
+            if (typeof window !== "undefined" && (window as any).posthog) {
+              (window as any).posthog.capture("external_link_click", {
                 url: href,
                 text: typeof children === "string" ? children : "non-text link",
                 current_page: pathname,
@@ -95,8 +95,8 @@ const InternalLinkOptimizer: React.FC<InternalLinkOptimizerProps> = ({
         onClick={e => {
           // Track anchor link click
           try {
-            if (typeof window !== "undefined" && window.posthog) {
-              window.posthog.capture("anchor_link_click", {
+            if (typeof window !== "undefined" && (window as any).posthog) {
+              (window as any).posthog.capture("anchor_link_click", {
                 anchor: href,
                 text: typeof children === "string" ? children : "non-text link",
                 current_page: pathname,
@@ -127,8 +127,8 @@ const InternalLinkOptimizer: React.FC<InternalLinkOptimizerProps> = ({
       onClick={e => {
         // Track internal link click
         try {
-          if (typeof window !== "undefined" && window.posthog) {
-            window.posthog.capture("internal_link_click", {
+          if (typeof window !== "undefined" && (window as any).posthog) {
+            (window as any).posthog.capture("internal_link_click", {
               url: href,
               text: typeof children === "string" ? children : "non-text link",
               is_primary_nav: isPrimaryNav,

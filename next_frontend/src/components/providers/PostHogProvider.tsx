@@ -110,7 +110,6 @@ function ProductionPostHogProvider({ children }: PostHogProviderProps) {
 
             // Start session recording
             ph.startSessionRecording();
-
           },
         });
       } else {

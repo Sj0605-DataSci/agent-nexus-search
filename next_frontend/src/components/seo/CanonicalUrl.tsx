@@ -27,6 +27,11 @@ export default function CanonicalUrl({ path }: CanonicalUrlProps) {
   // Use provided path or current pathname
   const canonicalPath = path || pathname;
 
+  // Handle null pathname
+  if (!canonicalPath) {
+    return null;
+  }
+
   // Get canonical URL using utility function
   const canonicalUrl = getCanonicalUrl(canonicalPath);
 

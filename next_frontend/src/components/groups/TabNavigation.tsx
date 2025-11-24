@@ -33,6 +33,11 @@ export function TabNavigation({ groupId }: { groupId: string }) {
 
   // More precise active tab detection
   const isActive = useMemo(() => {
+    // Handle null pathname
+    if (!pathname) {
+      return (href: string) => false;
+    }
+
     // Exact match for root group page
     if (pathname === `/groups/${groupId}`) {
       return (href: string) => href === `/groups/${groupId}`;

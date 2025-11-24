@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import termsOfService from "@/constant/terms-of-service.json";
-import TaraFooter from "@/app/tara/components/TaraFooter";
+import TaraFooter from "@/components/tara/TaraFooter";
 
 const baseMetadata = {
   title: "Terms of Service | Tara - AI Copilot for TallyPrime",
