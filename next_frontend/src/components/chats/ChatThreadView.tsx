@@ -137,12 +137,17 @@ const ChatThreadView: React.FC<ChatThreadViewProps> = ({ threadId, initialQuery 
       const messagesResponse = await apiClient.getChatMessages(threadId);
 
       if (messagesResponse.messages?.length > 0) {
-        setChatPairs(messagesResponse.messages);
-        setCurrentMessageIndex(messagesResponse.messages.length - 1);
+        const chatPairs: ChatPair[] = messagesResponse.messages.map(msg => ({
+          ...msg,
+          message: msg.message || (msg as any).content || "",
+          world_connections: "connections" as const,
+        }));
+        setChatPairs(chatPairs);
+        setCurrentMessageIndex(chatPairs.length - 1);
         setCachedThreads(prev => ({
           ...prev,
           [threadId]: {
-            messages: messagesResponse.messages,
+            messages: chatPairs,
             timestamp: Date.now(),
           },
         }));
